@@ -1,4 +1,4 @@
-b7937e77ad5a37fcf0bf0ed2b6d4e4b34d97b144 Merge pull request #383 from hashicorp/rename-core-to-admin
+39932708b0d3306937e3fd8333db5934760bcd3b Merge pull request #432 from hashicorp/fix-scopes-nav
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

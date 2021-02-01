@@ -238,6 +238,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -411,6 +417,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -484,6 +496,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -722,6 +740,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -1238,6 +1262,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -1575,6 +1605,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -1726,6 +1762,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -1809,6 +1851,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -2081,6 +2129,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -3343,6 +3397,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1."
+        },
+        "worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
         },
         "attributes": {
           "type": "object",

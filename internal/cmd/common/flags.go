@@ -65,6 +65,12 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Target: &c.FlagHostCatalogId,
 				Usage:  "The host-catalog resource to use for the operation.",
 			})
+		case "recursive":
+			f.BoolVar(&base.BoolVar{
+				Name:   "recursive",
+				Target: &c.FlagRecursive,
+				Usage:  "If set, the list operation will be applied recursively into child scopes, if supported by the type.",
+			})
 		}
 	}
 }

@@ -14,6 +14,8 @@ construction is thus synthesizing something reasonable from a set of Grants.
 */
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
@@ -70,9 +72,25 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 	grants := a.scopeMap[r.ScopeId]
 	results.scopeMap = a.scopeMap
 
+	var parentAction action.Type
+	split := strings.Split(aType.String(), ":")
+	if len(split) == 2 {
+		parentAction = action.Map[split[0]]
+	}
 	// Now, go through and check the cases indicated above
 	for _, grant := range grants {
-		if !(grant.actions[aType] || grant.actions[action.All]) {
+		switch {
+		case grant.actions[aType]:
+			// We have this action
+		case grant.actions[parentAction]:
+			// We don't have this action, but it's a subaction and we have the
+			// parent action. As an example, if we are looking for "list:self"
+			// and have "list", this is sufficient.
+		case grant.actions[action.All]:
+			// All actions are allowed
+		default:
+			// No actions in the grant match what we're looking for, so continue
+			// with the next grant
 			continue
 		}
 		switch {
@@ -85,15 +103,17 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			results.Allowed = true
 			return
 
-		// type=<resource.type>;actions=<action> when action is list or create.
-		// Must be a top level collection, otherwise must be one of the two
-		// formats specified below.
+		// type=<resource.type>;actions=<action> when action is list(:self) or
+		// create. Must be a top level collection, otherwise must be one of the
+		// two formats specified below.
 		case grant.id == "" &&
 			r.Id == "" &&
 			grant.typ == r.Type &&
 			grant.typ != resource.Unknown &&
 			topLevelType(r.Type) &&
-			(aType == action.List || aType == action.Create):
+			(aType == action.List ||
+				aType == action.ListSelf ||
+				aType == action.Create):
 
 			results.Allowed = true
 			return

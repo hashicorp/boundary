@@ -34,25 +34,15 @@ func generate(dialect string) {
 		Content string
 	}
 	var upContents []ContentValues
-	var downContents []ContentValues
 
-	isDev := false
-	var lRelVer, largestSchemaVersion int
+	var largestSchemaVersion int
 	for _, ver := range versions {
 		var verVal int
-		switch ver {
-		case "dev":
-			verVal = lRelVer + 1
-		default:
-			v, err := strconv.Atoi(ver)
-			if err != nil {
-				fmt.Printf("error reading major schema version directory %q.  Must be a number or 'dev'\n", ver)
-				os.Exit(1)
-			}
-			verVal = v
-			if verVal > lRelVer {
-				lRelVer = verVal
-			}
+
+		verVal, err := strconv.Atoi(ver)
+		if err != nil {
+			fmt.Printf("error reading major schema version directory %q.  Must be a number: %v\n", ver, err)
+			os.Exit(1)
 		}
 
 		dir, err := os.Open(fmt.Sprintf("%s/%s/%s", srcDir, dialect, ver))
@@ -66,20 +56,10 @@ func generate(dialect string) {
 			os.Exit(1)
 		}
 
-		if ver == "dev" && len(names) > 0 {
-			isDev = true
-		}
-
 		sort.Strings(names)
 		for _, name := range names {
 			if !strings.HasSuffix(name, ".sql") {
 				continue
-			}
-
-			contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s/%s", srcDir, dialect, ver, name))
-			if err != nil {
-				fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
-				os.Exit(1)
 			}
 
 			nameParts := strings.SplitN(name, "_", 2)
@@ -97,33 +77,41 @@ func generate(dialect string) {
 			if fullV > largestSchemaVersion {
 				largestSchemaVersion = fullV
 			}
+
+			cbts, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s/%s", srcDir, dialect, ver, name))
+			if err != nil {
+				fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
+				os.Exit(1)
+			}
+
+			contents := strings.TrimSpace(string(cbts))
+			if strings.ToLower(contents[:len("begin;")]) == "begin;" {
+				contents = contents[len("begin;"):]
+			}
+			if strings.ToLower(contents[len(contents)-len("commit;"):]) == "commit;" {
+				contents = contents[:len(contents)-len("commit;")]
+			}
+			contents = strings.TrimSpace(contents)
+
 			cv := ContentValues{
 				Name:    fmt.Sprint(fullV),
-				Content: string(contents),
+				Content: contents,
 			}
 			switch {
-			case strings.Contains(nameParts[1], ".down."):
-				downContents = append(downContents, cv)
 			case strings.Contains(nameParts[1], ".up."):
 				upContents = append(upContents, cv)
 			}
 		}
 	}
 
-	// fmt.Printf("Got upcontent: %#v\n\n downcontents: %#v", upContents[:1], downContents[:1])
-
 	outBuf := bytes.NewBuffer(nil)
 	if err := migrationsTemplate.Execute(outBuf, struct {
 		Type                string
 		UpValues            []ContentValues
-		DownValues          []ContentValues
-		DevMigration        bool
 		BinarySchemaVersion int
 	}{
 		Type:                dialect,
 		UpValues:            upContents,
-		DownValues:          downContents,
-		DevMigration:        isDev,
 		BinarySchemaVersion: largestSchemaVersion,
 	}); err != nil {
 		fmt.Printf("error executing migrations value template for dialect %s: %s", dialect, err)
@@ -145,13 +133,9 @@ var migrationsTemplate = template.Must(template.Must(template.New("Content").Par
 
 func init() {
 	migrationStates["{{ .Type }}"] = migrationState{
-		devMigration: {{ .DevMigration }},
 		binarySchemaVersion: {{ .BinarySchemaVersion }},
 		upMigrations: map[int][]byte{
 			{{range .UpValues }}{{ template "Content" . }}{{end}}
-		},
-		downMigrations: map[int][]byte{
-			{{range .DownValues }}{{ template "Content" . }}{{end}}
 		},
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -79,17 +80,25 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	gl, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Role, 0, len(gl))
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Role,
+
+	items, err := s.listFromRepo(ctx, scopeIds)
+	if err != nil {
+		return nil, err
 	}
-	for _, item := range gl {
-		item.Scope = authResults.Scope
+
+	finalItems := make([]*pb.Role, 0, len(items))
+	res := &perms.Resource{
+		Type: resource.Role,
+	}
+	for _, item := range items {
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -374,12 +383,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	rl, err := repo.ListRoles(ctx, scopeId)
+	rl, err := repo.ListRoles(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}

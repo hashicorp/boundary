@@ -271,16 +271,16 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	return retAT, nil
 }
 
-// ListAuthTokens in an org and supports the WithLimit option.
-func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt ...Option) ([]*AuthToken, error) {
-	const op = "authtoken.(Repository).ListAuthTokens"
-	if withOrgId == "" {
+// ListAuthTokens lists auth tokens in the given scopes and supports the
+// WithLimit option.
+func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
+	if len(withScopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
 	}
 	opts := getOpts(opt...)
 
 	var authTokens []*AuthToken
-	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(opts.withLimit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	for _, at := range authTokens {

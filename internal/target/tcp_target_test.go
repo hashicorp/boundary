@@ -29,7 +29,7 @@ func TestTcpTarget_Create(t *testing.T) {
 		args          args
 		want          *TcpTarget
 		wantErr       bool
-		wantIsErr     error
+		wantIsErr     errors.Code
 		create        bool
 		wantCreateErr bool
 	}{
@@ -37,7 +37,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			name:      "empty-scopeId",
 			args:      args{},
 			wantErr:   true,
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-proj-scope",
@@ -62,7 +62,7 @@ func TestTcpTarget_Create(t *testing.T) {
 			got, err := NewTcpTarget(tt.args.scopeId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.True(errors.Is(err, tt.wantIsErr))
+				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
 				return
 			}
 			require.NoError(err)

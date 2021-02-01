@@ -641,11 +641,9 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			want:  []*AuthToken{},
 		},
 		{
-			name:       "empty-org-id",
-			orgId:      "",
-			want:       nil,
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "authtoken.(Repository).ListAuthTokens: missing org id: parameter violation: error #100",
+			name:  "empty-org-id",
+			orgId: "",
+			want:  []*AuthToken{},
 		},
 	}
 
@@ -656,7 +654,6 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-
 			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
@@ -669,4 +666,29 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()), "row count")
 		})
 	}
+}
+
+func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestAuthToken(t, conn, kms, "global")
+		total++
+		TestAuthToken(t, conn, kms, org.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListAuthTokens(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }

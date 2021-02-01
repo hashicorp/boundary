@@ -2,23 +2,43 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.1.5 (2021/01/29)
+
+*NOTE*: This version requires a database migration via the new `boundary
+database migrate` command.
 
 ### Security
 
-* Boundary now uses Go's execabs package for execution of binaries in `boundary
-  connect`. This is for defense-in-depth rather than a specific issue. See the
-  [Go blog post](https://blog.golang.org/path-security) for more details.
-  ([PR](https://github.com/hashicorp/boundary/pull/873))
+* Boundary now uses Go's new execabs package for execution of binaries in
+  `boundary connect`. This is for defense-in-depth rather than a specific
+  issue. See the [Go blog post](https://blog.golang.org/path-security) for more
+  details. ([PR](https://github.com/hashicorp/boundary/pull/873))
+
+### Changes/Deprecations
+
+* controller/worker: Require names to be all lowercase. This removes ambiguity
+  or accidental mismatching when using upcoming filtering features.
 
 ### New and Improved
 
+* targets: You can now specify a Boolean-expression filter against worker tags
+  to control which workers are allowed to handle any given target's sessions
+  ([PR](https://github.com/hashicorp/boundary/pull/862))
 * api/cli: On listing/reading, return a list of actions the user is authorized
-  to perform on the identified resources
+  to perform on the identified resources or their associated collections
   ([PR](https://github.com/hashicorp/boundary/pull/870))
+* api/cli: Most resource types now support recursive listing, allowing listing
+  to occur down a scope tree
+  ([PR](https://github.com/hashicorp/boundary/pull/885))
+* cli: Add a `database migrate` command which updates a database's schema to 
+  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
+* controller/db: Correctly check if db init previously completed successfully 
+  when starting a controller or when running `database init` 
+  ([Issue](https://github.com/hashicorp/boundary/issues/805))
+  ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
   commands and automatic versioning is being used (that is, no `-version` flag
   is given), it will now display the final call instead of the `GET` that

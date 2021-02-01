@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"testing"
@@ -60,7 +61,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil kms",
+			wantErrString: "target.NewRepository: nil kms: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -71,7 +72,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil writer",
+			wantErrString: "target.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -82,7 +83,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "error creating db repository with nil reader",
+			wantErrString: "target.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
@@ -247,7 +248,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     5,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithTargetType(TcpTargetType), WithScopeId(proj.PublicId)},
+				opt: []Option{WithTargetType(TcpTargetType), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: 5,
 			wantErr: false,
@@ -257,7 +258,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(-1), WithScopeId(proj.PublicId)},
+				opt: []Option{WithLimit(-1), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit + 1,
 			wantErr: false,
@@ -267,7 +268,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeId(proj.PublicId)},
+				opt: []Option{WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit,
 			wantErr: false,
@@ -277,7 +278,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(3), WithScopeId(proj.PublicId)},
+				opt: []Option{WithLimit(3), WithScopeIds([]string{proj.PublicId})},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -287,7 +288,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeId("bad-id")},
+				opt: []Option{WithScopeIds([]string{"bad-id"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -316,6 +317,34 @@ func TestRepository_ListTargets(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	_, proj2 := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	require.NoError(t, conn.Where("1=1").Delete(allocTcpTarget()).Error)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestTcpTarget(t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
+		total++
+		TestTcpTarget(t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
+		total++
+	}
+
+	got, err := repo.ListTargets(context.Background(), WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_DeleteTarget(t *testing.T) {
@@ -358,7 +387,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: missing public id invalid parameter",
+			wantErrMsg:      "target.(Repository).DeleteTarget: missing public id: parameter violation: error #100",
 		},
 		{
 			name: "not-found",
@@ -373,7 +402,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "delete target: failed db.LookupById: record not found",
+			wantErrMsg:      "db.LookupById: record not found, search issue: error #1100",
 		},
 	}
 	for _, tt := range tests {
@@ -565,7 +594,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantErr         bool
-		wantIsErr       error
+		wantIsErr       errors.Code
 	}{
 		{
 			name: "valid",
@@ -595,7 +624,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "not-found",
@@ -618,7 +647,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
@@ -630,7 +659,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantIsErr:       errors.ErrInvalidParameter,
+			wantIsErr:       errors.InvalidParameter,
 		},
 		{
 			name: "bad-version",
@@ -681,9 +710,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				if tt.wantIsErr != nil {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "unexpected error %s", err.Error())
 				// TODO (jimlambrt 9/2020) - unfortunately, we can currently
 				// test to make sure that the oplog entry for a target update
 				// doesn't exist because the db.TestVerifyOplog doesn't really

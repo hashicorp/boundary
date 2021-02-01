@@ -143,12 +143,17 @@ func TestList(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, projNoTar := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, projNoTar := iam.TestScopes(t, iamRepo)
+	_, proj := iam.TestScopes(t, iamRepo)
+	_, otherProj := iam.TestScopes(t, iamRepo)
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
+	otherHss := static.TestSets(t, conn, otherHc.GetPublicId(), 2)
 
 	var wantTars []*pb.Target
+	var totalTars []*pb.Target
 	for i := 0; i < 5; i++ {
 		name := fmt.Sprintf("tar%d", i)
 		tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), name, target.WithHostSets([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
@@ -166,23 +171,44 @@ func TestList(t *testing.T) {
 			SessionConnectionLimit: wrapperspb.Int32(1),
 			AuthorizedActions:      targets.IdActions.Strings(),
 		})
+		totalTars = append(totalTars, wantTars[i])
+		tar = target.TestTcpTarget(t, conn, otherProj.GetPublicId(), name, target.WithHostSets([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
+		totalTars = append(totalTars, &pb.Target{
+			Id:                     tar.GetPublicId(),
+			ScopeId:                otherProj.GetPublicId(),
+			Name:                   wrapperspb.String(name),
+			Scope:                  &scopes.ScopeInfo{Id: otherProj.GetPublicId(), Type: scope.Project.String()},
+			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
+			Version:                tar.GetVersion(),
+			Type:                   target.TcpTargetType.String(),
+			Attributes:             new(structpb.Struct),
+			SessionMaxSeconds:      wrapperspb.UInt32(28800),
+			SessionConnectionLimit: wrapperspb.Int32(1),
+			AuthorizedActions:      targets.IdActions.Strings(),
+		})
 	}
 
 	cases := []struct {
-		name    string
-		scopeId string
-		res     *pbs.ListTargetsResponse
-		err     error
+		name string
+		req  *pbs.ListTargetsRequest
+		res  *pbs.ListTargetsResponse
+		err  error
 	}{
 		{
-			name:    "List Many Host Sets",
-			scopeId: proj.GetPublicId(),
-			res:     &pbs.ListTargetsResponse{Items: wantTars},
+			name: "List Many Targets",
+			req:  &pbs.ListTargetsRequest{ScopeId: proj.GetPublicId()},
+			res:  &pbs.ListTargetsResponse{Items: wantTars},
 		},
 		{
-			name:    "List No Host Sets",
-			scopeId: projNoTar.GetPublicId(),
-			res:     &pbs.ListTargetsResponse{},
+			name: "List No Targets",
+			req:  &pbs.ListTargetsRequest{ScopeId: projNoTar.GetPublicId()},
+			res:  &pbs.ListTargetsResponse{},
+		},
+		{
+			name: "List Targets Recursively",
+			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res:  &pbs.ListTargetsResponse{Items: totalTars},
 		},
 	}
 	for _, tc := range cases {
@@ -191,12 +217,12 @@ func TestList(t *testing.T) {
 			s, err := testService(t, conn, kms, wrapper)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListTargetsRequest{ScopeId: tc.scopeId})
+			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) scope %q, got response %q, wanted %q", tc.name, tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) scope %q, got response %q, wanted %q", tc.name, tc.req.GetScopeId(), got, tc.res)
 		})
 	}
 }

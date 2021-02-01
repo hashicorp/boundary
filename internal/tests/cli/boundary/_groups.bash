@@ -1,9 +1,11 @@
+load _authorized_actions
+
 function create_group() {
   boundary groups create -scope-id global -name $1 -description 'test group'
 }
 
 function read_group() {
-  boundary groups read -id $1
+  boundary groups read -id $1 -format json
 }
 
 function delete_group() {
@@ -38,4 +40,17 @@ function group_has_member_id() {
     fi
   done
   return 1 
+}
+
+function has_default_group_actions() {
+  # tests that the group resource contains default actions
+  local out=$1
+  local actions=('read' 'update' 'delete' 'add-members' 'set-members' 'remove-members')
+
+  for action in ${actions[@]}; do
+    $(has_authorized_action "$out" "$action") || {
+      echo "failed to find $action action in output: $out"
+      return 1
+    } 
+  done
 }

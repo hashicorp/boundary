@@ -7,10 +7,12 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// InitStore executes the migrations needed to initialize the store. It
-// returns true if migrations actually ran; false if the database is already current.
-func InitStore(ctx context.Context, dialect string, url string) (bool, error) {
-	const op = "schema.InitStore"
+// MigrateStore executes the migrations needed to initialize the store. It
+// returns true if migrations actually ran; false if the database is already current
+// or if there was an error.
+func MigrateStore(ctx context.Context, dialect string, url string) (bool, error) {
+	const op = "schema.MigrateStore"
+
 	d, err := sql.Open(dialect, url)
 	if err != nil {
 		return false, errors.Wrap(err, op)
@@ -36,5 +38,6 @@ func InitStore(ctx context.Context, dialect string, url string) (bool, error) {
 	if err := sMan.RollForward(ctx); err != nil {
 		return false, errors.Wrap(err, op)
 	}
+
 	return true, nil
 }

@@ -180,7 +180,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -191,6 +190,7 @@ func TestList(t *testing.T) {
 	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo, iam.WithSkipDefaultRoleCreation(true))
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
+	var totalRoles []*pb.Role
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
@@ -203,6 +203,7 @@ func TestList(t *testing.T) {
 			Version:           or.GetVersion(),
 			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
 		})
+		totalRoles = append(totalRoles, wantOrgRoles[i])
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
 			Id:                pr.GetPublicId(),
@@ -214,6 +215,7 @@ func TestList(t *testing.T) {
 			Version:           pr.GetVersion(),
 			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
 		})
+		totalRoles = append(totalRoles, wantProjRoles[i])
 	}
 
 	cases := []struct {
@@ -241,9 +243,31 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListRolesRequest{ScopeId: pNoRoles.GetPublicId()},
 			res:  &pbs.ListRolesResponse{},
 		},
+		{
+			name: "List proj roles recursively",
+			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Recursive: true},
+			res: &pbs.ListRolesResponse{
+				Items: wantProjRoles,
+			},
+		},
+		{
+			name: "List org roles recursively",
+			req:  &pbs.ListRolesRequest{ScopeId: oNoRoles.GetPublicId(), Recursive: true},
+			res: &pbs.ListRolesResponse{
+				Items: wantProjRoles,
+			},
+		},
+		{
+			name: "List global roles recursively",
+			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true},
+			res: &pbs.ListRolesResponse{
+				Items: totalRoles,
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 

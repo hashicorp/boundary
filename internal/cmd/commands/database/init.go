@@ -1,13 +1,11 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -38,7 +36,6 @@ type InitCommand struct {
 	flagLogLevel                     string
 	flagLogFormat                    string
 	flagMigrationUrl                 string
-	flagAllowDevMigrations           bool
 	flagSkipInitialLoginRoleCreation bool
 	flagSkipAuthMethodCreation       bool
 	flagSkipScopesCreation           bool
@@ -119,12 +116,6 @@ func (c *InitCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Init Options")
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "allow-development-migrations",
-		Target: &c.flagAllowDevMigrations,
-		Usage:  "If set the init will continue even if the schema includes database update steps that may not be supported in the next official release.  Boundary does not provide a rollback mechanism so a backup should be taken independently if needed.",
-	})
-
-	f.BoolVar(&base.BoolVar{
 		Name:   "skip-initial-login-role-creation",
 		Target: &c.flagSkipInitialLoginRoleCreation,
 		Usage:  "If not set, a default role allowing necessary grants for logging in will not be created as part of initialization. If set, the recovery KMS will be needed to perform any actions.",
@@ -186,20 +177,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	dialect := "postgres"
 
-	if schema.DevMigration(dialect) != c.flagAllowDevMigrations {
-		if schema.DevMigration(dialect) {
-			c.UI.Error(base.WrapAtLength("This version of the binary has " +
-				"dev database schema updates which may not be supported in the " +
-				"next official release. To proceed anyways please use the " +
-				"'-allow-development-migrations' flag."))
-			return 2
-		} else {
-			c.UI.Error(base.WrapAtLength("The '-allow-development-migrations' " +
-				"flag was set but this binary has no dev database schema updates."))
-			return 3
-		}
-	}
-
 	c.srv = base.NewServer(&base.Command{UI: c.UI})
 
 	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
@@ -239,12 +216,6 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return 1
 	}
 
-	urlToParse := c.Config.Controller.Database.Url
-	if urlToParse == "" {
-		c.UI.Error(`"url" not specified in "database" config block"`)
-		return 1
-	}
-
 	var migrationUrlToParse string
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
@@ -254,7 +225,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 	// Fallback to using database URL for everything
 	if migrationUrlToParse == "" {
-		migrationUrlToParse = urlToParse
+		migrationUrlToParse = c.Config.Controller.Database.Url
+	}
+
+	if migrationUrlToParse == "" {
+		c.UI.Error(base.WrapAtLength(`neither "url" nor "migration_url" correctly set in "database" config block nor was the "migration-url" flag used`))
+		return 1
 	}
 
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
@@ -262,75 +238,30 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return 1
 	}
-	migrationUrl = strings.TrimSpace(migrationUrl)
 
-	// This database is used to keep an exclusive lock on the database for the
-	// remainder of the command
-	dBase, err := sql.Open(dialect, migrationUrl)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error establishing db connection for locking: %w", err).Error())
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
+	defer clean()
+	if errCode != 0 {
+		return errCode
+	}
+
+	urlToParse := c.Config.Controller.Database.Url
+	if urlToParse == "" {
+		c.UI.Error(`"url" not specified in "database" config block`)
 		return 1
 	}
-	man, err := schema.NewManager(c.Context, dialect, dBase)
-	if err != nil {
-		c.UI.Error(fmt.Errorf("Error setting up schema manager for locking: %w", err).Error())
-		return 1
-	}
-	{
-		st, err := man.CurrentState(c.Context)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error getting database state: %w", err).Error())
-			return 1
-		}
-		if st.Dirty {
-			c.UI.Error(base.WrapAtLength("Database is in a bad initialization " +
-				"state.  Please revert back to the last known good state."))
-			return 1
-		}
-		if st.InitializationStarted {
-			// TODO: Separate from the "dirty" bit maintained by the schema
-			//  manager maintain a bit which indicates that this full command
-			//  was completed successfully (with all default resources being created).
-			//  Use that bit to determine if a previous init was completed
-			//  successfully or not.
-			c.UI.Error(base.WrapAtLength("Database has already been " +
-				"initialized. If the initialization did not complete successfully " +
-				"please revert the database to its fresh state."))
-			return 1
-		}
-	}
-
-	// This is an advisory locks on the DB which is released when the db session ends.
-	if err := man.ExclusiveLock(c.Context); err != nil {
-		c.UI.Error(fmt.Errorf("Error capturing an exclusive lock: %w", err).Error())
-		return 1
-	}
-	defer func() {
-		if err := man.ExclusiveUnlock(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Unable to release exclusive lock to the database: %w", err).Error())
-		}
-	}()
-
-	{
-		if err := man.RollForward(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
-			return 1
-		}
-		if base.Format(c.UI) == "table" {
-			c.UI.Info("Migrations successfully run.")
-		}
-	}
-
-	dbaseUrl, err := config.ParseAddress(urlToParse)
+	c.srv.DatabaseUrl, err = config.ParseAddress(urlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 		return 1
 	}
-
 	// Everything after is done with normal database URL and is affecting actual data
-	c.srv.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
+		return 1
+	}
+	if err := c.verifyOplogIsEmpty(); err != nil {
+		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
 		return 1
 	}
 	if err := c.srv.CreateGlobalKmsKeys(c.Context); err != nil {
@@ -537,4 +468,18 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	}
 
 	return 0
+}
+
+func (c *InitCommand) verifyOplogIsEmpty() error {
+	const op = "database.(InitCommand).verifyOplogIsEmpty"
+	r := c.srv.Database.DB().QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
+	if r.Err() != nil {
+		return r.Err()
+	}
+	var empty bool
+	r.Scan(&empty)
+	if !empty {
+		return errors.New(errors.MigrationIntegrity, op, "oplog_entry is not empty")
+	}
+	return nil
 }
