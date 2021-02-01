@@ -624,11 +624,9 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	emptyOrg, _ := iam.TestScopes(t, repo)
 
 	tests := []struct {
-		name       string
-		orgId      string
-		want       []*AuthToken
-		wantIsErr  errors.Code
-		wantErrMsg string
+		name  string
+		orgId string
+		want  []*AuthToken
 	}{
 		{
 			name:  "populated",
@@ -654,12 +652,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
-			if tt.wantIsErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
-				return
-			}
+			got, err := repo.ListAuthTokens(context.Background(), []string{tt.orgId})
 			assert.NoError(err)
 			sort.Slice(tt.want, func(i, j int) bool { return tt.want[i].PublicId < tt.want[j].PublicId })
 			sort.Slice(got, func(i, j int) bool { return got[i].PublicId < got[j].PublicId })

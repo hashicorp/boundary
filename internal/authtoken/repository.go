@@ -274,6 +274,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 // ListAuthTokens lists auth tokens in the given scopes and supports the
 // WithLimit option.
 func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
+	const op = "authtoken.(Repository).ListAuthTokens"
 	if len(withScopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
 	}
