@@ -143,7 +143,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 				cp.Aud = "o_thisIsNotAValidId"
 				return cp
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"Aud"},
 		},
 	}
 	for _, tt := range tests {
@@ -225,7 +225,7 @@ func TestCallbackUrl_ImmutableFields(t *testing.T) {
 				cp.Url = "https://thisIsNotAValidId.com/callback"
 				return cp
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"Url"},
 		},
 	}
 	for _, tt := range tests {
@@ -311,7 +311,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 				cp.Cert = pem2
 				return cp
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"Cert"},
 		},
 	}
 	for _, tt := range tests {
@@ -395,7 +395,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 				cp.Alg = string(RS384)
 				return cp
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"Alg"},
 		},
 	}
 	for _, tt := range tests {
@@ -417,6 +417,110 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 			after := new.Clone()
 			after.SetTableName(DefaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", after.OidcMethodId, after.Alg))
+
+			assert.True(proto.Equal(orig, after))
+		})
+	}
+}
+
+func TestAccount_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	u := TestConvertToUrls(t, "https://alice.com")[0]
+
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, u, "alice_rp", "my-dogs-name")
+
+	new := TestAccount(t, conn, am.PublicId, u, "alice", WithName("Alice"), WithDescription("alice's account"), WithFullName("Alice Smith"), WithEmail("alice@alice.com"))
+
+	tests := []struct {
+		name      string
+		update    *Account
+		fieldMask []string
+	}{
+		{
+			name: "public_id",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.PublicId = "p_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "create time",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.CreateTime = &ts
+				return cp
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "update time",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.UpdateTime = &ts
+				return cp
+			}(),
+			fieldMask: []string{"UpdateTime"},
+		},
+		{
+			name: "oidc-auth-method-id",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.AuthMethodId = "aodic_thisIsNotAValidId"
+				return cp
+			}(),
+			fieldMask: []string{"AuthMethodId"},
+		},
+		{
+			name: "issuer-id",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.IssuerId = "bob.com"
+				return cp
+			}(),
+			fieldMask: []string{"IssuerId"},
+		},
+		{
+			name: "subject-id",
+			update: func() *Account {
+				cp := new.Clone()
+				cp.SubjectId = "bob"
+				return cp
+			}(),
+			fieldMask: []string{"SubjectId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			orig := new.Clone()
+			orig.SetTableName(DefaultAccountTableName)
+			err := rw.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			tt.update.SetTableName(DefaultAccountTableName)
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			after.SetTableName(DefaultAccountTableName)
+			err = rw.LookupById(context.Background(), after)
+			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
 		})
