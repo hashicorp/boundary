@@ -147,7 +147,29 @@ func TestRepository_ListSession(t *testing.T) {
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
 		require.NoError(err)
 		assert.Equal(1, len(got))
-		assert.Equal(got[0].UserId, s.UserId)
+		assert.Equal(s, got[0])
+	})
+	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		wantCnt := 5
+		for i := 0; i < wantCnt; i++ {
+			// Scope 1 User 1
+			_ = TestSession(t, conn, wrapper, composedOf)
+		}
+		// Scope 2 User 2
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+		// Scope 1 User 2
+		coDiffUser := composedOf
+		coDiffUser.AuthTokenId = s.AuthTokenId
+		coDiffUser.UserId = s.UserId
+		wantS := TestSession(t, conn, wrapper, coDiffUser)
+
+		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithScopeIds([]string{coDiffUser.ScopeId}))
+		require.NoError(err)
+		assert.Equal(1, len(got))
+		assert.Equal(wantS, got[0])
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
