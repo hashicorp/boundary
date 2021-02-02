@@ -15,7 +15,7 @@ import (
 // It owns the reporting to the UI any errors.
 // Returns a cleanup function which must be called even if an error is returned and
 // an error code where a non-zero value indicates an error happened.
-func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(), int) {
+func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, requireFresh bool) (func(), int) {
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
@@ -50,6 +50,10 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string) (func(),
 	st, err := man.CurrentState(ctx)
 	if err != nil {
 		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
+		return unlock, 1
+	}
+	if requireFresh && st.InitializationStarted {
+		ui.Error(base.WrapAtLength("Database has already been initialized.  Please use 'boundary database migrate'."))
 		return unlock, 1
 	}
 	if st.Dirty {

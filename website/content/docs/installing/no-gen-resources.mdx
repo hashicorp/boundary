@@ -98,7 +98,6 @@ EOT
 </Tab>
 </Tabs>
 
-
 ## Initialize the Database
 
 Before you can start Boundary, the database must be initialized. It's useful to look at the help output for the init command:
@@ -174,8 +173,6 @@ resource "boundary_scope" "project" {
 </Tab>
 </Tabs>
 
-
-
 ### Create an Auth Method
 
 Create an auth method in the organization scope.
@@ -218,7 +215,7 @@ $ boundary accounts create password \
   -recovery-config /tmp/recovery.hcl \
   -login-name "myuser" \
   -password "foofoofoo" \
-  -auth-method-id <auth_method_id_from_last_step"
+  -auth-method-id <auth_method_id_from_last_step>
 ```
 
 </Tab>
@@ -252,7 +249,10 @@ $ boundary users create -scope-id <org_scope_id> \
   -name "myuser" \
   -description "My user!"
 
-$ boundary users add-accounts -id <myuser_user_id> -account <myuser_account_id>
+$ boundary users add-accounts \
+  -recovery-config /tmp/recovery.hcl \
+  -id <myuser_user_id> \
+  -account <myuser_account_id>
 ```
 
 </Tab>
@@ -270,7 +270,6 @@ resource "boundary_user" "myuser" {
 </Tab>
 </Tabs>
 
-
 ### Create Roles to Manage Scopes
 
 The following describes the four baseline roles you'll need to create to manage resources within the org and project
@@ -279,6 +278,7 @@ allows you to manage them independently and fully within Terraform or on the CLI
 them down more or have control over them in a declarative way.
 
 The following example creates 4 roles:
+
 1. To allow anonymouns (unauthenticated) users the ability to list scopes and auth methods in the global scope.
 1. To allow anonymouns (unauthenticated) users the ability to list scopes and auth methods in the orgnaization scope.
 1. To allow `myuser` user administration grants at the org scope.
@@ -363,9 +363,9 @@ resource "boundary_role" "org_anon_listing" {
   principal_ids = ["u_anon"]
 }
 ```
+
 </Tab>
 </Tabs>
-
 
 #### Org admin role for myuser
 
@@ -402,9 +402,9 @@ resource "boundary_role" "org_admin" {
   principal_ids = [boundary_user.myuser.id]
 }
 ```
+
 </Tab>
 </Tabs>
-
 
 #### Project admin for myuser
 
@@ -445,12 +445,11 @@ resource "boundary_role" "project_admin" {
 </Tab>
 </Tabs>
 
-
 ### Login as Your New User
 
 ```bash
 boundary authenticate password \
   -auth-method-id <auth_method_id> \
-  -login-name myuser
+  -login-name myuser \
   -password foofoofoo
 ```

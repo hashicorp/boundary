@@ -77,7 +77,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api cli migrations fmt
+gen: cleangen proto api cli migrations perms-table fmt
 
 migrations:
 	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
@@ -157,7 +157,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.4
+VERSION?=0.1.5
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker
