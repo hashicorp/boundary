@@ -49,54 +49,6 @@ func (c *Command) extraSynopsisFunc() string {
 	}
 }
 
-func (c *Command) extraFlagsFunc(f *base.FlagSet) {
-	for _, name := range flagsMap[c.Func] {
-		switch name {
-		case "host-set":
-			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "host-set",
-				Target: &c.flagHostSets,
-				Usage:  "The host-set resources to add, remove, or set. May be specified multiple times.",
-			})
-		case "host-id":
-			f.StringVar(&base.StringVar{
-				Name:   "host-id",
-				Target: &c.flagHostId,
-				Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
-			})
-		}
-	}
-
-	if c.Func == "authorize-session" {
-		flagsMap[c.Func] = append(flagsMap[c.Func], "name", "scope-id", "scope-name")
-
-		// We put these here to change usage and change defaults (don't want
-		// them populated by default). Otherwise the common flags function will
-		// populate these values, and they can't be changed after-the-fact.
-		f.StringVar(&base.StringVar{
-			Name:   "name",
-			Target: &c.FlagName,
-			Usage:  "Target name, if authorizing the session via scope parameters and target name.",
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "scope-id",
-			Target:     &c.FlagScopeId,
-			EnvVar:     "BOUNDARY_SCOPE_ID",
-			Completion: complete.PredictAnything,
-			Usage:      "Target scope ID, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-name.",
-		})
-
-		f.StringVar(&base.StringVar{
-			Name:       "scope-name",
-			Target:     &c.FlagScopeName,
-			EnvVar:     "BOUNDARY_SCOPE_NAME",
-			Completion: complete.PredictAnything,
-			Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
-		})
-	}
-}
-
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -190,6 +142,54 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	}
 	return helpStr + c.Flags().Help()
+}
+
+func (c *Command) extraFlagsFunc(f *base.FlagSet) {
+	for _, name := range flagsMap[c.Func] {
+		switch name {
+		case "host-set":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "host-set",
+				Target: &c.flagHostSets,
+				Usage:  "The host-set resources to add, remove, or set. May be specified multiple times.",
+			})
+		case "host-id":
+			f.StringVar(&base.StringVar{
+				Name:   "host-id",
+				Target: &c.flagHostId,
+				Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
+			})
+		}
+	}
+
+	if c.Func == "authorize-session" {
+		flagsMap[c.Func] = append(flagsMap[c.Func], "name", "scope-id", "scope-name")
+
+		// We put these here to change usage and change defaults (don't want
+		// them populated by default). Otherwise the common flags function will
+		// populate these values, and they can't be changed after-the-fact.
+		f.StringVar(&base.StringVar{
+			Name:   "name",
+			Target: &c.FlagName,
+			Usage:  "Target name, if authorizing the session via scope parameters and target name.",
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "scope-id",
+			Target:     &c.FlagScopeId,
+			EnvVar:     "BOUNDARY_SCOPE_ID",
+			Completion: complete.PredictAnything,
+			Usage:      "Target scope ID, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-name.",
+		})
+
+		f.StringVar(&base.StringVar{
+			Name:       "scope-name",
+			Target:     &c.FlagScopeName,
+			EnvVar:     "BOUNDARY_SCOPE_NAME",
+			Completion: complete.PredictAnything,
+			Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
+		})
+	}
 }
 
 func (c *Command) extraFlagHandlingFunc(opts *[]targets.Option) int {

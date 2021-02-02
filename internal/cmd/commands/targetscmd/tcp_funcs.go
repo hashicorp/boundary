@@ -11,16 +11,16 @@ import (
 	"github.com/hashicorp/go-bexpr"
 )
 
+var extraTcpActionsFlagsMap = map[string][]string{
+	"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+	"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+}
+
 type extraTcpCmdVars = struct {
 	flagDefaultPort            string
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
 	flagWorkerFilter           string
-}
-
-var extraTcpActionsFlagsMap = map[string][]string{
-	"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
-	"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 }
 
 func (c *TcpCommand) extraTcpSynopsisFunc() string {

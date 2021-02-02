@@ -1,10 +1,10 @@
-package targetscmd
+package accountscmd
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -13,17 +13,17 @@ import (
 )
 
 func init() {
-	for k, v := range extraTcpActionsFlagsMap {
-		flagsTcpMap[k] = append(flagsTcpMap[k], v...)
+	for k, v := range extraPasswordActionsFlagsMap {
+		flagsPasswordMap[k] = append(flagsPasswordMap[k], v...)
 	}
 }
 
 var (
-	_ cli.Command             = (*TcpCommand)(nil)
-	_ cli.CommandAutocomplete = (*TcpCommand)(nil)
+	_ cli.Command             = (*PasswordCommand)(nil)
+	_ cli.CommandAutocomplete = (*PasswordCommand)(nil)
 )
 
-type TcpCommand struct {
+type PasswordCommand struct {
 	*base.Command
 
 	Func string
@@ -33,32 +33,32 @@ type TcpCommand struct {
 	// Used in some output
 	plural string
 
-	extraTcpCmdVars
+	extraPasswordCmdVars
 }
 
-func (c *TcpCommand) AutocompleteArgs() complete.Predictor {
+func (c *PasswordCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *TcpCommand) AutocompleteFlags() complete.Flags {
+func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *TcpCommand) Synopsis() string {
-	if extra := c.extraTcpSynopsisFunc(); extra != "" {
+func (c *PasswordCommand) Synopsis() string {
+	if extra := c.extraPasswordSynopsisFunc(); extra != "" {
 		return extra
 	}
 
-	return common.SynopsisFunc(c.Func, "target")
+	return common.SynopsisFunc(c.Func, "account")
 }
 
-func (c *TcpCommand) Help() string {
+func (c *PasswordCommand) Help() string {
 	var helpStr string
-	helpMap := common.HelpMap("target")
+	helpMap := common.HelpMap("account")
 
 	switch c.Func {
 	default:
-		helpStr = c.extraTcpHelpFunc(helpMap)
+		helpStr = c.extraPasswordHelpFunc(helpMap)
 	}
 
 	// Keep linter from complaining if we don't actually generate code using it
@@ -66,37 +66,37 @@ func (c *TcpCommand) Help() string {
 	return helpStr
 }
 
-var flagsTcpMap = map[string][]string{
+var flagsPasswordMap = map[string][]string{
 
-	"create": {"scope-id", "name", "description"},
+	"create": {"auth-method-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *TcpCommand) Flags() *base.FlagSets {
-	if len(flagsTcpMap[c.Func]) == 0 {
+func (c *PasswordCommand) Flags() *base.FlagSets {
+	if len(flagsPasswordMap[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "password-type account", flagsPasswordMap[c.Func])
 
-	c.extraTcpFlagsFunc(f)
+	c.extraPasswordFlagsFunc(f)
 
 	return set
 }
 
-func (c *TcpCommand) Run(args []string) int {
+func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
 	}
 
-	c.plural = "tcp-type target"
+	c.plural = "password-type account"
 	switch c.Func {
 	case "list":
-		c.plural = "targets"
+		c.plural = "accounts"
 	}
 
 	f := c.Flags()
@@ -106,25 +106,25 @@ func (c *TcpCommand) Run(args []string) int {
 		return 1
 	}
 
-	if strutil.StrListContains(flagsTcpMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(flagsPasswordMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
 
-	var opts []targets.Option
+	var opts []accounts.Option
 
-	if strutil.StrListContains(flagsTcpMap[c.Func], "scope-id") {
+	if strutil.StrListContains(flagsPasswordMap[c.Func], "auth-method-id") {
 		switch c.Func {
 
 		case "create":
-			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
+			if c.FlagAuthMethodId == "" {
+				c.UI.Error("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID")
 				return 1
 			}
 
 		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, targets.WithScopeId(c.FlagScopeId))
+			if c.FlagAuthMethodId != "" {
+				opts = append(opts, accounts.WithAuthMethodId(c.FlagAuthMethodId))
 			}
 		}
 	}
@@ -134,27 +134,22 @@ func (c *TcpCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	targetClient := targets.NewClient(client)
+	accountClient := accounts.NewClient(client)
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, targets.DefaultName())
+		opts = append(opts, accounts.DefaultName())
 	default:
-		opts = append(opts, targets.WithName(c.FlagName))
+		opts = append(opts, accounts.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, targets.DefaultDescription())
+		opts = append(opts, accounts.DefaultDescription())
 	default:
-		opts = append(opts, targets.WithDescription(c.FlagDescription))
-	}
-
-	switch c.FlagRecursive {
-	case true:
-		opts = append(opts, targets.WithRecursive(true))
+		opts = append(opts, accounts.WithDescription(c.FlagDescription))
 	}
 
 	var version uint32
@@ -162,13 +157,13 @@ func (c *TcpCommand) Run(args []string) int {
 	case "update":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
+			opts = append(opts, accounts.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
-	if ret := c.extraTcpFlagHandlingFunc(&opts); ret != 0 {
+	if ret := c.extraPasswordFlagHandlingFunc(&opts); ret != 0 {
 		return ret
 	}
 
@@ -178,10 +173,10 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		result, err = accountClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 
 	case "update":
-		result, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 
@@ -197,7 +192,7 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*targets.Target)
+	item := result.GetItem().(*accounts.Account)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(printItemTable(item))

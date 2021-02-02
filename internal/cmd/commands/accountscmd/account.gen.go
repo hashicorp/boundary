@@ -1,11 +1,11 @@
-package groupscmd
+package accountscmd
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/groups"
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -50,22 +50,16 @@ func (c *Command) Synopsis() string {
 		return extra
 	}
 
-	return common.SynopsisFunc(c.Func, "group")
+	return common.SynopsisFunc(c.Func, "account")
 }
 
 func (c *Command) Help() string {
 	var helpStr string
-	helpMap := common.HelpMap("group")
+	helpMap := common.HelpMap("account")
 
 	switch c.Func {
 
-	case "create":
-		helpStr = helpMap[c.Func]() + c.Flags().Help()
-
 	case "read":
-		helpStr = helpMap[c.Func]() + c.Flags().Help()
-
-	case "update":
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	case "delete":
@@ -86,15 +80,11 @@ func (c *Command) Help() string {
 
 var flagsMap = map[string][]string{
 
-	"create": {"scope-id", "name", "description"},
-
 	"read": {"id"},
-
-	"update": {"id", "name", "description", "version"},
 
 	"delete": {"id"},
 
-	"list": {"scope-id", "recursive"},
+	"list": {"auth-method-id"},
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -104,7 +94,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "group", flagsMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "account", flagsMap[c.Func])
 
 	c.extraFlagsFunc(f)
 
@@ -115,12 +105,16 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
+
+	case "create", "update":
+		return cli.RunResultHelp
+
 	}
 
-	c.plural = "group"
+	c.plural = "account"
 	switch c.Func {
 	case "list":
-		c.plural = "groups"
+		c.plural = "accounts"
 	}
 
 	f := c.Flags()
@@ -135,26 +129,20 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	var opts []groups.Option
+	var opts []accounts.Option
 
-	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
+	if strutil.StrListContains(flagsMap[c.Func], "auth-method-id") {
 		switch c.Func {
 
-		case "create":
-			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
-				return 1
-			}
-
 		case "list":
-			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
+			if c.FlagAuthMethodId == "" {
+				c.UI.Error("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID")
 				return 1
 			}
 
 		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, groups.WithScopeId(c.FlagScopeId))
+			if c.FlagAuthMethodId != "" {
+				opts = append(opts, accounts.WithAuthMethodId(c.FlagAuthMethodId))
 			}
 		}
 	}
@@ -164,60 +152,39 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	groupClient := groups.NewClient(client)
+	accountClient := accounts.NewClient(client)
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, groups.DefaultName())
+		opts = append(opts, accounts.DefaultName())
 	default:
-		opts = append(opts, groups.WithName(c.FlagName))
+		opts = append(opts, accounts.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, groups.DefaultDescription())
+		opts = append(opts, accounts.DefaultDescription())
 	default:
-		opts = append(opts, groups.WithDescription(c.FlagDescription))
-	}
-
-	switch c.FlagRecursive {
-	case true:
-		opts = append(opts, groups.WithRecursive(true))
+		opts = append(opts, accounts.WithDescription(c.FlagDescription))
 	}
 
 	var version uint32
 	switch c.Func {
 
-	case "update":
+	case "change-password":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
+			opts = append(opts, accounts.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
 
-	case "add-members":
+	case "set-password":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "remove-members":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "set-members":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
+			opts = append(opts, accounts.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -235,28 +202,22 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 
-	case "create":
-		result, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
-
 	case "read":
-		result, err = groupClient.Read(c.Context, c.FlagId, opts...)
-
-	case "update":
-		result, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = accountClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		_, err = accountClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			c.existed = false
 			err = nil
 		}
 
 	case "list":
-		listResult, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = accountClient.List(c.Context, c.FlagAuthMethodId, opts...)
 
 	}
 
-	result, err = c.executeExtraActions(result, err, groupClient, version, opts)
+	result, err = c.executeExtraActions(result, err, accountClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -288,7 +249,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
-		listedItems := listResult.GetItems().([]*groups.Group)
+		listedItems := listResult.GetItems().([]*accounts.Account)
 		switch base.Format(c.UI) {
 		case "json":
 			switch {
@@ -313,7 +274,7 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	item := result.GetItem().(*groups.Group)
+	item := result.GetItem().(*accounts.Account)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(printItemTable(item))

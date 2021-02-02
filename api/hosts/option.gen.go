@@ -105,6 +105,12 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithHostCatalogId(inHostCatalogId string) Option {
+	return func(o *options) {
+		o.postMap["host_catalog_id"] = inHostCatalogId
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName

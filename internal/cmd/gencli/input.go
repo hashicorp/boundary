@@ -4,12 +4,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-var standardActions = map[string][]string{
-	"read":   {"id"},
-	"delete": {"id"},
-	"list":   {"scope-id"},
-}
-
 type cmdInfo struct {
 	// The type of the resource, e.g. "target"
 	ResourceType string
@@ -52,11 +46,6 @@ type cmdInfo struct {
 	// output env var and print
 	HasExampleCliOutput bool
 
-	// CustomParentIdType indicates whether it is a resource type that isn't at
-	// the scope, e.g. a host-set, host, or account, to allow formatting correct
-	// options
-	CustomParentIdType string
-
 	// IsAbstractType triggers some behavior specialized for abstract types,
 	// e.g. those that have subcommands for create/update
 	IsAbstractType bool
@@ -70,14 +59,13 @@ type cmdInfo struct {
 	// this in favor of custom logic.
 	HasId bool
 
-	// HasScopeIdOption controls whether to generate for a required scope ID;
-	// see HasScopeIdOption as well
-	HasScopeId bool
+	// Container controls what to generate for a required container (scope ID,
+	// auth method ID, etc.); see ContainerRequiredActions as well
+	Container string
 
-	// HasScopeIdOption controls whether to add scope ID options. Some commands
-	// require a scope ID rather than have an option so this can prevent
-	// generating when we shouldn't.
-	HasScopeIdOption bool
+	// ContainerRequiredActions controls which actions require that the
+	// container ID is not empty.
+	ContainerRequiredActions []string
 
 	// HasName controls whether to add name options
 	HasName bool
@@ -87,6 +75,10 @@ type cmdInfo struct {
 
 	// HasScopeName controls whether to add scope name options
 	HasScopeName bool
+
+	// HasRecursiveListing controls whether to add in options for recursive
+	// listing
+	HasRecursiveListing bool
 
 	// VersionedActions controls which actions to add a case for version checking
 	VersionedActions []string
@@ -101,10 +93,10 @@ type cmdInfo struct {
 }
 
 var inputStructs = map[string][]*cmdInfo{
-	"targets": {
+	"accounts": {
 		{
-			ResourceType:             resource.Target.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			ResourceType:             resource.Account.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/accounts",
 			StdActions:               []string{"read", "delete", "list"},
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
@@ -112,21 +104,21 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraActions:          true,
 			HasExtraFlagsFunc:        true,
 			HasExtraHelpFunc:         true,
-			HasExampleCliOutput:      true,
 			IsAbstractType:           true,
 			HasExtraFlagHandlingFunc: true,
+			Container:                "AuthMethod",
+			HasId:                    true,
 			HasName:                  true,
 			HasDescription:           true,
-			HasScopeIdOption:         true,
-			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
-			HasExtraActionsOutput:    true,
+			ContainerRequiredActions: []string{"list"},
+			VersionedActions:         []string{"change-password", "set-password"},
 		},
 		{
-			ResourceType:             resource.Target.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			ResourceType:             resource.Account.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/accounts",
 			StdActions:               []string{"create", "update"},
 			HasCustomActionFlags:     true,
-			SubActionPrefix:          "tcp",
+			SubActionPrefix:          "password",
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
 			SkipNormalHelp:           true,
@@ -135,7 +127,8 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraFlagHandlingFunc: true,
 			HasId:                    true,
 			HasName:                  true,
-			HasScopeIdOption:         true,
+			Container:                "AuthMethod",
+			ContainerRequiredActions: []string{"create"},
 			HasDescription:           true,
 			VersionedActions:         []string{"update"},
 		},
@@ -153,10 +146,54 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraHelpFunc:         true,
 			HasExtraFlagHandlingFunc: true,
 			HasId:                    true,
-			HasScopeId:               true,
+			Container:                "Scope",
+			ContainerRequiredActions: []string{"create", "list"},
 			HasName:                  true,
 			HasDescription:           true,
+			HasRecursiveListing:      true,
 			VersionedActions:         []string{"update", "add-members", "remove-members", "set-members"},
+		},
+	},
+	"targets": {
+		{
+			ResourceType:             resource.Target.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			StdActions:               []string{"read", "delete", "list"},
+			HasCustomActionFlags:     true,
+			HasExtraCommandVars:      true,
+			HasExtraSynopsisFunc:     true,
+			HasExtraActions:          true,
+			HasExtraFlagsFunc:        true,
+			HasExtraHelpFunc:         true,
+			HasExampleCliOutput:      true,
+			IsAbstractType:           true,
+			HasExtraFlagHandlingFunc: true,
+			HasName:                  true,
+			HasDescription:           true,
+			HasRecursiveListing:      true,
+			Container:                "Scope",
+			ContainerRequiredActions: []string{"list"},
+			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
+			HasExtraActionsOutput:    true,
+		},
+		{
+			ResourceType:             resource.Target.String(),
+			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			StdActions:               []string{"create", "update"},
+			HasCustomActionFlags:     true,
+			SubActionPrefix:          "tcp",
+			HasExtraCommandVars:      true,
+			HasExtraSynopsisFunc:     true,
+			SkipNormalHelp:           true,
+			HasExtraHelpFunc:         true,
+			HasExtraFlagsFunc:        true,
+			HasExtraFlagHandlingFunc: true,
+			HasId:                    true,
+			HasName:                  true,
+			Container:                "Scope",
+			ContainerRequiredActions: []string{"create"},
+			HasDescription:           true,
+			VersionedActions:         []string{"update"},
 		},
 	},
 }

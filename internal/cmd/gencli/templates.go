@@ -47,6 +47,18 @@ func camelCase(in string) string {
 	return strcase.ToCamel(in)
 }
 
+func envCase(in string) string {
+	return strcase.ToScreamingSnake(in)
+}
+
+func snakeCase(in string) string {
+	return strcase.ToSnake(in)
+}
+
+func kebabCase(in string) string {
+	return strcase.ToKebab(in)
+}
+
 func hasAction(in []string, action string) bool {
 	return strutil.StrListContains(in, action)
 }
@@ -54,6 +66,9 @@ func hasAction(in []string, action string) bool {
 var cmdTemplate = template.Must(template.New("").Funcs(
 	template.FuncMap{
 		"camelCase": camelCase,
+		"envCase":   envCase,
+		"snakeCase": snakeCase,
+		"kebabCase": kebabCase,
 		"hasAction": hasAction,
 	},
 ).Parse(`
@@ -144,7 +159,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	{{ range $i, $action := .StdActions }}
 	{{ if eq $action "create" }}
-	"create": { {{ if $input.CustomParentIdType }}"{{ $input.CustomParentIdType }}"{{ else }}"scope-id"{{ end }}, "name", "description" },
+	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" },
 	{{ end }}
 	{{ if eq $action "read" }}
 	"read": {"id"},
@@ -156,7 +171,7 @@ var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
-	"list": { {{ if $input.CustomParentIdType }}"{{ $input.CustomParentIdType }}"{{ else }}"scope-id", "recursive"{{ end }} },
+	"list": { "{{ kebabCase $input.Container }}-id" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
 	{{ end }}
 	{{ end }}
 }
@@ -214,28 +229,28 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if .HasScopeId }}
-	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "scope-id") && c.FlagScopeId == "" {
-		c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
-		return 1
-	}
-	{{ end }}
-
 	var opts []{{ .ResourceType }}s.Option
 
-	{{ if .HasScopeIdOption }}
-	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "scope-id") {
+	{{ if .Container }}
+	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "{{ kebabCase .Container }}-id") {
 		switch c.Func {
-		{{ if hasAction .StdActions "list" }}
-		case "list":
-			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
+		{{ if hasAction .ContainerRequiredActions "create" }}
+		case "create":
+			if c.Flag{{ .Container }}Id == "" {
+				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
 				return 1
 			}
 		{{ end }}
+		{{ if hasAction .ContainerRequiredActions "list" }}
+		case "list":
+		if c.Flag{{ .Container }}Id == "" {
+			c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
+			return 1
+		}
+	{{ end }}
 		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, {{ .ResourceType }}s.WithScopeId(c.FlagScopeId))
+			if c.Flag{{ .Container }}Id != "" {
+				opts = append(opts, {{ .ResourceType }}s.With{{ .Container }}Id(c.Flag{{ .Container }}Id))
 			}
 		}
 	}
@@ -268,7 +283,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if not .CustomParentIdType }}
+	{{ if (eq .Container "Scope") }}
 	switch c.FlagRecursive {
 	case true:
 		opts = append(opts, {{ .ResourceType }}s.WithRecursive(true))
@@ -334,7 +349,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listResult, err = {{ $input.ResourceType}}Client.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = {{ $input.ResourceType}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
 	{{ end }}
 	{{ end }}
 	}
