@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-bexpr"
+	"github.com/mitchellh/pointerstructure"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -498,7 +499,7 @@ HostSetIterationLoop:
 				"tags": tagMap[worker],
 			}
 			ok, err := eval.Evaluate(filterInput)
-			if err != nil {
+			if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
 				return nil, handlers.ApiErrorWithCodeAndMessage(
 					codes.FailedPrecondition,
 					fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))

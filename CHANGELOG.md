@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Bug Fixes
+
+* targets: If a worker filter references a key that doesn't exist, treat it as a
+  non-match rather than an error
+  ([PR](https://github.com/hashicorp/boundary/pull/900))
+
 ## 0.1.5 (2021/01/29)
 
 *NOTE*: This version requires a database migration via the new `boundary
