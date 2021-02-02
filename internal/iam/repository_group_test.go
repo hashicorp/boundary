@@ -630,7 +630,7 @@ func TestRepository_ListGroups(t *testing.T) {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListGroups(context.Background(), tt.args.withScopeId, tt.args.opt...)
+			got, err := repo.ListGroups(context.Background(), []string{tt.args.withScopeId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -639,6 +639,31 @@ func TestRepository_ListGroups(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, proj := TestScopes(t, repo)
+
+	require.NoError(t, conn.Where("1=1").Delete(allocGroup()).Error)
+
+	const numPerScope = 10
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		TestGroup(t, conn, "global")
+		total++
+		TestGroup(t, conn, org.GetPublicId())
+		total++
+		TestGroup(t, conn, proj.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListGroups(context.Background(), []string{"global", org.GetPublicId(), proj.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_ListMembers(t *testing.T) {

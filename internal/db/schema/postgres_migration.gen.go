@@ -4,12 +4,9 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		devMigration:        true,
-		binarySchemaVersion: 1001,
+		binarySchemaVersion: 1003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
-begin;
-
 create domain wt_public_id as text
 check(
   length(trim(value)) > 10
@@ -164,13 +161,8 @@ comment on function
   immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
-
-commit;
-
 `),
 			2: []byte(`
-begin;
-
 -- TODO (jimlambrt 7/2020) remove update_time
 create table if not exists oplog_entry (
   id bigint generated always as identity primary key,
@@ -278,15 +270,8 @@ values
   ('db_test_scooter', 1),
   ('auth_account', 1),
   ('iam_principal_role', 1);
-  
-
-commit;
-
-
 `),
 			3: []byte(`
-begin;
-
 -- create test tables used in the unit tests for the internal/db package 
 -- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
 -- not part of the boundary domain model... they are simply used for testing
@@ -414,13 +399,8 @@ create trigger
 before
 insert on db_test_scooter
   for each row execute procedure default_create_time();
-
-commit;
-
 `),
 			6: []byte(`
-begin;
-
 create table iam_scope_type_enm (
   string text not null primary key
     constraint only_predefined_scope_types_allowed
@@ -1123,14 +1103,8 @@ from
 where
   gm.member_id = u.public_id and
   gm.group_id = g.public_id;
-  
-
-commit;
-
 `),
 			7: []byte(`
-begin;
-
 /*
 
   ┌────────────────┐               ┌────────────────┐
@@ -1293,13 +1267,8 @@ begin;
     before update of iam_user_id on auth_account
     for each row
     execute procedure update_iam_user_auth_account();
-
-commit;
-
 `),
 			8: []byte(`
-begin;
-
 -- For now at least the IDs will be the same as the name, because this allows us
 -- to not have to persist some generated ID to worker and controller nodes.
 -- Eventually we may want them to diverge, so we have both here for now.
@@ -1346,14 +1315,9 @@ create trigger
 before
 update on recovery_nonces
   for each row execute procedure immutable_columns('nonce', 'create_time');
-
-commit;
-
 `),
 			11: []byte(`
-begin;
-
-  -- an auth token belongs to 1 and only 1 auth account
+-- an auth token belongs to 1 and only 1 auth account
   -- an auth account can have 0 to many auth tokens
   create table auth_token (
     public_id wt_public_id primary key,
@@ -1485,13 +1449,8 @@ begin;
   before
   update on auth_token
     for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
-
-commit;
-
 `),
 			12: []byte(`
-begin;
-
 /*
 
        ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
@@ -1784,14 +1743,9 @@ begin;
     ('auth_password_method', 1),
     ('auth_password_account', 1),
     ('auth_password_credential', 1);
-
-commit;
-
 `),
 			13: []byte(`
-begin;
-
-  create table auth_password_argon2_conf (
+create table auth_password_argon2_conf (
     private_id wt_private_id primary key
       references auth_password_conf (private_id)
       on delete cascade
@@ -1936,14 +1890,9 @@ begin;
   values
     ('auth_password_argon2_conf', 1),
     ('auth_password_argon2_cred', 1);
-
-commit;
-
 `),
 			14: []byte(`
-begin;
-
-  -- auth_password_conf_union is a union of the configuration settings
+-- auth_password_conf_union is a union of the configuration settings
   -- of all supported key derivation functions.
   -- It will be updated as new key derivation functions are supported.
   create or replace view auth_password_conf_union as
@@ -1964,13 +1913,8 @@ begin;
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;
-
-commit;
-
 `),
 			20: []byte(`
-begin;
-
 /*
 
                                ┌─────────────────┐
@@ -2135,13 +2079,8 @@ begin;
     ('host_catalog', 1),
     ('host', 1),
     ('host_set', 1);
-
-commit;
-
 `),
 			22: []byte(`
-begin;
-
 /*
 
   ┌─────────────────┐          ┌─────────────────────┐
@@ -2339,13 +2278,8 @@ begin;
     ('static_host', 1),
     ('static_host_set', 1),
     ('static_host_set_member', 1);
-
-commit;
-
 `),
 			30: []byte(`
-begin;
-
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.
@@ -2371,12 +2305,8 @@ comment on function
   kms_version_column()
 is
   'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
-  
-  commit;
 `),
 			31: []byte(`
-begin;
-
 /*
              ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐            
              ├────────────────────────────────────────────────────────────────────────────────────────────┐                           ○            
@@ -2698,13 +2628,8 @@ before insert on kms_token_key_version
   values
     ('kms_root_key', 1),
     ('kms_root_key_version', 1);
-    
-commit;
 `),
 			40: []byte(`
-begin;
-
-
 -- insert_target_subtype() is a before insert trigger
 -- function for subtypes of target
 create or replace function
@@ -2770,8 +2695,6 @@ end if;
 return new;
 end;
 $$ language plpgsql;
-
-commit;
 `),
 			41: []byte(`
 /*
@@ -2808,8 +2731,6 @@ commit;
 └─────────────────┘                                                                            
 
 */
-
-begin;
 
 create table target (
   public_id wt_public_id primary key,
@@ -2963,13 +2884,8 @@ insert into oplog_ticket
   (name, version)
 values
   ('target_tcp', 1);
-
-commit;
-
 `),
 			50: []byte(`
-begin;
-
 /*
 
              ┌─────────────────┐               ┌─────────────────┐   ┌─────────────────┐
@@ -3455,13 +3371,8 @@ begin;
     session_state ss
   where 
     s.public_id = ss.session_id;
-
-commit;
-
 `),
 			51: []byte(`
-begin;
-
 /*
 
                ┌────────────────┐
@@ -3835,15 +3746,9 @@ create or replace function
     );
  end;
   $$ language plpgsql;
-
-
-commit;
-
 `),
 			60: []byte(`
-begin;
-
-  create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto";
 
   create domain wh_inet_port as integer
   check(
@@ -3923,14 +3828,9 @@ begin;
   as $$
     select wh_time_id(current_timestamp);
   $$ language sql;
-
-commit;
-
 `),
 			62: []byte(`
-begin;
-
-  create table wh_date_dimension (
+create table wh_date_dimension (
     id                            integer      primary key,
     date                          date         not null,
     calendar_quarter              wh_dim_text,
@@ -4023,14 +3923,9 @@ begin;
            date_trunc('day', current_timestamp) + interval '24 hours' - interval '1 second',
            interval '1 second'
          ) as t(second);
-
-commit;
-
 `),
 			65: []byte(`
-begin;
-
-  create table wh_host_dimension (
+create table wh_host_dimension (
     -- random id generated using encode(digest(gen_random_bytes(16), 'sha256'), 'base64')
     -- this is done to prevent conflicts with rows in other clusters
     -- which enables warehouse data from multiple clusters to be loaded into a
@@ -4255,14 +4150,9 @@ begin;
       from wh_user_dimension
      where current_row_indicator = 'Current'
   ;
-
-commit;
-
 `),
 			66: []byte(`
-begin;
-
-  -- wh_upsert_host returns the wh_host_dimension id for p_host_id,
+-- wh_upsert_host returns the wh_host_dimension id for p_host_id,
   -- p_host_set_id, and p_target_id. wh_upsert_host compares the current values
   -- in the wh_host_dimension with the current values in the operational tables
   -- for the provide parameters. If the values between the operational tables
@@ -4397,13 +4287,9 @@ begin;
 
   end;
   $$ language plpgsql;
-commit;
-
 `),
 			68: []byte(`
-begin;
-
-  -- Column names for numeric fields that are not a measurement end in id or
+-- Column names for numeric fields that are not a measurement end in id or
   -- number. This naming convention enables automatic field type detection in
   -- certain data analysis tools.
   -- https://help.tableau.com/current/pro/desktop/en-us/data_clean_adm.htm
@@ -4585,14 +4471,9 @@ begin;
     'additive measurement.';
 
   create index on wh_session_connection_accumulating_fact(session_id);
-
-commit;
-
 `),
 			69: []byte(`
-begin;
-
-  -- wh_rollup_connections calculates the aggregate values from
+-- wh_rollup_connections calculates the aggregate values from
   -- wh_session_connection_accumulating_fact for p_session_id and updates
   -- wh_session_accumulating_fact for p_session_id with those values.
   create or replace function wh_rollup_connections(p_session_id wt_public_id)
@@ -4861,13 +4742,8 @@ begin;
     after insert on session_connection_state
     for each row
     execute function wh_insert_session_connection_state();
-
-commit;
-
 `),
 			1001: []byte(`
-begin;
-
 -- This series of expressions fixes the primary key on the server table
 alter table session
   drop constraint session_server_id_server_type_fkey;
@@ -4987,373 +4863,125 @@ create table server_tag (
   value wt_tagpair,
   primary key(server_id, key, value)
 );
-
-commit;
 `),
-		},
-		downMigrations: map[int][]byte{
-			1: []byte(`
-begin;
+			1002: []byte(`
+-- wt_email defines a type for email which must be less than 320 chars and only
+-- contain lower case values.  The type is defined to allow nulls and not be
+-- unique, which can be overriden as needed when used in tables.
+create domain wt_email as text
+    constraint wt_email_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_email_too_long
+        check (length(trim(value)) < 320);
+comment on domain wt_email is
+'standard column for email addresses';
 
-drop domain wt_timestamp;
-drop domain wt_public_id;
-drop domain wt_private_id;
-drop domain wt_scope_id;
-drop domain wt_user_id;
-drop domain wt_version;
+-- wt_full_name defines a type for a person's full name which must be less than
+-- 512 chars.  The type is defined to allow nulls and not be unique, which can
+-- be overriden as needed when used in tables. 
+create domain wt_full_name text 
+    constraint wt_full_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_full_name_too_long
+        check(length(trim(value)) <= 512); -- gotta pick some upper limit.
+comment on domain wt_full_name is
+'standard column for the full name of a person';
 
-drop function default_create_time;
-drop function update_time_column;
-drop function update_version_column;
-drop function immutable_columns;
+-- wt_url defines a type for URLs which must be longer that 3 chars and
+-- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- needed when used in tables.
+create domain wt_url as text
+    constraint wt_url_too_short
+        check (length(trim(value)) > 3)
+    constraint wt_url_too_long
+        check (length(trim(value)) < 4000)
+    constraint wt_url_invalid_protocol
+        check (value ~ 'https?:\/\/*');
+comment on domain wt_url is
+'standard column for URLs';
 
-commit;
+-- wt_name defines a type for resource names that must be less than 128 chars.
+--  It's defined to allow nulls.
+create domain wt_name as text
+    constraint wt_name_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_name_too_long
+        check (length(trim(value)) < 128);
+comment on domain wt_name is
+'standard column for resource names';
 
+-- wt_description defines a type for resource descriptionss that must be less
+-- than 1024 chars. It's defined to allow nulls.
+create domain wt_description as text
+    constraint wt_description_too_short
+        check (length(trim(value)) > 0)
+    constraint wt_description_too_long
+        check (length(trim(value)) < 1024);
+comment on domain wt_description is
+'standard column for resource descriptions';
 `),
-			2: []byte(`
-begin;
-
-drop table oplog_metadata cascade;
-drop table oplog_ticket cascade;
-drop table oplog_entry cascade;
-
-commit;
-
-`),
-			3: []byte(`
-begin;
-
-drop table db_test_rental cascade;
-drop table db_test_car cascade;
-drop table db_test_user cascade;
-drop table db_test_scooter cascade;
-
-commit;
-
-`),
-			6: []byte(`
-BEGIN;
-
-drop table iam_group cascade;
-drop table iam_user cascade;
-drop table iam_scope_project cascade;
-drop table iam_scope_org cascade;
-drop table iam_scope_global cascade;
-drop table iam_scope cascade;
-drop table iam_scope_type_enm cascade;
-drop table iam_role cascade;
-drop view iam_principal_role cascade;
-drop table iam_group_role cascade;
-drop table iam_user_role cascade;
-drop table iam_group_member_user cascade;
-drop view iam_group_member cascade;
-drop table iam_role_grant cascade;
-
-drop function iam_sub_names cascade;
-drop function iam_immutable_scope_type_func cascade;
-drop function iam_sub_scopes_func cascade;
-drop function iam_immutable_role_principal cascade;
-drop function iam_user_role_scope_check cascade;
-drop function iam_group_role_scope_check cascade;
-drop function iam_group_member_scope_check cascade;
-drop function iam_immutable_group_member cascade;
-drop function get_scoped_member_id cascade;
-drop function grant_scope_id_valid cascade;
-drop function disallow_global_scope_deletion cascade;
-drop function user_scope_id_valid cascade;
-drop function iam_immutable_role_grant cascade;
-drop function disallow_iam_predefined_user_deletion cascade;
-drop function recovery_user_not_allowed cascade;
-
-COMMIT;
-
-`),
-			7: []byte(`
-begin;
-
-  drop function update_iam_user_auth_account;
-  drop function insert_auth_account_subtype;
-  drop function insert_auth_method_subtype;
-
-  drop table auth_account cascade;
-  drop table auth_method cascade;
-
-commit;
-
-`),
-			8: []byte(`
-begin;
-
-  drop table server;
-
-commit;
-
-`),
-			11: []byte(`
-begin;
-
-  drop view auth_token_account cascade;
-  drop table auth_token cascade;
-
-  drop function update_last_access_time cascade;
-  drop function immutable_auth_token_columns cascade;
-  drop function expire_time_not_older_than_token cascade;
-
-commit;
-
-`),
-			12: []byte(`
-begin;
-
-  drop table auth_password_credential;
-  drop table auth_password_conf cascade;
-  drop table if exists auth_password_account;
-  drop table if exists auth_password_method;
-
-  drop function insert_auth_password_credential_subtype;
-  drop function insert_auth_password_conf_subtype;
-
-commit;
-
-`),
-			13: []byte(`
-begin;
-
-  drop table auth_password_argon2_cred;
-  drop table auth_password_argon2_conf;
-
-commit;
-
-`),
-			14: []byte(`
-begin;
-
-  drop view auth_password_current_conf;
-  drop view auth_password_conf_union;
-
-commit;
-
-`),
-			20: []byte(`
-begin;
-
-  drop table host_set;
-  drop table host;
-  drop table host_catalog;
-
-  drop function insert_host_set_subtype;
-  drop function insert_host_subtype;
-  drop function insert_host_catalog_subtype;
-
-  delete
-    from oplog_ticket
-   where name in (
-          'host_catalog',
-          'host',
-          'host_set'
-        );
-
-commit;
-
-`),
-			22: []byte(`
-begin;
-
-  drop table static_host_set_member cascade;
-  drop table static_host_set cascade;
-  drop table static_host cascade;
-  drop table static_host_catalog cascade;
-
-  delete
-    from oplog_ticket
-   where name in (
-          'static_host_catalog',
-          'static_host',
-          'static_host_set',
-          'static_host_set_member'
-        );
-
-commit;
-
-`),
-			30: []byte(`
-begin;
-
-drop function kms_version_column cascade;
-
-commit;
-
-`),
-			31: []byte(`
-begin;
-
-drop table kms_root_key cascade;
-drop table kms_root_key_version cascade;
-drop table kms_database_key cascade;
-drop table kms_database_key_version cascade;
-drop table kms_oplog_key cascade;
-drop table kms_oplog_key_version cascade;
-drop table kms_session_key cascade;
-drop table kms_session_key_version cascade;
-
-commit;
-
-`),
-			40: []byte(`
-begin;
-
-drop function insert_target_subtype;
-drop function delete_target_subtype;
-drop function target_scope_valid;
-drop function target_host_set_scope_valid
-
-commit;
-
-`),
-			41: []byte(`
-begin;
-
-drop table target cascade;
-drop table target_host_set cascade;
-drop table target_tcp;
-drop view target_all_subtypes;
-drop view target_host_set_catalog;
-
-
-delete
-from oplog_ticket
-where name in (
-        'target_tcp'
-    );
-
-commit;
-`),
-			50: []byte(`
-begin;
-
-  drop table session_state;
-  drop table session_state_enm;
-  drop table session;
-  drop table session_termination_reason_enm;
-  drop function insert_session_state;
-  drop function insert_new_session_state;
-  drop function insert_session;
-  drop function update_session_state_on_termination_reason;
-  drop function insert_session_state;
-
-
-  delete
-  from oplog_ticket
-  where name in (
-          'session'
-      );
-
-commit;
-
-`),
-			51: []byte(`
-begin;
-
-  drop table session_connection_state;
-  drop table session_connection_state_enm;
-  drop table session_connection;
-  drop table session_connection_closed_reason_enm;
-  drop function insert_session_connection_state;
-  drop function insert_new_connection_state;
-  drop function update_connection_state_on_closed_reason;
-commit;
-
-`),
-			60: []byte(`
-begin;
-
-  drop function wh_current_time_id;
-  drop function wh_current_date_id;
-  drop function wh_time_id;
-  drop function wh_date_id;
-  drop domain wh_dim_text;
-  drop domain wh_timestamp;
-  drop domain wh_public_id;
-  drop domain wh_dim_id;
-  drop function wh_dim_id;
-  drop domain wh_bytes_transmitted;
-  drop domain wh_inet_port;
-
-commit;
-
-`),
-			62: []byte(`
-begin;
-
-  drop table wh_time_of_day_dimension;
-  drop table wh_date_dimension;
-
-commit;
-
-`),
-			65: []byte(`
-begin;
-
-  drop view whx_user_dimension_target;
-  drop view whx_user_dimension_source;
-  drop view whx_host_dimension_target;
-  drop view whx_host_dimension_source;
-  drop table wh_user_dimension;
-  drop table wh_host_dimension;
-
-commit;
-
-`),
-			66: []byte(`
-begin;
-
-  drop function wh_upsert_user;
-  drop function wh_upsert_host;
-
-commit;
-
-`),
-			68: []byte(`
-begin;
-
-  drop table wh_session_connection_accumulating_fact;
-  drop table wh_session_accumulating_fact;
-
-commit;
-
-`),
-			69: []byte(`
-begin;
-
-  drop trigger wh_insert_session_connection_state on session_connection_state;
-  drop function wh_insert_session_connection_state;
-
-  drop trigger wh_insert_session_state on session_state;
-  drop function wh_insert_session_state;
-
-  drop trigger wh_update_session_connection on session_connection;
-  drop function wh_update_session_connection;
-
-  drop trigger wh_insert_session_connection on session_connection;
-  drop function wh_insert_session_connection;
-
-  drop trigger wh_insert_session on session;
-  drop function wh_insert_session;
-
-  drop function wh_rollup_connections;
-
-commit;
-
-`),
-			1001: []byte(`
-begin;
-
-drop domain wt_bexprfilter;
-
-drop table server_tag;
-drop domain wt_tagpair;
-
-commit;
+			1003: []byte(`
+-- kms_oidc_key entries are DEKs for encrypting oidc entries.
+create table kms_oidc_key (
+  private_id wt_private_id primary key,
+  root_key_id wt_private_id not null unique -- there can be only one oidc dek per root key
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
+  create_time wt_timestamp
+);
+
+ -- define the immutable fields for kms_oidc_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oidc_key
+  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
+
+-- define the value of kms_oidc_key's create_time
+create trigger 
+  default_create_time_column
+before
+insert on kms_oidc_key
+  for each row execute procedure default_create_time();
+
+-- kms_oidc_key_version entries are version of DEK keys used to encrypt oidc
+-- entries. 
+create table kms_oidc_key_version (
+  private_id wt_private_id primary key,
+  oidc_key_id wt_private_id not null
+    references kms_oidc_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_version_id wt_private_id not null
+    references kms_root_key_version(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(oidc_key_id, version)
+);
+
+ -- define the immutable fields for kms_oidc_key_version (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_oidc_key_version
+  for each row execute procedure immutable_columns('private_id', 'oidc_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  
+-- define the value of kms_oidc_key_version's create_time
+create trigger 
+  default_create_time_column
+before
+insert on kms_oidc_key_version
+  for each row execute procedure default_create_time();
+
+-- define the value of kms_oidc_key_version's version column
+create trigger
+	kms_version_column
+before insert on kms_oidc_key_version
+	for each row execute procedure kms_version_column('oidc_key_id');
 `),
 		},
 	}

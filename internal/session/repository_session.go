@@ -173,9 +173,19 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	inClauseCnt := 0
 	switch {
-	case opts.withScopeId != "":
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("scope_id = $%d", inClauseCnt)), append(args, opts.withScopeId)
+	case len(opts.withScopeIds) != 0:
+		switch len(opts.withScopeIds) {
+		case 1:
+			inClauseCnt += 1
+			where, args = append(where, fmt.Sprintf("scope_id = $%d", inClauseCnt)), append(args, opts.withScopeIds[0])
+		default:
+			idsInClause := make([]string, 0, len(opts.withScopeIds))
+			for _, id := range opts.withScopeIds {
+				inClauseCnt += 1
+				idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
+			}
+			where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
+		}
 	case opts.withUserId != "":
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
@@ -186,7 +196,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			inClauseCnt += 1
 			idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
 		}
-		where = append(where, fmt.Sprintf("s.public_id in(%s)", strings.Join(idsInClause, ",")))
+		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	var limit string

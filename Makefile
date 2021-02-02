@@ -74,7 +74,7 @@ endif
 perms-table:
 	@go run internal/website/permstable/permstable.go
 
-gen: cleangen proto api migrations fmt
+gen: cleangen proto api migrations perms-table fmt
 
 migrations:
 	$(MAKE) --environment-overrides -C internal/db/schema/migrations/generate migrations
@@ -126,7 +126,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/database_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go	
+	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go		
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 
 	@rm -R ${TMP_DIR}
@@ -153,7 +154,7 @@ install-go:
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.4
+VERSION?=0.1.5
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker

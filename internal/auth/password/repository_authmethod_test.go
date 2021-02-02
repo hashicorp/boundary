@@ -370,7 +370,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		in        string
+		in        []string
 		opts      []Option
 		want      []*AuthMethod
 		wantIsErr error
@@ -381,12 +381,12 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		},
 		{
 			name: "Scope with no auth methods",
-			in:   noAuthMethodOrg.GetPublicId(),
+			in:   []string{noAuthMethodOrg.GetPublicId()},
 			want: []*AuthMethod{},
 		},
 		{
 			name: "With populated scope id",
-			in:   o.GetPublicId(),
+			in:   []string{o.GetPublicId()},
 			want: authMethods,
 		},
 	}
@@ -408,6 +408,31 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
 		})
 	}
+}
+
+func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	var total int
+	const numPerScope = 10
+	TestAuthMethods(t, conn, "global", numPerScope)
+	total += numPerScope
+	scopeIds := []string{"global"}
+	for i := 0; i < 10; i++ {
+		o := iam.TestOrg(t, iamRepo)
+		scopeIds = append(scopeIds, o.GetPublicId())
+		TestAuthMethods(t, conn, o.GetPublicId(), numPerScope)
+		total += numPerScope
+	}
+	got, err := repo.ListAuthMethods(context.Background(), scopeIds)
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_ListAuthMethods_Limits(t *testing.T) {
@@ -471,7 +496,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAuthMethods(context.Background(), ams[0].GetScopeId(), tt.listOpts...)
+			got, err := repo.ListAuthMethods(context.Background(), []string{ams[0].GetScopeId()}, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})

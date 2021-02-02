@@ -78,7 +78,7 @@ func TestRepository_ListSession(t *testing.T) {
 			name:      "withScopeId",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeId(composedOf.ScopeId)},
+				opt: []Option{WithScopeIds([]string{composedOf.ScopeId})},
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
@@ -87,7 +87,7 @@ func TestRepository_ListSession(t *testing.T) {
 			name:      "bad-withScopeId",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeId("o_thisIsNotValid")},
+				opt: []Option{WithScopeIds([]string{"o_thisIsNotValid"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -166,6 +166,32 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(StatusActive, got[0].States[0].Status)
 		assert.Equal(StatusPending, got[0].States[1].Status)
 	})
+}
+
+func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	require.NoError(t, conn.Where("1=1").Delete(AllocSession()).Error)
+
+	const numPerScope = 10
+	var projs []string
+	for i := 0; i < numPerScope; i++ {
+		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+		projs = append(projs, composedOf.ScopeId)
+		s := TestSession(t, conn, wrapper, composedOf)
+		_ = TestState(t, conn, s.PublicId, StatusActive)
+	}
+
+	got, err := repo.ListSessions(context.Background(), WithScopeIds(projs))
+	require.NoError(t, err)
+	assert.Equal(t, len(projs), len(got))
 }
 
 func TestRepository_CreateSession(t *testing.T) {

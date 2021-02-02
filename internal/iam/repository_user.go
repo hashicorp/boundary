@@ -198,14 +198,14 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...O
 	return rowsDeleted, nil
 }
 
-// ListUsers in an org and supports the WithLimit option.
-func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Option) ([]*User, error) {
+// ListUsers lists users in the given scopes and supports the WithLimit option.
+func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt ...Option) ([]*User, error) {
 	const op = "iam.(Repository).ListUsers"
-	if withOrgId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
+	if len(withScopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	var users []*User
-	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrgId}, opt...)
+	err := r.list(ctx, &users, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}

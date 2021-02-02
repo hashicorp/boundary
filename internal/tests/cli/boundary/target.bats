@@ -33,6 +33,15 @@ load _helpers
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/target: the $TGT_NAME target contains default authorized-actions" {
+  local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
+  local out=$(read_target $id)
+
+	run has_default_target_actions "$out" 
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "boundary/target: default user can add default host set to created target" {
   local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
   run assoc_host_sets $id $DEFAULT_HOST_SET  
