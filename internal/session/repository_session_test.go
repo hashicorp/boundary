@@ -147,7 +147,7 @@ func TestRepository_ListSession(t *testing.T) {
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
 		require.NoError(err)
 		assert.Equal(1, len(got))
-		assert.Equal(s, got[0])
+		assert.Equal(s.UserId, got[0].UserId)
 	})
 	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -169,7 +169,8 @@ func TestRepository_ListSession(t *testing.T) {
 		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithScopeIds([]string{coDiffUser.ScopeId}))
 		require.NoError(err)
 		assert.Equal(1, len(got))
-		assert.Equal(wantS, got[0])
+		assert.Equal(wantS.UserId, got[0].UserId)
+		assert.Equal(wantS.ScopeId, got[0].ScopeId)
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
