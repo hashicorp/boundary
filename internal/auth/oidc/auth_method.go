@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -60,8 +61,10 @@ type AuthMethod struct {
 func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
-	if discoveryUrl == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "empty discovery URL")
+	var u string
+	switch {
+	case discoveryUrl != nil:
+		u = discoveryUrl.String()
 	}
 
 	opts := getOpts(opt...)
@@ -71,7 +74,7 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 			State:        string(InactiveState),
-			DiscoveryUrl: discoveryUrl.String(),
+			DiscoveryUrl: u,
 			ClientId:     clientId,
 			ClientSecret: string(clientSecret),
 			MaxAge:       int32(opts.withMaxAge),
@@ -86,22 +89,24 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 	return a, nil
 }
 
-// validate the AuthMethod.  On success, it will return nil.
+// validate the AuthMethod.  On success, it will return nil. Since setting up an
+// OIDC auth method requires a dance with the IdP, where you're need X before you
+// can configure Y, we allow things like the discovery URL, client ID, client
+// secret, etc to be empty until the AuthMethod moves into a PublicActive state.
+// That means validate can't completely ensure the data is valid and ultimately
+// we must rely on the database constraints/triggers to ensure the AuthMethod's
+// data integrity.
 func (a *AuthMethod) validate(caller errors.Op) error {
 	if a.ScopeId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing scope id")
 	}
 	if !validState(a.State) {
-		return errors.New(errors.InvalidParameter, caller, "missing scope id")
+		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.State))
 	}
-	if _, err := url.Parse(a.DiscoveryUrl); err != nil {
-		return errors.New(errors.InvalidParameter, caller, "not a valid discovery URL", errors.WithWrap(err))
-	}
-	if len(a.ClientId) == 0 {
-		return errors.New(errors.InvalidParameter, caller, "client id is empty")
-	}
-	if len(a.ClientSecret) == 0 {
-		return errors.New(errors.InvalidParameter, caller, "client secret is empty")
+	if a.DiscoveryUrl != "" {
+		if _, err := url.Parse(a.DiscoveryUrl); err != nil {
+			return errors.New(errors.InvalidParameter, caller, "not a valid discovery URL", errors.WithWrap(err))
+		}
 	}
 	if a.MaxAge < -1 {
 		return errors.New(errors.InvalidParameter, caller, "max age cannot be less than -1")

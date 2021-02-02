@@ -123,40 +123,61 @@ func TestAuthMethod_Create(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "nil-url",
+			name: "nil-url", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
 				discoveryURL: nil,
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.State = string(InactiveState)
+				a.DiscoveryUrl = ""
+				a.ClientId = "alice_rp"
+				a.ClientSecret = "rp-secret"
+				a.MaxAge = 0
+				return &a
+			}(),
 		},
 		{
-			name: "missing-client-id",
+			name: "missing-client-id", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.State = string(InactiveState)
+				a.DiscoveryUrl = "http://alice.com"
+				a.ClientId = ""
+				a.ClientSecret = "rp-secret"
+				a.MaxAge = 0
+				return &a
+			}(),
 		},
 		{
-			name: "missing-client-secret",
+			name: "missing-client-secret", // should succeed
 			args: args{
 				scopeId:      org.PublicId,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret(""),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.State = string(InactiveState)
+				a.DiscoveryUrl = "http://alice.com"
+				a.ClientId = "alice_rp"
+				a.ClientSecret = ""
+				a.MaxAge = 0
+				return &a
+			}(),
 		},
 	}
 	for _, tt := range tests {
