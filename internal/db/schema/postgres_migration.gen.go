@@ -5069,12 +5069,12 @@ create table auth_oidc_method (
     references auth_oidc_method_state_enm(name)
     on delete restrict
     on update cascade,
-  discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
-  client_id text not null -- oidc client identifier issued by the oidc provider.
+  discovery_url wt_url, -- oidc discovery URL without any .well-known component
+  client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
-  client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
-  client_secret_hmac text not null
+  client_secret bytea, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret_hmac text 
     constraint client_secret_hmac_not_empty
     check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
