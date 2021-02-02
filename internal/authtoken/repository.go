@@ -276,7 +276,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
 	const op = "authtoken.(Repository).ListAuthTokens"
 	if len(withScopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 

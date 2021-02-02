@@ -406,7 +406,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "authtoken.(Repository).ValidateToken: missing token: parameter violation: error #100",
 		},
-		{ // Go fix this error it is no good
+		{
 			name:      "mismatched-token",
 			id:        at.GetPublicId(),
 			token:     badToken,
