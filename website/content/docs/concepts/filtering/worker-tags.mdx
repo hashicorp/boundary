@@ -74,6 +74,12 @@ nested under `tags` and include a `name` value:
 }
 ```
 
+!> If an expression fails due to a key not being found within the input data,
+the worker is not included in the final set. Be careful when using negative
+matching (such as `!=`). For instance, if the key is not found when evaluating
+`"/foo" != "bar"`, the expression will return false, which will be the same
+behavior as if the key was found but equal.
+
 Following are some examples of using these values in filters:
 
 - Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
@@ -83,5 +89,4 @@ Following are some examples of using these values in filters:
   values, so it must use the `in` operator to search in the collection. If you
   know that you have only one value, an equivalent would be `"/tags/region/0" == "us-east-1"`.
 
-- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1")
-or "webservers" in "/tags/type"`
+- Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
