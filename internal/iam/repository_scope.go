@@ -286,7 +286,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					}
 					grants = append(grants, roleGrant)
 
-					roleGrant, err = NewRoleGrant(defaultRolePublicId, "type=scope;actions=list:self")
+					roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list:self")
 					if err != nil {
 						return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
 					}
