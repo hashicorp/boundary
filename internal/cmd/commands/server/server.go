@@ -289,8 +289,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(err.Error())
 			return 1
 		}
-		c.InfoKeys = append(c.InfoKeys, "public addr")
-		c.Info["public addr"] = c.Config.Worker.PublicAddr
+		c.InfoKeys = append(c.InfoKeys, "public proxy addr")
+		c.Info["public proxy addr"] = c.Config.Worker.PublicAddr
 	}
 	if c.Config.Controller != nil {
 		for _, ln := range c.Config.Listeners {
