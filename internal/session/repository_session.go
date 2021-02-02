@@ -230,7 +230,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	for rows.Next() {
 		var s sessionView
 		if err := r.reader.ScanRows(rows, &s); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
 		}
 		sessionsWithState = append(sessionsWithState, &s)
 	}
@@ -327,7 +327,7 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to terminate session %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("unable to terminate session %s", sessionId))
+				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("unable to terminate session %s", sessionId))
 			}
 			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
 			if err != nil {
@@ -451,7 +451,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 		}
 		info = &ConnectionAuthzSummary{}
 		if err := r.reader.ScanRows(rows, info); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
 		}
 	}
 	return info, nil
@@ -579,7 +579,7 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 // ActivateSession will activate the session and is called by a worker after
 // authenticating the session. The session must be in a "pending" state to be
 // activated. States are ordered by start time descending. Returns an
-// ErrSessionNotPending error if a connection cannot be made because the session
+// InvalidSessionState error code if a connection cannot be made because the session
 // was canceled or terminated.
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	const op = "session.(Repository).ActivateSession"
@@ -716,7 +716,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.Wrap(err, op)
 			}
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
-				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
+				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
 			return nil
 		},
