@@ -89,6 +89,7 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	"sessions": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list:self"),
 		},
 	},
 	"users": {

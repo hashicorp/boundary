@@ -1833,6 +1833,37 @@
         ]
       }
     },
+    "/v1/sessions:list:self": {
+      "get": {
+        "summary": "Lists all Sessions owned by the requester.",
+        "operationId": "SessionService_ListSelfSessions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListSelfSessionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
     "/v1/targets": {
       "get": {
         "summary": "Lists all Targets.",
@@ -4106,6 +4137,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListSelfSessionsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
         }
       }
