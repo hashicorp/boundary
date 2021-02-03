@@ -170,8 +170,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	var args []interface{}
 
 	inClauseCnt := 0
-	switch {
-	case len(opts.withScopeIds) != 0:
+	if len(opts.withScopeIds) != 0 {
 		switch len(opts.withScopeIds) {
 		case 1:
 			inClauseCnt += 1
@@ -184,7 +183,8 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			}
 			where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 		}
-	case opts.withUserId != "":
+	}
+	if opts.withUserId != "" {
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("user_id = $%d", inClauseCnt)), append(args, opts.withUserId)
 	}
@@ -213,7 +213,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	var whereClause string
 	if len(where) > 0 {
-		whereClause = " and " + strings.Join(where, " and")
+		whereClause = " and " + strings.Join(where, " and ")
 	}
 	q := sessionList
 	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)

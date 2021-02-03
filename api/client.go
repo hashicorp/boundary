@@ -170,6 +170,10 @@ func (c *Config) ConfigureTLS() error {
 	if c.HttpClient == nil {
 		c.HttpClient = cleanhttp.DefaultPooledClient()
 	}
+
+	if c.HttpClient.Transport.(*http.Transport).TLSClientConfig == nil {
+		c.HttpClient.Transport.(*http.Transport).TLSClientConfig = &tls.Config{}
+	}
 	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
 	var clientCert tls.Certificate
