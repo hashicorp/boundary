@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/users"
+	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 
 	"github.com/mitchellh/cli"
@@ -713,54 +713,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"users": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"users create": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"users read": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"users update": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"users delete": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"users list": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"users add-accounts": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-accounts",
 			}, nil
 		},
 		"users set-accounts": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-accounts",
 			}, nil
 		},
 		"users remove-accounts": func() (cli.Command, error) {
-			return &users.Command{
+			return &userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-accounts",
 			}, nil
