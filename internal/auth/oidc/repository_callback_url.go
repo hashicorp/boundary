@@ -9,7 +9,7 @@ import (
 // options are currently supported. Zero is not a valid value for the
 // authMethodVersion.  The auth method's current db version must match the
 // authMethodVersion or an error will be returned. This method is idempotent.
-func (r *Repository) AddCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) {
+func (r *Repository) AddCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) ([]*CallbackUrl, error) {
 	panic("to-do")
 }
 
@@ -17,7 +17,7 @@ func (r *Repository) AddCallbackUrls(ctx context.Context, authMethodId string, a
 // method.  No options are currently supported.  Zero is not a valid value for
 // the authMethodVersion. The auth method's current db version must match the
 // authMethodVersion or an error will be returned. This method is idempotent.
-func (r *Repository) DeleteCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) {
+func (r *Repository) DeleteCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) ([]*CallbackUrl, error) {
 	panic("to-do")
 }
 
@@ -26,7 +26,7 @@ func (r *Repository) DeleteCallbackUrls(ctx context.Context, authMethodId string
 // not a valid value for the authMethodVersion. The auth method's current db
 // version must match the authMethodVersion or an error will be returned. This
 // method is idempotent.
-func (r *Repository) SetCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) {
+func (r *Repository) SetCallbackUrls(ctx context.Context, authMethodId string, authMethodVersion uint32, urls []*url.URL, _ ...Option) ([]*CallbackUrl, error) {
 	panic("to-do")
 }
 

@@ -42,7 +42,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 // ClientId, ClientSecret, MaxAge are all updatable fields, If no updatable
 // fields are included in the fieldMaskPaths, then an error is returned.  No
 // options are currently supported.
-func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, version uint32, fieldMaskPaths []string, _ ...Option) {
+func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, version uint32, fieldMaskPaths []string, _ ...Option) (*AuthMethod, []*SigningAlg, []*CallbackUrl, []*AudClaim, []*Certificate, error) {
 	panic("to-do")
 }
 
