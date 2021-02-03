@@ -10,6 +10,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the `worker` block, use `public_cluster_addr` if given
   ([PR](https://github.com/hashicorp/boundary/pull/904))
 
+### Bug Fixes
+
+* api: Fix nil pointer panic that could occur when using TLS
+  ([Issue](https://github.com/hashicorp/boundary/pull/902),
+  [PR](https://github.com/hashicorp/boundary/pull/901))
 ## 0.1.5 (2021/01/29)
 
 *NOTE*: This version requires a database migration via the new `boundary
