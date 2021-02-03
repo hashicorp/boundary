@@ -133,16 +133,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "auth-method-id") {
 		switch c.Func {
-
 		case "list":
 			if c.FlagAuthMethodId == "" {
 				c.UI.Error("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID")
 				return 1
-			}
-
-		default:
-			if c.FlagAuthMethodId != "" {
-				opts = append(opts, accounts.WithAuthMethodId(c.FlagAuthMethodId))
 			}
 		}
 	}

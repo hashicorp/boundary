@@ -69,12 +69,6 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithAuthMethodId(inAuthMethodId string) Option {
-	return func(o *options) {
-		o.postMap["auth_method_id"] = inAuthMethodId
-	}
-}
-
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription

@@ -218,6 +218,10 @@ func (c *Command) extraFlagHandlingFunc(opts *[]targets.Option) int {
 		}
 	}
 
+	if strutil.StrListContains(flagsMap[c.Func], "scope-id") && c.FlagScopeId != "" {
+		*opts = append(*opts, targets.WithScopeId(c.FlagScopeId))
+	}
+
 	switch c.Func {
 	case "add-host-sets", "remove-host-sets":
 		if len(c.flagHostSets) == 0 {

@@ -96,7 +96,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	c.plural = "password-type account"
 	switch c.Func {
 	case "list":
-		c.plural = "accounts"
+		c.plural = "password-type accounts"
 	}
 
 	f := c.Flags()
@@ -115,16 +115,10 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsPasswordMap[c.Func], "auth-method-id") {
 		switch c.Func {
-
 		case "create":
 			if c.FlagAuthMethodId == "" {
 				c.UI.Error("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID")
 				return 1
-			}
-
-		default:
-			if c.FlagAuthMethodId != "" {
-				opts = append(opts, accounts.WithAuthMethodId(c.FlagAuthMethodId))
 			}
 		}
 	}
@@ -173,7 +167,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = accountClient.Create(c.Context, "password", c.FlagScopeId, opts...)
+		result, err = accountClient.Create(c.Context, c.FlagAuthMethodId, opts...)
 
 	case "update":
 		result, err = accountClient.Update(c.Context, c.FlagId, version, opts...)

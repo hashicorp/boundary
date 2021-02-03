@@ -96,7 +96,7 @@ func (c *TcpCommand) Run(args []string) int {
 	c.plural = "tcp-type target"
 	switch c.Func {
 	case "list":
-		c.plural = "targets"
+		c.plural = "tcp-type targets"
 	}
 
 	f := c.Flags()
@@ -115,16 +115,10 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if strutil.StrListContains(flagsTcpMap[c.Func], "scope-id") {
 		switch c.Func {
-
 		case "create":
 			if c.FlagScopeId == "" {
 				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
-			}
-
-		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, targets.WithScopeId(c.FlagScopeId))
 			}
 		}
 	}

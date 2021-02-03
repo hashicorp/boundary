@@ -278,14 +278,6 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		extraOptions: []fieldInfo{
-			{
-				Name:        "AuthMethodId",
-				ProtoName:   "auth_method_id",
-				FieldType:   "string",
-				SkipDefault: true,
-			},
-		},
 		pathArgs:            []string{"account"},
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
@@ -334,14 +326,6 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		extraOptions: []fieldInfo{
-			{
-				Name:        "HostCatalogId",
-				ProtoName:   "host_catalog_id",
-				FieldType:   "string",
-				SkipDefault: true,
-			},
-		},
 		pathArgs:            []string{"host"},
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
@@ -362,14 +346,6 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-		},
-		extraOptions: []fieldInfo{
-			{
-				Name:        "HostCatalogId",
-				ProtoName:   "host_catalog_id",
-				FieldType:   "string",
-				SkipDefault: true,
-			},
 		},
 		pathArgs:       []string{"host-set"},
 		parentTypeName: "host-catalog",

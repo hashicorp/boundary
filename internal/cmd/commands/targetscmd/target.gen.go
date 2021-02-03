@@ -134,16 +134,10 @@ func (c *Command) Run(args []string) int {
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
-
 		case "list":
 			if c.FlagScopeId == "" {
 				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
-			}
-
-		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, targets.WithScopeId(c.FlagScopeId))
 			}
 		}
 	}

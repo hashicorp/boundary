@@ -90,6 +90,10 @@ type cmdInfo struct {
 	// SubActionPrefix specifies the prefix to use when generating sub-action
 	// commands (e.g. "targets update tcp")
 	SubActionPrefix string
+
+	// NeedsSubTypeInCreate controls whether the sub-type must be passed in as
+	// an argument to a create call. Targets need this, accounts do not, etc.
+	NeedsSubTypeInCreate bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -194,6 +198,7 @@ var inputStructs = map[string][]*cmdInfo{
 			ContainerRequiredActions: []string{"create"},
 			HasDescription:           true,
 			VersionedActions:         []string{"update"},
+			NeedsSubTypeInCreate:     true,
 		},
 	},
 }

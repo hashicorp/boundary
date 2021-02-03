@@ -212,7 +212,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}"
 	switch c.Func {
 	case "list":
-		c.plural = "{{ .ResourceType }}s"		
+		c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}s"		
 	}
 
 	f := c.Flags()
@@ -243,15 +243,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		{{ end }}
 		{{ if hasAction .ContainerRequiredActions "list" }}
 		case "list":
-		if c.Flag{{ .Container }}Id == "" {
-			c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
-			return 1
-		}
-	{{ end }}
-		default:
-			if c.Flag{{ .Container }}Id != "" {
-				opts = append(opts, {{ .ResourceType }}s.With{{ .Container }}Id(c.Flag{{ .Container }}Id))
+			if c.Flag{{ .Container }}Id == "" {
+				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
+				return 1
 			}
+		{{ end }}
 		}
 	}
 	{{ end }}
@@ -329,7 +325,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
 	case "create":
-		result, err = {{ $input.ResourceType }}Client.Create(c.Context, {{ if $input.SubActionPrefix }}"{{ $input.SubActionPrefix }}",{{ end }} c.FlagScopeId, opts...)
+		result, err = {{ $input.ResourceType }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubTypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":

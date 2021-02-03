@@ -152,10 +152,6 @@ func (c *Command) Run(args []string) int {
 				return 1
 			}
 
-		default:
-			if c.FlagScopeId != "" {
-				opts = append(opts, groups.WithScopeId(c.FlagScopeId))
-			}
 		}
 	}
 
