@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### New and Improved
+
+* server: When running single-server mode and `controllers` is not specified in
+  the `worker` block, use `public_cluster_addr` if given
+  ([PR](https://github.com/hashicorp/boundary/pull/904))
+
 ## 0.1.5 (2021/01/29)
 
 *NOTE*: This version requires a database migration via the new `boundary
