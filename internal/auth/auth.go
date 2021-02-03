@@ -2,13 +2,13 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -321,8 +321,9 @@ func (v *verifier) decryptToken() {
 }
 
 func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl perms.ACL, retErr error) {
+	const op = "auth.(verifier).performAuthCheck"
 	// Ensure we return an error by default if we forget to set this somewhere
-	retErr = errors.New("unknown")
+	retErr = errors.New(errors.Unknown, op, "")
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
@@ -346,7 +347,8 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		}
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
+			//TODO(schristoff): Loop back on this one
+			retErr = errors.Wrap(err, op)
 			return
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
@@ -369,7 +371,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
+		retErr = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
 		return
 	}
 
@@ -388,11 +390,11 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	default:
 		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
 		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
+			retErr = errors.Wrap(err, op)
 			return
 		}
 		if scp == nil {
-			retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
+			retErr = errors.New(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", v.res.ScopeId))
 			return
 		}
 		scopeInfo = &scopes.ScopeInfo{
@@ -418,7 +420,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// u_anon and u_auth)
 	grantPairs, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to query for user grants: %w", err)
+		retErr = errors.Wrap(err, op)
 		return
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantPairs))
@@ -427,10 +429,10 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			pair.ScopeId,
 			pair.Grant,
 			perms.WithUserId(userId),
-			perms.WithAccountId(accountId),
+			perms.WithAccountId(accountID),
 			perms.WithSkipFinalValidation(true))
 		if err != nil {
-			retErr = fmt.Errorf("perform auth check: failed to parse grant %#v: %w", pair.Grant, err)
+			retErr = errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
 			return
 		}
 		parsedGrants = append(parsedGrants, parsed)

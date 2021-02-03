@@ -1,9 +1,8 @@
 package password
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // PublicId prefixes for the resources in the password package.
@@ -13,17 +12,19 @@ const (
 )
 
 func newAuthMethodId() (string, error) {
+	const op = "auth.newAuthMethodId"
 	id, err := db.NewPublicId(AuthMethodPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password auth method id: %w", err)
+		return "", errors.Wrap(err, op)
 	}
 	return id, err
 }
 
 func newAccountId() (string, error) {
+	const op = "auth.newAccountId"
 	id, err := db.NewPublicId(AccountPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new password account id: %w", err)
+		return "", errors.Wrap(err, op)
 	}
 	return id, err
 }

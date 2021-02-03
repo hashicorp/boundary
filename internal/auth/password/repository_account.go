@@ -26,32 +26,34 @@ import (
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
+	const op = "auth.(Repository).CreateAccount"
 	if a == nil {
-		return nil, fmt.Errorf("create: password account: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, fmt.Errorf("create: password account: embedded Account: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.AuthMethodId == "" {
-		return nil, fmt.Errorf("create: password account: no auth method id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if a.PublicId != "" {
-		return nil, fmt.Errorf("create: password account: public id not empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
 	}
 	if scopeId == "" {
-		return nil, fmt.Errorf("create: password account: scope id empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	if !validLoginName(a.LoginName) {
-		return nil, fmt.Errorf("create: password account: invalid login name; must be all-lowercase alphanumeric, period or hyphen: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprint("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)
 	if err != nil {
-		return nil, fmt.Errorf("create: password account: retrieve current configuration: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("retrieve current configuration"))
 	}
 
+	//Note (schristoff): Do we wanna do stuff like this?
 	if cc.MinLoginNameLength > len(a.LoginName) {
-		return nil, fmt.Errorf("create: password account: user name %q: %w", a.LoginName, ErrTooShort)
+		return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("user name %q, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
 	}
 
 	a = a.clone()

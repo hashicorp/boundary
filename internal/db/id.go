@@ -23,7 +23,7 @@ func newId(prefix string) (string, error) {
 	}
 	publicId, err := base62.Random(10)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to generate id"))
+		return "", errors.Wrap(err, op, errors.WithMsg("unable to generate id"), errors.WithCode(errors.Io))
 	}
 	return fmt.Sprintf("%s_%s", prefix, publicId), nil
 }
