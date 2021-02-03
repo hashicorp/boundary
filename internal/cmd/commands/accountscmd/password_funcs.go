@@ -54,7 +54,9 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 	return helpStr + c.Flags().Help()
 }
 
-func (c *PasswordCommand) extraPasswordFlagsFunc(f *base.FlagSet) {
+func (c *PasswordCommand) extraPasswordFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+	f = set.NewFlagSet("Password Account Options")
+
 	for _, name := range flagsPasswordMap[c.Func] {
 		switch name {
 		case "login-name":

@@ -55,7 +55,9 @@ func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *TcpCommand) extraTcpFlagsFunc(f *base.FlagSet) {
+func (c *TcpCommand) extraTcpFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+	f = set.NewFlagSet("TCP Target Options")
+
 	for _, name := range flagsTcpMap[c.Func] {
 		switch name {
 		case "default-port":

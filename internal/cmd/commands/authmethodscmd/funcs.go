@@ -52,19 +52,6 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func addPasswordFlags(c *PasswordCommand, f *base.FlagSet) {
-	f.StringVar(&base.StringVar{
-		Name:   "min-login-name-length",
-		Target: &c.flagMinLoginNameLength,
-		Usage:  "The minimum length of login names",
-	})
-	f.StringVar(&base.StringVar{
-		Name:   "min-password-length",
-		Target: &c.flagMinPasswordLength,
-		Usage:  "The minimum length of passwords",
-	})
-}
-
 func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	if len(items) == 0 {
 		return "No auth methods found"

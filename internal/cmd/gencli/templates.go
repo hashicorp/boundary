@@ -188,10 +188,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map[c.Func])
 
 	{{ if .HasExtraFlagsFunc }}
-	c.extra{{ camelCase .SubActionPrefix }}FlagsFunc(f)
+	c.extra{{ camelCase .SubActionPrefix }}FlagsFunc(set, f)
 	{{ end }}
 
 	return set

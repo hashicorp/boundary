@@ -106,7 +106,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "group", flagsMap[c.Func])
 
-	c.extraFlagsFunc(f)
+	c.extraFlagsFunc(set, f)
 
 	return set
 }

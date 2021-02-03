@@ -1,10 +1,10 @@
-package accountscmd
+package authmethodscmd
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -49,12 +49,12 @@ func (c *PasswordCommand) Synopsis() string {
 		return extra
 	}
 
-	return common.SynopsisFunc(c.Func, "account")
+	return common.SynopsisFunc(c.Func, "auth method")
 }
 
 func (c *PasswordCommand) Help() string {
 	var helpStr string
-	helpMap := common.HelpMap("account")
+	helpMap := common.HelpMap("auth method")
 
 	switch c.Func {
 	default:
@@ -68,7 +68,7 @@ func (c *PasswordCommand) Help() string {
 
 var flagsPasswordMap = map[string][]string{
 
-	"create": {"auth-method-id", "name", "description"},
+	"create": {"scope-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
@@ -80,7 +80,7 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "password-type account", flagsPasswordMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "password-type auth method", flagsPasswordMap[c.Func])
 
 	c.extraPasswordFlagsFunc(set, f)
 
@@ -93,10 +93,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		return cli.RunResultHelp
 	}
 
-	c.plural = "password-type account"
+	c.plural = "password-type auth method"
 	switch c.Func {
 	case "list":
-		c.plural = "password-type accounts"
+		c.plural = "password-type auth methods"
 	}
 
 	f := c.Flags()
@@ -111,13 +111,13 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 1
 	}
 
-	var opts []accounts.Option
+	var opts []authmethods.Option
 
-	if strutil.StrListContains(flagsPasswordMap[c.Func], "auth-method-id") {
+	if strutil.StrListContains(flagsPasswordMap[c.Func], "scope-id") {
 		switch c.Func {
 		case "create":
-			if c.FlagAuthMethodId == "" {
-				c.UI.Error("AuthMethod ID must be passed in via -auth-method-id or BOUNDARY_AUTH_METHOD_ID")
+			if c.FlagScopeId == "" {
+				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
 			}
 		}
@@ -128,22 +128,27 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	accountsClient := accounts.NewClient(client)
+	authmethodsClient := authmethods.NewClient(client)
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, accounts.DefaultName())
+		opts = append(opts, authmethods.DefaultName())
 	default:
-		opts = append(opts, accounts.WithName(c.FlagName))
+		opts = append(opts, authmethods.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, accounts.DefaultDescription())
+		opts = append(opts, authmethods.DefaultDescription())
 	default:
-		opts = append(opts, accounts.WithDescription(c.FlagDescription))
+		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
+	}
+
+	switch c.FlagRecursive {
+	case true:
+		opts = append(opts, authmethods.WithRecursive(true))
 	}
 
 	var version uint32
@@ -151,7 +156,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	case "update":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, accounts.WithAutomaticVersioning(true))
+			opts = append(opts, authmethods.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -167,10 +172,10 @@ func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		result, err = authmethodsClient.Create(c.Context, "password", c.FlagScopeId, opts...)
 
 	case "update":
-		result, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = authmethodsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 
@@ -186,7 +191,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*accounts.Account)
+	item := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(printItemTable(item))
