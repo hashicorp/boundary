@@ -73,6 +73,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Io,
 		},
 		{
+			name: "InvalidTimeStamp",
+			c:    InvalidTimeStamp,
+			want: InvalidTimeStamp,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
