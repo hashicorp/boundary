@@ -22,7 +22,7 @@ func fillTemplates() {
 				os.Exit(1)
 			}
 
-			fName := data.ResourceType
+			fName := pkg
 			if data.SubActionPrefix != "" {
 				fName = fmt.Sprintf("%s_%s", data.SubActionPrefix, fName)
 			}
