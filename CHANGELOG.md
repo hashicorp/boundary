@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* server: When running single-server mode and `controllers` is not specified in
+  the `worker` block, use `public_cluster_addr` if given
+  ([PR](https://github.com/hashicorp/boundary/pull/904))
+
 ### Bug Fixes
 
 * api: Fix nil pointer panic that could occur when using TLS
