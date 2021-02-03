@@ -229,9 +229,16 @@ func (c *Command) Run(args []string) int {
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
 			case 0:
+				if c.Config.Controller.PublicClusterAddr != "" {
+					clusterAddr = c.Config.Controller.PublicClusterAddr
+				}
 				c.Config.Worker.Controllers = []string{clusterAddr}
 			case 1:
 				if c.Config.Worker.Controllers[0] == clusterAddr {
+					break
+				}
+				if c.Config.Controller.PublicClusterAddr != "" &&
+					c.Config.Worker.Controllers[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
@@ -289,8 +296,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(err.Error())
 			return 1
 		}
-		c.InfoKeys = append(c.InfoKeys, "public addr")
-		c.Info["public addr"] = c.Config.Worker.PublicAddr
+		c.InfoKeys = append(c.InfoKeys, "public proxy addr")
+		c.Info["public proxy addr"] = c.Config.Worker.PublicAddr
 	}
 	if c.Config.Controller != nil {
 		for _, ln := range c.Config.Listeners {

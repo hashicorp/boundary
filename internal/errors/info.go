@@ -52,6 +52,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error during io operation",
 		Kind:    Integrity,
 	},
+	InvalidTimeStamp: {
+		Message: "invalid time stamp",
+		Kind:    Integrity,
+	},
 	SessionNotFound: {
 		Message: "session not found",
 		Kind:    Integrity,

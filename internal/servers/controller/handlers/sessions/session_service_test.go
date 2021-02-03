@@ -292,6 +292,151 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListSelf(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	rw := db.New(conn)
+	sessRepo, err := session.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	sessRepoFn := func() (*session.Repository, error) {
+		return sessRepo, nil
+	}
+
+	_, pNoSessions := iam.TestScopes(t, iamRepo)
+	o, pWithSessions := iam.TestScopes(t, iamRepo)
+
+	at1 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	hc := static.TestCatalogs(t, conn, pWithSessions.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := target.TestTcpTarget(t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+
+	var wantSession []*pb.Session
+	for i := 0; i < 10; i++ {
+		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
+			UserId:      at1.GetIamUserId(),
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at1.GetPublicId(),
+			ScopeId:     pWithSessions.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		status, states := convertStates(sess.States)
+
+		wantSession = append(wantSession, &pb.Session{
+			Id:                sess.GetPublicId(),
+			ScopeId:           pWithSessions.GetPublicId(),
+			AuthTokenId:       sess.AuthTokenId,
+			UserId:            sess.UserId,
+			TargetId:          sess.TargetId,
+			Endpoint:          sess.Endpoint,
+			HostSetId:         sess.HostSetId,
+			HostId:            sess.HostId,
+			Version:           sess.Version,
+			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+			CreatedTime:       sess.CreateTime.GetTimestamp(),
+			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+			Status:            status,
+			States:            states,
+			Certificate:       sess.Certificate,
+			Type:              target.TcpSubType.String(),
+			AuthorizedActions: []string{"read", "cancel"},
+		})
+	}
+
+	at2 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
+		UserId:      at2.GetIamUserId(),
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at2.GetPublicId(),
+		ScopeId:     pWithSessions.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	status, states := convertStates(sess.States)
+	wantSession2 := []*pb.Session{{
+		Id:                sess.GetPublicId(),
+		ScopeId:           pWithSessions.GetPublicId(),
+		AuthTokenId:       sess.AuthTokenId,
+		UserId:            sess.UserId,
+		TargetId:          sess.TargetId,
+		Endpoint:          sess.Endpoint,
+		HostSetId:         sess.HostSetId,
+		HostId:            sess.HostId,
+		Version:           sess.Version,
+		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+		Status:            status,
+		States:            states,
+		Certificate:       sess.Certificate,
+		Type:              target.TcpSubType.String(),
+		AuthorizedActions: []string{"read", "cancel"},
+	}}
+
+	cases := []struct {
+		name   string
+		userId string
+		req    *pbs.ListSelfSessionsRequest
+		res    *pbs.ListSelfSessionsResponse
+		err    error
+	}{
+		{
+			name:   "List Many Sessions",
+			userId: at1.GetIamUserId(),
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{Items: wantSession},
+		},
+		{
+			name:   "List 1 Session",
+			userId: at2.GetIamUserId(),
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{Items: wantSession2},
+		},
+		{
+			name:   "List No Sessions",
+			userId: at1.GetIamUserId(),
+			req:    &pbs.ListSelfSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
+			res:    &pbs.ListSelfSessionsResponse{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+			require.NoError(t, err, "Couldn't create new session service.")
+
+			got, gErr := s.ListSelfSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId()), auth.WithUserId(tc.userId)), tc.req)
+			if tc.err != nil {
+				require.Error(t, gErr)
+				assert.True(t, errors.Is(gErr, tc.err), "ListSelfSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			require.NoError(t, gErr)
+			if tc.res != nil {
+				require.Len(t, got.GetItems(), len(tc.res.GetItems()))
+				for i, wantSess := range tc.res.GetItems() {
+					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+				}
+			}
+			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
 func convertStates(in []*session.State) (string, []*pb.SessionState) {
 	out := make([]*pb.SessionState, 0, len(in))
 	for _, s := range in {

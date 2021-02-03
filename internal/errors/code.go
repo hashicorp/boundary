@@ -30,9 +30,10 @@ const (
 	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
 	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
 	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
-	SessionNotFound       Code = 109 // SessionNotFound represents that the session was not found
-	InvalidSessionState   Code = 110 // InvalidSessionState represents that the session was in an invalid state
-	TokenMismatch         Code = 111 // TokenMismatch represents that there was a token mismatch
+	InvalidTimeStamp      Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
+	SessionNotFound       Code = 110 // SessionNotFound represents that the session was not found
+	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
+	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
