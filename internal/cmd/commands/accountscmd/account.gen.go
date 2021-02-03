@@ -146,7 +146,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	accountClient := accounts.NewClient(client)
+	accountsClient := accounts.NewClient(client)
 
 	switch c.FlagName {
 	case "":
@@ -197,21 +197,21 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 
 	case "read":
-		result, err = accountClient.Read(c.Context, c.FlagId, opts...)
+		result, err = accountsClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = accountClient.Delete(c.Context, c.FlagId, opts...)
+		_, err = accountsClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			c.existed = false
 			err = nil
 		}
 
 	case "list":
-		listResult, err = accountClient.List(c.Context, c.FlagAuthMethodId, opts...)
+		listResult, err = accountsClient.List(c.Context, c.FlagAuthMethodId, opts...)
 
 	}
 
-	result, err = c.executeExtraActions(result, err, accountClient, version, opts)
+	result, err = c.executeExtraActions(result, err, accountsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {

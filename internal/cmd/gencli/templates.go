@@ -73,7 +73,7 @@ var cmdTemplate = template.Must(template.New("").Funcs(
 	},
 ).Parse(`
 {{ $input := . }}
-package {{ .ResourceType }}scmd
+package {{ .Pkg }}cmd
 
 import (
 	"fmt"
@@ -81,7 +81,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/boundary/api"
-	"{{ .PkgPath }}"
+	"github.com/hashicorp/boundary/api/{{ .Pkg }}"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -229,7 +229,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	var opts []{{ .ResourceType }}s.Option
+	var opts []{{ .Pkg }}.Option
 
 	{{ if .Container }}
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "{{ kebabCase .Container }}-id") {
@@ -257,15 +257,15 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	{{ .ResourceType }}Client := {{ .ResourceType }}s.NewClient(client)
+	{{ .Pkg }}Client := {{ .Pkg }}.NewClient(client)
 
 	{{ if .HasName }}
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, {{ .ResourceType }}s.DefaultName())
+		opts = append(opts, {{ .Pkg }}.DefaultName())
 	default:
-		opts = append(opts, {{ .ResourceType }}s.WithName(c.FlagName))
+		opts = append(opts, {{ .Pkg }}.WithName(c.FlagName))
 	}
 	{{ end }}
 
@@ -273,16 +273,16 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, {{ .ResourceType }}s.DefaultDescription())
+		opts = append(opts, {{ .Pkg }}.DefaultDescription())
 	default:
-		opts = append(opts, {{ .ResourceType }}s.WithDescription(c.FlagDescription))
+		opts = append(opts, {{ .Pkg }}.WithDescription(c.FlagDescription))
 	}
 	{{ end }}
 
 	{{ if (eq .Container "Scope") }}
 	switch c.FlagRecursive {
 	case true:
-		opts = append(opts, {{ .ResourceType }}s.WithRecursive(true))
+		opts = append(opts, {{ .Pkg }}.WithRecursive(true))
 	}
 	{{ end }}
 
@@ -290,7 +290,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	switch c.FlagScopeName {
 	case "":
 	default:
-		opts = append(opts, {{ .ResourceType }}s.WithScopeName(c.FlagScopeName))
+		opts = append(opts, {{ .Pkg }}.WithScopeName(c.FlagScopeName))
 	}
 	{{ end }}
 
@@ -301,7 +301,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "{{ $action }}":
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, {{ $input.ResourceType }}s.WithAutomaticVersioning(true))
+			opts = append(opts, {{ $input.Pkg }}.WithAutomaticVersioning(true))
 		default:
 			version = uint32(c.FlagVersion)
 		}
@@ -325,19 +325,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
 	case "create":
-		result, err = {{ $input.ResourceType }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubTypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+		result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubTypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":
-		result, err = {{ $input.ResourceType }}Client.Read(c.Context, c.FlagId, opts...)
+		result, err = {{ $input.Pkg }}Client.Read(c.Context, c.FlagId, opts...)
 	{{ end }}
 	{{ if eq $action "update" }}
 	case "update":
-		result, err = {{ $input.ResourceType }}Client.Update(c.Context, c.FlagId, version, opts...)
+		result, err = {{ $input.Pkg }}Client.Update(c.Context, c.FlagId, version, opts...)
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":
-		_, err = {{ $input.ResourceType}}Client.Delete(c.Context, c.FlagId, opts...)
+		_, err = {{ $input.Pkg}}Client.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			c.existed = false
 			err = nil
@@ -345,13 +345,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listResult, err = {{ $input.ResourceType}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
+		listResult, err = {{ $input.Pkg}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
 	{{ end }}
 	{{ end }}
 	}
 
 	{{ if .HasExtraActions }}
-	result, err = c.executeExtraActions(result, err, {{ .ResourceType }}Client, version, opts)
+	result, err = c.executeExtraActions(result, err, {{ .Pkg }}Client, version, opts)
 	{{ end }}
 
 	if err != nil {
@@ -397,7 +397,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listedItems := listResult.GetItems().([]*{{ $input.ResourceType }}s.{{ camelCase $input.ResourceType }})
+		listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
 		switch base.Format(c.UI) {
 		case "json":
 			switch {
@@ -423,7 +423,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	item := result.GetItem().(*{{ .ResourceType }}s.{{ camelCase .ResourceType }})
+	item := result.GetItem().(*{{ .Pkg }}.{{ camelCase .ResourceType }})
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(printItemTable(item))

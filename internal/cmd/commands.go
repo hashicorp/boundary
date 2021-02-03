@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
-	"github.com/hashicorp/boundary/internal/cmd/commands/authmethods"
+	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
@@ -126,48 +126,48 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"auth-methods": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"auth-methods read": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"auth-methods delete": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"auth-methods list": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"auth-methods create": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"auth-methods create password": func() (cli.Command, error) {
-			return &authmethods.PasswordCommand{
+			return &authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"auth-methods update": func() (cli.Command, error) {
-			return &authmethods.Command{
+			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"auth-methods update password": func() (cli.Command, error) {
-			return &authmethods.PasswordCommand{
+			return &authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

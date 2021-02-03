@@ -128,7 +128,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	accountClient := accounts.NewClient(client)
+	accountsClient := accounts.NewClient(client)
 
 	switch c.FlagName {
 	case "":
@@ -167,10 +167,10 @@ func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = accountClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		result, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
 
 	case "update":
-		result, err = accountClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 

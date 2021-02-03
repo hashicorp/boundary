@@ -160,7 +160,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	groupClient := groups.NewClient(client)
+	groupsClient := groups.NewClient(client)
 
 	switch c.FlagName {
 	case "":
@@ -232,27 +232,27 @@ func (c *Command) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = groupClient.Create(c.Context, c.FlagScopeId, opts...)
+		result, err = groupsClient.Create(c.Context, c.FlagScopeId, opts...)
 
 	case "read":
-		result, err = groupClient.Read(c.Context, c.FlagId, opts...)
+		result, err = groupsClient.Read(c.Context, c.FlagId, opts...)
 
 	case "update":
-		result, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = groupsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	case "delete":
-		_, err = groupClient.Delete(c.Context, c.FlagId, opts...)
+		_, err = groupsClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			c.existed = false
 			err = nil
 		}
 
 	case "list":
-		listResult, err = groupClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = groupsClient.List(c.Context, c.FlagScopeId, opts...)
 
 	}
 
-	result, err = c.executeExtraActions(result, err, groupClient, version, opts)
+	result, err = c.executeExtraActions(result, err, groupsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {

@@ -8,8 +8,8 @@ type cmdInfo struct {
 	// The type of the resource, e.g. "target"
 	ResourceType string
 
-	// The import path of the API package
-	PkgPath string
+	// The API package under the api path
+	Pkg string
 
 	// Standard actions (with standard parameters) used by this resource
 	StdActions []string
@@ -100,7 +100,7 @@ var inputStructs = map[string][]*cmdInfo{
 	"accounts": {
 		{
 			ResourceType:             resource.Account.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/accounts",
+			Pkg:                      "accounts",
 			StdActions:               []string{"read", "delete", "list"},
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
@@ -119,7 +119,7 @@ var inputStructs = map[string][]*cmdInfo{
 		},
 		{
 			ResourceType:             resource.Account.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/accounts",
+			Pkg:                      "accounts",
 			StdActions:               []string{"create", "update"},
 			HasCustomActionFlags:     true,
 			SubActionPrefix:          "password",
@@ -137,10 +137,21 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:         []string{"update"},
 		},
 	},
+	"authmethods": {
+		{
+			ResourceType:             resource.AuthMethod.String(),
+			Pkg:                      "authmethods",
+			StdActions:               []string{"read", "delete", "list"},
+			IsAbstractType:           true,
+			Container:                "Scope",
+			HasId:                    true,
+			ContainerRequiredActions: []string{"list"},
+		},
+	},
 	"groups": {
 		{
 			ResourceType:             resource.Group.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/groups",
+			Pkg:                      "groups",
 			StdActions:               []string{"create", "read", "update", "delete", "list"},
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
@@ -161,7 +172,7 @@ var inputStructs = map[string][]*cmdInfo{
 	"targets": {
 		{
 			ResourceType:             resource.Target.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			Pkg:                      "targets",
 			StdActions:               []string{"read", "delete", "list"},
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
@@ -182,7 +193,7 @@ var inputStructs = map[string][]*cmdInfo{
 		},
 		{
 			ResourceType:             resource.Target.String(),
-			PkgPath:                  "github.com/hashicorp/boundary/api/targets",
+			Pkg:                      "targets",
 			StdActions:               []string{"create", "update"},
 			HasCustomActionFlags:     true,
 			SubActionPrefix:          "tcp",

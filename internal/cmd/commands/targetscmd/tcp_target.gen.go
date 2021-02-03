@@ -128,7 +128,7 @@ func (c *TcpCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	targetClient := targets.NewClient(client)
+	targetsClient := targets.NewClient(client)
 
 	switch c.FlagName {
 	case "":
@@ -172,10 +172,10 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = targetClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		result, err = targetsClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
 
 	case "update":
-		result, err = targetClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = targetsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 
