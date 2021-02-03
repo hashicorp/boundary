@@ -59,17 +59,22 @@ func kebabCase(in string) string {
 	return strcase.ToKebab(in)
 }
 
+func lowerSpaceCase(in string) string {
+	return strcase.ToDelimited(in, ' ')
+}
+
 func hasAction(in []string, action string) bool {
 	return strutil.StrListContains(in, action)
 }
 
 var cmdTemplate = template.Must(template.New("").Funcs(
 	template.FuncMap{
-		"camelCase": camelCase,
-		"envCase":   envCase,
-		"snakeCase": snakeCase,
-		"kebabCase": kebabCase,
-		"hasAction": hasAction,
+		"camelCase":      camelCase,
+		"envCase":        envCase,
+		"snakeCase":      snakeCase,
+		"kebabCase":      kebabCase,
+		"lowerSpaceCase": lowerSpaceCase,
+		"hasAction":      hasAction,
 	},
 ).Parse(`
 {{ $input := . }}
@@ -131,12 +136,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 		return extra
 	} 
 	{{ end }}
-	return common.SynopsisFunc(c.Func, "{{ .ResourceType }}")
+	return common.SynopsisFunc(c.Func, "{{ lowerSpaceCase .ResourceType }}")
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 	var helpStr string
-	helpMap := common.HelpMap("{{ .ResourceType }}")
+	helpMap := common.HelpMap("{{ lowerSpaceCase .ResourceType }}")
 
 	switch c.Func {
 	{{ if not .SkipNormalHelp }}
@@ -209,10 +214,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}"
+	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}"
 	switch c.Func {
 	case "list":
-		c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ .ResourceType }}s"		
+		c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}s"		
 	}
 
 	f := c.Flags()

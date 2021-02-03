@@ -143,6 +143,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:                      "authmethods",
 			StdActions:               []string{"read", "delete", "list"},
 			IsAbstractType:           true,
+			HasExtraHelpFunc:         true,
 			Container:                "Scope",
 			HasId:                    true,
 			ContainerRequiredActions: []string{"list"},

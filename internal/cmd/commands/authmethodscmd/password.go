@@ -1,4 +1,4 @@
-package authmethods
+package authmethodscmd
 
 import (
 	"fmt"
@@ -205,7 +205,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	method := result.GetItem().(*authmethods.AuthMethod)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateAuthMethodTableOutput(method))
+		c.UI.Output(printItemTable(method))
 	case "json":
 		b, err := base.JsonFormatter{}.Format(method)
 		if err != nil {
