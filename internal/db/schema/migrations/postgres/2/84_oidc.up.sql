@@ -201,7 +201,8 @@ before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
--- auth_oidc_callback_url, 
+-- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg,
+-- auth_oidc_requested_scope 
 create trigger
   default_create_time_column
 before
@@ -225,5 +226,3 @@ create trigger
 before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
-
-commit;
