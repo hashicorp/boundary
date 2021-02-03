@@ -169,6 +169,16 @@ var inputStructs = map[string][]*cmdInfo{
 			NeedsSubTypeInCreate:     true,
 		},
 	},
+	"authtokens": {
+		{
+			ResourceType:             resource.AuthToken.String(),
+			Pkg:                      "authtokens",
+			StdActions:               []string{"read", "delete", "list"},
+			Container:                "Scope",
+			HasId:                    true,
+			ContainerRequiredActions: []string{"list"},
+		},
+	},
 	"groups": {
 		{
 			ResourceType:             resource.Group.String(),

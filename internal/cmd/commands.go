@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
+	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
@@ -174,24 +174,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"auth-tokens": func() (cli.Command, error) {
-			return &authtokens.Command{
+			return &authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"auth-tokens read": func() (cli.Command, error) {
-			return &authtokens.Command{
+			return &authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"auth-tokens delete": func() (cli.Command, error) {
-			return &authtokens.Command{
+			return &authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"auth-tokens list": func() (cli.Command, error) {
-			return &authtokens.Command{
+			return &authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil

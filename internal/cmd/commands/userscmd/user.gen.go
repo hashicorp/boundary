@@ -75,6 +75,7 @@ func (c *Command) Help() string {
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	default:
+
 		helpStr = c.extraHelpFunc(helpMap)
 
 	}

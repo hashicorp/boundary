@@ -58,6 +58,7 @@ func (c *TcpCommand) Help() string {
 
 	switch c.Func {
 	default:
+
 		helpStr = c.extraTcpHelpFunc(helpMap)
 	}
 

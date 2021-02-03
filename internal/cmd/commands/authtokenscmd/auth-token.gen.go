@@ -1,11 +1,11 @@
-package groupscmd
+package authtokenscmd
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/groups"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -14,9 +14,6 @@ import (
 )
 
 func init() {
-	for k, v := range extraActionsFlagsMap {
-		flagsMap[k] = append(flagsMap[k], v...)
-	}
 }
 
 var (
@@ -33,8 +30,6 @@ type Command struct {
 	existed bool
 	// Used in some output
 	plural string
-
-	extraCmdVars
 }
 
 func (c *Command) AutocompleteArgs() complete.Predictor {
@@ -46,26 +41,16 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Synopsis() string {
-	if extra := c.extraSynopsisFunc(); extra != "" {
-		return extra
-	}
-
-	return common.SynopsisFunc(c.Func, "group")
+	return common.SynopsisFunc(c.Func, "auth token")
 }
 
 func (c *Command) Help() string {
 	var helpStr string
-	helpMap := common.HelpMap("group")
+	helpMap := common.HelpMap("auth token")
 
 	switch c.Func {
 
-	case "create":
-		helpStr = helpMap[c.Func]() + c.Flags().Help()
-
 	case "read":
-		helpStr = helpMap[c.Func]() + c.Flags().Help()
-
-	case "update":
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
 	case "delete":
@@ -76,7 +61,7 @@ func (c *Command) Help() string {
 
 	default:
 
-		helpStr = c.extraHelpFunc(helpMap)
+		helpStr = helpMap["base"]()
 
 	}
 
@@ -87,11 +72,7 @@ func (c *Command) Help() string {
 
 var flagsMap = map[string][]string{
 
-	"create": {"scope-id", "name", "description"},
-
 	"read": {"id"},
-
-	"update": {"id", "name", "description", "version"},
 
 	"delete": {"id"},
 
@@ -105,9 +86,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "group", flagsMap[c.Func])
-
-	c.extraFlagsFunc(set, f)
+	common.PopulateCommonFlags(c.Command, f, "auth token", flagsMap[c.Func])
 
 	return set
 }
@@ -118,10 +97,10 @@ func (c *Command) Run(args []string) int {
 		return cli.RunResultHelp
 	}
 
-	c.plural = "group"
+	c.plural = "auth token"
 	switch c.Func {
 	case "list":
-		c.plural = "groups"
+		c.plural = "auth tokens"
 	}
 
 	f := c.Flags()
@@ -136,23 +115,15 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	var opts []groups.Option
+	var opts []authtokens.Option
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
 		switch c.Func {
-
-		case "create":
-			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
-				return 1
-			}
-
 		case "list":
 			if c.FlagScopeId == "" {
 				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
 				return 1
 			}
-
 		}
 	}
 
@@ -161,68 +132,11 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-	groupsClient := groups.NewClient(client)
-
-	switch c.FlagName {
-	case "":
-	case "null":
-		opts = append(opts, groups.DefaultName())
-	default:
-		opts = append(opts, groups.WithName(c.FlagName))
-	}
-
-	switch c.FlagDescription {
-	case "":
-	case "null":
-		opts = append(opts, groups.DefaultDescription())
-	default:
-		opts = append(opts, groups.WithDescription(c.FlagDescription))
-	}
+	authtokensClient := authtokens.NewClient(client)
 
 	switch c.FlagRecursive {
 	case true:
-		opts = append(opts, groups.WithRecursive(true))
-	}
-
-	var version uint32
-	switch c.Func {
-
-	case "update":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "add-members":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "remove-members":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "set-members":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, groups.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	}
-
-	if ret := c.extraFlagHandlingFunc(&opts); ret != 0 {
-		return ret
+		opts = append(opts, authtokens.WithRecursive(true))
 	}
 
 	c.existed = true
@@ -232,28 +146,20 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 
-	case "create":
-		result, err = groupsClient.Create(c.Context, c.FlagScopeId, opts...)
-
 	case "read":
-		result, err = groupsClient.Read(c.Context, c.FlagId, opts...)
-
-	case "update":
-		result, err = groupsClient.Update(c.Context, c.FlagId, version, opts...)
+		result, err = authtokensClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = groupsClient.Delete(c.Context, c.FlagId, opts...)
+		_, err = authtokensClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
 			c.existed = false
 			err = nil
 		}
 
 	case "list":
-		listResult, err = groupsClient.List(c.Context, c.FlagScopeId, opts...)
+		listResult, err = authtokensClient.List(c.Context, c.FlagScopeId, opts...)
 
 	}
-
-	result, err = c.executeExtraActions(result, err, groupsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -285,7 +191,7 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
-		listedItems := listResult.GetItems().([]*groups.Group)
+		listedItems := listResult.GetItems().([]*authtokens.AuthToken)
 		switch base.Format(c.UI) {
 		case "json":
 			switch {
@@ -310,7 +216,7 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	item := result.GetItem().(*groups.Group)
+	item := result.GetItem().(*authtokens.AuthToken)
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(printItemTable(item))

@@ -150,9 +150,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 	{{ end }}
 	{{ end }}
-	{{ if .HasExtraHelpFunc }}
 	default:
+	{{ if .HasExtraHelpFunc }}
 		helpStr = c.extra{{ camelCase .SubActionPrefix }}HelpFunc(helpMap)
+	{{ else }}
+		helpStr = helpMap["base"]()
 	{{ end }}
 	}
 

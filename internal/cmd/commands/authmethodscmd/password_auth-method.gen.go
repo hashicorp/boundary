@@ -58,6 +58,7 @@ func (c *PasswordCommand) Help() string {
 
 	switch c.Func {
 	default:
+
 		helpStr = c.extraPasswordHelpFunc(helpMap)
 	}
 
