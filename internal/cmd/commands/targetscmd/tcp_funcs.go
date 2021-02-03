@@ -16,7 +16,7 @@ var extraTcpActionsFlagsMap = map[string][]string{
 	"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 }
 
-type extraTcpCmdVars = struct {
+type extraTcpCmdVars struct {
 	flagDefaultPort            string
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string

@@ -14,7 +14,7 @@ import (
 	"github.com/posener/complete"
 )
 
-type extraCmdVars = struct {
+type extraCmdVars struct {
 	flagHostSets []string
 	flagHostId   string
 	sar          *targets.SessionAuthorizationResult

@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/password"
 )
 
-type extraCmdVars = struct {
+type extraCmdVars struct {
 	flagPassword        string
 	flagCurrentPassword string
 	flagNewPassword     string

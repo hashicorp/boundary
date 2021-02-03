@@ -17,7 +17,7 @@ var extraPasswordActionsFlagsMap = map[string][]string{
 	"update": {"login-name"},
 }
 
-type extraPasswordCmdVars = struct {
+type extraPasswordCmdVars struct {
 	flagLoginName string
 	flagPassword  string
 }
