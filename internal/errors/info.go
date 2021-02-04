@@ -56,6 +56,18 @@ var errorCodeInfo = map[Code]Info{
 		Message: "invalid time stamp",
 		Kind:    Integrity,
 	},
+	SessionNotFound: {
+		Message: "session not found",
+		Kind:    Integrity,
+	},
+	InvalidSessionState: {
+		Message: "session state was not valid for the requested operation",
+		Kind:    Integrity,
+	},
+	TokenMismatch: {
+		Message: "token mismatch",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -87,6 +99,14 @@ var errorCodeInfo = map[Code]Info{
 	Decode: {
 		Message: "error occurred during decode",
 		Kind:    Encoding,
+	},
+	GenKey: {
+		Message: "error occurred during key generation",
+		Kind:    Encryption,
+	},
+	GenCert: {
+		Message: "error occurred during certification generation",
+		Kind:    Encryption,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",
