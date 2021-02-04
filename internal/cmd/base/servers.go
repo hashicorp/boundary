@@ -633,6 +633,12 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 				}
 			}
 		}
+	} else {
+		var err error
+		conf.Controller.PublicClusterAddr, err = config.ParseAddress(conf.Controller.PublicClusterAddr)
+		if err != nil && err != config.ErrNotAUrl {
+			return fmt.Errorf("Error parsing public cluster addr: %w", err)
+		}
 	}
 	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
 	if err != nil {
