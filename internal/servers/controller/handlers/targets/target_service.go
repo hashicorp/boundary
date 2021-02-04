@@ -49,6 +49,9 @@ var (
 		action.AddHostSets,
 		action.SetHostSets,
 		action.RemoveHostSets,
+		action.AddHosts,
+		action.SetHosts,
+		action.RemoveHosts,
 		action.AuthorizeSession,
 	}
 
@@ -222,14 +225,14 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSetsRequest) (*pbs.AddTargetHostSetsResponse, error) {
-	if err := validateAddRequest(req); err != nil {
+	if err := validateAddHostSetsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	u, err := s.addHostSetsInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -240,14 +243,14 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 
 // SetTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSetsRequest) (*pbs.SetTargetHostSetsResponse, error) {
-	if err := validateSetRequest(req); err != nil {
+	if err := validateSetHostSetsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.SetHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	u, err := s.setHostSetsInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -258,20 +261,74 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 
 // RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTargetHostSetsRequest) (*pbs.RemoveTargetHostSetsResponse, error) {
-	if err := validateRemoveRequest(req); err != nil {
+	if err := validateRemoveHostSetsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	u, err := s.removeHostSetsInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
+}
+
+// AddTargetHosts implements the interface pbs.TargetServiceServer.
+func (s Service) AddTargetHosts(ctx context.Context, req *pbs.AddTargetHostsRequest) (*pbs.AddTargetHostsResponse, error) {
+	if err := validateAddHostsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.AddHosts)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.addHostsInRepo(ctx, req.GetId(), req.GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	return &pbs.AddTargetHostsResponse{Item: u}, nil
+}
+
+// SetTargetHostSets implements the interface pbs.TargetServiceServer.
+func (s Service) SetTargetHosts(ctx context.Context, req *pbs.SetTargetHostsRequest) (*pbs.SetTargetHostsResponse, error) {
+	if err := validateSetHostsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.SetHosts)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.setHostsInRepo(ctx, req.GetId(), req.GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	return &pbs.SetTargetHostsResponse{Item: u}, nil
+}
+
+// RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
+func (s Service) RemoveTargetHosts(ctx context.Context, req *pbs.RemoveTargetHostsRequest) (*pbs.RemoveTargetHostsResponse, error) {
+	if err := validateRemoveHostsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHosts)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	u, err := s.removeHostsInRepo(ctx, req.GetId(), req.GetHostIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	return &pbs.RemoveTargetHostsResponse{Item: u}, nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
@@ -321,7 +378,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSets, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, hostSets, hosts, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -356,27 +413,43 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	hostIds := make([]compoundHost, 0, len(hostSets)*10)
+	hostIds := make([]compoundHost, 0, len(hostSets)*10+len(hosts))
 
-HostSetIterationLoop:
-	for _, tSet := range hostSets {
-		hsId := tSet.PublicId
-		switch host.SubtypeFromId(hsId) {
-		case host.StaticSubtype:
-			_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
-			if err != nil {
-				return nil, err
-			}
-			for _, host := range hosts {
-				compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
-				hostIds = append(hostIds, compoundId)
-				if host.PublicId == requestedId {
-					chosenId = &compoundId
-					break HostSetIterationLoop
+	// First look through directly-set hosts and see if we find a match, and if
+	// not add them to the possibilities
+	for _, host := range hosts {
+		compoundId := compoundHost{hostId: host.PublicId}
+		hostIds = append(hostIds, compoundId)
+		if host.PublicId == requestedId {
+			chosenId = &compoundId
+			break
+		}
+	}
+
+	// If we didn't find one we were specifically asked for, iterate thorugh
+	// host sets
+	if chosenId == nil {
+	HostSetIterationLoop:
+		for _, tSet := range hostSets {
+			hsId := tSet.PublicId
+			switch host.SubtypeFromId(hsId) {
+			case host.StaticSubtype:
+				_, hosts, err := staticHostRepo.LookupSet(ctx, hsId)
+				if err != nil {
+					return nil, err
+				}
+				for _, host := range hosts {
+					compoundId := compoundHost{hostSetId: hsId, hostId: host.PublicId}
+					hostIds = append(hostIds, compoundId)
+					if host.PublicId == requestedId {
+						chosenId = &compoundId
+						break HostSetIterationLoop
+					}
 				}
 			}
 		}
 	}
+
 	if requestedId != "" && chosenId == nil {
 		// We didn't find it
 		return nil, handlers.InvalidArgumentErrorf(
@@ -388,7 +461,7 @@ HostSetIterationLoop:
 	if chosenId == nil {
 		if len(hostIds) == 0 {
 			// No hosts were found, error
-			return nil, handlers.NotFoundErrorf("No hosts found from available target host sets.")
+			return nil, handlers.NotFoundErrorf("No hosts found from available target hosts and host sets.")
 		}
 		chosenId = &hostIds[rand.Intn(len(hostIds))]
 	}
@@ -554,17 +627,17 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 	if err != nil {
 		return nil, err
 	}
-	u, m, err := repo.LookupTarget(ctx, id)
+	t, hostSets, hosts, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
 		return nil, err
 	}
-	if u == nil {
+	if t == nil {
 		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(u, m)
+	return toProto(t, hostSets, hosts)
 }
 
 func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
@@ -596,14 +669,14 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.CreateTcpTarget(ctx, u)
+	out, hostSets, hosts, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create target: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
-	return toProto(out, m)
+	return toProto(out, hostSets, hosts)
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
@@ -644,14 +717,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
+	out, hostSets, hosts, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, fmt.Errorf("unable to update target: %w", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
 	}
-	return toProto(out, m)
+	return toProto(out, hostSets, hosts)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -680,7 +753,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Tar
 	}
 	var outUl []*pb.Target
 	for _, u := range ul {
-		o, err := toProto(u, nil)
+		o, err := toProto(u, nil, nil)
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert value to proto: %v.", err)
 		}
@@ -689,12 +762,12 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Tar
 	return outUl, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (*pb.Target, error) {
+func (s Service) addHostSetsInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
+	out, hostSets, hosts, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
@@ -702,10 +775,10 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
-	return toProto(out, m)
+	return toProto(out, hostSets, hosts)
 }
 
-func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+func (s Service) setHostSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -716,34 +789,91 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
 	}
 
-	out, m, err := repo.LookupTarget(ctx, targetId)
+	out, hostSets, hosts, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, fmt.Errorf("unable to look up target after setting host sets: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
 	}
-	return toProto(out, m)
+	return toProto(out, hostSets, hosts)
 }
 
-func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+func (s Service) removeHostSetsInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
+	_, err = repo.DeleteTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
 	}
-	out, m, err := repo.LookupTarget(ctx, targetId)
+	out, hostSets, hosts, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, fmt.Errorf("unable to look up target after removing host sets: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
 	}
-	return toProto(out, m)
+	return toProto(out, hostSets, hosts)
+}
+
+func (s Service) addHostsInRepo(ctx context.Context, targetId string, hostIds []string, version uint32) (*pb.Target, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, hostSets, hosts, err := repo.AddTargetHosts(ctx, targetId, version, strutil.RemoveDuplicates(hostIds, false))
+	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add hosts to target: %v.", err)
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding hosts to it.")
+	}
+	return toProto(out, hostSets, hosts)
+}
+
+func (s Service) setHostsInRepo(ctx context.Context, targetId string, hostIds []string, version uint32) (*pb.Target, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = repo.SetTargetHosts(ctx, targetId, version, strutil.RemoveDuplicates(hostIds, false))
+	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set hosts in target: %v.", err)
+	}
+
+	out, hostSets, hosts, err := repo.LookupTarget(ctx, targetId)
+	if err != nil {
+		return nil, fmt.Errorf("unable to look up target after setting hosts: %w", err)
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting hosts for it.")
+	}
+	return toProto(out, hostSets, hosts)
+}
+
+func (s Service) removeHostsInRepo(ctx context.Context, targetId string, hostIds []string, version uint32) (*pb.Target, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.DeleteTargetHosts(ctx, targetId, version, strutil.RemoveDuplicates(hostIds, false))
+	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove hosts from target: %v.", err)
+	}
+	out, hostSets, hosts, err := repo.LookupTarget(ctx, targetId)
+	if err != nil {
+		return nil, fmt.Errorf("unable to look up target after removing hosts: %w", err)
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing hosts from it.")
+	}
+	return toProto(out, hostSets, hosts)
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
@@ -775,7 +905,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 			res.Error = err
 			return res
 		}
-		t, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
+		t, _, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
 			// TODO: Fix this with new/better error handling
 			if strings.Contains(err.Error(), "more than one row returned by a subquery") {
@@ -799,7 +929,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	return ret
 }
 
-func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
+func toProto(in target.Target, hostSets []*target.TargetSet, hosts []*target.TargetHostView) (*pb.Target, error) {
 	out := pb.Target{
 		Id:                     in.GetPublicId(),
 		ScopeId:                in.GetScopeId(),
@@ -828,11 +958,18 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 	}
 	out.Attributes = st
-	for _, hs := range m {
+	for _, hs := range hostSets {
 		out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
 		out.HostSets = append(out.HostSets, &pb.HostSet{
 			Id:            hs.GetPublicId(),
 			HostCatalogId: hs.GetCatalogId(),
+		})
+	}
+	for _, h := range hosts {
+		out.HostIds = append(out.HostIds, h.GetPublicId())
+		out.Hosts = append(out.Hosts, &pb.Host{
+			Id:            h.GetPublicId(),
+			HostCatalogId: h.GetCatalogId(),
 		})
 	}
 	return &out, nil
@@ -950,7 +1087,7 @@ func validateListRequest(req *pbs.ListTargetsRequest) error {
 	return nil
 }
 
-func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
+func validateAddHostSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -973,7 +1110,7 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	return nil
 }
 
-func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
+func validateSetHostSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -993,7 +1130,7 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	return nil
 }
 
-func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
+func validateRemoveHostSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1007,6 +1144,72 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(static.HostSetPrefix, id) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
+			break
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateAddHostsRequest(req *pbs.AddTargetHostsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetHostIds()) == 0 {
+		badFields["host_ids"] = "Must be non-empty."
+	}
+	for _, id := range req.GetHostIds() {
+		if !handlers.ValidId(static.HostPrefix, id) {
+			badFields["host_ids"] = fmt.Sprintf("Incorrectly formatted host identifier %q.", id)
+			break
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetHostsRequest(req *pbs.SetTargetHostsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	for _, id := range req.GetHostIds() {
+		if !handlers.ValidId(static.HostPrefix, id) {
+			badFields["host_ids"] = fmt.Sprintf("Incorrectly formatted host identifier %q.", id)
+			break
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveHostsRequest(req *pbs.RemoveTargetHostsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetHostIds()) == 0 {
+		badFields["host_ids"] = "Must be non-empty."
+	}
+	for _, id := range req.GetHostIds() {
+		if !handlers.ValidId(static.HostPrefix, id) {
+			badFields["host_ids"] = fmt.Sprintf("Incorrectly formatted host identifier %q.", id)
 			break
 		}
 	}

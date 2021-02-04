@@ -66,8 +66,17 @@ func TestGet(t *testing.T) {
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
 
-	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test", target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test",
+		target.WithHostSets([]string{
+			hs[0].GetPublicId(),
+			hs[1].GetPublicId(),
+		}),
+		target.WithHosts([]string{
+			h[0].GetPublicId(),
+			h[1].GetPublicId(),
+		}))
 
 	pTar := &pb.Target{
 		Id:                     tar.GetPublicId(),
@@ -78,6 +87,7 @@ func TestGet(t *testing.T) {
 		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Type:                   target.TcpTargetType.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
+		HostIds:                []string{h[0].GetPublicId(), h[1].GetPublicId()},
 		Attributes:             new(structpb.Struct),
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(1),
@@ -85,6 +95,9 @@ func TestGet(t *testing.T) {
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
+	}
+	for _, ih := range h {
+		pTar.Hosts = append(pTar.Hosts, &pb.Host{Id: ih.GetPublicId(), HostCatalogId: ih.GetCatalogId()})
 	}
 
 	cases := []struct {
@@ -151,12 +164,22 @@ func TestList(t *testing.T) {
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
 	otherHss := static.TestSets(t, conn, otherHc.GetPublicId(), 2)
+	hs := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+	otherHs := static.TestHosts(t, conn, otherHc.GetPublicId(), 2)
 
 	var wantTars []*pb.Target
 	var totalTars []*pb.Target
 	for i := 0; i < 5; i++ {
 		name := fmt.Sprintf("tar%d", i)
-		tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), name, target.WithHostSets([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+		tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), name,
+			target.WithHostSets([]string{
+				hss[0].GetPublicId(),
+				hss[1].GetPublicId(),
+			}),
+			target.WithHosts([]string{
+				hs[0].GetPublicId(),
+				hs[1].GetPublicId(),
+			}))
 		wantTars = append(wantTars, &pb.Target{
 			Id:                     tar.GetPublicId(),
 			ScopeId:                proj.GetPublicId(),
@@ -172,7 +195,16 @@ func TestList(t *testing.T) {
 			AuthorizedActions:      targets.IdActions.Strings(),
 		})
 		totalTars = append(totalTars, wantTars[i])
-		tar = target.TestTcpTarget(t, conn, otherProj.GetPublicId(), name, target.WithHostSets([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
+		tar = target.TestTcpTarget(t, conn, otherProj.GetPublicId(), name,
+			target.WithHostSets([]string{
+				otherHss[0].GetPublicId(),
+				otherHss[1].GetPublicId(),
+			}),
+			target.WithHosts([]string{
+				otherHs[0].GetPublicId(),
+				otherHs[1].GetPublicId(),
+			}),
+		)
 		totalTars = append(totalTars, &pb.Target{
 			Id:                     tar.GetPublicId(),
 			ScopeId:                otherProj.GetPublicId(),
@@ -468,11 +500,26 @@ func TestUpdate(t *testing.T) {
 		{Id: hs[0].GetPublicId(), HostCatalogId: hs[0].GetCatalogId()},
 		{Id: hs[1].GetPublicId(), HostCatalogId: hs[1].GetCatalogId()},
 	}
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
+	hosts := []*pb.Host{
+		{Id: h[0].GetPublicId(), HostCatalogId: h[0].GetCatalogId()},
+		{Id: h[1].GetPublicId(), HostCatalogId: h[1].GetCatalogId()},
+	}
 
 	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar, target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	gtar, _, _, err := repo.CreateTcpTarget(context.Background(), tar,
+		target.WithHostSets([]string{
+			hs[0].GetPublicId(),
+			hs[1].GetPublicId(),
+		}),
+		target.WithHosts([]string{
+			h[0].GetPublicId(),
+			h[1].GetPublicId(),
+		}),
+	)
 	require.NoError(t, err)
 	tar = gtar.(*target.TcpTarget)
 
@@ -480,7 +527,7 @@ func TestUpdate(t *testing.T) {
 
 	resetTarget := func() {
 		version++
-		_, _, _, err = repo.UpdateTcpTarget(context.Background(), tar, version, []string{"Name", "Description"})
+		_, _, _, _, err = repo.UpdateTcpTarget(context.Background(), tar, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset target.")
 		version++
 	}
@@ -528,6 +575,8 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
+					HostIds:                hIds,
+					Hosts:                  hosts,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      targets.IdActions.Strings(),
@@ -560,6 +609,8 @@ func TestUpdate(t *testing.T) {
 					}},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
+					HostIds:                hIds,
+					Hosts:                  hosts,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      targets.IdActions.Strings(),
@@ -645,6 +696,8 @@ func TestUpdate(t *testing.T) {
 					}},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
+					HostIds:                hIds,
+					Hosts:                  hosts,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      targets.IdActions.Strings(),
@@ -676,6 +729,8 @@ func TestUpdate(t *testing.T) {
 					}},
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
+					HostIds:                hIds,
+					Hosts:                  hosts,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      targets.IdActions.Strings(),
@@ -707,6 +762,8 @@ func TestUpdate(t *testing.T) {
 					Type:                   target.TcpTargetType.String(),
 					HostSetIds:             hsIds,
 					HostSets:               hostSets,
+					HostIds:                hIds,
+					Hosts:                  hosts,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      targets.IdActions.Strings(),
@@ -827,7 +884,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar)
+	gtar, _, _, err := repo.CreateTcpTarget(context.Background(), tar)
 	require.NoError(t, err)
 
 	tested, err := testService(t, conn, kms, wrapper)
@@ -1180,6 +1237,345 @@ func TestRemoveTargetHostSets(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestAddTargetHosts(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new target service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+
+	addCases := []struct {
+		name        string
+		tar         *target.TcpTarget
+		addHosts    []string
+		resultHosts []string
+	}{
+		{
+			name:        "Add host on empty target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			addHosts:    []string{h[1].GetPublicId()},
+			resultHosts: []string{h[1].GetPublicId()},
+		},
+		{
+			name:        "Add host on populated target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHosts([]string{h[0].GetPublicId()})),
+			addHosts:    []string{h[1].GetPublicId()},
+			resultHosts: []string{h[0].GetPublicId(), h[1].GetPublicId()},
+		},
+		{
+			name:        "Add duplicated hosts on populated target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithHosts([]string{h[0].GetPublicId()})),
+			addHosts:    []string{h[1].GetPublicId(), h[1].GetPublicId()},
+			resultHosts: []string{h[0].GetPublicId(), h[1].GetPublicId()},
+		},
+	}
+
+	for _, tc := range addCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.AddTargetHostsRequest{
+				Id:      tc.tar.GetPublicId(),
+				Version: tc.tar.GetVersion(),
+				HostIds: tc.addHosts,
+			}
+
+			got, err := s.AddTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultHosts, got.GetItem().GetHostIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
+
+	failCases := []struct {
+		name string
+		req  *pbs.AddTargetHostsRequest
+		err  error
+	}{
+		{
+			name: "Bad host Id",
+			req: &pbs.AddTargetHostsRequest{
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad version",
+			req: &pbs.AddTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 2,
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Empty host list",
+			req: &pbs.AddTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Incorrect host ids",
+			req: &pbs.AddTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				HostIds: []string{"incorrect"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.AddTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "AddTargetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestSetTargetHosts(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new host set service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+
+	setCases := []struct {
+		name        string
+		tar         *target.TcpTarget
+		setHosts    []string
+		resultHosts []string
+	}{
+		{
+			name:        "Set on empty target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			setHosts:    []string{h[1].GetPublicId()},
+			resultHosts: []string{h[1].GetPublicId()},
+		},
+		{
+			name:        "Set on populated target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithHosts([]string{h[0].GetPublicId()})),
+			setHosts:    []string{h[1].GetPublicId()},
+			resultHosts: []string{h[1].GetPublicId()},
+		},
+		{
+			name:        "Set duplicate host on populated target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithHosts([]string{h[0].GetPublicId()})),
+			setHosts:    []string{h[1].GetPublicId(), h[1].GetPublicId()},
+			resultHosts: []string{h[1].GetPublicId()},
+		},
+		{
+			name:        "Set empty on populated target",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithHosts([]string{h[0].GetPublicId()})),
+			setHosts:    []string{},
+			resultHosts: nil,
+		},
+	}
+	for _, tc := range setCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.SetTargetHostsRequest{
+				Id:      tc.tar.GetPublicId(),
+				Version: tc.tar.GetVersion(),
+				HostIds: tc.setHosts,
+			}
+
+			got, err := s.SetTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			require.NoError(t, err, "Got error: %v", s)
+			assert.ElementsMatch(t, tc.resultHosts, got.GetItem().GetHostIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test name")
+
+	failCases := []struct {
+		name string
+		req  *pbs.SetTargetHostsRequest
+		err  error
+	}{
+		{
+			name: "Bad target Id",
+			req: &pbs.SetTargetHostsRequest{
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Bad version",
+			req: &pbs.SetTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 3,
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad host id",
+			req: &pbs.SetTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				HostIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.SetTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "SetTargetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+		})
+	}
+}
+
+func TestRemoveTargetHosts(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	s, err := testService(t, conn, kms, wrapper)
+	require.NoError(t, err, "Error when getting new host set service.")
+
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
+
+	removeCases := []struct {
+		name        string
+		tar         *target.TcpTarget
+		removeHosts []string
+		resultHosts []string
+		wantErr     bool
+	}{
+		{
+			name:        "Remove from empty",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			removeHosts: []string{h[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name:        "Remove 1 of 2 hosts",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithHosts([]string{h[0].GetPublicId(), h[1].GetPublicId()})),
+			removeHosts: []string{h[1].GetPublicId()},
+			resultHosts: []string{h[0].GetPublicId()},
+		},
+		{
+			name:        "Remove 1 duplicate host of 2 hosts",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithHosts([]string{h[0].GetPublicId(), h[1].GetPublicId()})),
+			removeHosts: []string{h[1].GetPublicId(), h[1].GetPublicId()},
+			resultHosts: []string{h[0].GetPublicId()},
+		},
+		{
+			name:        "Remove all hosts",
+			tar:         target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithHosts([]string{h[0].GetPublicId(), h[1].GetPublicId()})),
+			removeHosts: []string{h[0].GetPublicId(), h[1].GetPublicId()},
+			resultHosts: []string{},
+		},
+	}
+
+	for _, tc := range removeCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.RemoveTargetHostsRequest{
+				Id:      tc.tar.GetPublicId(),
+				Version: tc.tar.GetVersion(),
+				HostIds: tc.removeHosts,
+			}
+
+			got, err := s.RemoveTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			s, ok := status.FromError(err)
+			require.True(t, ok)
+			require.NoError(t, err, "Got error: %v", s)
+
+			assert.ElementsMatch(t, tc.resultHosts, got.GetItem().GetHostIds())
+		})
+	}
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "testing")
+
+	failCases := []struct {
+		name string
+		req  *pbs.RemoveTargetHostsRequest
+		err  error
+	}{
+		{
+			name: "Bad version",
+			req: &pbs.RemoveTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 3,
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.Internal),
+		},
+		{
+			name: "Bad target Id",
+			req: &pbs.RemoveTargetHostsRequest{
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				HostIds: []string{h[0].GetPublicId()},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "empty hosts",
+			req: &pbs.RemoveTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				HostIds: []string{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid ids",
+			req: &pbs.RemoveTargetHostsRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				HostIds: []string{"invalid"},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			_, gErr := s.RemoveTargetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 		})
 	}

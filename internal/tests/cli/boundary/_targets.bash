@@ -31,6 +31,12 @@ function assoc_host_sets() {
   boundary targets add-host-sets -id $id -host-set $hst
 }
 
+function assoc_hosts() {
+  local id=$1
+  local host=$2
+  boundary targets add-hosts -id $id -host $host
+}
+
 function target_id() {
   local sid=$1
   local name=$2

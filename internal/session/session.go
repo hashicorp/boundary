@@ -287,9 +287,6 @@ func (s *Session) validateNewSession() error {
 	if s.TargetId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing target id")
 	}
-	if s.HostSetId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing host set id")
-	}
 	if s.AuthTokenId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing auth token id")
 	}

@@ -70,6 +70,29 @@ type TargetServiceClient interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error)
+	// AddTargetHosts adds Hosts to this Target. The provided request must
+	// include the Target ID to which the Hosts will be added.
+	// All Hosts added to the provided Target must be a child of a Catalog that
+	// is a child of the same scope as this Target. If the scope or Target IDs are
+	// missing, malformed, or reference non-existing resources, an error is
+	// returned. An error is returned if a Host is attempted to be added
+	// to a target that is already present on the Target.
+	AddTargetHosts(ctx context.Context, in *AddTargetHostsRequest, opts ...grpc.CallOption) (*AddTargetHostsResponse, error)
+	// SetTargetHosts sets the Target's Hosts. Any existing Hosts on the
+	// Target are deleted if they are not included in this request. The
+	// provided request must include the scope, and the Target ID on which the
+	// Hosts will be set.  All Hosts in the request must be a child of
+	// a Catalog that is in the same scope as the provided Target. If any
+	// IDs are missing, malformed, or references a non-existing resource, an
+	// error is returned.
+	SetTargetHosts(ctx context.Context, in *SetTargetHostsRequest, opts ...grpc.CallOption) (*SetTargetHostsResponse, error)
+	// RemoveTargetHosts removes the Hosts from the specified Target. The
+	// provided request must include the Target ID for the Target
+	// from which the Hosts will be removed. If the ID is missing,
+	// malformed, or references a non-existing scope or Catalog, an error is
+	// returned.  An error is returned if a Host is attempted to be
+	// removed from the Target when the Target does not have the Host.
+	RemoveTargetHosts(ctx context.Context, in *RemoveTargetHostsRequest, opts ...grpc.CallOption) (*RemoveTargetHostsResponse, error)
 }
 
 type targetServiceClient struct {
@@ -161,6 +184,33 @@ func (c *targetServiceClient) RemoveTargetHostSets(ctx context.Context, in *Remo
 	return out, nil
 }
 
+func (c *targetServiceClient) AddTargetHosts(ctx context.Context, in *AddTargetHostsRequest, opts ...grpc.CallOption) (*AddTargetHostsResponse, error) {
+	out := new(AddTargetHostsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetHosts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) SetTargetHosts(ctx context.Context, in *SetTargetHostsRequest, opts ...grpc.CallOption) (*SetTargetHostsResponse, error) {
+	out := new(SetTargetHostsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/SetTargetHosts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) RemoveTargetHosts(ctx context.Context, in *RemoveTargetHostsRequest, opts ...grpc.CallOption) (*RemoveTargetHostsResponse, error) {
+	out := new(RemoveTargetHostsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetHosts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TargetServiceServer is the server API for TargetService service.
 // All implementations must embed UnimplementedTargetServiceServer
 // for forward compatibility
@@ -218,6 +268,29 @@ type TargetServiceServer interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error)
+	// AddTargetHosts adds Hosts to this Target. The provided request must
+	// include the Target ID to which the Hosts will be added.
+	// All Hosts added to the provided Target must be a child of a Catalog that
+	// is a child of the same scope as this Target. If the scope or Target IDs are
+	// missing, malformed, or reference non-existing resources, an error is
+	// returned. An error is returned if a Host is attempted to be added
+	// to a target that is already present on the Target.
+	AddTargetHosts(context.Context, *AddTargetHostsRequest) (*AddTargetHostsResponse, error)
+	// SetTargetHosts sets the Target's Hosts. Any existing Hosts on the
+	// Target are deleted if they are not included in this request. The
+	// provided request must include the scope, and the Target ID on which the
+	// Hosts will be set.  All Hosts in the request must be a child of
+	// a Catalog that is in the same scope as the provided Target. If any
+	// IDs are missing, malformed, or references a non-existing resource, an
+	// error is returned.
+	SetTargetHosts(context.Context, *SetTargetHostsRequest) (*SetTargetHostsResponse, error)
+	// RemoveTargetHosts removes the Hosts from the specified Target. The
+	// provided request must include the Target ID for the Target
+	// from which the Hosts will be removed. If the ID is missing,
+	// malformed, or references a non-existing scope or Catalog, an error is
+	// returned.  An error is returned if a Host is attempted to be
+	// removed from the Target when the Target does not have the Host.
+	RemoveTargetHosts(context.Context, *RemoveTargetHostsRequest) (*RemoveTargetHostsResponse, error)
 	mustEmbedUnimplementedTargetServiceServer()
 }
 
@@ -251,6 +324,15 @@ func (UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetT
 }
 func (UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSets not implemented")
+}
+func (UnimplementedTargetServiceServer) AddTargetHosts(context.Context, *AddTargetHostsRequest) (*AddTargetHostsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHosts not implemented")
+}
+func (UnimplementedTargetServiceServer) SetTargetHosts(context.Context, *SetTargetHostsRequest) (*SetTargetHostsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetTargetHosts not implemented")
+}
+func (UnimplementedTargetServiceServer) RemoveTargetHosts(context.Context, *RemoveTargetHostsRequest) (*RemoveTargetHostsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHosts not implemented")
 }
 func (UnimplementedTargetServiceServer) mustEmbedUnimplementedTargetServiceServer() {}
 
@@ -427,6 +509,60 @@ func _TargetService_RemoveTargetHostSets_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TargetService_AddTargetHosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddTargetHostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).AddTargetHosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/AddTargetHosts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).AddTargetHosts(ctx, req.(*AddTargetHostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TargetService_SetTargetHosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTargetHostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).SetTargetHosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/SetTargetHosts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).SetTargetHosts(ctx, req.(*SetTargetHostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TargetService_RemoveTargetHosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTargetHostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).RemoveTargetHosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/RemoveTargetHosts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).RemoveTargetHosts(ctx, req.(*RemoveTargetHostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _TargetService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.TargetService",
 	HandlerType: (*TargetServiceServer)(nil),
@@ -466,6 +602,18 @@ var _TargetService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveTargetHostSets",
 			Handler:    _TargetService_RemoveTargetHostSets_Handler,
+		},
+		{
+			MethodName: "AddTargetHosts",
+			Handler:    _TargetService_AddTargetHosts_Handler,
+		},
+		{
+			MethodName: "SetTargetHosts",
+			Handler:    _TargetService_SetTargetHosts_Handler,
+		},
+		{
+			MethodName: "RemoveTargetHosts",
+			Handler:    _TargetService_RemoveTargetHosts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

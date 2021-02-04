@@ -429,7 +429,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}
-	tt, _, err := targetRepo.CreateTcpTarget(cancelCtx, t, opts...)
+	tt, _, _, err := targetRepo.CreateTcpTarget(cancelCtx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error saving target to the db: %w", err)
 	}

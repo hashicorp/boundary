@@ -26,6 +26,7 @@ type options struct {
 	withUserId                 string
 	withTargetType             *TargetType
 	withHostSets               []string
+	withHosts                  []string
 	withSessionMaxSeconds      uint32
 	withSessionConnectionLimit int32
 	withPublicId               string
@@ -120,6 +121,13 @@ func WithTargetType(t TargetType) Option {
 func WithHostSets(hs []string) Option {
 	return func(o *options) {
 		o.withHostSets = hs
+	}
+}
+
+// WithHosts provides an option for providing a list of host ids
+func WithHosts(hs []string) Option {
+	return func(o *options) {
+		o.withHosts = hs
 	}
 }
 

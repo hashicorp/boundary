@@ -26,6 +26,7 @@ type Command struct {
 	Func string
 
 	flagHostSets []string
+	flagHosts    []string
 	flagHostId   string
 }
 
@@ -33,6 +34,8 @@ func (c *Command) Synopsis() string {
 	switch c.Func {
 	case "add-host-sets", "set-host-sets", "remove-host-sets":
 		return hostSetSynopsisFunc(c.Func)
+	case "add-hosts", "set-hosts", "remove-hosts":
+		return hostsSynopsisFunc(c.Func)
 	case "authorize-session":
 		return "Request session authorization against the target"
 	default:
@@ -48,6 +51,9 @@ var flagsMap = map[string][]string{
 	"add-host-sets":     {"id", "host-set", "version"},
 	"remove-host-sets":  {"id", "host-set", "version"},
 	"set-host-sets":     {"id", "host-set", "version"},
+	"add-hosts":         {"id", "host", "version"},
+	"remove-hosts":      {"id", "host", "version"},
+	"set-hosts":         {"id", "host", "version"},
 }
 
 func (c *Command) Help() string {
@@ -96,7 +102,7 @@ func (c *Command) Help() string {
 			"",
 			"  This command allows adding host-set resources to target resources. Example:",
 			"",
-			"    Add host-set resources to a tcp-type target:",
+			"    Add host-set resources to a target:",
 			"",
 			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host-set hsst_1234567890 -host-set hsst_0987654321`,
 			"",
@@ -108,9 +114,9 @@ func (c *Command) Help() string {
 			"",
 			"  This command allows removing host-set resources from target resources. Example:",
 			"",
-			"    Remove host-set resources from a tcp-type target:",
+			"    Remove host-set resources from a target:",
 			"",
-			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
+			`      $ boundary targets remove-host-sets -id ttcp_1234567890 -host-set hsst_1234567890 -host-set hsst_0987654321`,
 			"",
 			"",
 		})
@@ -120,9 +126,45 @@ func (c *Command) Help() string {
 			"",
 			"  This command allows setting the complete set of host-set resources on a target resource. Example:",
 			"",
-			"    Set host-set resources on a tcp-type target:",
+			"    Set host-set resources on a target:",
 			"",
 			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
+			"",
+			"",
+		})
+	case "add-hosts":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target add-hosts [options] [args]",
+			"",
+			"  This command allows adding host resources to target resources. Example:",
+			"",
+			"    Add host resources to a target:",
+			"",
+			`      $ boundary targets add-hosts -id ttcp_1234567890 -host hst_1234567890 -host hst_0987654321`,
+			"",
+			"",
+		})
+	case "remove-hosts":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target remove-hosts [options] [args]",
+			"",
+			"  This command allows removing host resources from target resources. Example:",
+			"",
+			"    Remove host resources from a target:",
+			"",
+			`      $ boundary targets remove-hosts -id ttcp_1234567890 -host hst_1234567890 -host hst_0987654321`,
+			"",
+			"",
+		})
+	case "set-hosts":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target set-hosts [options] [args]",
+			"",
+			"  This command allows setting the complete set of host resources on a target resource. Example:",
+			"",
+			"    Set host resources on a target:",
+			"",
+			`      $ boundary targets set-hosts -id ttcp_1234567890 -host hst_1234567890`,
 			"",
 			"",
 		})
@@ -164,6 +206,12 @@ func (c *Command) Flags() *base.FlagSets {
 				Name:   "host-set",
 				Target: &c.flagHostSets,
 				Usage:  "The host-set resources to add, remove, or set. May be specified multiple times.",
+			})
+		case "host":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "host",
+				Target: &c.flagHosts,
+				Usage:  "The host resources to add, remove, or set. May be specified multiple times.",
 			})
 		case "host-id":
 			f.StringVar(&base.StringVar{
@@ -300,6 +348,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	hostSets := c.flagHostSets
+	hosts := c.flagHosts
 	switch c.Func {
 	case "add-host-sets", "remove-host-sets":
 		if len(c.flagHostSets) == 0 {
@@ -317,6 +366,24 @@ func (c *Command) Run(args []string) int {
 				hostSets = nil
 			}
 		}
+
+	case "add-hosts", "remove-hosts":
+		if len(c.flagHosts) == 0 {
+			c.UI.Error("No hosts supplied via -host")
+			return 1
+		}
+
+	case "set-hosts":
+		switch len(c.flagHosts) {
+		case 0:
+			c.UI.Error("No hosts supplied via -host")
+			return 1
+		case 1:
+			if c.flagHosts[0] == "null" {
+				hosts = nil
+			}
+		}
+
 	case "authorize-session":
 		if len(c.flagHostId) != 0 {
 			opts = append(opts, targets.WithHostId(c.flagHostId))
@@ -326,7 +393,12 @@ func (c *Command) Run(args []string) int {
 	// Perform check-and-set when needed
 	var version uint32
 	switch c.Func {
-	case "add-host-sets", "remove-host-sets", "set-host-sets":
+	case "add-host-sets",
+		"remove-host-sets",
+		"set-host-sets",
+		"add-hosts",
+		"remove-hosts",
+		"set-hosts":
 		switch c.FlagVersion {
 		case 0:
 			opts = append(opts, targets.WithAutomaticVersioning(true))
@@ -362,6 +434,12 @@ func (c *Command) Run(args []string) int {
 		result, err = targetClient.RemoveHostSets(c.Context, c.FlagId, version, hostSets, opts...)
 	case "set-host-sets":
 		result, err = targetClient.SetHostSets(c.Context, c.FlagId, version, hostSets, opts...)
+	case "add-hosts":
+		result, err = targetClient.AddHosts(c.Context, c.FlagId, version, hosts, opts...)
+	case "remove-hosts":
+		result, err = targetClient.RemoveHosts(c.Context, c.FlagId, version, hosts, opts...)
+	case "set-hosts":
+		result, err = targetClient.SetHosts(c.Context, c.FlagId, version, hosts, opts...)
 	case "authorize-session":
 		sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
 	}

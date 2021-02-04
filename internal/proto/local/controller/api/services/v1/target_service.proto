@@ -149,6 +149,59 @@ service TargetService {
     };
   }
 
+  // AddTargetHosts adds Hosts to this Target. The provided request must
+  // include the Target ID to which the Hosts will be added.
+  // All Hosts added to the provided Target must be a child of a Catalog that
+  // is a child of the same scope as this Target. If the scope or Target IDs are
+  // missing, malformed, or reference non-existing resources, an error is
+  // returned. An error is returned if a Host is attempted to be added
+  // to a target that is already present on the Target.
+  rpc AddTargetHosts(AddTargetHostsRequest) returns (AddTargetHostsResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-hosts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds existing Hosts to a Target."
+    };
+  }
+
+  // SetTargetHosts sets the Target's Hosts. Any existing Hosts on the
+  // Target are deleted if they are not included in this request. The
+  // provided request must include the scope, and the Target ID on which the
+  // Hosts will be set.  All Hosts in the request must be a child of
+  // a Catalog that is in the same scope as the provided Target. If any
+  // IDs are missing, malformed, or references a non-existing resource, an
+  // error is returned.
+  rpc SetTargetHosts(SetTargetHostsRequest) returns (SetTargetHostsResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-hosts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the Hosts on the Target."
+    };
+  }
+
+  // RemoveTargetHosts removes the Hosts from the specified Target. The
+  // provided request must include the Target ID for the Target
+  // from which the Hosts will be removed. If the ID is missing,
+  // malformed, or references a non-existing scope or Catalog, an error is
+  // returned.  An error is returned if a Host is attempted to be
+  // removed from the Target when the Target does not have the Host.
+  rpc RemoveTargetHosts(RemoveTargetHostsRequest) returns (RemoveTargetHostsResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-hosts"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes Hosts from the Target."
+    };
+  }
+
 }
 
 message GetTargetRequest {
@@ -226,6 +279,42 @@ message RemoveTargetHostSetsRequest {
 }
 
 message RemoveTargetHostSetsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetHostsRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_ids = 3 [json_name="host_ids"];
+}
+
+message AddTargetHostsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message SetTargetHostsRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_ids = 3 [json_name="host_ids"];
+}
+
+message SetTargetHostsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetHostsRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string host_ids = 3 [json_name="host_ids"];
+}
+
+message RemoveTargetHostsResponse {
   api.resources.targets.v1.Target item = 1;
 }
 

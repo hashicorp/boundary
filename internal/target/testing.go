@@ -35,6 +35,16 @@ func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Opt
 		err := rw.CreateItems(context.Background(), newHostSets)
 		require.NoError(err)
 	}
+	if len(opts.withHosts) > 0 {
+		newHosts := make([]interface{}, 0, len(opts.withHosts))
+		for _, s := range opts.withHosts {
+			host, err := NewTargetHost(target.PublicId, s)
+			require.NoError(err)
+			newHosts = append(newHosts, host)
+		}
+		err := rw.CreateItems(context.Background(), newHosts)
+		require.NoError(err)
+	}
 	return target
 }
 

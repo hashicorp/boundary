@@ -360,6 +360,10 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto: &targets.Host{},
+		outFile: "targets/host.gen.go",
+	},
+	{
 		inProto:     &targets.SessionAuthorization{},
 		outFile:     "targets/session_authorization.gen.go",
 		subtypeName: "SessionAuthorization",
@@ -388,6 +392,7 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"target"},
 		sliceSubTypes: map[string]string{
 			"HostSets": "hostSetIds",
+			"Hosts":    "hostIds",
 		},
 		extraOptions: []fieldInfo{
 			{
