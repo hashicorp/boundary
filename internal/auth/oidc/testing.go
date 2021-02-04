@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -71,7 +70,8 @@ func TestAuthMethod(
 	if len(opts.withCertificates) > 0 {
 		newCerts := make([]interface{}, 0, len(opts.withCertificates))
 		for _, c := range opts.withCertificates {
-			pem := TestEncodeCertificates(t, c)
+			pem, err := EncodeCertificates(c)
+			require.NoError(err)
 			cert, err := NewCertificate(authMethod.PublicId, pem[0])
 			require.NoError(err)
 			newCerts = append(newCerts, cert)
@@ -107,26 +107,6 @@ func TestAccount(t *testing.T, conn *gorm.DB, authMethodId string, issuerId *url
 
 	require.NoError(rw.Create(ctx, a))
 	return a
-}
-
-// TestEncodeCertificates will encode a number of x509 certificates to PEMs.
-func TestEncodeCertificates(t *testing.T, certs ...*x509.Certificate) []string {
-	t.Helper()
-	require := require.New(t)
-	require.NotEmpty(certs)
-
-	var pems []string
-	for _, cert := range certs {
-		var buffer bytes.Buffer
-		require.NotNil(cert)
-		err := pem.Encode(&buffer, &pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: cert.Raw,
-		})
-		require.NoError(err)
-		pems = append(pems, buffer.String())
-	}
-	return pems
 }
 
 // TestConvertToUrls will convert URL string representations to a slice of
