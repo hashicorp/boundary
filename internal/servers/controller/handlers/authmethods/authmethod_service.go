@@ -239,6 +239,8 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 }
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
+//
+// Deprecated in favor of AuthenticateLogin
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
@@ -258,6 +260,28 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	}
 	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
 	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+}
+
+// AuthenticateLogin implements the interface pbs.AuthenticationServiceServer.
+func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLoginRequest) (*pbs.AuthenticateLoginResponse, error) {
+	if err := validateAuthenticateLoginRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	creds := req.GetCredentials().GetFields()
+	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	if err != nil {
+		return nil, err
+	}
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	return &pbs.AuthenticateLoginResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
@@ -587,7 +611,36 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	return nil
 }
 
+// Deprecated; remove when Authenticate is removedLogin
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
+		badFields["auth_method_id"] = "This is a required field."
+	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
+	// TODO: Update this when we enable different auth method types.
+	if req.GetCredentials() == nil {
+		badFields["credentials"] = "This is a required field."
+	}
+	creds := req.GetCredentials().GetFields()
+	if _, ok := creds[loginNameKey]; !ok {
+		badFields["credentials.login_name"] = "This is a required field."
+	}
+	if _, ok := creds[pwKey]; !ok {
+		badFields["credentials.password"] = "This is a required field."
+	}
+	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+	if tType != "" && tType != "token" && tType != "cookie" {
+		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+	return nil
+}
+
+func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."

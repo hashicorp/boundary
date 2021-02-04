@@ -101,7 +101,7 @@ service AuthMethodService {
   // action and returns an auth token.
   rpc AuthenticateLogin(AuthenticateLoginRequest) returns (AuthenticateLoginResponse) {
     option (google.api.http) = {
-      post: "/v1/auth-methods/{auth_method_id}:authenticate:login"
+      post: "/v1/auth-methods/{auth_method_id}:authenticate_login"
       body: "*"
       response_body: "item"
     };

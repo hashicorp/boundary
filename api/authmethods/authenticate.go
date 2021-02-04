@@ -18,7 +18,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 		"credentials": credentials,
 	}
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate_login", authMethodId), reqBody, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Authenticate request: %w", err)
 	}
