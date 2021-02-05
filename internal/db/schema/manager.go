@@ -19,6 +19,7 @@ type driver interface {
 	Lock(context.Context) error
 	Unlock(context.Context) error
 	UnlockShared(context.Context) error
+	Ping(context.Context) error
 	// Either starts a transactioon internal to the driver or sets a dirty
 	// bit so if the Run fails the CurrentState reflects it.
 	StartRun(context.Context) error
@@ -88,6 +89,15 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	dbS.DatabaseSchemaVersion = v
 	dbS.Dirty = dirty
 	return &dbS, nil
+}
+
+// Ping verifies the connection to the database is still open.
+func (b *Manager) Ping(ctx context.Context) error {
+	const op = "schema.(Manager).Ping"
+	if err := b.driver.Ping(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
 }
 
 // SharedLock attempts to obtain a shared lock on the database.  This can fail

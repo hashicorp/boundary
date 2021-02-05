@@ -85,7 +85,8 @@ type Server struct {
 	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
 
-	Database *gorm.DB
+	Database      *gorm.DB
+	SchemaManager *schema.Manager
 }
 
 func NewServer(cmd *Command) *Server {

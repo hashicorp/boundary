@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net"
 	"runtime"
 	"strings"
@@ -35,7 +36,6 @@ var (
 type Command struct {
 	*base.Server
 
-	ExtShutdownCh chan struct{}
 	SighupCh      chan struct{}
 	ReloadedCh    chan struct{}
 	SigUSR2Ch     chan struct{}
@@ -124,6 +124,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	defer c.CancelFn()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -355,49 +356,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1
 		}
-
-		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
-			return 1
-		}
-		// This is an advisory locks on the DB which is released when the db session ends.
-		if err := sMan.SharedLock(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
-			return 1
-		}
-		defer func() {
-			// The base context has already been cancelled so we shouldn't use it here.
-			// 1 second is chosen so the shutdown is still responsive and this is a mostly
-			// non critical step since the lock should be released when the session with the
-			// database is closed.
-			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
-			defer cancel()
-			if err := sMan.SharedUnlock(ctx); err != nil {
-				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
-			}
-		}()
-		ckState, err := sMan.CurrentState(c.Context)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
-			return 1
-		}
-		if !ckState.InitializationStarted {
-			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
-			return 1
-		}
-		if ckState.Dirty {
-			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
-			return 1
-		}
-		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
-			return 1
-		}
-		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
-				"than this binary expects. Please use a newer version of the boundary "+
-				"binary.", ckState.DatabaseSchemaVersion)))
+		if err := c.connectSchemaManager("postgres"); err != nil {
+			c.UI.Error(err.Error())
 			return 1
 		}
 		if err := c.verifyKmsSetup(); err != nil {
@@ -541,14 +501,9 @@ func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	shutdownCh := c.ShutdownCh
-	if c.ExtShutdownCh != nil {
-		shutdownCh = c.ExtShutdownCh
-	}
-
 	for !shutdownTriggered {
 		select {
-		case <-shutdownCh:
+		case <-c.Context.Done():
 			c.UI.Output("==> Boundary server shutdown triggered")
 
 			if c.Config.Worker != nil {
@@ -651,6 +606,86 @@ func (c *Command) Reload() error {
 	}
 
 	return reloadErrors.ErrorOrNil()
+}
+
+// connectSchemaManager connects the schema manager to the backing database and captures
+// a shared lock.
+func (c *Command) connectSchemaManager(dialect string) error {
+	sm, err := schema.NewManager(c.Context, dialect, c.Database.DB())
+	if err != nil {
+		return fmt.Errorf("Can't get schema manager: %w.", err)
+	}
+	c.SchemaManager = sm
+	// This is an advisory locks on the DB which is released when the db session ends.
+	if err := sm.SharedLock(c.Context); err != nil {
+		return fmt.Errorf("Unable to gain shared access to the database: %w", err)
+	}
+	c.ShutdownFuncs = append(c.ShutdownFuncs, func() error {
+		// The base context has already been cancelled so we shouldn't use it to try to unlock the db.
+		// 1 second is chosen so the shutdown is still responsive and this is a mostly
+		// non critical step since the lock should be released when the session with the
+		// database is closed.
+		ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+		defer cancel()
+		if err := sm.SharedUnlock(ctx); err != nil {
+			return fmt.Errorf("Unable to release shared lock to the database: %w", err)
+		}
+		return nil
+	})
+	ckState, err := sm.CurrentState(c.Context)
+	if err != nil {
+		return fmt.Errorf("Error checking schema state: %w", err)
+	}
+	if !ckState.InitializationStarted {
+		return fmt.Errorf("The database has not been initialized. Please run 'boundary database init'.")
+	}
+	if ckState.Dirty {
+		return fmt.Errorf("Database is in a bad state. Please revert the database into the last known good state.")
+	}
+	if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
+		return fmt.Errorf("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database.")
+	}
+	if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
+		return fmt.Errorf("Newer schema version (%d) "+
+			"than this binary expects. Please use a newer version of the boundary "+
+			"binary.", ckState.DatabaseSchemaVersion)
+	}
+
+	go c.ensureManagerConnection()
+	return nil
+}
+
+// ensureManagerConnection ensures that the schema manager is able to communicate
+// with the database for the duration of the controller and if not it cancels the
+// command's context which everything down.
+func (c *Command) ensureManagerConnection() {
+	const schemaManagerInterval = 20 * time.Second
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	getRandomInterval := func() time.Duration {
+		// 0 to 0.5 adjustment to the base
+		f := r.Float64() / 2
+		// Half a chance to be faster, not slower
+		if r.Float32() > 0.5 {
+			f = -1 * f
+		}
+		return schemaManagerInterval + time.Duration(f*float64(schemaManagerInterval))
+	}
+
+	t := time.NewTicker(getRandomInterval())
+	for {
+		if err := c.SchemaManager.Ping(c.Context); err != nil {
+			c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure it's integrity.")
+			c.CancelFn()
+		}
+
+		select {
+		case <-c.Context.Done():
+			// The command is shutting down so stop checking.
+			return
+		case <-t.C:
+			t.Reset(getRandomInterval())
+		}
+	}
 }
 
 func (c *Command) verifyKmsSetup() error {

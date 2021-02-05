@@ -56,8 +56,6 @@ var defaultMigrationsTable = "boundary_schema_version"
 type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn
-	db   *sql.DB
-
 	tx *sql.Tx
 }
 
@@ -65,19 +63,28 @@ type Postgres struct {
 // connectable and a version table being initialized.
 func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 	const op = "postgres.New"
-	if err := instance.PingContext(ctx); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
 	conn, err := instance.Conn(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 
+	if err := conn.PingContext(ctx); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
 	px := &Postgres{
 		conn: conn,
-		db:   instance,
 	}
 	return px, nil
+}
+
+// Ping pings the DB over the connection that all management operations are performed and locks are held.
+func (p *Postgres) Ping(ctx context.Context) error {
+	const op = "postgres.(Postgres).Ping"
+	if err := p.conn.PingContext(ctx); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
 }
 
 // TrySharedLock attempts to capture a shared lock. If it is not successful it returns an error.
