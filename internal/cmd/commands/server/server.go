@@ -368,7 +368,10 @@ func (c *Command) Run(args []string) int {
 		}
 		defer func() {
 			// The base context has already been cancelled so we shouldn't use it to try to unlock the db.
-			ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+			// 1 second is chosen so the shutdown is still responsive and this is a mostly
+			// non critical step since the lock should be released when the session with the
+			// database is closed.
+			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
 			defer cancel()
 			if err := sMan.SharedUnlock(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
