@@ -84,8 +84,8 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			// We have this action
 		case grant.actions[parentAction]:
 			// We don't have this action, but it's a subaction and we have the
-			// parent action. As an example, if we are looking for "list:self"
-			// and have "list", this is sufficient.
+			// parent action. As an example, if we are looking for "read:self"
+			// and have "read", this is sufficient.
 		case grant.actions[action.All]:
 			// All actions are allowed
 		default:
