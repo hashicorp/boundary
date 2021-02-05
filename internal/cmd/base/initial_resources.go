@@ -32,9 +32,13 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
@@ -104,9 +108,13 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	am, err := pwRepo.CreateAuthMethod(cancelCtx, authMethod,
@@ -212,9 +220,13 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
@@ -290,9 +302,13 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	staticRepo, err := static.NewRepository(rw, rw, kmsCache)
@@ -396,9 +412,13 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	targetRepo, err := target.NewRepository(rw, rw, kmsCache)
