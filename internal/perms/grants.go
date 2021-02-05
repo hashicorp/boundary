@@ -302,8 +302,54 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	}
 
 	if !opts.withSkipFinalValidation {
-		// Validate the grant. Create a dummy resource and pass it through
-		// Allowed and ensure that we get allowed.
+		// Filter out some forms that don't make sense
+
+		// First up, an ID is given, no type, and actions contains "create" or
+		// "list". Note wildcard for actions is still okay.
+		if grant.id != "" && grant.typ == resource.Unknown {
+			if grant.actions[action.Create] ||
+				grant.actions[action.List] {
+				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains create or list action in a format that does not allow these")
+			}
+		}
+		// If no ID is given...
+		if grant.id == "" {
+			// Check the type
+			switch grant.typ {
+			case resource.Unknown:
+				// Error -- no ID or type isn't valid (although we should never
+				// get to this point because original parsing should error)
+				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains no id or type")
+			case resource.All:
+				// "type=*;actions=..." is not supported -- we reqiure you to
+				// explicitly set a pin or set the ID to *
+				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains wildcard type with no id value")
+			default:
+				// Here we have type=something,actions=<something else>. This
+				// means we're operating on collections. Note that wildcard
+				// actions are not okay here; that uses the format
+				// id=*;type=<something>;actions=*
+				switch len(grant.actions) {
+				case 0:
+					// A total lack of actions is already caught elsewhere but
+					// this is here for completeness
+					return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains no actions")
+				case 1:
+					if !grant.actions[action.Create] &&
+						!grant.actions[action.List] {
+						return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+					}
+				case 2:
+					if !grant.actions[action.Create] || !grant.actions[action.List] {
+						return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+					}
+				default:
+					return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+				}
+			}
+		}
+		// Create a dummy resource and pass it through Allowed and ensure that
+		// we get allowed.
 		acl := NewACL(grant)
 		r := Resource{
 			ScopeId: scopeId,

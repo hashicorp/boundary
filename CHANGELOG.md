@@ -4,11 +4,26 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Changes/Deprecations
+
+* permissions: Update some errors to make them more descriptive, and disallow
+  permissions in some forms where they will never take effect, preventing
+  possible confusion (existing grants already saved to the database will not be
+  affected as this is only filtered when grants are added/set on a role):
+  * `id=<some_id>;actions=<some_actions>` where one of the actions is `create`
+    or `list`. By definition this format operates only on individual resources
+    so `create` and `list` will never work
+  * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
+    `create` or `list`. This format operates only on collections so assigning
+    more actions this way will never work
+
 ### New and Improved
 
 * server: When running single-server mode and `controllers` is not specified in
   the `worker` block, use `public_cluster_addr` if given
   ([PR](https://github.com/hashicorp/boundary/pull/904))
+* server: Add `read` action to default scope grant
+  ([PR](https://github.com/hashicorp/boundary/pull/913))
 
 ### Bug Fixes
 
@@ -32,6 +47,10 @@ database migrate` command.
 
 * controller/worker: Require names to be all lowercase. This removes ambiguity
   or accidental mismatching when using upcoming filtering features.
+* api/cli: Due to visibility changes on collection listing, a list
+  will not include any resources if the user only has `list` as an authorized action.
+  As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
+  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
 
 ### New and Improved
 
