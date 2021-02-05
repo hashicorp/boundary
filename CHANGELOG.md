@@ -37,7 +37,7 @@ database migrate` command.
 * api/cli: Due to visibility changes on collection listing, a list
   will not include any resources if the user only has `list` as an authorized action.
   As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
-  will be empty if the `u_anon` role grant does not include a `read` action 
+  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
 
 ### New and Improved
 
