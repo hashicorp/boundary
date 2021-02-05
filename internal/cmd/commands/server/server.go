@@ -384,6 +384,7 @@ func (c *Command) Run(args []string) int {
 		}
 		if !ckState.InitializationStarted {
 			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
+			return 1
 		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
