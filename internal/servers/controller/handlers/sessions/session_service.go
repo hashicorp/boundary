@@ -80,39 +80,17 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	sl, err := s.listSessions(ctx, action.List, req.GetScopeId(), req.GetRecursive())
-	if err != nil {
-		return nil, err
-	}
-	return &pbs.ListSessionsResponse{Items: sl}, nil
-}
 
-// ListSelfSessions implements the interface pbs.SessionServiceServer.
-func (s Service) ListSelfSessions(ctx context.Context, req *pbs.ListSelfSessionsRequest) (*pbs.ListSelfSessionsResponse, error) {
-	if err := validateListSelfRequest(req); err != nil {
-		return nil, err
-	}
-	sl, err := s.listSessions(ctx, action.ListSelf, req.GetScopeId(), req.GetRecursive())
-	if err != nil {
-		return nil, err
-	}
-	return &pbs.ListSelfSessionsResponse{Items: sl}, nil
-}
-
-func (s Service) listSessions(ctx context.Context, a action.Type, scopeId string, recursive bool) ([]*pb.Session, error) {
-	authResults := s.authResult(ctx, scopeId, a)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, scopeId, recursive)
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
-	opts := []session.Option{session.WithScopeIds(scopeIds)}
-	if a == action.ListSelf {
-		opts = append(opts, session.WithUserId(authResults.UserId))
-	}
-	seslist, err := s.listFromRepo(ctx, opts...)
+
+	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +107,8 @@ func (s Service) listSessions(ctx context.Context, a action.Type, scopeId string
 			finalItems = append(finalItems, item)
 		}
 	}
-	return finalItems, err
+
+	return &pbs.ListSessionsResponse{Items: finalItems}, nil
 }
 
 // CancelSession implements the interface pbs.SessionServiceServer.
@@ -291,18 +270,6 @@ func validateGetRequest(req *pbs.GetSessionRequest) error {
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
-		!req.GetRecursive() {
-		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
-	}
-	return nil
-}
-
-func validateListSelfRequest(req *pbs.ListSelfSessionsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		!req.GetRecursive() {

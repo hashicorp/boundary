@@ -695,13 +695,6 @@ var session = &Resource{
 					},
 				},
 				{
-					Name:        "list:self",
-					Description: "List sessions that belong to the calling user",
-					Examples: []string{
-						"type=session;actions=list:self",
-					},
-				},
-				{
 					Name:        "cancel:self",
 					Description: "Cancel a session, which must belong to the calling user",
 					Examples: []string{
