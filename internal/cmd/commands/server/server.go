@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -365,7 +367,10 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		defer func() {
-			if err := sMan.SharedUnlock(c.Context); err != nil {
+			// The base context has already been cancelled so we shouldn't use it to try to unlock the db.
+			ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+			defer cancel()
+			if err := sMan.SharedUnlock(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
