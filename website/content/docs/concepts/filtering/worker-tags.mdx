@@ -75,10 +75,11 @@ nested under `tags` and include a `name` value:
 ```
 
 !> If an expression fails due to a key not being found within the input data,
-the worker is not included in the final set. Be careful when using negative
-matching (such as `!=`). For instance, if the key is not found when evaluating
-`"/foo" != "bar"`, the expression will return false, which will be the same
-behavior as if the key was found but equal.
+the worker is not included in the final set, so ensure that all workers that
+should match a given filter are populated with tags referenced in the filter
+string. As a corollary, it is not possible to distinguish between a worker that
+is not included due to the expression itself and a worker that did not have
+correct tags.
 
 Following are some examples of using these values in filters:
 
