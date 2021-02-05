@@ -32,7 +32,6 @@ var (
 	// this collection
 	CollectionActions = action.ActionSet{
 		action.List,
-		action.ListSelf,
 	}
 )
 
@@ -181,7 +180,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Session), auth.WithAction(a)}
 	switch a {
-	case action.List, action.ListSelf:
+	case action.List:
 		parentId = id
 		iamRepo, err := s.iamRepoFn()
 		if err != nil {

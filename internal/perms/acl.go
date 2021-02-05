@@ -112,7 +112,6 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			grant.typ != resource.Unknown &&
 			topLevelType(r.Type) &&
 			(aType == action.List ||
-				aType == action.ListSelf ||
 				aType == action.Create):
 
 			results.Allowed = true
