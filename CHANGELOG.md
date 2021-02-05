@@ -30,6 +30,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * api: Fix nil pointer panic that could occur when using TLS
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
+* server: When shutting down a controller release the shared advisory lock with a non cancelled context.
+  ([Issue](https://github.com/hashicorp/boundary/pull/909),
+  [PR](https://github.com/hashicorp/boundary/pull/918))
   
 ## 0.1.5 (2021/01/29)
 
