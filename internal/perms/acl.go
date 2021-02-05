@@ -98,7 +98,9 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
-			grant.typ == resource.Unknown:
+			grant.typ == resource.Unknown &&
+			aType != action.List &&
+			aType != action.Create:
 
 			results.Allowed = true
 			return

@@ -4,6 +4,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Changes/Deprecations
+
+* permissions: Update some errors to make them more descriptive, and disallow
+  permissions in some forms where they will never take effect, preventing
+  possible confusion (existing grants already saved to the database will not be
+  affected as this is only filtered when grants are added/set on a role):
+  * `id=<some_id>;actions=<some_actions>` where one of the actions is `create`
+    or `list`. By definition this format operates only on individual resources
+    so `create` and `list` will never work
+  * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
+    `create` or `list`. This format operates only on collections so assigning
+    more actions this way will never work
+
 ### New and Improved
 
 * server: When running single-server mode and `controllers` is not specified in
