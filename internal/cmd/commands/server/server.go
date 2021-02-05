@@ -367,7 +367,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		defer func() {
-			// The base context has already been cancelled so we shouldn't use it to try to unlock the db.
+			// The base context has already been cancelled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.
