@@ -73,6 +73,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Io,
 		},
 		{
+			name: "TooShort",
+			c:    TooShort,
+			want: TooShort,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
