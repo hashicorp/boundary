@@ -2,25 +2,25 @@ package oidc
 
 import (
 	"context"
-	"net/http"
 	"net/url"
 )
 
 // CreateAuthMethod creates m (*AuthMethod) in the repo and returns the newly
-// created AuthMethod (with its PublicId set) along with its associated
-// SigningAlgs, CallbackUrls, AudClaims (optional) and Certificates (optional).
+// created AuthMethod (with its PublicId set) along with its associated Value
+// Objects of SigningAlgs, CallbackUrls, AudClaims (optional) and Certificates
+// (optional).
 //
-// Supported options WithName, WithDescription, WithSigningAlgs,
-// WithCallbackUrls, WithAudClaims, and WithCertificates. All other options are
+// Supported options WithName, WithDescription. All other options are
 // ignored.
-func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, []*SigningAlg, []*CallbackUrl, []*AudClaim, []*Certificate, error) {
+func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	panic("to-do")
 }
 
-// LookupAuthMethod will lookup an auth method in the repo, along with its associated
-// SigningAlgs, CallbackUrls, AudClaims and Certificates. If it's not found,
-// it will return nil, nil.  No options are currently supported.
-func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, []*SigningAlg, []*CallbackUrl, []*AudClaim, []*Certificate, error) {
+// LookupAuthMethod will lookup an auth method in the repo, along with its
+// associated Value Objects of SigningAlgs, CallbackUrls, AudClaims and
+// Certificates. If it's not found, it will return nil, nil.  No options are
+// currently supported.
+func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, error) {
 	panic("to-do")
 }
 
@@ -39,10 +39,11 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 // written auth method. fieldMaskPaths provides field_mask.proto paths for
 // fields that should be updated.  Fields will be set to NULL if the field is a
 // zero value and included in fieldMask. Name, Description, State, DiscoveryUrl,
-// ClientId, ClientSecret, MaxAge are all updatable fields, If no updatable
-// fields are included in the fieldMaskPaths, then an error is returned.  No
-// options are currently supported.
-func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, version uint32, fieldMaskPaths []string, _ ...Option) (*AuthMethod, []*SigningAlg, []*CallbackUrl, []*AudClaim, []*Certificate, error) {
+// ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
+// Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
+// also updatable. if no updatable fields are included in the fieldMaskPaths,
+// then an error is returned.  No options are currently supported.
+func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, version uint32, fieldMaskPaths []string, _ ...Option) (*AuthMethod, error) {
 	panic("to-do")
 }
 
@@ -58,9 +59,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, versio
 // and user_info endpoints by connecting to each and uses any certificates in the
 // configuration as trust anchors to confirm connectivity.
 //
-// Supported options WithName, WithDescription, WithSigningAlgs,
-// WithCallbackUrls, WithAudClaims, and WithCertificates. All other options are
-// ignored.
+// No options are currently supported.
 func (r *Repository) TestAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) error {
 	panic("to-do")
 }
@@ -97,15 +96,5 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ..
 // the results of the user's OIDC authentication attempt.  No options are
 // currently supported.
 func (r *Repository) StartAuth(ctx context.Context, authMethodId string, clientType, clientVersion string, clientRoundTripKVs map[string]string) (authUrl *url.URL, tokenUrl *url.URL, e error) {
-	panic("to-do")
-}
-
-// CallHandler creates an http.Handler for the auth method that processes
-// authentication responses from the OIDC provider. Boundary would use this
-// callback handler to wire up: POST
-// /v1/auth-methods/<authMethodId>:authenticate:callback
-//
-// No options are currently supported.
-func (r *Repository) CallbackHandler(ctx context.Context, authMethodId string) (*http.Handler, error) {
 	panic("to-do")
 }

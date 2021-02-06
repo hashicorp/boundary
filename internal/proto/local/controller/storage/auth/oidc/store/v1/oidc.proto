@@ -75,6 +75,31 @@ message AuthMethod {
   // for max age based on the oidc spec.
   // @inject_tag: `gorm:"default:null"`
   int32 max_age = 150;
+
+  // signing_algs are the signing algorithms allowed for an oidc auth method.
+  // These are Value Objects that will be stored as SigningAlg messages, and are
+  // operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string signing_algs = 160;
+
+  // callback_urls are the callback URLs allowed for a specific oidc auth
+  // method. These are Value Objects that will be stored as CallbackUrl messages,
+  // and are operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string callback_urls = 170;
+
+  // aud_claims are the audience claims for a specific oidc auth method. These
+  // are Value Objects that will be stored as AudClaim messages, and are
+  // operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string aud_claims = 180;
+
+  // certificates are optional PEM encoded x509 certificates that can be
+  // used as trust anchors when connecting to an OIDC provider. These are Value
+  // Objects that will be stored as Certificate messages, and are operatated on
+  // as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string certificates = 190;
 }
 
 // Account represents an OIDC account
