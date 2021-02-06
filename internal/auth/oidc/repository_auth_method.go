@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"context"
-	"net/http"
 	"net/url"
 )
 
@@ -97,15 +96,5 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ..
 // the results of the user's OIDC authentication attempt.  No options are
 // currently supported.
 func (r *Repository) StartAuth(ctx context.Context, authMethodId string, clientType, clientVersion string, clientRoundTripKVs map[string]string) (authUrl *url.URL, tokenUrl *url.URL, e error) {
-	panic("to-do")
-}
-
-// CallHandler creates an http.Handler for the auth method that processes
-// authentication responses from the OIDC provider. Boundary would use this
-// callback handler to wire up: POST
-// /v1/auth-methods/<authMethodId>:authenticate:callback
-//
-// No options are currently supported.
-func (r *Repository) CallbackHandler(ctx context.Context, authMethodId string) (*http.Handler, error) {
 	panic("to-do")
 }
