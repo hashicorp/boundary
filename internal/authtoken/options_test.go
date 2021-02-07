@@ -34,4 +34,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTokenTimeToStaleDuration = 1 * time.Hour
 		assert.Equal(opts, testOpts)
 	})
+
+	t.Run("withState", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithState(IssuedState))
+		testOpts := getDefaultOptions()
+		testOpts.withState = IssuedState
+		assert.Equal(opts, testOpts)
+	})
 }
