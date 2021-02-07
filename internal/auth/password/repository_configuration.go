@@ -61,8 +61,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 		}
 		return out, nil
 	default:
-		//(schristoff): fix
-		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "")
+		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 }
 

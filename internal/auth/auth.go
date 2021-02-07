@@ -347,7 +347,6 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		}
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
-			//TODO(schristoff): Loop back on this one
 			retErr = errors.Wrap(err, op)
 			return
 		}

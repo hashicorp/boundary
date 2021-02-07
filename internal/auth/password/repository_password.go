@@ -181,7 +181,6 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				//(schristoff) - this should only return zero?
 				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 

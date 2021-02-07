@@ -55,7 +55,6 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	c, ok := opts.withConfig.(*Argon2Configuration)
 	if !ok {
-		//(schristoff): should you output the known ones instead?
 		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 	if err := c.validate(); err != nil {
