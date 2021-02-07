@@ -4,21 +4,77 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Security
+### Changes/Deprecations
 
-* Boundary now uses Go's execabs package for execution of binaries in `boundary
-  connect`. This is for defense-in-depth rather than a specific issue. See the
-  [Go blog post](https://blog.golang.org/path-security) for more details.
-  ([PR](https://github.com/hashicorp/boundary/pull/873))
+* permissions: Update some errors to make them more descriptive, and disallow
+  permissions in some forms where they will never take effect, preventing
+  possible confusion (existing grants already saved to the database will not be
+  affected as this is only filtered when grants are added/set on a role):
+  * `id=<some_id>;actions=<some_actions>` where one of the actions is `create`
+    or `list`. By definition this format operates only on individual resources
+    so `create` and `list` will never work
+  * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
+    `create` or `list`. This format operates only on collections so assigning
+    more actions this way will never work
 
 ### New and Improved
 
-* api/cli: On listing/reading, return a list of actions the user is authorized
-  to perform on the identified resources
-  ([PR](https://github.com/hashicorp/boundary/pull/870))
+* server: When running single-server mode and `controllers` is not specified in
+  the `worker` block, use `public_cluster_addr` if given
+  ([PR](https://github.com/hashicorp/boundary/pull/904))
+* server: Add `read` action to default scope grant
+  ([PR](https://github.com/hashicorp/boundary/pull/913))
 
 ### Bug Fixes
 
+* api: Fix nil pointer panic that could occur when using TLS
+  ([Issue](https://github.com/hashicorp/boundary/pull/902),
+  [PR](https://github.com/hashicorp/boundary/pull/901))
+* server: When shutting down a controller release the shared advisory lock with a non cancelled context.
+  ([Issue](https://github.com/hashicorp/boundary/pull/909),
+  [PR](https://github.com/hashicorp/boundary/pull/918))
+  
+## 0.1.5 (2021/01/29)
+
+*NOTE*: This version requires a database migration via the new `boundary
+database migrate` command.
+
+### Security
+
+* Boundary now uses Go's new execabs package for execution of binaries in
+  `boundary connect`. This is for defense-in-depth rather than a specific
+  issue. See the [Go blog post](https://blog.golang.org/path-security) for more
+  details. ([PR](https://github.com/hashicorp/boundary/pull/873))
+
+### Changes/Deprecations
+
+* controller/worker: Require names to be all lowercase. This removes ambiguity
+  or accidental mismatching when using upcoming filtering features.
+* api/cli: Due to visibility changes on collection listing, a list
+  will not include any resources if the user only has `list` as an authorized action.
+  As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
+  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
+
+### New and Improved
+
+* targets: You can now specify a Boolean-expression filter against worker tags
+  to control which workers are allowed to handle any given target's sessions
+  ([PR](https://github.com/hashicorp/boundary/pull/862))
+* api/cli: On listing/reading, return a list of actions the user is authorized
+  to perform on the identified resources or their associated collections
+  ([PR](https://github.com/hashicorp/boundary/pull/870))
+* api/cli: Most resource types now support recursive listing, allowing listing
+  to occur down a scope tree
+  ([PR](https://github.com/hashicorp/boundary/pull/885))
+* cli: Add a `database migrate` command which updates a database's schema to 
+  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
+
+### Bug Fixes
+
+* controller/db: Correctly check if db init previously completed successfully 
+  when starting a controller or when running `database init` 
+  ([Issue](https://github.com/hashicorp/boundary/issues/805))
+  ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
   commands and automatic versioning is being used (that is, no `-version` flag
   is given), it will now display the final call instead of the `GET` that

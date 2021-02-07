@@ -305,6 +305,9 @@ type TestControllerOpts struct {
 	// generated, unless provided in a non-nil Config
 	Name string
 
+	// The suffix to use for initial resources
+	InitialResourcesSuffix string
+
 	// The logger to use, or one will be created
 	Logger hclog.Logger
 }
@@ -383,6 +386,18 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 	tc.name = opts.Config.Controller.Name
 
+	if opts.InitialResourcesSuffix != "" {
+		suffix := opts.InitialResourcesSuffix
+		tc.b.DevAuthMethodId = "ampw_" + suffix
+		tc.b.DevHostCatalogId = "hcst_" + suffix
+		tc.b.DevHostId = "hst_" + suffix
+		tc.b.DevHostSetId = "hsst_" + suffix
+		tc.b.DevOrgId = "o_" + suffix
+		tc.b.DevProjectId = "p_" + suffix
+		tc.b.DevTargetId = "ttcp_" + suffix
+		tc.b.DevUserId = "u_" + suffix
+	}
+
 	// Set up KMSes
 	switch {
 	case opts.RootKms != nil && opts.WorkerAuthKms != nil:
@@ -412,7 +427,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
-		if _, err := schema.InitStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
+		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
 		if err := tc.b.ConnectToDatabase("postgres"); err != nil {

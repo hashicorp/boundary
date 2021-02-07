@@ -1054,9 +1054,8 @@ func filterPaths(paths []string) []string {
 }
 
 func setFieldsToNil(i interface{}, fieldNames []string) {
-	if err := Clear(i, fieldNames, 2); err != nil {
-		// do nothing
-	}
+	// Note: error cases are not handled
+	_ = Clear(i, fieldNames, 2)
 }
 
 func isNil(i interface{}) bool {

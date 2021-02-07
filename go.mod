@@ -7,7 +7,7 @@ replace github.com/hashicorp/boundary/api => ./api
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
 require (
-	github.com/armon/go-metrics v0.3.5
+	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.33.0
 	github.com/dhui/dktest v0.3.3
 	github.com/fatih/color v1.10.0
@@ -19,20 +19,21 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
-	github.com/hashicorp/boundary/api v0.0.3
-	github.com/hashicorp/boundary/sdk v0.0.1
+	github.com/hashicorp/boundary/api v0.0.4
+	github.com/hashicorp/boundary/sdk v0.0.2
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
-	github.com/hashicorp/go-cleanhttp v0.5.1
+	github.com/hashicorp/go-bexpr v0.1.6
+	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.15.0
-	github.com/hashicorp/go-kms-wrapping v0.5.16
+	github.com/hashicorp/go-kms-wrapping v0.6.0
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.2
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
-	github.com/iancoleman/strcase v0.1.2
+	github.com/iancoleman/strcase v0.1.3
 	github.com/jackc/pgx/v4 v4.10.0
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
@@ -43,15 +44,16 @@ require (
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.3.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pires/go-proxyproto v0.3.3
+	github.com/pires/go-proxyproto v0.4.2
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
-	github.com/stretchr/testify v1.6.1
-	github.com/zalando/go-keyring v0.1.0
+	github.com/stretchr/testify v1.7.0
+	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4

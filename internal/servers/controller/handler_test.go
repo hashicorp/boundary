@@ -113,7 +113,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"400_v1/sc\u200Bopes",
 			"200_v1/scopes",
 			"v1/scopes/someid",
-			"v1/sessions/",
+			"v1/sessions",
 			"v1/sessions/someid",
 			"v1/targets",
 			"v1/targets/someid",

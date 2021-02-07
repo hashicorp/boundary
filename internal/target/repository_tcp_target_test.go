@@ -43,7 +43,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 		args         args
 		wantHostSets []string
 		wantErr      bool
-		wantIsError  error
+		wantIsError  errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -67,7 +67,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				target: nil,
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "nil-target-store",
@@ -78,7 +78,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "public-id-not-empty",
@@ -93,7 +93,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 		{
 			name: "empty-scope-id",
@@ -106,7 +106,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 				}(),
 			},
 			wantErr:     true,
-			wantIsError: errors.ErrInvalidParameter,
+			wantIsError: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -116,7 +116,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)
-				assert.True(errors.Is(err, tt.wantIsError))
+				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				return
 			}
 			require.NoError(err)
@@ -217,7 +217,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: db.DoTx: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: failed for 1: db.DoTx: target.(Repository).UpdateTcpTarget: target.(Repository).update: db.DoTx: target.(Repository).update: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 			wantIsError:    errors.RecordNotFound,
 		},
 		{
@@ -231,7 +231,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newName:        "null-name" + id,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: db.DoTx: db.DoTx: db.Update: name must not be empty: not null constraint violated",
+			wantErrMsg:     "db.DoTx: target.(Repository).UpdateTcpTarget: target.(Repository).update: db.DoTx: target.(Repository).update: db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001",
 		},
 		{
 			name: "null-description",
@@ -255,7 +255,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: empty field mask",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: empty field mask: parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -268,7 +268,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: empty field mask",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: empty field mask: parameter violation: error #104",
 			wantIsError:    errors.EmptyFieldMask,
 		},
 		{
@@ -281,7 +281,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: field: CreateTime: invalid field mask",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: invalid field mask: CreateTime: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -294,7 +294,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update tcp target: field: Alice: invalid field mask",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: invalid field mask: Alice: parameter violation: error #103",
 			wantIsError:    errors.InvalidFieldMask,
 		},
 		{
@@ -307,7 +307,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			},
 			newScopeId:     proj.PublicId,
 			wantErr:        true,
-			wantErrMsg:     "update tcp target: missing target public id invalid parameter",
+			wantErrMsg:     "target.(Repository).UpdateTcpTarget: missing target public id: parameter violation: error #100",
 			wantIsError:    errors.InvalidParameter,
 			wantRowsUpdate: 0,
 		},
@@ -319,7 +319,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			},
 			newScopeId:  proj.PublicId,
 			wantErr:     true,
-			wantErrMsg:  "update tcp target: empty field mask",
+			wantErrMsg:  "target.(Repository).UpdateTcpTarget: empty field mask: parameter violation: error #104",
 			wantIsError: errors.EmptyFieldMask,
 		},
 		{

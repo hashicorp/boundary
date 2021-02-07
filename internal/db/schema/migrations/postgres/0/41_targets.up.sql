@@ -1,3 +1,5 @@
+begin;
+
 /*
                                    ┌─────────────────┐
 ┌─────────────────┐                │   target_tcp    │
@@ -32,8 +34,6 @@
 └─────────────────┘                                                                            
 
 */
-
-begin;
 
 create table target (
   public_id wt_public_id primary key,
@@ -154,6 +154,7 @@ before insert on target_tcp
 
 
 -- target_all_subtypes is a union of all target subtypes 
+-- NOTE: this is replaced in 100 to add worker_filter
 create view target_all_subtypes
 as 
 select 

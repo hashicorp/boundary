@@ -1,10 +1,7 @@
 package schema
 
 import (
-	"fmt"
 	"sort"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // statementProvider provides the migration statements in order.
@@ -13,20 +10,14 @@ import (
 type statementProvider struct {
 	pos      int
 	versions []int
-	up, down map[int][]byte
+	up       map[int][]byte
 }
 
-func newStatementProvider(dialect string, curVer int) (*statementProvider, error) {
-	op := errors.Op("schema.newStatementProvider")
+func newStatementProvider(dialect string, curVer int) *statementProvider {
+	const op = "schema.newStatementProvider"
 	qp := statementProvider{pos: -1}
-	qp.up, qp.down = getUpMigration(dialect), getDownMigration(dialect)
-	if len(qp.up) != len(qp.down) {
-		return nil, errors.New(errors.MigrationIntegrity, op, fmt.Sprintf("Mismatch up/down size: up %d vs. down %d", len(qp.up), len(qp.down)))
-	}
+	qp.up = getUpMigration(dialect)
 	for k := range qp.up {
-		if _, ok := qp.down[k]; !ok {
-			return nil, errors.New(errors.MigrationIntegrity, op, fmt.Sprintf("Up key %d doesn't exist in down %v", k, qp.down))
-		}
 		qp.versions = append(qp.versions, k)
 	}
 	sort.Ints(qp.versions)
@@ -35,7 +26,7 @@ func newStatementProvider(dialect string, curVer int) (*statementProvider, error
 		qp.versions = qp.versions[1:]
 	}
 
-	return &qp, nil
+	return &qp
 }
 
 func (q *statementProvider) Next() bool {

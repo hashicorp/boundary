@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -76,17 +77,24 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	gl, err := s.listFromRepo(ctx, req.GetScopeId())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	if err != nil {
+		return nil, err
+	}
+
+	gl, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.Group, 0, len(gl))
 	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Group,
+		Type: resource.Group,
 	}
 	for _, item := range gl {
-		item.Scope = authResults.Scope
+		item.Scope = scopeInfoMap[item.GetScopeId()]
+		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) > 0 {
 			finalItems = append(finalItems, item)
@@ -310,12 +318,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Group, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Group, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	gl, err := repo.ListGroups(ctx, scopeId)
+	gl, err := repo.ListGroups(ctx, scopeIds)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list groups: %w", err)
 	}

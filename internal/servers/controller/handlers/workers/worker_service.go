@@ -2,15 +2,19 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,15 +52,15 @@ var (
 )
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request from worker", "name", req.Worker.Name, "address", req.Worker.Address, "jobs", req.GetJobs())
-	ws.updateTimes.Store(req.Worker.Name, time.Now())
+	ws.logger.Trace("got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
+	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
 	repo, err := ws.serversRepoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
 	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := repo.UpsertServer(ctx, req.Worker)
+	controllers, _, err := repo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
@@ -147,6 +151,51 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	}
 	if len(sessionInfo.States) == 0 {
 		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
+	}
+
+	if sessionInfo.WorkerFilter != "" {
+		if req.ServerId == "" {
+			ws.logger.Error("worker filter enabled for session but got no server ID from worker")
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive server ID when looking up session but filtering is enabled: %v", err)
+		}
+		serversRepo, err := ws.serversRepoFn()
+		if err != nil {
+			ws.logger.Error("error getting servers repo", "error", err)
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
+		}
+		tags, err := serversRepo.ListTagsForServers(ctx, []string{req.ServerId})
+		if err != nil {
+			ws.logger.Error("error looking up tags for server", "error", err, "server_id", req.ServerId)
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
+		}
+		// Build the map for filtering.
+		tagMap := make(map[string][]string)
+		for _, tag := range tags {
+			tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
+			// We don't need to reinsert after the fact because maps are
+			// reference types, so we don't need to re-insert into tagMap
+		}
+
+		// Create the evaluator
+		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
+		if err != nil {
+			ws.logger.Error("error creating worker filter evaluator", "error", err, "server_id", req.ServerId)
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
+		}
+		filterInput := map[string]interface{}{
+			"name": req.ServerId,
+			"tags": tagMap,
+		}
+		ok, err := eval.Evaluate(filterInput)
+		if err != nil {
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+		}
+		if !ok {
+			return nil, handlers.ApiErrorWithCodeAndMessage(
+				codes.FailedPrecondition,
+				"Worker filter expression precludes this worker from serving this session")
+		}
 	}
 
 	resp := &pbs.LookupSessionResponse{

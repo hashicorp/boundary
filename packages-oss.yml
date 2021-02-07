@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.1.4
+    PRODUCT_VERSION: 0.1.5
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -50,8 +50,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-# sha256:504366de834ff066f79a83f394cf3b3221f751d26524e6d8527c8aeec16818a4 = golang:1.15.6-buster
-base-image: "hashicorp.jfrog.io/docker/golang@sha256:504366de834ff066f79a83f394cf3b3221f751d26524e6d8527c8aeec16818a4"
+# golang:1.15.8-buster
+base-image: "hashicorp.jfrog.io/docker/golang@sha256:cbd6b4a560adbd00e3fe1eb1a6191a85e82839a69dcb757d57aa5be311f09cfe"
 
 layers:
   - name: base

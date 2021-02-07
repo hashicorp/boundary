@@ -149,6 +149,15 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create token key in scope %s", scopeId)))
 	}
 
+	k, err = generateKey(randomReader)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for oidc key in scope %s", scopeId)))
+	}
+	oidcKey, oidcKeyVersion, err := createOidcKeyTx(ctx, dbReader, dbWriter, rkvWrapper, k)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to create oidc key in scope %s", scopeId)))
+	}
+
 	keys := Keys{
 		KeyTypeRootKey:            rootKey,
 		KeyTypeRootKeyVersion:     rootKeyVersion,
@@ -160,6 +169,8 @@ func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, r
 		KeyTypeSessionKeyVersion:  sessionKeyVersion,
 		KeyTypeTokenKey:           tokenKey,
 		KeyTypeTokenKeyVersion:    tokenKeyVersion,
+		KeyTypeOidcKey:            oidcKey,
+		KeyTypeOidcKeyVersion:     oidcKeyVersion,
 	}
 	return keys, nil
 }

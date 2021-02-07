@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -61,9 +62,10 @@ func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
 
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
 func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
-		return fmt.Errorf("error encrypting auth token: %w", err)
+		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
 	s.KeyId = cipher.KeyID()
 	return nil
@@ -71,9 +73,10 @@ func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper
 
 // decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
 func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
-		return fmt.Errorf("error decrypting auth token: %w", err)
+		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -86,18 +89,20 @@ const (
 )
 
 func newAuthTokenId() (string, error) {
+	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
-		return "", fmt.Errorf("new auth token id: %w", err)
+		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 // newAuthToken generates a token with a version prefix.
 func newAuthToken() (string, error) {
+	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return "", fmt.Errorf("unable to generate auth token: %w", err)
+		return "", errors.Wrap(err, op, errors.WithCode(errors.Io))
 	}
 	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
 }
@@ -105,6 +110,7 @@ func newAuthToken() (string, error) {
 // EncryptToken is a shared function for encrypting a token value for return to
 // the user.
 func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, token string) (string, error) {
+	const op = "authtoken.EncryptToken"
 	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 
 	s1Info := &tokens.S1TokenInfo{
@@ -115,22 +121,22 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", fmt.Errorf("error marshaling token info: %w", err)
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
-		return "", fmt.Errorf("unable to get wrapper: %w", err)
+		return "", errors.Wrap(err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
 	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), []byte(publicId))
 	if err != nil {
-		return "", fmt.Errorf("error encrypting token: %w", err)
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", fmt.Errorf("error marshaling encrypted token: %w", err)
+		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)

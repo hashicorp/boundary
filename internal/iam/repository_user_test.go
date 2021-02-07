@@ -527,7 +527,7 @@ func TestRepository_ListUsers(t *testing.T) {
 				testUsers = append(testUsers, TestUser(t, repo, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
-			got, err := repo.ListUsers(context.Background(), tt.args.withOrgId, tt.args.opt...)
+			got, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -536,6 +536,29 @@ func TestRepository_ListUsers(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
+}
+
+func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := TestRepo(t, conn, wrapper)
+	org, _ := TestScopes(t, repo)
+
+	require.NoError(t, conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(allocUser()).Error)
+
+	const numPerScope = 10
+	var total int = 3 // anon, auth, recovery
+	for i := 0; i < numPerScope; i++ {
+		TestUser(t, repo, "global")
+		total++
+		TestUser(t, repo, org.GetPublicId())
+		total++
+	}
+
+	got, err := repo.ListUsers(context.Background(), []string{"global", org.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
 }
 
 func TestRepository_LookupUserWithLogin(t *testing.T) {

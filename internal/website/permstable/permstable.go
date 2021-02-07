@@ -687,6 +687,20 @@ var session = &Resource{
 						"id=<id>;actions=cancel",
 					},
 				},
+				{
+					Name:        "read:self",
+					Description: "Read a session, which must belong to the calling user",
+					Examples: []string{
+						"id=*;type=session;actions=read:self",
+					},
+				},
+				{
+					Name:        "cancel:self",
+					Description: "Cancel a session, which must belong to the calling user",
+					Examples: []string{
+						"id=*;type=session;actions=cancel:self",
+					},
+				},
 			},
 		},
 	},

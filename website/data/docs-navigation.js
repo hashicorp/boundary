@@ -24,11 +24,7 @@ export default [
     content: [
       {
         category: 'security',
-        content: [
-          'permissions',
-          'data-encryption',
-          'connections-tls',
-        ]
+        content: ['permissions', 'data-encryption', 'connections-tls'],
       },
       {
         category: 'domain-model',
@@ -46,14 +42,15 @@ export default [
           'users',
         ],
       },
+      {
+        category: 'filtering',
+        content: ['worker-tags'],
+      },
     ],
   },
   {
     category: 'developing',
-    content: [
-      'building',
-      'ui',
-    ],
+    content: ['building', 'ui'],
   },
   '---',
   {
@@ -61,10 +58,7 @@ export default [
     content: [
       {
         category: 'listener',
-        content: [
-          'tcp',
-          'unix',
-        ],
+        content: ['tcp', 'unix'],
       },
       {
         category: 'kms',

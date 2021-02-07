@@ -411,12 +411,11 @@ func (c *Command) Run(args []string) int {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
 	default:
-		dbaseUrl, err := config.ParseAddress(c.flagDatabaseUrl)
+		c.DatabaseUrl, err = config.ParseAddress(c.flagDatabaseUrl)
 		if err != nil && err != config.ErrNotAUrl {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return 1
 		}
-		c.DatabaseUrl = strings.TrimSpace(dbaseUrl)
 		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return 1

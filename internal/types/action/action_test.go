@@ -75,6 +75,14 @@ func TestAction(t *testing.T) {
 			action: Deauthenticate,
 			want:   "deauthenticate",
 		},
+		{
+			action: ReadSelf,
+			want:   "read:self",
+		},
+		{
+			action: CancelSelf,
+			want:   "cancel:self",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

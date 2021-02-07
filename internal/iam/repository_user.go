@@ -131,7 +131,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "error more than 1 resource would have been updated")
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -198,14 +198,14 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...O
 	return rowsDeleted, nil
 }
 
-// ListUsers in an org and supports the WithLimit option.
-func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Option) ([]*User, error) {
+// ListUsers lists users in the given scopes and supports the WithLimit option.
+func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt ...Option) ([]*User, error) {
 	const op = "iam.(Repository).ListUsers"
-	if withOrgId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing org id")
+	if len(withScopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	var users []*User
-	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrgId}, opt...)
+	err := r.list(ctx, &users, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -651,7 +651,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is associated with a user %s", accountId, acct.IamUserId))
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is already associated with another user", accountId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}

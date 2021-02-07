@@ -30,8 +30,12 @@ const (
 	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
 	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
 	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
+	InvalidTimeStamp      Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
+	SessionNotFound       Code = 110 // SessionNotFound represents that the session was not found
+	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
+	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
 	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
-	
+
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
 
@@ -51,6 +55,8 @@ const (
 	Decrypt Code = 301 // Decrypt represents an error occurred during the underlying decryption process
 	Encode  Code = 302 // Encode represents an error occurred during the underlying encoding/marshaling process
 	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
+	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
+	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error

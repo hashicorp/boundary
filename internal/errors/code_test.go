@@ -72,10 +72,29 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    Io,
 			want: Io,
 		},
+			name: "InvalidTimeStamp",
+			c:    InvalidTimeStamp,
+			want: InvalidTimeStamp,
+		},
+		{
+			name: "SessionNotFound",
+			c:    SessionNotFound,
+			want: SessionNotFound,
+		},
+		{
+			name: "InvalidSessionState",
+			c:    InvalidSessionState,
+			want: InvalidSessionState,
+		},
+		{
+			name: "TokenMismatch",
+			c:    TokenMismatch,
+			want: TokenMismatch,
+		},
 		{
 			name: "TooShort",
 			c:    TooShort,
-			want: TooShort,
+			want: TooShort
 		},
 		{
 			name: "PasswordTooShort",
@@ -116,6 +135,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "Decode",
 			c:    Decode,
 			want: Decode,
+		},
+		{
+			name: "GenKey",
+			c:    GenKey,
+			want: GenKey,
+		},
+		{
+			name: "GenCert",
+			c:    GenCert,
+			want: GenCert,
 		},
 		{
 			name: "CheckConstraint",

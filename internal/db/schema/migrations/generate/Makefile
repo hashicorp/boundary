@@ -4,5 +4,6 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 migrations:
 	go run .
 	goimports -w ${GEN_BASEPATH}/internal/db/schema
+	gofumpt -w ${GEN_BASEPATH}/internal/db/schema
 
 .PHONY: migrations
