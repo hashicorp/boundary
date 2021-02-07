@@ -94,7 +94,7 @@ func TestCode_Both_String_Info(t *testing.T) {
 		{
 			name: "TooShort",
 			c:    TooShort,
-			want: TooShort
+			want: TooShort,
 		},
 		{
 			name: "PasswordTooShort",
