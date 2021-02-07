@@ -9,6 +9,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.33.0
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dhui/dktest v0.3.3
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -21,6 +22,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/hashicorp/boundary/api v0.0.4
 	github.com/hashicorp/boundary/sdk v0.0.2
+	github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-bexpr v0.1.4
