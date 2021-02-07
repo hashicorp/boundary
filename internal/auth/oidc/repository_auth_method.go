@@ -41,6 +41,9 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 // ClientId, ClientSecret, MaxAge are all updatable fields, If no updatable
 // fields are included in the fieldMaskPaths, then an error is returned.  No
 // options are currently supported.
+//
+// Successful updates must invalidate (delete) the Repository's cache of the
+// oidc.Provider for the AuthMethod.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, m *AuthMethod, version uint32, fieldMaskPaths []string, _ ...Option) (*AuthMethod, []*SigningAlg, []*CallbackUrl, []*AudClaim, []*Certificate, error) {
 	panic("to-do")
 }
@@ -96,5 +99,42 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ..
 // the results of the user's OIDC authentication attempt.  No options are
 // currently supported.
 func (r *Repository) StartAuth(ctx context.Context, authMethodId string, clientType, clientVersion string, clientRoundTripKVs map[string]string) (authUrl *url.URL, tokenUrl *url.URL, e error) {
+	panic("to-do")
+}
+
+// ExchangeAuthResponse exchanges a successful OIDC Authentication Response for
+// an ID Token, if the exchange is successful, it returns the Account for the
+// user's ID Token sub claim and the client's final redirect URL. If the
+// exchange fails, it returns nil and an empty string, along with any error
+// that occurred.  The steps that typically follow ExchangeAuthResponse in the
+// callback handler should be: iam.LookupUserWithLogin(...) to get the Account's
+// User and then authtoken.CreateAuthToken(...) to create a "pending" token for
+// the successful.
+//
+// For more info on a successful OIDC Authentication Response see:
+// https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
+//
+// Operation steps:
+//
+// * Decrypt the callbackStateParameter which has been encrypted with the OIDC
+// DEK. If decryption fails, and error is returned. callbackStateParameter
+// decrypted payload includes the token_request_id, nonce and
+// final_redirect_url.
+//
+// * Exchange the callbackCodeParameter for provider tokens and validate the
+// tokens.  Call UserInfo endpoint using access token.
+//
+// * Create/update account using "sub" claim as external ID and setting email
+// and full name for the account.
+//
+// * Return the Account and final redirect URL.
+func (r *Repository) ExchangeAuthResponse(ctx context.Context, authMethodId string, callbackStateParameter string, callbackCodeParameter string) (*Account, string, error) {
+	panic("to-do")
+}
+
+// DecryptTokenRequestId will decrypt the tokenRequestId which has been
+// encrypted with the OIDC DEK. If decryption fails, an empty string and error
+// is returned.
+func (r *Repository) DecryptTokenRequestId(ctx context.Context, tokenRequestId string) (string, error) {
 	panic("to-do")
 }
