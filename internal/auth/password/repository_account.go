@@ -148,7 +148,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	var accts []*Account
 	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("password account"))
+		return nil, errors.Wrap(err, op)
 	}
 	return accts, nil
 }
@@ -168,7 +168,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int

@@ -47,7 +47,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 		return nil, errors.New(errors.InvalidParameter, op, "missing configuration")
 	}
 	if c.AuthMethodId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no auth method id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if err := c.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
