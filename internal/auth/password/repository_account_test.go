@@ -51,27 +51,31 @@ func TestRepository_CreateAccount(t *testing.T) {
 	authMethod := authMethods[0]
 
 	tests := []struct {
-		name      string
-		in        *Account
-		opts      []Option
-		want      *Account
-		wantIsErr error
+		name       string
+		in         *Account
+		opts       []Option
+		want       *Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "nil-Account",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-Account",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: missing Account: parameter violation: error #100",
 		},
 		{
-			name:      "nil-embedded-Account",
-			in:        &Account{},
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "nil-embedded-Account",
+			in:         &Account{},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-scope-id",
 			in: &Account{
 				Account: &store.Account{},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
@@ -81,7 +85,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					PublicId:     "hcst_OOOOOOOOOO",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: public id must be empty: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-uppercase",
@@ -91,7 +96,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "KaZmiErcZak11",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: KaZmiErcZak11: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-leading-space",
@@ -101,7 +107,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    " kazmierczak12",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got:  kazmierczak12: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-trailing-space",
@@ -111,7 +118,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmierczak13 ",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmierczak13 : parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-space-in-name",
@@ -121,7 +129,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "kazmier czak14",
 				},
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmier czak14: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-too-short",
@@ -131,7 +140,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 					LoginName:    "ka",
 				},
 			},
-			wantIsErr: ErrTooShort,
+			wantIsErr:  errors.TooShort,
+			wantErrMsg: "auth.(Repository).CreateAccount: username: ka, must be longer than 3",
 		},
 		{
 			name: "invalid-password-too-short",
@@ -144,7 +154,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 			opts: []Option{
 				WithPassword("a"),
 			},
-			wantIsErr: ErrTooShort,
+			wantIsErr:  errors.PasswordTooShort,
+			wantErrMsg: "auth.(Repository).CreateAccount: must be longer than 8: password violation: error #200",
 		},
 		{
 			name: "valid-no-options",
@@ -223,9 +234,9 @@ func TestRepository_CreateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -247,6 +258,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 			}
 		})
 	}
+}
+func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -276,7 +295,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 	})
 
@@ -334,14 +353,16 @@ func TestRepository_LookupAccount(t *testing.T) {
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
 	tests := []struct {
-		name      string
-		in        string
-		want      *Account
-		wantIsErr error
+		name       string
+		in         string
+		want       *Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "auth.(Repository).LookupAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -362,9 +383,9 @@ func TestRepository_LookupAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.LookupAccount(context.Background(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -388,14 +409,16 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
 	tests := []struct {
-		name      string
-		in        string
-		want      int
-		wantIsErr error
+		name       string
+		in         string
+		want       int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no public id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no public id",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "auth.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -417,9 +440,9 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Zero(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)

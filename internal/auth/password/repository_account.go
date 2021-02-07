@@ -43,7 +43,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	if !validLoginName(a.LoginName) {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprint("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)
@@ -51,9 +51,8 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, errors.Wrap(err, op, errors.WithMsg("retrieve current configuration"))
 	}
 
-	//Note (schristoff): Do we wanna do stuff like this?
 	if cc.MinLoginNameLength > len(a.LoginName) {
-		return nil, errors.New(errors.TooShort, op, fmt.Sprintf("user name %q, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
+		return nil, errors.New(errors.TooShort, op, fmt.Sprintf("username: %s, must be longer than %d", a.LoginName, cc.MinLoginNameLength))
 	}
 
 	a = a.clone()
@@ -121,7 +120,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	const op = "auth.(Repository).LookupAccount"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	a := allocAccount()
 	a.PublicId = withPublicId
@@ -159,7 +158,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	const op = "auth.(Repository).DeleteAccount"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidAddress, op, "missin public id")
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
@@ -226,7 +225,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
@@ -271,15 +270,15 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("retrieve current configuration"))
 		}
 		if cc.MinLoginNameLength > len(a.LoginName) {
-			return nil, db.NoRowsAffected, errors.New(errors.TooShort, op, 
+			return nil, db.NoRowsAffected, errors.New(errors.TooShort, op,
 				fmt.Sprintf("user name %q, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), 
-		errors.WithMsg(("unable to get oplog wrapper")))
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+			errors.WithMsg(("unable to get oplog wrapper")))
 	}
 
 	a = a.clone()
@@ -302,11 +301,11 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, 
-				fmt.Sprintf("%s: name %s already exists: %w" a.PublicId, a.Name))
+			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
 
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, a.PublicId)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))
 	}
 
 	return returnedAccount, rowsUpdated, nil

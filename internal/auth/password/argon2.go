@@ -3,7 +3,6 @@ package password
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"

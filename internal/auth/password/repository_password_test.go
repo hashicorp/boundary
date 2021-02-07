@@ -46,10 +46,11 @@ func TestRepository_Authenticate(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		args      args
-		want      *Account
-		wantIsErr error
+		name       string
+		args       args
+		want       *Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "invalid-no-authMethodId",
@@ -58,7 +59,8 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    inAcct.LoginName,
 				password:     passwd,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).Authenticate: missing authMethodId: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-loginName",
@@ -67,7 +69,8 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    "",
 				password:     passwd,
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).Authenticate: missing loginName: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-password",
@@ -76,7 +79,8 @@ func TestRepository_Authenticate(t *testing.T) {
 				loginName:    inAcct.LoginName,
 				password:     "",
 			},
-			wantIsErr: errors.ErrInvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).Authenticate: missing password: parameter violation: error #100",
 		},
 		{
 			name: "valid-authenticate",
@@ -95,7 +99,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				password:     "foobar",
 			},
 			want:      nil,
-			wantIsErr: nil,
+			wantIsErr: errors.Unknown,
 		},
 	}
 	for _, tt := range tests {
@@ -103,9 +107,9 @@ func TestRepository_Authenticate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			authAcct, err := repo.Authenticate(context.Background(), o.GetPublicId(), tt.args.authMethodId, tt.args.loginName, tt.args.password)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(authAcct, "returned account")
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -277,6 +281,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		args        args
 		wantAccount bool
 		wantIsErr   errors.Code
+		wantErrMsg  string
 	}{
 		{
 			name: "invalid-no-accountId",
@@ -285,7 +290,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "12345678-changed",
 			},
-			wantIsErr: errors.InvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).ChangePassword: missing account id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-current-password",
@@ -294,7 +300,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    "",
 				new:    "12345678-changed",
 			},
-			wantIsErr: errors.InvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).ChangePassword: missing old password: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-new-password",
@@ -303,7 +310,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    "",
 			},
-			wantIsErr: errors.InvalidParameter,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).ChangePassword: missing new password: parameter violation: error #100",
 		},
 		{
 			name: "invalid-same-passwords",
@@ -312,7 +320,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 				old:    passwd,
 				new:    passwd,
 			},
-			wantIsErr: errors.PasswordsEqual,
+			wantIsErr:  errors.PasswordsEqual,
+			wantErrMsg: "auth.(Repository).ChangePassword: passwords must not equal: password violation: error #203",
 		},
 		{
 			name: "auth-failure-unknown-accountId",
@@ -323,6 +332,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			},
 			wantAccount: false,
 			wantIsErr:   errors.RecordNotFound,
+			wantErrMsg:  "auth.(Repository).ChangePassword: account not found: search issue: error #1100",
 		},
 		{
 			name: "auth-failure-wrong-current-password",
@@ -334,13 +344,14 @@ func TestRepository_ChangePassword(t *testing.T) {
 			wantAccount: false,
 		},
 		{
-			name: "password-to-short",
+			name: "password-too-short",
 			args: args{
 				acctId: acct.PublicId,
 				old:    passwd,
 				new:    "1",
 			},
-			wantIsErr: errors.PasswordTooShort,
+			wantIsErr:  errors.PasswordTooShort,
+			wantErrMsg: "auth.(Repository).ChangePassword: must be at least 8: password violation: error #200",
 		},
 		{
 			name: "valid",
@@ -369,8 +380,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 
 			chgAuthAcct, err := repo.ChangePassword(context.Background(), o.GetPublicId(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
 			if tt.wantIsErr != 0 {
-				assert.Error(err)
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Nil(chgAuthAcct, "returned account")
 				authAcct2 := authFn(passwd, "error changing password: using old password")
 				assert.Equal(authAcct1.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
@@ -501,30 +512,34 @@ func TestRepository_SetPassword(t *testing.T) {
 
 	badInputAcct := createAccount("badinputusername")("")
 	badInputCases := []struct {
-		name      string
-		accountId string
-		pw        string
-		version   uint32
-		wantError error
+		name       string
+		accountId  string
+		pw         string
+		version    uint32
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "no id",
-			pw:        "anylongpassword",
-			version:   1,
-			wantError: errors.ErrInvalidParameter,
+			name:       "no id",
+			pw:         "anylongpassword",
+			version:    1,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).SetPassword: missing accountId: parameter violation: error #100",
 		},
 		{
-			name:      "short pw",
-			accountId: badInputAcct.PublicId,
-			pw:        "c",
-			version:   1,
-			wantError: ErrTooShort,
+			name:       "short pw",
+			accountId:  badInputAcct.PublicId,
+			pw:         "c",
+			version:    1,
+			wantIsErr:  errors.PasswordTooShort,
+			wantErrMsg: "auth.(Repository).SetPassword: password must be at least 8: password violation: error #200",
 		},
 		{
-			name:      "no version",
-			accountId: badInputAcct.PublicId,
-			pw:        "anylongpassword",
-			wantError: errors.ErrInvalidParameter,
+			name:       "no version",
+			accountId:  badInputAcct.PublicId,
+			pw:         "anylongpassword",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).SetPassword: missing version: parameter violation: error #100",
 		},
 	}
 	for _, tt := range badInputCases {
@@ -533,7 +548,8 @@ func TestRepository_SetPassword(t *testing.T) {
 
 			acct, err := repo.SetPassword(context.Background(), o.GetPublicId(), tt.accountId, tt.pw, tt.version)
 			assert.Error(err)
-			assert.Truef(errors.Is(err, tt.wantError), "want err: %q got: %q", tt.wantError, err)
+			assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+			assert.Equal(tt.wantErrMsg, err.Error())
 			assert.Nil(acct)
 		})
 	}

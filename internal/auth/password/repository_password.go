@@ -147,6 +147,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	acct, err := r.authenticate(ctx, scopeId, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
+	}
 	if acct == nil {
 		return nil, nil
 	}
@@ -156,7 +157,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, errors.Wrap(err, op, errors.WithMsg("retrieve current password configuration"))
 	}
 	if cc.MinPasswordLength > len(new) {
-		return nil, errors.New(errors.TooShort, op, errors.WithMsg("must be at least %v", cc.MinPasswordLength))
+		return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
 	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
 	if err != nil {
@@ -180,8 +181,8 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				//(schristoff) - this should only return one?
-				return errors.New(errors.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				//(schristoff) - this should only return zero?
+				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
@@ -234,11 +235,11 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
 	if err != nil {
-		return nil, errors.New(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}
 
 	if err := acct.decrypt(ctx, databaseWrapper); err != nil {
-		return nil, errors.New(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("unable to decrypt credential"))
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("unable to decrypt credential"))
 	}
 
 	inputKey := argon2.IDKey([]byte(password), acct.Salt, acct.Iterations, acct.Memory, uint8(acct.Threads), acct.KeyLength)
@@ -282,7 +283,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			return nil, errors.New(errors.RecordNotFound, op, "unable to retrieve current configuration")
 		}
 		if cc.MinPasswordLength > len(password) {
-			return nil, errors.New(errors.TooShort, op, fmt.Sprintf("passowrd must be at least %v", cc.MinPasswordLength))
+			return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
 		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
 		if err != nil {
@@ -301,10 +302,10 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			updatedAccount.Version = version + 1
 			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(oplogWrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op, "unable to update account version")
+				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 			acct = updatedAccount
 

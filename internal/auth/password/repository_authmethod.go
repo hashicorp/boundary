@@ -42,7 +42,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
+			return nil, errors.New(errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
 		}
 		m.PublicId = opts.withPublicId
 	} else {
@@ -101,7 +101,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
 	const op = "auth.(Repository).LookupAuthMethod"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	a := allocAuthMethod()
 	a.PublicId = publicId
@@ -139,7 +139,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ..
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
 	const op = "auth.(Repository).DeleteAuthMethod"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	am := allocAuthMethod()
 	am.PublicId = publicId

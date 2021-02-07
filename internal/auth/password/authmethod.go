@@ -1,8 +1,6 @@
 package password
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
