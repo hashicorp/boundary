@@ -889,7 +889,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeLoginName("ka"),
 			masks:      []string{"LoginName"},
 			wantIsErr:  errors.TooShort,
-			wantErrMsg: "auth.(Repository).UpdateAccount: username: ka, must be longer than 3",
+			wantErrMsg: "auth.(Repository).UpdateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "delete-login-name",
