@@ -128,6 +128,7 @@ message ListAccountsRequest {
 
 message ListAccountsResponse {
   repeated resources.accounts.v1.Account items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateAccountRequest {

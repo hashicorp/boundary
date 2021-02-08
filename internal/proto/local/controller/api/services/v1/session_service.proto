@@ -67,6 +67,7 @@ message ListSessionsRequest {
 
 message ListSessionsResponse {
 	repeated resources.sessions.v1.Session items = 1;
+	string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CancelSessionRequest {

@@ -111,6 +111,7 @@ message ListAuthMethodsRequest {
 
 message ListAuthMethodsResponse {
   repeated resources.authmethods.v1.AuthMethod items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateAuthMethodRequest {

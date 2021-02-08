@@ -4019,6 +4019,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4030,6 +4033,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4041,6 +4047,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4052,6 +4061,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4063,6 +4075,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4074,6 +4089,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4085,6 +4103,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4096,6 +4117,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4107,6 +4131,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4118,6 +4145,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4129,6 +4159,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },
@@ -4140,6 +4173,9 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
+        },
+        "requested_filter": {
+          "type": "string"
         }
       }
     },

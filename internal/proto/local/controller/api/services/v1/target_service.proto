@@ -166,6 +166,7 @@ message ListTargetsRequest {
 
 message ListTargetsResponse {
   repeated resources.targets.v1.Target items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateTargetRequest {

@@ -98,6 +98,7 @@ message ListHostsRequest {
 
 message ListHostsResponse {
   repeated api.resources.hosts.v1.Host items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateHostRequest {

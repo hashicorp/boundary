@@ -63,6 +63,7 @@ message ListAuthTokensRequest {
 
 message ListAuthTokensResponse {
   repeated resources.authtokens.v1.AuthToken items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message DeleteAuthTokenRequest {

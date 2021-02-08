@@ -150,6 +150,7 @@ message ListUsersRequest {
 
 message ListUsersResponse {
   repeated resources.users.v1.User items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateUserRequest {

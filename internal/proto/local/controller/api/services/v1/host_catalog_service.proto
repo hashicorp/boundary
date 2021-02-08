@@ -98,6 +98,7 @@ message ListHostCatalogsRequest {
 
 message ListHostCatalogsResponse {
   repeated api.resources.hostcatalogs.v1.HostCatalog items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateHostCatalogRequest {

@@ -195,6 +195,7 @@ message ListRolesRequest {
 
 message ListRolesResponse {
   repeated resources.roles.v1.Role items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateRoleRequest {

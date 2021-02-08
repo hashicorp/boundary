@@ -147,6 +147,7 @@ message ListGroupsRequest {
 
 message ListGroupsResponse {
   repeated resources.groups.v1.Group items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateGroupRequest {

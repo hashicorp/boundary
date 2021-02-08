@@ -105,6 +105,7 @@ message ListScopesRequest {
 
 message ListScopesResponse {
   repeated resources.scopes.v1.Scope items = 1;
+  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateScopeRequest {
