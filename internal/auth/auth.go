@@ -431,7 +431,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			pair.ScopeId,
 			pair.Grant,
 			perms.WithUserId(userId),
-			perms.WithAccountId(accountID),
+			perms.WithAccountId(accountId),
 			perms.WithSkipFinalValidation(true))
 		if err != nil {
 			retErr = errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
