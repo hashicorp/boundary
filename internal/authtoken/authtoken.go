@@ -2,7 +2,6 @@ package authtoken
 
 import (
 	"context"
-	"fmt"
 	mathrand "math/rand"
 	"time"
 
@@ -19,22 +18,29 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// writableAuthToken is used for auth token writes.  Since gorm relies on the TableName interface this allows
-// us to use a base table for writes and a view for reads.
-type writableAuthToken struct {
+// authTokenView is used for reading auth token's via the auth_token_account
+// view which includes some columns from the auth_account table required by the
+// API.  Defining a type allows us to easily override the tableName to use the
+// view name.  authTokenViews share the same store struct/proto, which makes
+// them easily convertable to vanilla AuthTokens when required.
+type authTokenView struct {
 	*store.AuthToken
 	tableName string `gorm:"-"`
 }
 
-func (s *writableAuthToken) clone() *writableAuthToken {
-	cp := proto.Clone(s.AuthToken)
-	return &writableAuthToken{
-		AuthToken: cp.(*store.AuthToken),
+// allocAuthTokenView is just easier/better than leaking the underlying type
+// bits to the repo, since the repo needs to alloc this type quite often.
+func allocAuthTokenView() *authTokenView {
+	fresh := &authTokenView{
+		AuthToken: &store.AuthToken{},
 	}
+	return fresh
 }
 
-func (s *writableAuthToken) toAuthToken() *AuthToken {
-	cp := proto.Clone(s.AuthToken)
+// toAuthToken converts the view type to the type returned to repo callers and
+// the API.
+func (atv *authTokenView) toAuthToken() *AuthToken {
+	cp := proto.Clone(atv.AuthToken)
 	return &AuthToken{
 		AuthToken: cp.(*store.AuthToken),
 	}
@@ -53,29 +59,31 @@ func (s *AuthToken) clone() *AuthToken {
 	}
 }
 
-func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
-	cp := proto.Clone(s.AuthToken)
-	return &writableAuthToken{
-		AuthToken: cp.(*store.AuthToken),
+// allocAuthToken is just easier/better than leaking the underlying type
+// bits to the repo, since the repo needs to alloc this type quite often.
+func allocAuthToken() *AuthToken {
+	fresh := &AuthToken{
+		AuthToken: &store.AuthToken{},
 	}
+	return fresh
 }
 
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
-func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
-	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
-	s.KeyId = cipher.KeyID()
+	at.KeyId = cipher.KeyID()
 	return nil
 }
 
 // decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
-	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
@@ -97,14 +105,20 @@ func newAuthTokenId() (string, error) {
 	return id, nil
 }
 
-// newAuthToken generates a token with a version prefix.
-func newAuthToken() (string, error) {
+// newAuthToken generates a new in-memory token.  No options are currently
+// supported.
+func newAuthToken(_ ...Option) (*AuthToken, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithCode(errors.Io))
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Io))
 	}
-	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
+
+	return &AuthToken{
+		AuthToken: &store.AuthToken{
+			Token: token,
+		},
+	}, nil
 }
 
 // EncryptToken is a shared function for encrypting a token value for return to
