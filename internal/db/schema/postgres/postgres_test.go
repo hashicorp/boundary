@@ -386,11 +386,11 @@ func TestEnsureTable_Fresh(t *testing.T) {
 
 		tableCreated := false
 		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
-		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, query).Scan(&tableCreated))
 		assert.False(t, tableCreated)
 
 		assert.NoError(t, p.EnsureVersionTable(ctx))
-		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableCreated))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, query).Scan(&tableCreated))
 		assert.True(t, tableCreated)
 	})
 }
@@ -414,7 +414,7 @@ func TestEnsureTable_ExistingTable(t *testing.T) {
 		assert.NoError(t, p.EnsureVersionTable(ctx))
 
 		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
-		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		_, err = p.conn.ExecContext(ctx, oldTableCreate)
 		assert.NoError(t, err)
 
 		assert.NoError(t, p.EnsureVersionTable(ctx))
@@ -439,23 +439,23 @@ func TestEnsureTable_OldTable(t *testing.T) {
 		})
 
 		oldTableCreate := `CREATE TABLE IF NOT EXISTS schema_migrations (version bigint primary key, dirty boolean not null)`
-		_, err = p.db.ExecContext(ctx, oldTableCreate)
+		_, err = p.conn.ExecContext(ctx, oldTableCreate)
 		assert.NoError(t, err)
 
 		tableExists := false
 		oldTableCheck := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = 'schema_migrations')"
-		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
 		assert.True(t, tableExists)
 
 		query := "SELECT exists (SELECT 1 FROM information_schema.tables WHERE table_schema=(SELECT current_schema()) AND table_name = '" + defaultMigrationsTable + "')"
-		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, query).Scan(&tableExists))
 		assert.False(t, tableExists)
 
 		assert.NoError(t, p.EnsureVersionTable(ctx))
 
-		assert.NoError(t, p.db.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, oldTableCheck).Scan(&tableExists))
 		assert.False(t, tableExists)
-		assert.NoError(t, p.db.QueryRowContext(ctx, query).Scan(&tableExists))
+		assert.NoError(t, p.conn.QueryRowContext(ctx, query).Scan(&tableExists))
 		assert.True(t, tableExists)
 	})
 }

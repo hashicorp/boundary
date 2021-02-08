@@ -135,6 +135,5 @@ func open(t *testing.T, ctx context.Context, u string) (*Postgres, error) {
 func (p *Postgres) close(t *testing.T) error {
 	t.Helper()
 	require.NoError(t, p.conn.Close())
-	require.NoError(t, p.db.Close())
 	return nil
 }
