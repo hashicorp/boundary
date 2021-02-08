@@ -543,7 +543,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 
-	require.NoError(t, conn.Where("public_id != 'global'").Delete(allocScope()).Error)
+	require.NoError(t, conn.Where("public_id not in ('global', 'empty')").Delete(allocScope()).Error)
 
 	const numPerScope = 10
 	var total int
@@ -588,7 +588,7 @@ func Test_Repository_ListRecursive(t *testing.T) {
 		{
 			name:        "global",
 			rootScopeId: "global",
-			wantCnt:     1 + len(testOrgs) + len(testProjects),
+			wantCnt:     2 + len(testOrgs) + len(testProjects),
 		},
 		{
 			name:        "org",
