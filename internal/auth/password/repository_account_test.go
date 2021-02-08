@@ -141,7 +141,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.TooShort,
-			wantErrMsg: "auth.(Repository).CreateAccount: username: ka, must be longer than 3",
+			wantErrMsg: "auth.(Repository).CreateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "invalid-password-too-short",
