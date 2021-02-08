@@ -6,6 +6,8 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+replace github.com/grpc-ecosystem/grpc-gateway/v2 => github.com/jefferai/grpc-gateway/v2 v2.1.1-0.20210207224909-fc58ec3bff95
+
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.33.0
@@ -58,8 +60,8 @@ require (
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/tools v0.0.0-20210101214203-2dba1e4ea05c
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
-	google.golang.org/grpc v1.34.0
+	google.golang.org/genproto v0.0.0-20210204154452-deb828366460
+	google.golang.org/grpc v1.35.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.1-0.20201020201750-d3470999428b
 	mvdan.cc/gofumpt v0.1.0

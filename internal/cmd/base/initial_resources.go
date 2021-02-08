@@ -48,7 +48,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 
 	pr, err := iam.NewRole(scope.Global.String(),
 		iam.WithName("Login and Default Grants"),
-		iam.WithDescription(`Role created for login capability and account self-management for users of the global scope at its creation time`),
+		iam.WithDescription(`Role created for login capability, account self-management, and other default grants for users of the global scope at its creation time`),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
