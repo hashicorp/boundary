@@ -466,15 +466,17 @@ func TestRepository_ListAccounts(t *testing.T) {
 	_ = accounts2
 
 	tests := []struct {
-		name      string
-		in        string
-		opts      []Option
-		want      []*Account
-		wantIsErr error
+		name       string
+		in         string
+		opts       []Option
+		want       []*Account
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name:      "With no auth method id",
-			wantIsErr: errors.ErrInvalidParameter,
+			name:       "With no auth method id",
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "With no accounts id",
@@ -496,9 +498,9 @@ func TestRepository_ListAccounts(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
@@ -643,40 +645,44 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		orig      *Account
-		chgFn     func(*Account) *Account
-		masks     []string
-		want      *Account
-		wantCount int
-		wantIsErr errors.Code
+		name       string
+		orig       *Account
+		chgFn      func(*Account) *Account
+		masks      []string
+		want       *Account
+		wantCount  int
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "nil-Account",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     makeNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      makeNil(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
 		},
 		{
 			name: "nil-embedded-Account",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     makeEmbeddedNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      makeEmbeddedNil(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "no-public-id",
 			orig: &Account{
 				Account: &store.Account{},
 			},
-			chgFn:     deletePublicId(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      deletePublicId(),
+			masks:      []string{"Name", "Description"},
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "auth.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "updating-non-existent-Account",
@@ -685,9 +691,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
-			masks:     []string{"Name"},
-			wantIsErr: errors.RecordNotFound,
+			chgFn:      combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:      []string{"Name"},
+			wantIsErr:  errors.RecordNotFound,
+			wantErrMsg: "auth.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name: "empty-field-mask",
@@ -696,8 +703,9 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.EmptyFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			wantIsErr:  errors.EmptyFieldMask,
+			wantErrMsg: "auth.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -706,9 +714,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			masks:      []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
+			wantIsErr:  errors.InvalidFieldMask,
+			wantErrMsg: "auth.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -717,9 +726,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"Bilbo"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:      changeName("test-update-name-repo"),
+			masks:      []string{"Bilbo"},
+			wantIsErr:  errors.InvalidFieldMask,
+			wantErrMsg: "auth.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
 		},
 		{
 			name: "change-name",
@@ -864,9 +874,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName("KaZmIeRcZaK"),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      changeLoginName("KaZmIeRcZaK"),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got KaZmIeRcZaK: parameter violation: error #100",
 		},
 		{
 			name: "change-login-name-to-short",
@@ -875,9 +886,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName("ka"),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.PasswordTooShort,
+			chgFn:      changeLoginName("ka"),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.TooShort,
+			wantErrMsg: "auth.(Repository).UpdateAccount: username: ka, must be longer than 3",
 		},
 		{
 			name: "delete-login-name",
@@ -886,9 +898,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeLoginName(""),
-			masks:     []string{"LoginName"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:      changeLoginName(""),
+			masks:      []string{"LoginName"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "auth.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got : parameter violation: error #100",
 		},
 	}
 
@@ -917,6 +930,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -950,6 +964,15 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kms)
@@ -974,7 +997,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.Name = name
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -1052,7 +1075,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		ab.LoginName = loginName
 		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"LoginName"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -1131,4 +1154,5 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
+
 }

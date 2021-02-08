@@ -243,7 +243,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold("LoginName", f):
 			if !validLoginName(a.LoginName) {
 				return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op,
-					fmt.Sprintf("invalid user name: must be all-lowercase alphanumeric, period or hyphen, got %s", a.LoginName))
+					fmt.Sprintf("invalid username: must be all-lowercase alphanumeric, period or hyphen, got %s", a.LoginName))
 			}
 			changeLoginName = true
 		default:
@@ -271,7 +271,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 		if cc.MinLoginNameLength > len(a.LoginName) {
 			return nil, db.NoRowsAffected, errors.New(errors.TooShort, op,
-				fmt.Sprintf("user name %q, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
+				fmt.Sprintf("username: %s, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
 		}
 	}
 
