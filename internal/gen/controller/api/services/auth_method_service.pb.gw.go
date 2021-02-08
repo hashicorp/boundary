@@ -850,7 +850,7 @@ var (
 
 	pattern_AuthMethodService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate"))
 
-	pattern_AuthMethodService_AuthenticateLogin_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate_login"))
+	pattern_AuthMethodService_AuthenticateLogin_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "auth-methods", "auth_method_id"}, "authenticate:login"))
 )
 
 var (

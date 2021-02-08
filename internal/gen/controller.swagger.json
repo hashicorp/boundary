@@ -4,6 +4,44 @@
     "title": "Boundary Controller HTTP API",
     "version": "version not set"
   },
+  "tags": [
+    {
+      "name": "ScopeService"
+    },
+    {
+      "name": "AccountService"
+    },
+    {
+      "name": "AuthMethodService"
+    },
+    {
+      "name": "AuthTokenService"
+    },
+    {
+      "name": "GroupService"
+    },
+    {
+      "name": "HostCatalogService"
+    },
+    {
+      "name": "HostService"
+    },
+    {
+      "name": "HostSetService"
+    },
+    {
+      "name": "RoleService"
+    },
+    {
+      "name": "SessionService"
+    },
+    {
+      "name": "TargetService"
+    },
+    {
+      "name": "UserService"
+    }
+  ],
   "schemes": [
     "https",
     "http"
@@ -142,11 +180,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -310,7 +344,7 @@
         ]
       }
     },
-    "/v1/auth-methods/{auth_method_id}:authenticate_login": {
+    "/v1/auth-methods/{auth_method_id}:authenticate:login": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
         "operationId": "AuthMethodService_AuthenticateLogin",
@@ -421,11 +455,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -645,11 +675,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -889,11 +915,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1028,11 +1050,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1266,11 +1284,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1411,11 +1425,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1766,11 +1776,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -2000,11 +2006,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -2278,11 +2280,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
