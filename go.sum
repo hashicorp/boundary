@@ -532,6 +532,8 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgf
 github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
 github.com/grpc-ecosystem/grpc-gateway v1.9.5 h1:UImYN5qQ8tuGpGE16ZmjvcTtTw24zw1QAp/SlnNrZhI=
 github.com/grpc-ecosystem/grpc-gateway v1.9.5/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.1.1-0.20210209144642-519e7f45f48e h1:9BVX/Q2UP8rvj1HjR7O260MCykUXjXXCEJEvDcY/GLI=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.1.1-0.20210209144642-519e7f45f48e/go.mod h1:gRq9gZWcIFvz68EgWqy2qQpRbmtn5j2qLZ4zHjqiLpg=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
@@ -698,8 +700,6 @@ github.com/jcmturner/gokrb5/v8 v8.2.0/go.mod h1:T1hnNppQsBtxW0tCHMHTkAt8n/sABdzZ
 github.com/jcmturner/rpc/v2 v2.0.2/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
 github.com/jefferai/go-libsecret v0.0.0-20210105015933-d08a58b018bc h1:M5sY7sNLu2Iyfy1fsdT4ig31HgPjJWY++J0L3nrbQ/U=
 github.com/jefferai/go-libsecret v0.0.0-20210105015933-d08a58b018bc/go.mod h1:EqlXVKfB3lkzPXVorfFqbLDsC0On6b18A770TT8HGV0=
-github.com/jefferai/grpc-gateway/v2 v2.1.1-0.20210207224909-fc58ec3bff95 h1:yDRcXxXGbaJsNHpfNRi39L7n6aBYS1snm2MscMf4UMA=
-github.com/jefferai/grpc-gateway/v2 v2.1.1-0.20210207224909-fc58ec3bff95/go.mod h1:L62k5aJQpfFSPEFvho4Mo4c88UiwcTnH6h87kWvBy6w=
 github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f h1:E87tDTVS5W65euzixn7clSzK66puSt1H4I5SC0EmHH4=
 github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f/go.mod h1:3J2qVK16Lq8V+wfiL2lPeDZ7UWMxk5LemerHa1p6N00=
 github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79 h1:7opZgeTbZEBfZSK6OXO6HSnWIDUBn6wlxBuG13pSuEM=
@@ -1498,8 +1498,8 @@ google.golang.org/genproto v0.0.0-20200825200019-8632dd797987/go.mod h1:FWY/as6D
 google.golang.org/genproto v0.0.0-20200911024640-645f7a48b24f/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/genproto v0.0.0-20201030142918-24207fddd1c3/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/genproto v0.0.0-20201211151036-40ec1c210f7a/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
-google.golang.org/genproto v0.0.0-20210204154452-deb828366460 h1:pvsg2TgyP8bWrYqyL10tbNHu5KypD5DWJPrCjaTkwZA=
-google.golang.org/genproto v0.0.0-20210204154452-deb828366460/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
+google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea h1:N98SvVh7Hdle2lgUVFuIkf0B3u29CUakMUQa7Hwz8Wc=
+google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/grpc v1.14.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.17.0/go.mod h1:6QZJwpn2B+Zp71q/5VxRsJ6NXXVCE5NRUHRo+f3cWCs=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
