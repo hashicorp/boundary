@@ -168,7 +168,7 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 
 // decrypt the auth method after reading it from the db
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "oidc.(AuthMethod).encrypt"
+	const op = "oidc.(AuthMethod).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
