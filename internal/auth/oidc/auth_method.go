@@ -54,8 +54,8 @@ type AuthMethod struct {
 // MaxAge equals the Maximum Authentication Age. Specifies the allowable elapsed
 // time in seconds since the last time the End-User was actively authenticated
 // by the OP. If the elapsed time is greater than this value, the OP MUST
-// attempt to actively re-authenticate the End-User. If MaxAge == -1, then it
-// indicates user should always be re-authenticated.
+// attempt to actively re-authenticate the End-User. A value -1 basically
+// forces the IdP to re-authenticate the End-User.  Zero is not a valid value.
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
 func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
