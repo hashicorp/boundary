@@ -680,7 +680,7 @@ func (c *Command) ensureManagerConnection(i time.Duration) {
 		if err := c.SchemaManager.Ping(c.Context); err != nil && c.Context.Err() == nil {
 			c.SchemaManager, err = schema.NewManager(c.Context, "postgres", c.Database.DB())
 			if err != nil {
-				c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure it's integrity.")
+				c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure its integrity.")
 				c.CancelFn()
 				return
 			}
@@ -689,7 +689,7 @@ func (c *Command) ensureManagerConnection(i time.Duration) {
 				continue
 			}
 
-			c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure it's integrity.")
+			c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure its integrity.")
 			c.CancelFn()
 			return
 		}
