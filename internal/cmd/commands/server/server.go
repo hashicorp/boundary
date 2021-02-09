@@ -673,17 +673,30 @@ func (c *Command) ensureManagerConnection() {
 
 	t := time.NewTicker(getRandomInterval())
 	for {
-		if err := c.SchemaManager.Ping(c.Context); err != nil {
+		// If the context isn't done but the ping fails, try to recover.
+		if err := c.SchemaManager.Ping(c.Context); err != nil && c.Context.Err() == nil {
+			c.SchemaManager, err = schema.NewManager(c.Context, "postgres", c.Database.DB())
+			if err != nil {
+				c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure it's integrity.")
+				c.CancelFn()
+				return
+			}
+
+			if err := c.SchemaManager.SharedLock(c.Context); err == nil {
+				continue
+			}
+
 			c.UI.Error("The Schema Manager lost connection with the DB and cannot ensure it's integrity.")
 			c.CancelFn()
+			return
 		}
 
 		select {
+		case <-t.C:
+			t.Reset(getRandomInterval())
 		case <-c.Context.Done():
 			// The command is shutting down so stop checking.
 			return
-		case <-t.C:
-			t.Reset(getRandomInterval())
 		}
 	}
 }

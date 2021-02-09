@@ -40,7 +40,7 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	}
 
 	cleanup = func() error {
-		return cleanupDockerResource(pool, resource)
+		return cleanupDockerResource(resource)
 	}
 
 	if err := pool.Retry(func() error {
@@ -62,10 +62,10 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 }
 
 // cleanupDockerResource will clean up the dockertest resources (postgres)
-func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource) error {
+func cleanupDockerResource(resource *dockertest.Resource) error {
 	var err error
 	for i := 0; i < 10; i++ {
-		err = pool.Purge(resource)
+		err = resource.Close()
 		if err == nil {
 			return nil
 		}
