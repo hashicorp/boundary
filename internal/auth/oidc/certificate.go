@@ -26,7 +26,7 @@ type Certificate struct {
 // NewCertificate creates a new in memory certificate assigned to and OIDC auth
 // method.
 func NewCertificate(authMethodId string, certificatePem string) (*Certificate, error) {
-	const op = "oidc.NewCallbackUrl"
+	const op = "oidc.NewCertificate"
 
 	c := &Certificate{
 		Certificate: &store.Certificate{
