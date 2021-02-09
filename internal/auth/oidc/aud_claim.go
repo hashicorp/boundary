@@ -29,7 +29,7 @@ type AudClaim struct {
 // For more info on oidc aud claims, see the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
-	const op = "oidc.NewCallbackUrl"
+	const op = "oidc.NewAudClaim"
 
 	c := &AudClaim{
 		AudClaim: &store.AudClaim{
