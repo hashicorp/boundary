@@ -647,7 +647,6 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
-	// TODO: Update this when we enable different auth method types.
 	if req.GetCredentials() == nil {
 		badFields["credentials"] = "This is a required field."
 	}
