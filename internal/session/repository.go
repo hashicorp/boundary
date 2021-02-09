@@ -2,11 +2,10 @@ package session
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -28,14 +27,15 @@ type Repository struct {
 // NewRepository creates a new session Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+	const op = "session.NewRepository"
 	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
+		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New("error creating db repository with nil kms")
+		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -53,6 +53,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
 func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opts options) error {
+	const op = "session.(Repository).list"
 	limit := r.defaultLimit
 	var dbOpts []db.Option
 	if opts.withLimit != 0 {
@@ -63,10 +64,14 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	if opts.withOrder != "" {
 		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
 	}
-	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
+	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
 }
 
 func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []*sessionView, opt ...Option) ([]*Session, error) {
+	const op = "session.(Repository).convertToSessions"
 	opts := getOpts(opt...)
 
 	if len(sessionsWithState) == 0 {
@@ -114,10 +119,10 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				if len(workingSession.CtTofuToken) > 0 {
 					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(workingSession.KeyId))
 					if err != nil {
-						return nil, fmt.Errorf("convert session: unable to get database wrapper: %w", err)
+						return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 					}
 					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, fmt.Errorf("convert session: cannot decrypt session value: %w", err)
+						return nil, errors.Wrap(err, op, errors.WithMsg("cannot decrypt session value"))
 					}
 				} else {
 					workingSession.CtTofuToken = nil

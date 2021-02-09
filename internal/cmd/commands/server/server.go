@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -365,7 +367,13 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		defer func() {
-			if err := sMan.SharedUnlock(c.Context); err != nil {
+			// The base context has already been cancelled so we shouldn't use it here.
+			// 1 second is chosen so the shutdown is still responsive and this is a mostly
+			// non critical step since the lock should be released when the session with the
+			// database is closed.
+			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+			defer cancel()
+			if err := sMan.SharedUnlock(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
@@ -376,6 +384,7 @@ func (c *Command) Run(args []string) int {
 		}
 		if !ckState.InitializationStarted {
 			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
+			return 1
 		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
