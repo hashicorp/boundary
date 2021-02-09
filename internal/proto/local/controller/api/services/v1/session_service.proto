@@ -24,20 +24,6 @@ service SessionService {
 		};
 	}
 
-	// GetSelfSession returns a stored Session if present. The provided request
-	// must include the Session ID for the Session being retrieved. If any that
-	// ID is missing, malformed or reference a non existing resource an error is
-	// returned. The session must be associated with the calling user.
-	rpc GetSelfSession(GetSelfSessionRequest) returns (GetSelfSessionResponse) {
-		option (google.api.http) = {
-			get: "/v1/sessions/{id}:read:self"
-			response_body: "item"
-		};
-		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Gets a single Session, which must be associated with the calling user."
-		};
-	}
-
 	// ListSessions returns a list of stored Sessions which exist inside the scope
 	// referenced inside the request. The request must include the scope ID for
 	// the Sessions being retrieved. If the scope ID is missing, malformed, or
@@ -64,20 +50,6 @@ service SessionService {
 			summary: "Cancels a Session."
 		};
 	}
-
-	// CancelSelfSession cancels an existing Session in boundary. An error is
-	// returned if the request attempts to cancel a Session that does not exist.
-	// The session must be associated with the calling user.
-	rpc CancelSelfSession(CancelSelfSessionRequest) returns (CancelSelfSessionResponse) {
-		option (google.api.http) = {
-			post: "/v1/sessions/{id}:cancel:self"
-			body: "*"
-			response_body: "item"
-		};
-		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Cancels a Session associated with the calling user."
-		};
-	}
 }
 
 message GetSessionRequest {
@@ -85,14 +57,6 @@ message GetSessionRequest {
 }
 
 message GetSessionResponse {
-	resources.sessions.v1.Session item = 1;
-}
-
-message GetSelfSessionRequest {
-	string id = 1;
-}
-
-message GetSelfSessionResponse {
 	resources.sessions.v1.Session item = 1;
 }
 
@@ -111,14 +75,5 @@ message CancelSessionRequest {
 }
 
 message CancelSessionResponse {
-	resources.sessions.v1.Session item = 1;
-}
-
-message CancelSelfSessionRequest {
-	string id = 1;
-	uint32 version = 2;
-}
-
-message CancelSelfSessionResponse {
 	resources.sessions.v1.Session item = 1;
 }

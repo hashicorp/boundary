@@ -83,58 +83,6 @@ func local_request_SessionService_GetSession_0(ctx context.Context, marshaler ru
 
 }
 
-func request_SessionService_GetSelfSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSelfSessionRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.GetSelfSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_SessionService_GetSelfSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSelfSessionRequest
-	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.GetSelfSession(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 var (
 	filter_SessionService_ListSessions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -239,74 +187,6 @@ func local_request_SessionService_CancelSession_0(ctx context.Context, marshaler
 
 }
 
-func request_SessionService_CancelSelfSession_0(ctx context.Context, marshaler runtime.Marshaler, client SessionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CancelSelfSessionRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.CancelSelfSession(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_SessionService_CancelSelfSession_0(ctx context.Context, marshaler runtime.Marshaler, server SessionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CancelSelfSessionRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.CancelSelfSession(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 // RegisterSessionServiceHandlerServer registers the http handlers for service SessionService to "mux".
 // UnaryRPC     :call SessionServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -333,29 +213,6 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_GetSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_GetSession_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("GET", pattern_SessionService_GetSelfSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSelfSession")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_SessionService_GetSelfSession_0(rctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_SessionService_GetSelfSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_GetSelfSession_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -402,29 +259,6 @@ func RegisterSessionServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 
 		forward_SessionService_CancelSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_CancelSession_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("POST", pattern_SessionService_CancelSelfSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSelfSession")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_SessionService_CancelSelfSession_0(rctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_SessionService_CancelSelfSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_CancelSelfSession_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -489,26 +323,6 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 
 	})
 
-	mux.Handle("GET", pattern_SessionService_GetSelfSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/GetSelfSession")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_SessionService_GetSelfSession_0(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_SessionService_GetSelfSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_GetSelfSession_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("GET", pattern_SessionService_ListSessions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -549,26 +363,6 @@ func RegisterSessionServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 
 	})
 
-	mux.Handle("POST", pattern_SessionService_CancelSelfSession_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.SessionService/CancelSelfSession")
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_SessionService_CancelSelfSession_0(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_SessionService_CancelSelfSession_0(ctx, mux, outboundMarshaler, w, req, response_SessionService_CancelSelfSession_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	return nil
 }
 
@@ -581,15 +375,6 @@ func (m response_SessionService_GetSession_0) XXX_ResponseBody() interface{} {
 	return response.Item
 }
 
-type response_SessionService_GetSelfSession_0 struct {
-	proto.Message
-}
-
-func (m response_SessionService_GetSelfSession_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetSelfSessionResponse)
-	return response.Item
-}
-
 type response_SessionService_CancelSession_0 struct {
 	proto.Message
 }
@@ -599,35 +384,18 @@ func (m response_SessionService_CancelSession_0) XXX_ResponseBody() interface{} 
 	return response.Item
 }
 
-type response_SessionService_CancelSelfSession_0 struct {
-	proto.Message
-}
-
-func (m response_SessionService_CancelSelfSession_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CancelSelfSessionResponse)
-	return response.Item
-}
-
 var (
 	pattern_SessionService_GetSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, ""))
-
-	pattern_SessionService_GetSelfSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, "read:self"))
 
 	pattern_SessionService_ListSessions_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "sessions"}, ""))
 
 	pattern_SessionService_CancelSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, "cancel"))
-
-	pattern_SessionService_CancelSelfSession_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "sessions", "id"}, "cancel:self"))
 )
 
 var (
 	forward_SessionService_GetSession_0 = runtime.ForwardResponseMessage
 
-	forward_SessionService_GetSelfSession_0 = runtime.ForwardResponseMessage
-
 	forward_SessionService_ListSessions_0 = runtime.ForwardResponseMessage
 
 	forward_SessionService_CancelSession_0 = runtime.ForwardResponseMessage
-
-	forward_SessionService_CancelSelfSession_0 = runtime.ForwardResponseMessage
 )

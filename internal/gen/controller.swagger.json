@@ -4,44 +4,6 @@
     "title": "Boundary Controller HTTP API",
     "version": "version not set"
   },
-  "tags": [
-    {
-      "name": "ScopeService"
-    },
-    {
-      "name": "AccountService"
-    },
-    {
-      "name": "AuthMethodService"
-    },
-    {
-      "name": "AuthTokenService"
-    },
-    {
-      "name": "GroupService"
-    },
-    {
-      "name": "HostCatalogService"
-    },
-    {
-      "name": "HostService"
-    },
-    {
-      "name": "HostSetService"
-    },
-    {
-      "name": "RoleService"
-    },
-    {
-      "name": "SessionService"
-    },
-    {
-      "name": "TargetService"
-    },
-    {
-      "name": "UserService"
-    }
-  ],
   "schemes": [
     "https",
     "http"
@@ -180,7 +142,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -421,7 +387,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -641,7 +611,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -881,7 +855,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1016,7 +994,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1250,7 +1232,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1391,7 +1377,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1742,7 +1732,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1832,64 +1826,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.CancelSessionRequest"
             }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.SessionService"
-        ]
-      }
-    },
-    "/v1/sessions/{id}:cancel:self": {
-      "post": {
-        "summary": "Cancels a Session associated with the calling user.",
-        "operationId": "SessionService_CancelSelfSession",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.CancelSelfSessionRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.SessionService"
-        ]
-      }
-    },
-    "/v1/sessions/{id}:read:self": {
-      "get": {
-        "summary": "Gets a single Session, which must be associated with the calling user.",
-        "operationId": "SessionService_GetSelfSession",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2030,7 +1966,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -2304,7 +2244,11 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -3781,26 +3725,6 @@
         }
       }
     },
-    "controller.api.services.v1.CancelSelfSessionRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "controller.api.services.v1.CancelSelfSessionResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
-        }
-      }
-    },
     "controller.api.services.v1.CancelSessionRequest": {
       "type": "object",
       "properties": {
@@ -4060,14 +3984,6 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
-        }
-      }
-    },
-    "controller.api.services.v1.GetSelfSessionResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
         }
       }
     },

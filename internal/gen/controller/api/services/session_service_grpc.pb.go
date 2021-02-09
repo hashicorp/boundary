@@ -22,11 +22,6 @@ type SessionServiceClient interface {
 	// any that ID is missing, malformed or reference a non existing
 	// resource an error is returned.
 	GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error)
-	// GetSelfSession returns a stored Session if present. The provided request
-	// must include the Session ID for the Session being retrieved. If any that
-	// ID is missing, malformed or reference a non existing resource an error is
-	// returned. The session must be associated with the calling user.
-	GetSelfSession(ctx context.Context, in *GetSelfSessionRequest, opts ...grpc.CallOption) (*GetSelfSessionResponse, error)
 	// ListSessions returns a list of stored Sessions which exist inside the scope
 	// referenced inside the request. The request must include the scope ID for
 	// the Sessions being retrieved. If the scope ID is missing, malformed, or
@@ -36,10 +31,6 @@ type SessionServiceClient interface {
 	// is returned if the request attempts to cancel a Session that does
 	// not exist.
 	CancelSession(ctx context.Context, in *CancelSessionRequest, opts ...grpc.CallOption) (*CancelSessionResponse, error)
-	// CancelSelfSession cancels an existing Session in boundary. An error is
-	// returned if the request attempts to cancel a Session that does not exist.
-	// The session must be associated with the calling user.
-	CancelSelfSession(ctx context.Context, in *CancelSelfSessionRequest, opts ...grpc.CallOption) (*CancelSelfSessionResponse, error)
 }
 
 type sessionServiceClient struct {
@@ -53,15 +44,6 @@ func NewSessionServiceClient(cc grpc.ClientConnInterface) SessionServiceClient {
 func (c *sessionServiceClient) GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error) {
 	out := new(GetSessionResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.SessionService/GetSession", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sessionServiceClient) GetSelfSession(ctx context.Context, in *GetSelfSessionRequest, opts ...grpc.CallOption) (*GetSelfSessionResponse, error) {
-	out := new(GetSelfSessionResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.SessionService/GetSelfSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,15 +68,6 @@ func (c *sessionServiceClient) CancelSession(ctx context.Context, in *CancelSess
 	return out, nil
 }
 
-func (c *sessionServiceClient) CancelSelfSession(ctx context.Context, in *CancelSelfSessionRequest, opts ...grpc.CallOption) (*CancelSelfSessionResponse, error) {
-	out := new(CancelSelfSessionResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.SessionService/CancelSelfSession", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // SessionServiceServer is the server API for SessionService service.
 // All implementations must embed UnimplementedSessionServiceServer
 // for forward compatibility
@@ -104,11 +77,6 @@ type SessionServiceServer interface {
 	// any that ID is missing, malformed or reference a non existing
 	// resource an error is returned.
 	GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error)
-	// GetSelfSession returns a stored Session if present. The provided request
-	// must include the Session ID for the Session being retrieved. If any that
-	// ID is missing, malformed or reference a non existing resource an error is
-	// returned. The session must be associated with the calling user.
-	GetSelfSession(context.Context, *GetSelfSessionRequest) (*GetSelfSessionResponse, error)
 	// ListSessions returns a list of stored Sessions which exist inside the scope
 	// referenced inside the request. The request must include the scope ID for
 	// the Sessions being retrieved. If the scope ID is missing, malformed, or
@@ -118,10 +86,6 @@ type SessionServiceServer interface {
 	// is returned if the request attempts to cancel a Session that does
 	// not exist.
 	CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
-	// CancelSelfSession cancels an existing Session in boundary. An error is
-	// returned if the request attempts to cancel a Session that does not exist.
-	// The session must be associated with the calling user.
-	CancelSelfSession(context.Context, *CancelSelfSessionRequest) (*CancelSelfSessionResponse, error)
 	mustEmbedUnimplementedSessionServiceServer()
 }
 
@@ -132,17 +96,11 @@ type UnimplementedSessionServiceServer struct {
 func (UnimplementedSessionServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-func (UnimplementedSessionServiceServer) GetSelfSession(context.Context, *GetSelfSessionRequest) (*GetSelfSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSelfSession not implemented")
-}
 func (UnimplementedSessionServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSessions not implemented")
 }
 func (UnimplementedSessionServiceServer) CancelSession(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelSession not implemented")
-}
-func (UnimplementedSessionServiceServer) CancelSelfSession(context.Context, *CancelSelfSessionRequest) (*CancelSelfSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CancelSelfSession not implemented")
 }
 func (UnimplementedSessionServiceServer) mustEmbedUnimplementedSessionServiceServer() {}
 
@@ -171,24 +129,6 @@ func _SessionService_GetSession_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SessionServiceServer).GetSession(ctx, req.(*GetSessionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SessionService_GetSelfSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSelfSessionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SessionServiceServer).GetSelfSession(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.SessionService/GetSelfSession",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionServiceServer).GetSelfSession(ctx, req.(*GetSelfSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -229,24 +169,6 @@ func _SessionService_CancelSession_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SessionService_CancelSelfSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CancelSelfSessionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SessionServiceServer).CancelSelfSession(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.SessionService/CancelSelfSession",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionServiceServer).CancelSelfSession(ctx, req.(*CancelSelfSessionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _SessionService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.SessionService",
 	HandlerType: (*SessionServiceServer)(nil),
@@ -256,20 +178,12 @@ var _SessionService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _SessionService_GetSession_Handler,
 		},
 		{
-			MethodName: "GetSelfSession",
-			Handler:    _SessionService_GetSelfSession_Handler,
-		},
-		{
 			MethodName: "ListSessions",
 			Handler:    _SessionService_ListSessions_Handler,
 		},
 		{
 			MethodName: "CancelSession",
 			Handler:    _SessionService_CancelSession_Handler,
-		},
-		{
-			MethodName: "CancelSelfSession",
-			Handler:    _SessionService_CancelSelfSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
