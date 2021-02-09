@@ -121,7 +121,7 @@ func (a *Account) SetTableName(n string) {
 func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.AuthMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth aud claim"},
+		"resource-type":      []string{"oidc auth account"},
 		"op-type":            []string{op.String()},
 	}
 	if authMethodScopeId != "" {
