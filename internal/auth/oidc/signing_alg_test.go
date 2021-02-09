@@ -88,6 +88,15 @@ func TestSigningAlg_Create(t *testing.T) {
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
 		},
+		{
+			name: "supported-alg",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				alg:          Alg("EVE256"), // The unsupported evesdropper 256 curve
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
