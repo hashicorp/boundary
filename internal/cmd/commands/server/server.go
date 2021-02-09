@@ -28,6 +28,8 @@ import (
 	"github.com/posener/complete"
 )
 
+const schemaManagerInterval = 20 * time.Second
+
 var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
@@ -461,6 +463,9 @@ func (c *Command) StartController() error {
 		return fmt.Errorf("Error initializing controller: %w", err)
 	}
 
+	// We must always have the manager connection setup to maintain the shared lock
+	go c.ensureManagerConnection(schemaManagerInterval)
+
 	if err := c.controller.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting controller: %w", err)
 		if err := c.controller.Shutdown(false); err != nil {
@@ -615,7 +620,6 @@ func (c *Command) connectSchemaManager(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("Can't get schema manager: %w.", err)
 	}
-	c.SchemaManager = sm
 	// This is an advisory locks on the DB which is released when the db session ends.
 	if err := sm.SharedLock(c.Context); err != nil {
 		return fmt.Errorf("Unable to gain shared access to the database: %w", err)
@@ -651,15 +655,14 @@ func (c *Command) connectSchemaManager(dialect string) error {
 			"binary.", ckState.DatabaseSchemaVersion)
 	}
 
-	go c.ensureManagerConnection()
+	c.SchemaManager = sm
 	return nil
 }
 
 // ensureManagerConnection ensures that the schema manager is able to communicate
 // with the database for the duration of the controller and if not it cancels the
 // command's context which everything down.
-func (c *Command) ensureManagerConnection() {
-	const schemaManagerInterval = 20 * time.Second
+func (c *Command) ensureManagerConnection(i time.Duration) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	getRandomInterval := func() time.Duration {
 		// 0 to 0.5 adjustment to the base
@@ -668,7 +671,7 @@ func (c *Command) ensureManagerConnection() {
 		if r.Float32() > 0.5 {
 			f = -1 * f
 		}
-		return schemaManagerInterval + time.Duration(f*float64(schemaManagerInterval))
+		return i + time.Duration(f*float64(i))
 	}
 
 	t := time.NewTicker(getRandomInterval())
