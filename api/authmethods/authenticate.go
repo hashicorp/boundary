@@ -13,7 +13,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
 
-	_, apiOpts := getOpts(opt...)
+	opts, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
 		"credentials": credentials,
@@ -21,6 +21,8 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 
 	var action string
 	switch {
+	case opts.withSubAction != "":
+		action = opts.withSubAction
 	case strings.HasPrefix(authMethodId, "ampw"):
 		action = "login"
 	}

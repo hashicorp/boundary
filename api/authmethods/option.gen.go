@@ -21,6 +21,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withRecursive           bool
+	withSubAction           string
 }
 
 func getDefaultOptions() options {
@@ -68,6 +69,13 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = true
+	}
+}
+
+// WithSubAction tells the API what sub-action to use for an operation
+func WithSubAction(subAction string) Option {
+	return func(o *options) {
+		o.withSubAction = subAction
 	}
 }
 

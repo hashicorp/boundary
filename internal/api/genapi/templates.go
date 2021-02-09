@@ -49,6 +49,7 @@ type templateInput struct {
 	TypeOnCreate          bool
 	CreateResponseTypes   bool
 	RecursiveListing      bool
+	SubAction             bool
 }
 
 func fillTemplates() {
@@ -68,6 +69,7 @@ func fillTemplates() {
 			TypeOnCreate:        in.typeOnCreate,
 			CreateResponseTypes: in.createResponseTypes,
 			RecursiveListing:    in.recursiveListing,
+			SubAction:           in.subAction,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -158,6 +160,7 @@ func fillTemplates() {
 			Package:          pkg,
 			Fields:           fields,
 			RecursiveListing: inputMap[pkg].recursiveListing,
+			SubAction:        inputMap[pkg].subAction,
 		}
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
@@ -658,6 +661,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput bool
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
+	{{ if .SubAction }} withSubAction string {{ end }}
 }
 
 func getDefaultOptions() options {
@@ -705,6 +709,14 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = true
+	}
+}
+{{ end }}
+{{ if .SubAction }}
+// WithSubAction tells the API what sub-action to use for an operation
+func WithSubAction(subAction string) Option {
+	return func(o *options) {
+		o.withSubAction = subAction
 	}
 }
 {{ end }}

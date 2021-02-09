@@ -82,6 +82,9 @@ type structInfo struct {
 	// listing
 	recursiveListing bool
 
+	// subAction indicates that we should generate a withSubAction option field
+	subAction bool
+
 	// extraOptions allows specifying extra options that will be created for a
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
@@ -260,6 +263,7 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
+		subAction:           true,
 	},
 	// Accounts
 	{

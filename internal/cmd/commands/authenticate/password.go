@@ -131,7 +131,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
-		})
+		}, authmethods.WithSubAction("login"))
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", base.PrintApiError(apiErr)))
