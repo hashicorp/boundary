@@ -329,6 +329,27 @@ func TestWithSchema(t *testing.T) {
 	})
 }
 
+func TestPostgres_Ping(t *testing.T) {
+	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
+		ctx := context.Background()
+		ip, port, err := c.FirstPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr := pgConnectionString(ip, port)
+		p, err := open(t, ctx, addr)
+		if err != nil {
+			require.NoError(t, err)
+		}
+
+		assert.NoError(t, p.Ping(ctx))
+
+		require.NoError(t, p.close(t))
+		assert.Error(t, p.Ping(ctx))
+	})
+}
+
 func TestPostgres_Lock(t *testing.T) {
 	dktesting.ParallelTest(t, specs, func(t *testing.T, c dktest.ContainerInfo) {
 		ctx := context.Background()
