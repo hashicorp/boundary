@@ -37,6 +37,12 @@ func Test_Map(t *testing.T) {
 			want:       Unknown,
 			wantPrefix: "unknown",
 		},
+		{
+			name:       "empty",
+			s:          "empty",
+			want:       Empty,
+			wantPrefix: "empty",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

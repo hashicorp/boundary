@@ -46,6 +46,8 @@ alter table iam_scope
         )
        );
 
+-- iam_scope_empty contains a single row which represents the "empty" scope. The
+-- empty scope is the owning scope of sentinel values in other tables.
 create table iam_scope_empty (
   scope_id wt_scope_id primary key
     references iam_scope(public_id)
@@ -123,7 +125,7 @@ create trigger
   immutable_columns
 before
 update on iam_scope_empty
-  for each row execute procedure immutable_columns('scope_id');
+  for each row execute procedure immutable_columns('scope_id', 'name');
 
 
 drop trigger iam_sub_names on iam_scope;
@@ -164,6 +166,23 @@ create trigger
 before
 update on iam_scope
   for each row execute procedure iam_sub_names();
+
+create or replace function read_only_empty_scope()
+  returns trigger
+as $$
+begin
+  if old.public_id = 'empty' then
+    raise exception 'empty scope is read-only';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger
+  read_only_empty_scope
+before
+update on iam_scope
+  for each row when (new.public_id = 'empty') execute procedure read_only_empty_scope();
 
 insert into iam_scope (public_id, name, type, description)
   values ('empty', 'empty', 'empty', 'Empty Scope');

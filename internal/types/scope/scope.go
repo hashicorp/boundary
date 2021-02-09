@@ -8,6 +8,7 @@ const (
 	Global  Type = 1
 	Org     Type = 2
 	Project Type = 3
+	Empty   Type = 4
 )
 
 func (s Type) String() string {
@@ -16,6 +17,7 @@ func (s Type) String() string {
 		"global",
 		"org",
 		"project",
+		"empty",
 	}[s]
 }
 
@@ -25,6 +27,7 @@ func (s Type) Prefix() string {
 		"global",
 		"o",
 		"p",
+		"empty",
 	}[s]
 }
 
@@ -32,4 +35,5 @@ var Map = map[string]Type{
 	Global.String():  Global,
 	Org.String():     Org,
 	Project.String(): Project,
+	Empty.String():   Empty,
 }
