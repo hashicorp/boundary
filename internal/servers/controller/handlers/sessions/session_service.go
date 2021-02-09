@@ -25,7 +25,9 @@ var (
 	// individual resources
 	IdActions = action.ActionSet{
 		action.Read,
+		action.ReadSelf,
 		action.Cancel,
+		action.CancelSelf,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -58,20 +60,64 @@ var _ pbs.SessionServiceServer = Service{}
 
 // GetSessions implements the interface pbs.SessionServiceServer.
 func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
-	if err := validateGetRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	ses, err := s.getFromRepo(ctx, req.GetId())
+	ses, err := s.getSession(ctx, req, false)
 	if err != nil {
 		return nil, err
 	}
+	return &pbs.GetSessionResponse{Item: ses}, nil
+}
+
+// GetSelfSessions implements the interface pbs.SessionServiceServer.
+func (s Service) GetSelfSession(ctx context.Context, req *pbs.GetSelfSessionRequest) (*pbs.GetSelfSessionResponse, error) {
+	ses, err := s.getSession(ctx, req, true)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.GetSelfSessionResponse{Item: ses}, nil
+}
+
+func (s Service) getSession(ctx context.Context, req handlers.GetRequest, isSelf bool) (*pb.Session, error) {
+	const op = "sessions.(Service).getSession"
+	if err := validateGetRequest(req); err != nil {
+		return nil, err
+	}
+	act := action.Read
+	if isSelf {
+		act = action.ReadSelf
+	}
+	authResults := s.authResult(ctx, req.GetId(), act)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	var ses *pb.Session
+	var err error
+
+	switch isSelf {
+	case true:
+		sesList, err := s.listFromRepo(ctx, session.WithSessionIds(req.GetId()), session.WithUserId(authResults.UserId))
+		if err != nil {
+			return nil, err
+		}
+		switch len(sesList) {
+		case 0:
+			return nil, errors.New(errors.RecordNotFound, op, "did not find user session when looking up by user and ID")
+		case 1:
+		default:
+			return nil, errors.New(errors.MultipleRecords, op, "found more than one session when looking up by user and ID")
+		}
+		ses = sesList[0]
+
+	default:
+		ses, err = s.getFromRepo(ctx, req.GetId())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	ses.Scope = authResults.Scope
 	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
-	return &pbs.GetSessionResponse{Item: ses}, nil
+	return ses, nil
 }
 
 // ListSessions implements the interface pbs.SessionServiceServer.
@@ -112,20 +158,63 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 // CancelSession implements the interface pbs.SessionServiceServer.
 func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
-	if err := validateCancelRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.Cancel)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	ses, err := s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
+	item, err := s.cancelSession(ctx, req.GetId(), req.GetVersion(), false)
 	if err != nil {
 		return nil, err
 	}
+	return &pbs.CancelSessionResponse{Item: item}, nil
+}
+
+// CancelSelfSession implements the interface pbs.SessionServiceServer.
+func (s Service) CancelSelfSession(ctx context.Context, req *pbs.CancelSelfSessionRequest) (*pbs.CancelSelfSessionResponse, error) {
+	item, err := s.cancelSession(ctx, req.GetId(), req.GetVersion(), true)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.CancelSelfSessionResponse{Item: item}, nil
+}
+
+func (s Service) cancelSession(ctx context.Context, id string, version uint32, isSelf bool) (*pb.Session, error) {
+	const op = "sessions.(Service).cancelSession"
+	if err := validateCancelRequest(id, version); err != nil {
+		return nil, err
+	}
+
+	act := action.Cancel
+	if isSelf {
+		act = action.CancelSelf
+	}
+	authResults := s.authResult(ctx, id, act)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	var ses *pb.Session
+	var err error
+
+	if isSelf {
+		sesList, err := s.listFromRepo(ctx, session.WithSessionIds(id), session.WithUserId(authResults.UserId))
+		if err != nil {
+			return nil, err
+		}
+		switch len(sesList) {
+		case 0:
+			return nil, errors.New(errors.RecordNotFound, op, "did not find user session when looking up by user and ID")
+		case 1:
+		default:
+			return nil, errors.New(errors.MultipleRecords, op, "found more than one session when looking up by user and ID")
+		}
+		ses = sesList[0]
+	}
+
+	ses, err = s.cancelInRepo(ctx, id, version)
+	if err != nil {
+		return nil, err
+	}
+
 	ses.Scope = authResults.Scope
 	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
-	return &pbs.CancelSessionResponse{Item: ses}, nil
+	return ses, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error) {
@@ -264,7 +353,7 @@ func toProto(in *session.Session) *pb.Session {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetSessionRequest) error {
+func validateGetRequest(req handlers.GetRequest) error {
 	return handlers.ValidateGetRequest(session.SessionPrefix, req, handlers.NoopValidatorFn)
 }
 
@@ -280,12 +369,12 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 	return nil
 }
 
-func validateCancelRequest(req *pbs.CancelSessionRequest) error {
+func validateCancelRequest(id string, version uint32) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
+	if !handlers.ValidId(session.SessionPrefix, id) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
-	if req.GetVersion() == 0 {
+	if version == 0 {
 		badFields["version"] = "Required field."
 	}
 	if len(badFields) > 0 {
