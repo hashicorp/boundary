@@ -37,7 +37,6 @@ func TestEnsureManagerConnection_DBDisconnect(t *testing.T) {
 
 	require.NoError(t, c.connectSchemaManager(dialect))
 
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -75,7 +74,6 @@ func TestEnsureManagerConnection_Shutdown(t *testing.T) {
 	require.NoError(t, m.RollForward(ctx))
 
 	require.NoError(t, c.connectSchemaManager(dialect))
-
 
 	var wg sync.WaitGroup
 	wg.Add(1)

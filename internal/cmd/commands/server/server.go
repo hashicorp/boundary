@@ -36,9 +36,9 @@ var (
 type Command struct {
 	*base.Server
 
-	SighupCh      chan struct{}
-	ReloadedCh    chan struct{}
-	SigUSR2Ch     chan struct{}
+	SighupCh   chan struct{}
+	ReloadedCh chan struct{}
+	SigUSR2Ch  chan struct{}
 
 	Config     *config.Config
 	controller *controller.Controller
@@ -625,7 +625,7 @@ func (c *Command) connectSchemaManager(dialect string) error {
 		// 1 second is chosen so the shutdown is still responsive and this is a mostly
 		// non critical step since the lock should be released when the session with the
 		// database is closed.
-		ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		if err := sm.SharedUnlock(ctx); err != nil {
 			return fmt.Errorf("Unable to release shared lock to the database: %w", err)

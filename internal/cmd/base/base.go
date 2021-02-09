@@ -45,7 +45,7 @@ var DevOnlyControllerFlags = func(*Command, *FlagSet) {}
 
 type Command struct {
 	Context    context.Context
-	CancelFn	context.CancelFunc
+	CancelFn   context.CancelFunc
 	UI         cli.Ui
 	ShutdownCh chan struct{}
 
@@ -89,7 +89,7 @@ func NewCommand(ui cli.Ui) *Command {
 		UI:         ui,
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
-		CancelFn: cancel,
+		CancelFn:   cancel,
 	}
 
 	go func() {

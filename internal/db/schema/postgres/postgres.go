@@ -56,7 +56,7 @@ var defaultMigrationsTable = "boundary_schema_version"
 type Postgres struct {
 	// Locking and unlocking need to use the same connection
 	conn *sql.Conn
-	tx *sql.Tx
+	tx   *sql.Tx
 }
 
 // New returns a postgres pointer with the provided db verified as
