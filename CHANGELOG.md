@@ -16,6 +16,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
+* authentication: The `auth-methods/<id>:authenticate` action is deprecated and
+  will be removed in a few releases. Instead, each auth method will define its
+  own action or actions that are valid. This is necessary to support multi-step
+  authentication schemes in upcoming releases. For the `password` auth method,
+  the new action is `auth-methods/<id>:authenticate:login`.
 
 ### New and Improved
 
