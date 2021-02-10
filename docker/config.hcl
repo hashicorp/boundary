@@ -5,34 +5,42 @@ controller {
   description = "A controller for a demo!"
 
   database {
+    # This configuration setting requires the user to execute the container with the URL as an env var
+    # to connect to the Boundary postgres DB. An example of how this can be done assuming the postgres 
+    # database is running as a container and you're using docker for mac (replace host.docker.internal with
+    # localhost if you're on linux):
+    #    $  docker run -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@host.docker.internal:5432/postgres?sslmode=disable' [other options] boundary:[version]
     url = "env://BOUNDARY_POSTGRES_URL"
-    #url = "postgresql://postgres:postgres@0.0.0.0:5432/postgres?sslmode=disable"
   }
 }
 
 worker {
   name = "demo-worker-1"
   description = "A default worker created demonstration"
-  controllers = [
-    "0.0.0.0",
-  ]
-  address = "0.0.0.0"
 }
 
 listener "tcp" {
-  address = "0.0.0.0"
+  # This configuration assumes the docker container hostname is being overridden using the --hostname
+  # flag. The default configuration of a container uses the ephemeral container ID as the hostname and
+  # this hostname resolves to the ephemeral IP of the container. We need to bind to the ephemeral IP 
+  # of the container on startup, and need to know the hostname in order to do that. A future improvement
+  # would be allowing the listener to set `env://HOSTNAME` as its value but that's not a feature at
+  # the time of this writing. For now, when running boundary in docker you must pass the --hostname 
+  # flag as:
+  #    $ docker run --hostname boundary [other options] boundary:[version]
+  address = "boundary"
   purpose = "api"
   tls_disable = true 
 }
 
 listener "tcp" {
-  address = "0.0.0.0"
+  address = "boundary"
   purpose = "cluster"
   tls_disable   = true 
 }
 
 listener "tcp" {
-  address       = "0.0.0.0"
+  address = "boundary"
   purpose       = "proxy"
   tls_disable   = true 
 }

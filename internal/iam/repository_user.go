@@ -131,7 +131,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "error more than 1 resource would have been updated")
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -651,7 +651,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is associated with a user %s", accountId, acct.IamUserId))
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is already associated with another user", accountId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
