@@ -28,19 +28,19 @@ listener "tcp" {
   # the time of this writing. For now, when running boundary in docker you must pass the --hostname 
   # flag as:
   #    $ docker run --hostname boundary [other options] boundary:[version]
-  address = "boundary"
+  address = "env://HOSTNAME:9200"
   purpose = "api"
   tls_disable = true 
 }
 
 listener "tcp" {
-  address = "boundary"
+  address = "env://HOSTNAME:9201"
   purpose = "cluster"
   tls_disable   = true 
 }
 
 listener "tcp" {
-  address = "boundary"
+  address = "env://HOSTNAME:9202"
   purpose       = "proxy"
   tls_disable   = true 
 }
