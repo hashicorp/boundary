@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	DefaultTestAuthMethodId    = "ampw_1234567890"
-	DefaultTestLoginName       = "admin"
-	DefaultTestUnprivLoginName = "user"
-	DefaultTestPassword        = "passpass"
+	DefaultTestAuthMethodId          = "ampw_1234567890"
+	DefaultTestLoginName             = "admin"
+	DefaultTestUnprivilegedLoginName = "user"
+	DefaultTestPassword              = "passpass"
+	DefaultTestUserId                = "u_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -247,8 +248,8 @@ type TestControllerOpts struct {
 	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
-	// DefaultUnprivLoginName is the login name used when creating the default unprivileged account.
-	DefaultUnprivLoginName string
+	// DefaultUnprivilegedLoginName is the login name used when creating the default unprivileged account.
+	DefaultUnprivilegedLoginName string
 
 	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
@@ -365,17 +366,17 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	} else {
 		tc.b.DevLoginName = DefaultTestLoginName
 	}
-	if opts.DefaultUnprivLoginName != "" {
-		tc.b.DevUnprivLoginName = opts.DefaultUnprivLoginName
+	if opts.DefaultUnprivilegedLoginName != "" {
+		tc.b.DevUnprivilegedLoginName = opts.DefaultUnprivilegedLoginName
 	} else {
-		tc.b.DevUnprivLoginName = DefaultTestUnprivLoginName
+		tc.b.DevUnprivilegedLoginName = DefaultTestUnprivilegedLoginName
 	}
 	if opts.DefaultPassword != "" {
 		tc.b.DevPassword = opts.DefaultPassword
-		tc.b.DevUnprivPassword = opts.DefaultPassword
+		tc.b.DevUnprivilegedPassword = opts.DefaultPassword
 	} else {
 		tc.b.DevPassword = DefaultTestPassword
-		tc.b.DevUnprivPassword = DefaultTestPassword
+		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
 
 	// Start a logger
@@ -408,8 +409,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevProjectId = "p_" + suffix
 		tc.b.DevTargetId = "ttcp_" + suffix
 		tc.b.DevUserId = "u_" + suffix
-		tc.b.DevUnprivUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
+		tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
+	} else {
+		tc.b.DevUserId = DefaultTestUserId
 	}
+	tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 
 	// Set up KMSes
 	switch {

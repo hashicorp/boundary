@@ -219,12 +219,12 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 		return u, err
 	}
 
-	if b.DevUnprivLoginName != "" {
-		unprivUser, err := createUser(b.DevUnprivLoginName, b.DevUnprivPassword, b.DevUnprivUserId, false)
+	if b.DevUnprivilegedLoginName != "" {
+		unprivUser, err := createUser(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, b.DevUnprivilegedUserId, false)
 		if err != nil {
 			return nil, nil, err
 		}
-		b.DevUnprivUserId = unprivUser.GetPublicId()
+		b.DevUnprivilegedUserId = unprivUser.GetPublicId()
 	}
 	u, err := createUser(b.DevLoginName, b.DevPassword, b.DevUserId, true)
 	if err != nil {
@@ -490,7 +490,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 
 	// If we have an unprivileged dev user, add user to the role that grants
 	// list/read:self/cancel:self, and an authorize-session role
-	if b.DevUnprivUserId != "" {
+	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
 			return nil, fmt.Errorf("unable to create repo for unprivileged user target connection role: %w", err)
@@ -501,6 +501,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 			return nil, fmt.Errorf("unable to list existing roles in project: %w", err)
 		}
 		if len(roles) != 2 {
+			panic("")
 			return nil, fmt.Errorf("unexpected number of roles in default project, expected 2, got %d", len(roles))
 		}
 		var idx int = -1
@@ -519,7 +520,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		if _, err := iamRepo.AddPrincipalRoles(ctx,
 			roles[idx].PublicId,
 			roles[idx].Version,
-			[]string{b.DevUnprivUserId}); err != nil {
+			[]string{b.DevUnprivilegedUserId}); err != nil {
 			return nil, fmt.Errorf("error adding unpriv user ID to project default role: %w", err)
 		}
 
@@ -541,7 +542,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		); err != nil {
 			return nil, fmt.Errorf("error creating grant for unprivileged user generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivUserId}, nil); err != nil {
+		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivilegedUserId}, nil); err != nil {
 			return nil, fmt.Errorf("error adding principal to role for unprivileged user generated grants: %w", err)
 		}
 	}
