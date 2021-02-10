@@ -19,6 +19,7 @@ controller {
 worker {
   name = "demo-worker-1"
   description = "A default worker created demonstration"
+  public_addr = "env://HOSTNAME"
 }
 
 listener "tcp" {
