@@ -12,6 +12,8 @@ controller {
     #    $  docker run -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@host.docker.internal:5432/postgres?sslmode=disable' [other options] boundary:[version]
     url = "env://BOUNDARY_POSTGRES_URL"
   }
+
+  public_cluster_addr = "env://HOSTNAME"
 }
 
 worker {
@@ -28,19 +30,19 @@ listener "tcp" {
   # the time of this writing. For now, when running boundary in docker you must pass the --hostname 
   # flag as:
   #    $ docker run --hostname boundary [other options] boundary:[version]
-  address = "env://HOSTNAME:9200"
+  address = "0.0.0.0"
   purpose = "api"
   tls_disable = true 
 }
 
 listener "tcp" {
-  address = "env://HOSTNAME:9201"
+  address = "0.0.0.0"
   purpose = "cluster"
   tls_disable   = true 
 }
 
 listener "tcp" {
-  address = "env://HOSTNAME:9202"
+  address = "0.0.0.0"
   purpose       = "proxy"
   tls_disable   = true 
 }
