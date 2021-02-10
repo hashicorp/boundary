@@ -5308,6 +5308,23 @@ default 'token issued' -- safest default
 references auth_token_status_enm(name)
   on update cascade
   on delete restrict;
+
+
+create or replace view auth_token_account as
+      select at.public_id,
+              at.token,
+              at.auth_account_id,
+              at.create_time,
+              at.update_time,
+              at.approximate_last_access_time,
+              at.expiration_time,
+              aa.scope_id,
+              aa.iam_user_id,
+              aa.auth_method_id,
+              at.status
+        from auth_token as at
+  inner join auth_account as aa
+          on at.auth_account_id = aa.public_id;
 `),
 			2086: []byte(`
 -- add the account_info_auth_method_id which determines which auth_method is
