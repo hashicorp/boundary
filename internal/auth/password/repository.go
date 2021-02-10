@@ -23,7 +23,7 @@ type Repository struct {
 // routines to access it.  WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
-	const op = "auth.NewRepository"
+	const op = "password.NewRepository"
 	switch {
 	case r == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")

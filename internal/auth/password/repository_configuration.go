@@ -20,7 +20,7 @@ type Configuration interface {
 
 // GetConfiguration returns the current configuration for authMethodId.
 func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) (Configuration, error) {
-	const op = "auth.(Repository).GetConfiguration"
+	const op = "password.(Repository).GetConfiguration"
 	if authMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
@@ -42,7 +42,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // equal to a previous configuration for c.AuthMethodId, SetConfiguration
 // updates AuthMethod to use the previous configuration.
 func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
-	const op = "auth.(Repository).SetConfiguration"
+	const op = "password.(Repository).SetConfiguration"
 	if c == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing configuration")
 	}
@@ -66,7 +66,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 }
 
 func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon2Configuration) (*Argon2Configuration, error) {
-	const op = "auth.(Repository).setArgon2Conf"
+	const op = "password.(Repository).setArgon2Conf"
 	c = c.clone()
 
 	id, err := newArgon2ConfigurationId()
@@ -136,7 +136,7 @@ func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*c
 }
 
 func (r *Repository) currentConfigForAccount(ctx context.Context, accountId string) (*currentConfig, error) {
-	const op = "auth.(Repository).currentConfigForAccount"
+	const op = "password.(Repository).currentConfigForAccount"
 	var confs []currentConfig
 
 	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})

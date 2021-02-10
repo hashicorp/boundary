@@ -25,7 +25,7 @@ func allocAuthMethod() AuthMethod {
 // ignored.  MinLoginNameLength and MinPasswordLength are pre-set to the
 // default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
-	const op = "auth.NewAuthMethod"
+	const op = "password.NewAuthMethod"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}

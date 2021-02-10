@@ -12,7 +12,7 @@ const (
 )
 
 func newArgon2ConfigurationId() (string, error) {
-	const op = "auth.newArgon2ConfigurationId"
+	const op = "password.newArgon2ConfigurationId"
 	id, err := db.NewPrivateId(argon2ConfigurationPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -21,7 +21,7 @@ func newArgon2ConfigurationId() (string, error) {
 }
 
 func newArgon2CredentialId() (string, error) {
-	const op = "auth.newArgon2CredentialId"
+	const op = "password.newArgon2CredentialId"
 	id, err := db.NewPrivateId(argon2CredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)

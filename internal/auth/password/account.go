@@ -26,7 +26,7 @@ func allocAccount() *Account {
 // NewAccount creates a new in memory Account. LoginName, name, and
 // description are the only valid options. All other options are ignored.
 func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
-	const op = "auth.NewAccount"
+	const op = "password.NewAccount"
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
 	if authMethodId == "" {

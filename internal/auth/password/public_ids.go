@@ -12,7 +12,7 @@ const (
 )
 
 func newAuthMethodId() (string, error) {
-	const op = "auth.newAuthMethodId"
+	const op = "password.newAuthMethodId"
 	id, err := db.NewPublicId(AuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -21,7 +21,7 @@ func newAuthMethodId() (string, error) {
 }
 
 func newAccountId() (string, error) {
-	const op = "auth.newAccountId"
+	const op = "password.newAccountId"
 	id, err := db.NewPublicId(AccountPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)

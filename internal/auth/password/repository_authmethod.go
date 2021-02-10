@@ -23,7 +23,7 @@ import (
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
-	const op = "auth.(Repository).CreateAuthMethod"
+	const op = "password.(Repository).CreateAuthMethod"
 	if m == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing AuthMethod")
 	}
@@ -98,7 +98,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 // LookupAuthMethod will look up an auth method in the repository.  If the auth method is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
-	const op = "auth.(Repository).LookupAuthMethod"
+	const op = "password.(Repository).LookupAuthMethod"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
@@ -115,7 +115,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "auth.(Repository).ListAuthMethods"
+	const op = "password.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
@@ -136,7 +136,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
-	const op = "auth.(Repository).DeleteAuthMethod"
+	const op = "password.(Repository).DeleteAuthMethod"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
@@ -185,7 +185,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 // and MinLoginNameLength are the only updatable fields, If no updatable fields
 // are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
-	const op = "auth.(Repository).UpdateAuthMethod"
+	const op = "password.(Repository).UpdateAuthMethod"
 	if authMethod == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing authMethod")
 	}

@@ -32,7 +32,7 @@ type authAccount struct {
 // password settings for authMethodId if authentication is successful and
 // the stored values are not using the current password settings.
 func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
-	const op = "auth.(Repository).Authenticate"
+	const op = "password.(Repository).Authenticate"
 	if authMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing authMethodId")
 	}
@@ -107,7 +107,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 // Returns nil, nil if old does not match the stored password for accountId.
 // Returns nil, ErrPasswordsEqual if old and new are equal.
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
-	const op = "auth.(Repository).ChangePassword"
+	const op = "password.(Repository).ChangePassword"
 	if accountId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
@@ -204,7 +204,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 }
 
 func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*authAccount, error) {
-	const op = "auth.(Repository).authenticate"
+	const op = "password.(Repository).authenticate"
 	var accts []authAccount
 
 	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{authMethodId, loginName})
@@ -252,7 +252,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 // SetPassword sets the password for accountId to password. If password
 // contains an empty string, the password for accountId will be deleted.
 func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
-	const op = "auth.(Repository).SetPassword"
+	const op = "password.(Repository).SetPassword"
 	if accountId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing accountId")
 	}

@@ -115,7 +115,7 @@ type Argon2Credential struct {
 }
 
 func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
-	const op = "auth.newArgon2Credential"
+	const op = "password.newArgon2Credential"
 	if accountId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing accountId")
 	}
@@ -170,7 +170,7 @@ func (c *Argon2Credential) SetTableName(n string) {
 }
 
 func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "auth.(Argon2Credential).encrypt"
+	const op = "password.(Argon2Credential).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
@@ -179,7 +179,7 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 }
 
 func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "auth.(Argon2Credential).decrypt"
+	const op = "password.(Argon2Credential).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}

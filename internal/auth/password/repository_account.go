@@ -26,7 +26,7 @@ import (
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
-	const op = "auth.(Repository).CreateAccount"
+	const op = "password.(Repository).CreateAccount"
 	if a == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
 	}
@@ -118,7 +118,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 // LookupAccount will look up an account in the repository.  If the account is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
-	const op = "auth.(Repository).LookupAccount"
+	const op = "password.(Repository).LookupAccount"
 	if withPublicId == "" {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
@@ -135,7 +135,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 
 // ListAccounts in an auth method and supports WithLimit option.
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
-	const op = "auth.(Repository).ListAccounts"
+	const op = "password.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
@@ -156,7 +156,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 // DeleteAccount deletes the account for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
-	const op = "auth.(Repository).DeleteAccount"
+	const op = "password.(Repository).DeleteAccount"
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
@@ -217,7 +217,7 @@ func validLoginName(u string) bool {
 // in a is the zero value and it is included in fieldMaskPaths. a.LoginName
 // cannot be set to NULL.
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
-	const op = "auth.(Repository).UpdateAccount"
+	const op = "password.(Repository).UpdateAccount"
 	if a == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing Account")
 	}
