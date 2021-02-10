@@ -551,6 +551,8 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		RecoveryKms:               tc.c.conf.RecoveryKms,
 		Name:                      opts.Name,
 		Logger:                    tc.c.conf.Logger,
+		DefaultLoginName:          tc.b.DevLoginName,
+		DefaultPassword:           tc.b.DevPassword,
 		DisableKmsKeyCreation:     true,
 		DisableAuthMethodCreation: true,
 	}

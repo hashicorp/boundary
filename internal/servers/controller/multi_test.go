@@ -30,14 +30,14 @@ func TestAuthenticationMulti(t *testing.T) {
 	defer c2.Shutdown()
 
 	auth := authmethods.NewClient(c1.Client())
-	token1Result, err := auth.Authenticate(c1.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
+	token1Result, err := auth.Authenticate(c1.Context(), c1.Server().DevAuthMethodId, map[string]interface{}{"login_name": c1.Server().DevLoginName, "password": c1.Server().DevPassword})
 	require.Nil(err)
 	token1 := token1Result.Item
 	require.NotNil(token1)
 
 	time.Sleep(5 * time.Second)
 	auth = authmethods.NewClient(c2.Client())
-	token2Result, err := auth.Authenticate(c2.Context(), amId, map[string]interface{}{"login_name": user, "password": password})
+	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevAuthMethodId, map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
 	require.Nil(err)
 	token2 := token2Result.Item
 	require.NotNil(token2)
