@@ -29,6 +29,7 @@ type options struct {
 	withTokenTimeToLiveDuration  time.Duration
 	withTokenTimeToStaleDuration time.Duration
 	withLimit                    int
+	withState                    State
 }
 
 func getDefaultOptions() options {
@@ -73,5 +74,12 @@ func WithLimit(limit int) Option {
 		if limit > 0 {
 			o.withLimit = limit
 		}
+	}
+}
+
+// WithState allows setting of the auth token's State.
+func WithState(state State) Option {
+	return func(o *options) {
+		o.withState = state
 	}
 }

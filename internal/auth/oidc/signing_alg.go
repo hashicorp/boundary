@@ -41,8 +41,8 @@ var supportedAlgorithms = map[Alg]bool{
 	EdDSA: true,
 }
 
-// DefaultSigningAlgTableName defines the default table name for a SigningAlg
-const DefaultSigningAlgTableName = "auth_oidc_signing_alg"
+// defaultSigningAlgTableName defines the default table name for a SigningAlg
+const defaultSigningAlgTableName = "auth_oidc_signing_alg"
 
 // SigningAlg defines an signing algorithm supported by an OIDC auth method.
 // It is assigned to an OIDC AuthMethod and updates/deletes to that AuthMethod
@@ -99,7 +99,7 @@ func (s *SigningAlg) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return DefaultSigningAlgTableName
+	return defaultSigningAlgTableName
 }
 
 // SetTableName sets the table name.

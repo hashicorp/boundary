@@ -60,7 +60,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "list:self", "read", "delete", "authenticate", "authorize-session"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "authorize-session"},
 			},
 			result: Grant{
 				actions: map[action.Type]bool{
@@ -71,7 +71,6 @@ func Test_ActionParsingValidation(t *testing.T) {
 					action.Delete:           true,
 					action.Authenticate:     true,
 					action.AuthorizeSession: true,
-					action.ListSelf:         true,
 				},
 			},
 		},
@@ -348,9 +347,60 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: perms.(Grant).parseAndValidateActions: unknown action "createread": parameter violation: error #100`,
 		},
 		{
+			name:  "bad create action for id",
+			input: "id=foobar;actions=create",
+			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+		},
+		{
+			name:  "bad create action for id with other perms",
+			input: "id=foobar;actions=read,create",
+			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+		},
+		{
+			name:  "bad list action for id",
+			input: "id=foobar;actions=list",
+			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+		},
+		{
+			name:  "bad list action for id with other perms",
+			input: "type=host-catalog;actions=list,read",
+			err:   `perms.Parse: parsed grant string contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
+			name:  "wildcard id and actions without collection",
+			input: "id=*;actions=read",
+			err:   `perms.Parse: parsed grant string would not result in any action being authorized: parameter violation: error #100`,
+		},
+		{
+			name:  "wildcard id and actions with list",
+			input: "id=*;actions=read,list",
+			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+		},
+		{
+			name:  "wildcard type with no id",
+			input: "type=*;actions=read,list",
+			err:   `perms.Parse: parsed grant string contains wildcard type with no id value: parameter violation: error #100`,
+		},
+		{
 			name:  "empty id and type",
 			input: "actions=create",
-			err:   `perms.Parse: parsed grant string would not result in any action being authorized: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
+		},
+		{
+			name:  "wildcard id and type and actions with list",
+			input: "id=*;type=*;actions=read,list",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "*",
+				typ: resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+			},
 		},
 		{
 			name:  "good json type",
@@ -466,7 +516,7 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:   "good user id template",
-			input:  `id={{    user.id}};actions=create,read`,
+			input:  `id={{    user.id}};actions=read,update`,
 			userId: "u_abcd1234",
 			expected: Grant{
 				scope: Scope{
@@ -475,20 +525,20 @@ func Test_Parse(t *testing.T) {
 				},
 				id: "u_abcd1234",
 				actions: map[action.Type]bool{
-					action.Create: true,
+					action.Update: true,
 					action.Read:   true,
 				},
 			},
 		},
 		{
 			name:      "bad account id template",
-			input:     `id={{superman}};actions=create,read`,
+			input:     `id={{superman}};actions=read`,
 			accountId: "apw_1234567890",
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
 			name:      "good account id template",
-			input:     `id={{    account.id}};actions=create,read`,
+			input:     `id={{    account.id}};actions=update,read`,
 			accountId: "apw_1234567890",
 			expected: Grant{
 				scope: Scope{
@@ -497,7 +547,7 @@ func Test_Parse(t *testing.T) {
 				},
 				id: "apw_1234567890",
 				actions: map[action.Type]bool{
-					action.Create: true,
+					action.Update: true,
 					action.Read:   true,
 				},
 			},

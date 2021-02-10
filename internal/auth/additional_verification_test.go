@@ -39,7 +39,7 @@ func TestFetchActionSetForId(t *testing.T) {
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=foo;actions=read,update")
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=bar;actions=read,update,delete,list,authorize-session")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=bar;actions=read,update,delete,authorize-session")
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=role;actions=add-grants,remove-grants")
 
 	cases := []struct {

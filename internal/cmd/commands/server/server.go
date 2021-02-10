@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -229,9 +231,16 @@ func (c *Command) Run(args []string) int {
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
 			case 0:
+				if c.Config.Controller.PublicClusterAddr != "" {
+					clusterAddr = c.Config.Controller.PublicClusterAddr
+				}
 				c.Config.Worker.Controllers = []string{clusterAddr}
 			case 1:
 				if c.Config.Worker.Controllers[0] == clusterAddr {
+					break
+				}
+				if c.Config.Controller.PublicClusterAddr != "" &&
+					c.Config.Worker.Controllers[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
@@ -289,8 +298,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(err.Error())
 			return 1
 		}
-		c.InfoKeys = append(c.InfoKeys, "public addr")
-		c.Info["public addr"] = c.Config.Worker.PublicAddr
+		c.InfoKeys = append(c.InfoKeys, "public proxy addr")
+		c.Info["public proxy addr"] = c.Config.Worker.PublicAddr
 	}
 	if c.Config.Controller != nil {
 		for _, ln := range c.Config.Listeners {
@@ -358,7 +367,13 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		defer func() {
-			if err := sMan.SharedUnlock(c.Context); err != nil {
+			// The base context has already been cancelled so we shouldn't use it here.
+			// 1 second is chosen so the shutdown is still responsive and this is a mostly
+			// non critical step since the lock should be released when the session with the
+			// database is closed.
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err := sMan.SharedUnlock(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
@@ -369,13 +384,14 @@ func (c *Command) Run(args []string) int {
 		}
 		if !ckState.InitializationStarted {
 			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
+			return 1
 		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {

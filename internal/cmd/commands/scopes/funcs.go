@@ -53,7 +53,7 @@ func generateScopeTableOutput(in *scopes.Scope) string {
 		ret = append(ret, "  Authorized Actions on Scope's Collections:")
 		for _, key := range keys {
 			ret = append(ret,
-				fmt.Sprintf("    %ss:", key),
+				fmt.Sprintf("    %s:", key),
 				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
 			)
 		}

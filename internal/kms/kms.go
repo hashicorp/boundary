@@ -356,7 +356,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	return multi, nil
 }
 
-// DerivedReaderReader returns a reader from which keys can be read, using the
+// DerivedReader returns a reader from which keys can be read, using the
 // given wrapper, reader length limit, salt and context info. Salt and info can
 // be nil.
 //

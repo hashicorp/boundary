@@ -3,6 +3,7 @@ package auth
 import (
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 )
 
@@ -11,12 +12,15 @@ type SubType int
 const (
 	UnknownSubtype SubType = iota
 	PasswordSubtype
+	OidcSubtype
 )
 
 func (t SubType) String() string {
 	switch t {
 	case PasswordSubtype:
 		return "password"
+	case OidcSubtype:
+		return "oidc"
 	}
 	return "unknown"
 }
@@ -27,6 +31,8 @@ func SubtypeFromType(t string) SubType {
 	switch {
 	case strings.EqualFold(strings.TrimSpace(t), PasswordSubtype.String()):
 		return PasswordSubtype
+	case strings.EqualFold(strings.TrimSpace(t), OidcSubtype.String()):
+		return OidcSubtype
 	}
 	return UnknownSubtype
 }
@@ -39,6 +45,9 @@ func SubtypeFromId(id string) SubType {
 	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
 		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
 		return PasswordSubtype
+	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix):
+		return OidcSubtype
 	}
 	return UnknownSubtype
 }

@@ -7,8 +7,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAudClaimTableName defines the default table name for an AudClaim
-const DefaultAudClaimTableName = "auth_oidc_aud_claim"
+// defaultAudClaimTableName defines the default table name for an AudClaim
+const defaultAudClaimTableName = "auth_oidc_aud_claim"
 
 // AudClaim defines an audience claim for an OIDC auth method.  It is assigned
 // to an OIDC AuthMethod and updates/deletes to that AuthMethod are cascaded to
@@ -29,7 +29,7 @@ type AudClaim struct {
 // For more info on oidc aud claims, see the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
-	const op = "oidc.NewCallbackUrl"
+	const op = "oidc.NewAudClaim"
 
 	c := &AudClaim{
 		AudClaim: &store.AudClaim{
@@ -49,7 +49,7 @@ func (a *AudClaim) validate(caller errors.Op) error {
 		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if a.Aud == "" {
-		return errors.New(errors.InvalidParameter, caller, "empty aud claim")
+		return errors.New(errors.InvalidParameter, caller, "missing aud claim")
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (c *AudClaim) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return DefaultAudClaimTableName
+	return defaultAudClaimTableName
 }
 
 // SetTableName sets the table name.

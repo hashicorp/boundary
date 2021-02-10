@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultCertificateTableName defines the default table name for a certificate
-const DefaultCertificateTableName = "auth_oidc_certificate"
+// defaultCertificateTableName defines the default table name for a certificate
+const defaultCertificateTableName = "auth_oidc_certificate"
 
 // Certificate defines a certificate to use as part of a trust root when
 // connecting to the auth method's OIDC Provider.  It is assigned to an OIDC
@@ -26,7 +26,7 @@ type Certificate struct {
 // NewCertificate creates a new in memory certificate assigned to and OIDC auth
 // method.
 func NewCertificate(authMethodId string, certificatePem string) (*Certificate, error) {
-	const op = "oidc.NewCallbackUrl"
+	const op = "oidc.NewCertificate"
 
 	c := &Certificate{
 		Certificate: &store.Certificate{
@@ -79,7 +79,7 @@ func (c *Certificate) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return DefaultCertificateTableName
+	return defaultCertificateTableName
 }
 
 // SetTableName sets the table name.

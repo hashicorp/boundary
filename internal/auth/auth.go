@@ -422,6 +422,9 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		return
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantPairs))
+	// Note: Below, we always skip validation so that we don't error on formats
+	// that we've since restricted, e.g. "id=foo;actions=create,read". These
+	// will simply not have an effect.
 	for _, pair := range grantPairs {
 		parsed, err := perms.Parse(
 			pair.ScopeId,

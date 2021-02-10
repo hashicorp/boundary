@@ -28,7 +28,7 @@ create table auth_oidc_method (
     references kms_database_key_version(private_id) 
     on delete restrict
     on update cascade, 
-  max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
+  max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
     constraint max_age_not_equal_zero
       check(max_age != 0)
     constraint max_age_not_less_then_negative_one
@@ -226,3 +226,5 @@ create trigger
 before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
+
+commit;

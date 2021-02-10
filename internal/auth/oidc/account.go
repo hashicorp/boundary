@@ -9,11 +9,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAccountTableName defines the default table name for an Account
-const DefaultAccountTableName = "auth_oidc_account"
+// defaultAccountTableName defines the default table name for an Account
+const defaultAccountTableName = "auth_oidc_account"
 
-// Account contains an OIDC auth method configuration. It is assigned to an OIDC
-// AuthMethod and updates/deletes to that AuthMethod are cascaded to its Accounts.
+// Account contains an OIDC auth account. It is assigned to an OIDC AuthMethod
+// and updates/deletes to that AuthMethod are cascaded to its Accounts.
 type Account struct {
 	*store.Account
 	tableName string
@@ -23,7 +23,7 @@ type Account struct {
 // WithFullName, WithEmail, WithName and WithDescription are the only valid
 // options. All other options are ignored.
 //
-// Issuer_id equals the Verifiable Identifier for an Issuer. An Issuer
+// IssuerId equals the Verifiable Identifier for an Issuer. An Issuer
 // Identifier is a case sensitive URL using the https scheme that contains
 // scheme, host, and optionally, port number and path components and no query or
 // fragment components.
@@ -44,7 +44,7 @@ func NewAccount(authMethodId string, issuerId *url.URL, subjectId string, opt ..
 	const op = "oidc.NewAccount"
 
 	if issuerId == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil issuer id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
 	}
 
 	opts := getOpts(opt...)
@@ -109,7 +109,7 @@ func (a *Account) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return DefaultAccountTableName
+	return defaultAccountTableName
 }
 
 // SetTableName sets the table name.
@@ -121,7 +121,7 @@ func (a *Account) SetTableName(n string) {
 func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.AuthMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth aud claim"},
+		"resource-type":      []string{"oidc auth account"},
 		"op-type":            []string{op.String()},
 	}
 	if authMethodScopeId != "" {
