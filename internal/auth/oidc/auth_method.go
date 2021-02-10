@@ -23,7 +23,7 @@ import (
 const defaultAuthMethodTableName = "auth_oidc_method"
 
 // AuthMethod contains an OIDC auth method configuration. It is owned
-// by a scope.  AuthMethods can have may assigned Accounts, AudClaims,
+// by a scope.  AuthMethods can have Accounts, AudClaims,
 // CallbackUrls, Certificates, SigningAlgs.  AuthMethods also have one State at
 // any given time which determines it's behavior for many its operations.
 type AuthMethod struct {
