@@ -45,6 +45,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mitchellh/pointerstructure v1.1.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.3.0
 	github.com/ory/dockertest/v3 v3.6.0

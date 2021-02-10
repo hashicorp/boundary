@@ -6,6 +6,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Changes/Deprecations
 
+* authentication: The `auth-methods/<id>:authenticate` action is deprecated and
+  will be removed in a few releases. Instead, each auth method will define its
+  own action or actions that are valid. This is necessary to support multi-step
+  authentication schemes in upcoming releases. For the `password` auth method,
+  the new action is `auth-methods/<id>:authenticate:login`.
 * permissions: Update some errors to make them more descriptive, and disallow
   permissions in some forms where they will never take effect, preventing
   possible confusion (existing grants already saved to the database will not be
@@ -16,11 +21,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
-* authentication: The `auth-methods/<id>:authenticate` action is deprecated and
-  will be removed in a few releases. Instead, each auth method will define its
-  own action or actions that are valid. This is necessary to support multi-step
-  authentication schemes in upcoming releases. For the `password` auth method,
-  the new action is `auth-methods/<id>:authenticate:login`.
 
 ### New and Improved
 
@@ -38,6 +38,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * server: When shutting down a controller release the shared advisory lock with a non cancelled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
+* targets: If a worker filter references a key that doesn't exist, treat it as a
+  non-match rather than an error
+  ([PR](https://github.com/hashicorp/boundary/pull/900))
   
 ## 0.1.5 (2021/01/29)
 
