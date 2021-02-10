@@ -24,6 +24,7 @@ func (r ClosedReason) String() string {
 }
 
 func convertToClosedReason(s string) (ClosedReason, error) {
+	const op = "session.convertToClosedReason"
 	switch s {
 	case UnknownReason.String():
 		return UnknownReason, nil
@@ -38,6 +39,6 @@ func convertToClosedReason(s string) (ClosedReason, error) {
 	case ConnectionSystemError.String():
 		return ConnectionSystemError, nil
 	default:
-		return "", fmt.Errorf("closed reason: %s is not a valid reason: %w", s, errors.ErrInvalidParameter)
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

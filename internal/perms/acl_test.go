@@ -60,7 +60,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_d",
 			grants: []string{
 				"id=*;type=*;actions=create,update",
-				"type=session;actions=list:self",
+				"id=*;type=session;actions=*",
 			},
 		},
 	}
@@ -255,21 +255,19 @@ func Test_ACLAllowed(t *testing.T) {
 			userId: "u_abcd1234",
 		},
 		{
-			name:        "list self with top level list",
+			name:        "list with top level list",
 			resource:    Resource{ScopeId: "o_a", Type: resource.Target},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.List, allowed: true},
-				{action: action.ListSelf, allowed: true},
 			},
 		},
 		{
-			name:        "list self with top level list self",
+			name:        "list sessions with wildcard actions",
 			resource:    Resource{ScopeId: "o_d", Type: resource.Session},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: action.List},
-				{action: action.ListSelf, allowed: true},
+				{action: action.List, allowed: true},
 			},
 		},
 		{
@@ -304,7 +302,7 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			for _, aa := range test.actionsAllowed {
-				assert.True(t, acl.Allowed(test.resource, aa.action).Allowed == aa.allowed)
+				assert.True(t, acl.Allowed(test.resource, aa.action).Allowed == aa.allowed, "action: %s, acl allowed: %t, test action allowed: %t", aa.action, acl.Allowed(test.resource, aa.action).Allowed, aa.allowed)
 			}
 		})
 	}
