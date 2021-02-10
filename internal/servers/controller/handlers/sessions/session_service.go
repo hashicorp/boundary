@@ -119,9 +119,19 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
-			finalItems = append(finalItems, item)
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
+		if len(authorizedActions) > 0 {
+			onlySelf := true
+			for _, v := range authorizedActions {
+				if v != action.ReadSelf && v != action.CancelSelf {
+					onlySelf = false
+					break
+				}
+			}
+			if !onlySelf || item.GetUserId() == authResults.UserId {
+				item.AuthorizedActions = authorizedActions.Strings()
+				finalItems = append(finalItems, item)
+			}
 		}
 	}
 
