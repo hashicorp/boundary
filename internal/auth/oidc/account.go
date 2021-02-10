@@ -23,7 +23,7 @@ type Account struct {
 // WithFullName, WithEmail, WithName and WithDescription are the only valid
 // options. All other options are ignored.
 //
-// Issuer_id equals the Verifiable Identifier for an Issuer. An Issuer
+// IssuerId equals the Verifiable Identifier for an Issuer. An Issuer
 // Identifier is a case sensitive URL using the https scheme that contains
 // scheme, host, and optionally, port number and path components and no query or
 // fragment components.
