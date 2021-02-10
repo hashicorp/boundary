@@ -47,7 +47,7 @@ type AuthMethod struct {
 // Server.
 //
 // ClientSecret equals the client's secret which will be encrypted when stored
-// in the database and an hmac representation will also be stored when every the
+// in the database and an hmac representation will also be stored when ever the
 // secret changes.  The secret is not returned via the API, the hmac is returned
 // so callers can determine if it's been updated.
 //
