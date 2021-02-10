@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -40,8 +41,8 @@ type AuthMethod struct {
 //
 // DiscoveryUrl equals a URL where the OIDC provider's configuration can be
 // retrieved. The OIDC Discovery Specification requires the URL end in
-// /.well-known/openid-configuration. However, Boundary will strip the URI and
-// only store the scheme and domain.
+// /.well-known/openid-configuration. However, Boundary will strip off
+// anything beyond scheme, host and port
 //
 // ClientId equals an OAuth 2.0 Client Identifier valid at the Authorization
 // Server.
@@ -64,7 +65,8 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 	var u string
 	switch {
 	case discoveryUrl != nil:
-		u = discoveryUrl.String()
+		// trim off anything beyond scheme, host and port
+		u = strings.TrimSuffix(discoveryUrl.String(), "/")
 	}
 
 	opts := getOpts(opt...)
