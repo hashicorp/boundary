@@ -18,8 +18,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAuthMethodTableName defines the default table name for an AuthMethod
-const DefaultAuthMethodTableName = "auth_oidc_method"
+// defaultAuthMethodTableName defines the default table name for an AuthMethod
+const defaultAuthMethodTableName = "auth_oidc_method"
 
 // AuthMethod contains an OIDC auth method configuration. It is owned
 // by a scope.  AuthMethods can have may assigned Accounts, AudClaims,
@@ -134,7 +134,7 @@ func (a *AuthMethod) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return DefaultAuthMethodTableName
+	return defaultAuthMethodTableName
 }
 
 // SetTableName sets the table name.

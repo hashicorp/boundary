@@ -9,11 +9,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAccountTableName defines the default table name for an Account
-const DefaultAccountTableName = "auth_oidc_account"
+// defaultAccountTableName defines the default table name for an Account
+const defaultAccountTableName = "auth_oidc_account"
 
-// Account contains an OIDC auth method configuration. It is assigned to an OIDC
-// AuthMethod and updates/deletes to that AuthMethod are cascaded to its Accounts.
+// Account contains an OIDC auth account. It is assigned to an OIDC AuthMethod
+// and updates/deletes to that AuthMethod are cascaded to its Accounts.
 type Account struct {
 	*store.Account
 	tableName string
@@ -109,7 +109,7 @@ func (a *Account) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return DefaultAccountTableName
+	return defaultAccountTableName
 }
 
 // SetTableName sets the table name.

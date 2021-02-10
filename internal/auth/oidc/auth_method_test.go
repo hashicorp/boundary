@@ -322,7 +322,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 
 func TestAuthMethod_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultAuthMethodTableName
+	defaultTableName := defaultAuthMethodTableName
 	tests := []struct {
 		name      string
 		setNameTo string

@@ -68,17 +68,17 @@ func TestAuthMethod_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAuthMethodTableName)
+			orig.SetTableName(defaultAuthMethodTableName)
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAuthMethodTableName)
+			tt.update.SetTableName(defaultAuthMethodTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAuthMethodTableName)
+			after.SetTableName(defaultAuthMethodTableName)
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 
@@ -152,18 +152,18 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAuthMethodTableName)
+			orig.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", orig.OidcMethodId, orig.Aud))
 
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAuthMethodTableName)
+			tt.update.SetTableName(defaultAuthMethodTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAuthMethodTableName)
+			after.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", after.OidcMethodId, after.Aud))
 
 			assert.True(proto.Equal(orig, after))
@@ -234,18 +234,18 @@ func TestCallbackUrl_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAuthMethodTableName)
+			orig.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and callback_url = ?", orig.OidcMethodId, orig.Url))
 
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAuthMethodTableName)
+			tt.update.SetTableName(defaultAuthMethodTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAuthMethodTableName)
+			after.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and callback_url = ?", after.OidcMethodId, after.Url))
 
 			assert.True(proto.Equal(orig, after))
@@ -320,18 +320,18 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAuthMethodTableName)
+			orig.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", orig.OidcMethodId, orig.Cert))
 
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAuthMethodTableName)
+			tt.update.SetTableName(defaultAuthMethodTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAuthMethodTableName)
+			after.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", after.OidcMethodId, after.Cert))
 
 			assert.True(proto.Equal(orig, after))
@@ -404,18 +404,18 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAuthMethodTableName)
+			orig.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", orig.OidcMethodId, orig.Alg))
 
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAuthMethodTableName)
+			tt.update.SetTableName(defaultAuthMethodTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAuthMethodTableName)
+			after.SetTableName(defaultAuthMethodTableName)
 			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", after.OidcMethodId, after.Alg))
 
 			assert.True(proto.Equal(orig, after))
@@ -508,17 +508,17 @@ func TestAccount_ImmutableFields(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			orig := new.Clone()
-			orig.SetTableName(DefaultAccountTableName)
+			orig.SetTableName(defaultAccountTableName)
 			err := rw.LookupById(context.Background(), orig)
 			require.NoError(err)
 
-			tt.update.SetTableName(DefaultAccountTableName)
+			tt.update.SetTableName(defaultAccountTableName)
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			after.SetTableName(DefaultAccountTableName)
+			after.SetTableName(defaultAccountTableName)
 			err = rw.LookupById(context.Background(), after)
 			require.NoError(err)
 

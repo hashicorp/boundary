@@ -263,7 +263,7 @@ func TestAccount_Clone(t *testing.T) {
 
 func TestAccount_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultAccountTableName
+	defaultTableName := defaultAccountTableName
 	tests := []struct {
 		name      string
 		setNameTo string
