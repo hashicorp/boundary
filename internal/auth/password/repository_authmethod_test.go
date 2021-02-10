@@ -39,13 +39,13 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		{
 			name:       "nil-AuthMethod",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: missing AuthMethod: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing AuthMethod: parameter violation: error #100",
 		},
 		{
 			name:       "nil-embedded-AuthMethod",
 			in:         &AuthMethod{},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: missing embedded AuthMethod: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing embedded AuthMethod: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-scope-id",
@@ -53,7 +53,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				AuthMethod: &store.AuthMethod{},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: missing scope id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: missing scope id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
@@ -64,7 +64,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: public id not empty: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: public id not empty: parameter violation: error #100",
 		},
 		{
 			name: "valid-no-options",
@@ -120,7 +120,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				WithConfiguration(&Argon2Configuration{}),
 			},
 			wantIsErr:  errors.PasswordInvalidConfiguration,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: invalid parameters in password configuration, password violation: error #202",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: invalid parameters in password configuration, password violation: error #202",
 		},
 		{
 			name: "invalid-with-config-unknown-config-type",
@@ -133,7 +133,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				WithConfiguration(tconf(0)),
 			},
 			wantIsErr:  errors.PasswordUnsupportedConfiguration,
-			wantErrMsg: "auth.(Repository).CreateAuthMethod: unknown configuration: password violation: error #201",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: unknown configuration: password violation: error #201",
 		},
 	}
 
@@ -299,7 +299,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		{
 			name:       "With no public id",
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "auth.(Repository).LookupAuthMethod: missing public id: parameter violation: error #102",
+			wantErrMsg: "password.(Repository).LookupAuthMethod: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing auth method id",
@@ -352,7 +352,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 		{
 			name:       "With no public id",
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "auth.(Repository).DeleteAuthMethod: missing public id: parameter violation: error #102",
+			wantErrMsg: "password.(Repository).DeleteAuthMethod: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing auth method id",
@@ -406,7 +406,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		{
 			name:       "With no scope id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).ListAuthMethods: missing scope id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).ListAuthMethods: missing scope id: parameter violation: error #100",
 		},
 		{
 			name: "Scope with no auth methods",

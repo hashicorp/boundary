@@ -60,7 +60,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				password:     passwd,
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).Authenticate: missing authMethodId: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).Authenticate: missing authMethodId: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-loginName",
@@ -70,7 +70,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				password:     passwd,
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).Authenticate: missing loginName: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).Authenticate: missing loginName: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-password",
@@ -80,7 +80,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				password:     "",
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).Authenticate: missing password: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).Authenticate: missing password: parameter violation: error #100",
 		},
 		{
 			name: "valid-authenticate",
@@ -291,7 +291,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "12345678-changed",
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).ChangePassword: missing account id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).ChangePassword: missing account id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-current-password",
@@ -301,7 +301,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "12345678-changed",
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).ChangePassword: missing old password: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).ChangePassword: missing old password: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-new-password",
@@ -311,7 +311,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "",
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).ChangePassword: missing new password: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).ChangePassword: missing new password: parameter violation: error #100",
 		},
 		{
 			name: "invalid-same-passwords",
@@ -321,7 +321,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    passwd,
 			},
 			wantIsErr:  errors.PasswordsEqual,
-			wantErrMsg: "auth.(Repository).ChangePassword: passwords must not equal: password violation: error #203",
+			wantErrMsg: "password.(Repository).ChangePassword: passwords must not equal: password violation: error #203",
 		},
 		{
 			name: "auth-failure-unknown-accountId",
@@ -332,7 +332,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			},
 			wantAccount: false,
 			wantIsErr:   errors.RecordNotFound,
-			wantErrMsg:  "auth.(Repository).ChangePassword: account not found: search issue: error #1100",
+			wantErrMsg:  "password.(Repository).ChangePassword: account not found: search issue: error #1100",
 		},
 		{
 			name: "auth-failure-wrong-current-password",
@@ -351,7 +351,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 				new:    "1",
 			},
 			wantIsErr:  errors.PasswordTooShort,
-			wantErrMsg: "auth.(Repository).ChangePassword: must be at least 8: password violation: error #200",
+			wantErrMsg: "password.(Repository).ChangePassword: must be at least 8: password violation: error #200",
 		},
 		{
 			name: "valid",
@@ -524,7 +524,7 @@ func TestRepository_SetPassword(t *testing.T) {
 			pw:         "anylongpassword",
 			version:    1,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).SetPassword: missing accountId: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).SetPassword: missing accountId: parameter violation: error #100",
 		},
 		{
 			name:       "short pw",
@@ -532,14 +532,14 @@ func TestRepository_SetPassword(t *testing.T) {
 			pw:         "c",
 			version:    1,
 			wantIsErr:  errors.PasswordTooShort,
-			wantErrMsg: "auth.(Repository).SetPassword: password must be at least 8: password violation: error #200",
+			wantErrMsg: "password.(Repository).SetPassword: password must be at least 8: password violation: error #200",
 		},
 		{
 			name:       "no version",
 			accountId:  badInputAcct.PublicId,
 			pw:         "anylongpassword",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).SetPassword: missing version: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).SetPassword: missing version: parameter violation: error #100",
 		},
 	}
 	for _, tt := range badInputCases {

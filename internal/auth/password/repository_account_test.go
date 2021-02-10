@@ -61,13 +61,13 @@ func TestRepository_CreateAccount(t *testing.T) {
 		{
 			name:       "nil-Account",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: missing Account: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: missing Account: parameter violation: error #100",
 		},
 		{
 			name:       "nil-embedded-Account",
 			in:         &Account{},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-scope-id",
@@ -75,7 +75,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
@@ -86,7 +86,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: public id must be empty: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: public id must be empty: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-uppercase",
@@ -97,7 +97,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: KaZmiErcZak11: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: KaZmiErcZak11: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-leading-space",
@@ -108,7 +108,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got:  kazmierczak12: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got:  kazmierczak12: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-trailing-space",
@@ -119,7 +119,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmierczak13 : parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmierczak13 : parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-space-in-name",
@@ -130,7 +130,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmier czak14: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).CreateAccount: login name must be all-lowercase alphanumeric, period or hyphen. got: kazmier czak14: parameter violation: error #100",
 		},
 		{
 			name: "invalid-loginname-too-short",
@@ -141,7 +141,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.TooShort,
-			wantErrMsg: "auth.(Repository).CreateAccount: username: ka, must be longer than 3: integrity violation: error #113",
+			wantErrMsg: "password.(Repository).CreateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "invalid-password-too-short",
@@ -155,7 +155,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				WithPassword("a"),
 			},
 			wantIsErr:  errors.PasswordTooShort,
-			wantErrMsg: "auth.(Repository).CreateAccount: must be longer than 8: password violation: error #200",
+			wantErrMsg: "password.(Repository).CreateAccount: must be longer than 8: password violation: error #200",
 		},
 		{
 			name: "valid-no-options",
@@ -362,7 +362,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 		{
 			name:       "With no public id",
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "auth.(Repository).LookupAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "password.(Repository).LookupAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -418,7 +418,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		{
 			name:       "With no public id",
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "auth.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "password.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "With non existing account id",
@@ -476,7 +476,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		{
 			name:       "With no auth method id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
 		},
 		{
 			name: "With no accounts id",
@@ -662,7 +662,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      makeNil(),
 			masks:      []string{"Name", "Description"},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
 		},
 		{
 			name: "nil-embedded-Account",
@@ -672,7 +672,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      makeEmbeddedNil(),
 			masks:      []string{"Name", "Description"},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
 			name: "no-public-id",
@@ -682,7 +682,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      deletePublicId(),
 			masks:      []string{"Name", "Description"},
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "auth.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "password.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
 		},
 		{
 			name: "updating-non-existent-Account",
@@ -694,7 +694,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:      []string{"Name"},
 			wantIsErr:  errors.RecordNotFound,
-			wantErrMsg: "auth.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg: "password.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name: "empty-field-mask",
@@ -705,7 +705,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			},
 			chgFn:      changeName("test-update-name-repo"),
 			wantIsErr:  errors.EmptyFieldMask,
-			wantErrMsg: "auth.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
+			wantErrMsg: "password.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -717,7 +717,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeName("test-update-name-repo"),
 			masks:      []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
 			wantIsErr:  errors.InvalidFieldMask,
-			wantErrMsg: "auth.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
+			wantErrMsg: "password.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -729,7 +729,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeName("test-update-name-repo"),
 			masks:      []string{"Bilbo"},
 			wantIsErr:  errors.InvalidFieldMask,
-			wantErrMsg: "auth.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
+			wantErrMsg: "password.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
 		},
 		{
 			name: "change-name",
@@ -877,7 +877,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeLoginName("KaZmIeRcZaK"),
 			masks:      []string{"LoginName"},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got KaZmIeRcZaK: parameter violation: error #100",
+			wantErrMsg: "password.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got KaZmIeRcZaK: parameter violation: error #100",
 		},
 		{
 			name: "change-login-name-to-short",
@@ -889,7 +889,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeLoginName("ka"),
 			masks:      []string{"LoginName"},
 			wantIsErr:  errors.TooShort,
-			wantErrMsg: "auth.(Repository).UpdateAccount: username: ka, must be longer than 3: integrity violation: error #113",
+			wantErrMsg: "password.(Repository).UpdateAccount: username: ka, must be longer than 3: integrity violation: error #113",
 		},
 		{
 			name: "delete-login-name",
@@ -901,7 +901,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn:      changeLoginName(""),
 			masks:      []string{"LoginName"},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got : parameter violation: error #100",
+			wantErrMsg: "password.(Repository).UpdateAccount: invalid username: must be all-lowercase alphanumeric, period or hyphen, got : parameter violation: error #100",
 		},
 	}
 

@@ -330,7 +330,7 @@ func TestArgon2Credential_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.newArgon2Credential: missing accountId: parameter violation: error #100",
+			wantErrMsg: "password.newArgon2Credential: missing accountId: parameter violation: error #100",
 		},
 		{
 			name: "blank-password",
@@ -341,7 +341,7 @@ func TestArgon2Credential_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.newArgon2Credential: missing password: parameter violation: error #100",
+			wantErrMsg: "password.newArgon2Credential: missing password: parameter violation: error #100",
 		},
 		{
 			name: "nil-configuration",
@@ -352,7 +352,7 @@ func TestArgon2Credential_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.newArgon2Credential: missing argon2 configuration: parameter violation: error #100",
+			wantErrMsg: "password.newArgon2Credential: missing argon2 configuration: parameter violation: error #100",
 		},
 		{
 			name: "valid-password",

@@ -69,7 +69,7 @@ func TestRepository_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.NewRepository: missing db.Reader: parameter violation: error #100",
+			wantErrMsg: "password.NewRepository: missing db.Reader: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
@@ -80,7 +80,7 @@ func TestRepository_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.NewRepository: missing db.Writer: parameter violation: error #100",
+			wantErrMsg: "password.NewRepository: missing db.Writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-wrapper",
@@ -91,7 +91,7 @@ func TestRepository_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.NewRepository: missing kms: parameter violation: error #100",
+			wantErrMsg: "password.NewRepository: missing kms: parameter violation: error #100",
 		},
 		{
 			name: "all-nils",
@@ -102,7 +102,7 @@ func TestRepository_New(t *testing.T) {
 			},
 			want:       nil,
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "auth.NewRepository: missing db.Reader: parameter violation: error #100",
+			wantErrMsg: "password.NewRepository: missing db.Reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
