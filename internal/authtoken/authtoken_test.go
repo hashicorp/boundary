@@ -1,9 +1,5 @@
 package authtoken
 
-// This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
-// functionality directly without going through the respository.  Repository centric tests should be
-// placed in repository_test.go
-
 import (
 	"context"
 	"testing"
@@ -20,6 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+// This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
+// functionality directly without going through the respository.  Repository centric tests should be
+// placed in repository_test.go
 
 func TestAuthToken_DbUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -101,10 +101,9 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			wAuthToken := authTok.toWritableAuthToken()
-			err := wAuthToken.encrypt(context.Background(), wrapper)
+			err := authTok.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
-			cnt, err := w.Update(context.Background(), wAuthToken, tt.args.fieldMask, tt.args.nullMask)
+			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
 				assert.Error(err)
@@ -159,7 +158,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			at := &writableAuthToken{AuthToken: tt.in}
+			at := &AuthToken{AuthToken: tt.in}
 			err := at.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			err = db.New(conn).Create(context.Background(), at)
@@ -187,18 +186,18 @@ func TestAuthToken_DbDelete(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		at        *writableAuthToken
+		at        *AuthToken
 		wantError bool
 		wantCnt   int
 	}{
 		{
 			name:    "basic",
-			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
 			wantCnt: 1,
 		},
 		{
 			name:    "delete-nothing",
-			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
 			wantCnt: 0,
 		},
 		{
@@ -209,7 +208,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 		},
 		{
 			name:      "delete-no-public-id",
-			at:        &writableAuthToken{AuthToken: &store.AuthToken{}},
+			at:        &AuthToken{AuthToken: &store.AuthToken{}},
 			wantCnt:   0,
 			wantError: true,
 		},

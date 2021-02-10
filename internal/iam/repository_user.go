@@ -651,7 +651,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is associated with a user %s", accountId, acct.IamUserId))
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is already associated with another user", accountId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
