@@ -3,7 +3,6 @@ package accounts_test
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -17,8 +16,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-	os.Setenv("BOUNDARY_LOG_URLS", "1")
-	os.Setenv("BOUNDARY_DEV_SKIP_AUTHZ", "1")
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
