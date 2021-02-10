@@ -79,18 +79,17 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
+
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
 
-	seslist, err := s.listFromRepo(ctx, scopeIds)
+	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +106,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 			finalItems = append(finalItems, item)
 		}
 	}
+
 	return &pbs.ListSessionsResponse{Items: finalItems}, nil
 }
 
@@ -146,12 +146,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	return toProto(sess), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	seslist, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
+	seslist, err := repo.ListSessions(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

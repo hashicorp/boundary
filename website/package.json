@@ -6,7 +6,7 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "9.0.6",
     "@hashicorp/mktg-global-styles": "2.1.0",
-    "@hashicorp/nextjs-scripts": "13.0.0-canary.1",
+    "@hashicorp/nextjs-scripts": "16.0.1",
     "@hashicorp/react-alert-banner": "5.0.0",
     "@hashicorp/react-button": "4.0.0",
     "@hashicorp/react-content": "6.1.1",
@@ -23,7 +23,7 @@
     "@hashicorp/react-vertical-text-block-list": "3.0.1",
     "change-case": "4.1.2",
     "classnames": "2.2.6",
-    "next": "9.5.5",
+    "next": "10.0.6",
     "next-mdx-remote": "1.0.1",
     "react": "16.13.1",
     "react-dom": "16.13.1",

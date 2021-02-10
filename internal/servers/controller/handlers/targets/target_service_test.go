@@ -332,6 +332,7 @@ func TestCreate(t *testing.T) {
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"default_port": structpb.NewNumberValue(2),
 				}},
+				WorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			res: &pbs.CreateTargetResponse{
 				Uri: fmt.Sprintf("targets/%s_", target.TcpTargetPrefix),
@@ -347,6 +348,7 @@ func TestCreate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(1),
 					AuthorizedActions:      targets.IdActions.Strings(),
+					WorkerFilter:           wrapperspb.String(`type == "bar"`),
 				},
 			},
 		},
@@ -403,6 +405,14 @@ func TestCreate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Invalid worker filter expression",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				WorkerFilter: wrapperspb.String("bad expression"),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -415,7 +425,10 @@ func TestCreate(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				assert.Nil(gErr, "Unexpected err: %v", gErr)
 			}
+
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), target.TcpTargetPrefix), got.GetItem().GetId())
@@ -428,7 +441,7 @@ func TestCreate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
 		})
 	}
 }

@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -12,9 +11,10 @@ import (
 // LookupConnection will look up a connection in the repository and return the connection
 // with its states.  If the connection is not found, it will return nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupConnection(ctx context.Context, connectionId string, opt ...Option) (*Connection, []*ConnectionState, error) {
+func (r *Repository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, []*ConnectionState, error) {
+	const op = "session.(Repository).LookupConnection"
 	if connectionId == "" {
-		return nil, nil, fmt.Errorf("lookup connection: missing connectionId id: %w", errors.ErrInvalidParameter)
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing connectionId id")
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
@@ -25,11 +25,11 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupById(ctx, &connection); err != nil {
-				return fmt.Errorf("lookup connection: failed %w for %s", err, connectionId)
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", connectionId)))
 			}
 			var err error
 			if states, err = fetchConnectionStates(ctx, read, connectionId, db.WithOrder("start_time desc")); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
@@ -38,31 +38,33 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
-		return nil, nil, fmt.Errorf("lookup connection: %w", err)
+		return nil, nil, errors.Wrap(err, op)
 	}
 	return &connection, states, nil
 }
 
 // ListConnections will sessions.  Supports the WithLimit and WithOrder options.
 func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
+	const op = "session.(Repository).ListConnections"
 	opts := getOpts(opt...)
 	var connections []*Connection
 	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opts) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
-		return nil, fmt.Errorf("list connections: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return connections, nil
 }
 
 // DeleteConnection will delete a connection from the repository.
-func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ...Option) (int, error) {
+	const op = "session.(Repository).DeleteConnection"
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete connection: missing public id %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	connection := AllocConnection()
 	connection.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &connection); err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete connection: failed %w for %s", err, publicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 
 	var rowsDeleted int
@@ -77,23 +79,27 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, opt 
 				ctx,
 				deleteConnection,
 			)
-			if err == nil && rowsDeleted > 1 {
-				// return err, which will result in a rollback of the delete
-				return stderrors.New("error more than 1 connection would have been deleted")
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete connection: failed %w for %s", err, publicId)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return rowsDeleted, nil
 }
 
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
+	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState
 	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []interface{}{connectionId}, opt...); err != nil {
-		return nil, fmt.Errorf("fetch connection states: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if len(states) == 0 {
 		return nil, nil

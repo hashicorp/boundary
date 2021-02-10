@@ -238,7 +238,7 @@ func TestAudClaim_Clone(t *testing.T) {
 
 func TestAudClaim_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultAudClaimTableName
+	defaultTableName := defaultAudClaimTableName
 	tests := []struct {
 		name      string
 		setNameTo string

@@ -239,7 +239,7 @@ func TestCallbackUrl_Clone(t *testing.T) {
 
 func TestCallbackUrl_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultCallbackUrlTableName
+	defaultTableName := defaultCallbackUrlTableName
 	tests := []struct {
 		name      string
 		setNameTo string
