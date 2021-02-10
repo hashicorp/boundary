@@ -96,6 +96,10 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 // That means validate can't completely ensure the data is valid and ultimately
 // we must rely on the database constraints/triggers to ensure the AuthMethod's
 // data integrity.
+//
+// Also, you can't enforce that MaxAge can't equal zero, since the zero value ==
+// NULL in the database and that's what you want if it's unset.  A db constraint
+// will enforce that MaxAge is either -1, NULL or greater than zero.
 func (a *AuthMethod) validate(caller errors.Op) error {
 	if a.ScopeId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing scope id")
