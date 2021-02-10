@@ -3,7 +3,6 @@ package authmethods
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 )
@@ -13,21 +12,13 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
 
-	opts, apiOpts := getOpts(opt...)
+	_, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
 		"credentials": credentials,
 	}
 
-	var action string
-	switch {
-	case opts.withSubAction != "":
-		action = opts.withSubAction
-	case strings.HasPrefix(authMethodId, "ampw"):
-		action = "login"
-	}
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate:%s", authMethodId, action), reqBody, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Authenticate request: %w", err)
 	}
