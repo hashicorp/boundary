@@ -2,6 +2,7 @@ package authtoken
 
 import (
 	"context"
+	"fmt"
 	mathrand "math/rand"
 	"time"
 
@@ -116,7 +117,7 @@ func newAuthToken(_ ...Option) (*AuthToken, error) {
 
 	return &AuthToken{
 		AuthToken: &store.AuthToken{
-			Token: token,
+			Token: fmt.Sprintf("%s%s", TokenValueVersionPrefix, token),
 		},
 	}, nil
 }
