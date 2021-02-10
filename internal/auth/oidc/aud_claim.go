@@ -49,7 +49,7 @@ func (a *AudClaim) validate(caller errors.Op) error {
 		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if a.Aud == "" {
-		return errors.New(errors.InvalidParameter, caller, "empty aud claim")
+		return errors.New(errors.InvalidParameter, caller, "missing aud claim")
 	}
 	return nil
 }
