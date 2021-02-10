@@ -247,7 +247,7 @@ func TestSigningAlg_Clone(t *testing.T) {
 
 func TestSigningAlg_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultSigningAlgTableName
+	defaultTableName := defaultSigningAlgTableName
 	tests := []struct {
 		name      string
 		setNameTo string

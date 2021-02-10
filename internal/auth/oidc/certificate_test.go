@@ -246,7 +246,7 @@ func TestCertificate_Clone(t *testing.T) {
 
 func TestCertificate_SetTableName(t *testing.T) {
 	t.Parallel()
-	defaultTableName := DefaultCertificateTableName
+	defaultTableName := defaultCertificateTableName
 	tests := []struct {
 		name      string
 		setNameTo string

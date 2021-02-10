@@ -7,8 +7,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// DefaultAudClaimTableName defines the default table name for an AudClaim
-const DefaultAudClaimTableName = "auth_oidc_aud_claim"
+// defaultAudClaimTableName defines the default table name for an AudClaim
+const defaultAudClaimTableName = "auth_oidc_aud_claim"
 
 // AudClaim defines an audience claim for an OIDC auth method.  It is assigned
 // to an OIDC AuthMethod and updates/deletes to that AuthMethod are cascaded to
@@ -74,7 +74,7 @@ func (c *AudClaim) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return DefaultAudClaimTableName
+	return defaultAudClaimTableName
 }
 
 // SetTableName sets the table name.
