@@ -44,7 +44,7 @@ func NewAccount(authMethodId string, issuerId *url.URL, subjectId string, opt ..
 	const op = "oidc.NewAccount"
 
 	if issuerId == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil issuer id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
 	}
 
 	opts := getOpts(opt...)
