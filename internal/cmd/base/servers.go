@@ -593,9 +593,13 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	}
 
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		<-b.ShutdownCh
-		cancel()
+		select {
+		case <-b.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
 	}()
 
 	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())

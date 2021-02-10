@@ -395,7 +395,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		{
 			name:  "doesnt-exist",
 			id:    badId,
-			token: badToken,
+			token: badToken.Token,
 			want:  nil,
 		},
 		{
@@ -409,7 +409,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		{
 			name:      "mismatched-token",
 			id:        at.GetPublicId(),
-			token:     badToken,
+			token:     badToken.Token,
 			want:      nil,
 			wantIsErr: errors.Unknown,
 		},
