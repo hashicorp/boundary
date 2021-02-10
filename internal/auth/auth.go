@@ -323,7 +323,7 @@ func (v *verifier) decryptToken() {
 func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl perms.ACL, retErr error) {
 	const op = "auth.(verifier).performAuthCheck"
 	// Ensure we return an error by default if we forget to set this somewhere
-	retErr = errors.New(errors.Unknown, op, "")
+	retErr = errors.New(errors.Unknown, op, "default auth error")
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
