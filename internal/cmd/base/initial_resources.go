@@ -125,78 +125,110 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
 	b.Info["generated auth method id"] = b.DevAuthMethodId
 
-	// Create the dev user
-	if b.DevLoginName == "" {
-		b.DevLoginName, err = base62.Random(10)
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to generate login name: %w", err)
+	createUser := func(loginName, loginPassword, userId string, admin bool) (*iam.User, error) {
+		// Create the dev admin user
+		if loginName == "" {
+			b.DevLoginName, err = base62.Random(10)
+			if err != nil {
+				return nil, fmt.Errorf("unable to generate login name: %w", err)
+			}
+			loginName = strings.ToLower(b.DevLoginName)
 		}
-		b.DevLoginName = strings.ToLower(b.DevLoginName)
-	}
-	if b.DevPassword == "" {
-		b.DevPassword, err = base62.Random(20)
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to generate password: %w", err)
+		if b.DevPassword == "" {
+			b.DevPassword, err = base62.Random(20)
+			if err != nil {
+				return nil, fmt.Errorf("unable to generate password: %w", err)
+			}
+			loginPassword = b.DevPassword
 		}
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated auth method password")
-	b.Info["generated auth method password"] = b.DevPassword
-
-	acct, err := password.NewAccount(b.DevAuthMethodId, password.WithLoginName(b.DevLoginName))
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating new in memory auth account: %w", err)
-	}
-	acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(b.DevPassword))
-	if err != nil {
-		return nil, nil, fmt.Errorf("error saving auth account to the db: %w", err)
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated auth method login name")
-	b.Info["generated auth method login name"] = acct.GetLoginName()
-
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create repo for org id: %w", err)
-	}
-
-	// Create a new user and associate it with the account
-	if b.DevUserId == "" {
-		b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
+		typeStr := "admin"
+		if !admin {
+			typeStr = "unprivileged"
 		}
+		b.InfoKeys = append(b.InfoKeys, fmt.Sprintf("generated %s password", typeStr))
+		b.Info[fmt.Sprintf("generated %s password", typeStr)] = loginPassword
+
+		acct, err := password.NewAccount(am.PublicId, password.WithLoginName(loginName))
+		if err != nil {
+			return nil, fmt.Errorf("error creating new in memory auth account: %w", err)
+		}
+		acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(loginPassword))
+		if err != nil {
+			return nil, fmt.Errorf("error saving auth account to the db: %w", err)
+		}
+		b.InfoKeys = append(b.InfoKeys, fmt.Sprintf("generated %s login name", typeStr))
+		b.Info[fmt.Sprintf("generated %s login name", typeStr)] = acct.GetLoginName()
+
+		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+		if err != nil {
+			return nil, fmt.Errorf("unable to create repo for org id: %w", err)
+		}
+
+		// Create a new user and associate it with the account
+		if userId == "" {
+			userId, err = db.NewPublicId(iam.UserPrefix)
+			if err != nil {
+				return nil, fmt.Errorf("error generating initial user id: %w", err)
+			}
+		}
+		opts := []iam.Option{
+			iam.WithPublicId(userId),
+		}
+		if admin {
+			opts = append(opts,
+				iam.WithName("admin"),
+				iam.WithDescription(`Initial admin user within the "global" scope`),
+			)
+		} else {
+			opts = append(opts,
+				iam.WithName("user"),
+				iam.WithDescription("Initial unprivileged user"),
+			)
+		}
+		u, err := iam.NewUser(scope.Global.String(), opts...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating in memory user: %w", err)
+		}
+		if u, err = iamRepo.CreateUser(cancelCtx, u, opts...); err != nil {
+			return nil, fmt.Errorf("error creating initial %s user: %w", typeStr, err)
+		}
+		if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+			return nil, fmt.Errorf("error associating initial %s user with account: %w", typeStr, err)
+		}
+		if !admin {
+			return u, err
+		}
+		// Create a role tying them together
+		pr, err := iam.NewRole(scope.Global.String(),
+			iam.WithName("Administration"),
+			iam.WithDescription(`Provides admin grants within the "global" scope to the initial user`),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
+		}
+		defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
+		if err != nil {
+			return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
+		}
+		if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
+			return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
+		}
+		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
+			return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+		}
+		return u, err
 	}
-	opts := []iam.Option{
-		iam.WithName("admin"),
-		iam.WithDescription(`Initial admin user within the "global" scope`),
-		iam.WithPublicId(b.DevUserId),
+
+	if b.DevUnprivLoginName != "" {
+		unprivUser, err := createUser(b.DevUnprivLoginName, b.DevUnprivPassword, b.DevUnprivUserId, false)
+		if err != nil {
+			return nil, nil, err
+		}
+		b.DevUnprivUserId = unprivUser.GetPublicId()
 	}
-	u, err := iam.NewUser(scope.Global.String(), opts...)
+	u, err := createUser(b.DevLoginName, b.DevPassword, b.DevUserId, true)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating in memory user: %w", err)
-	}
-	if u, err = iamRepo.CreateUser(cancelCtx, u, opts...); err != nil {
-		return nil, nil, fmt.Errorf("error creating initial admin user: %w", err)
-	}
-	if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
-		return nil, nil, fmt.Errorf("error associating initial admin user with account: %w", err)
-	}
-	// Create a role tying them together
-	pr, err := iam.NewRole(scope.Global.String(),
-		iam.WithName("Administration"),
-		iam.WithDescription(`Provides admin grants within the "global" scope to the initial user`),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
-	}
-	defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating role for default generated grants: %w", err)
-	}
-	if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
-		return nil, nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
-	}
-	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
-		return nil, nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
+		return nil, nil, err
 	}
 
 	return am, u, nil
@@ -455,6 +487,64 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated target id")
 	b.Info["generated target id"] = b.DevTargetId
+
+	// If we have an unprivileged dev user, add user to the role that grants
+	// list/read:self/cancel:self, and an authorize-session role
+	if b.DevUnprivUserId != "" {
+		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+		if err != nil {
+			return nil, fmt.Errorf("unable to create repo for unprivileged user target connection role: %w", err)
+		}
+
+		roles, err := iamRepo.ListRoles(ctx, []string{b.DevProjectId})
+		if err != nil {
+			return nil, fmt.Errorf("unable to list existing roles in project: %w", err)
+		}
+		if len(roles) != 2 {
+			return nil, fmt.Errorf("unexpected number of roles in default project, expected 2, got %d", len(roles))
+		}
+		var idx int = -1
+		for i, r := range roles {
+			// Hacky, I know, but saves a DB trip to look up other
+			// characteristics like "if any principals are currently attached".
+			// No matter what we pick here it's a bit heuristical.
+			if r.Name == "Default Grants" {
+				idx = i
+				break
+			}
+		}
+		if idx == -1 {
+			return nil, fmt.Errorf("couldn't find default grants role in default project")
+		}
+		if _, err := iamRepo.AddPrincipalRoles(ctx,
+			roles[idx].PublicId,
+			roles[idx].Version,
+			[]string{b.DevUnprivUserId}); err != nil {
+			return nil, fmt.Errorf("error adding unpriv user ID to project default role: %w", err)
+		}
+
+		pr, err := iam.NewRole(b.DevProjectId,
+			iam.WithName("Unprivileged User Session Authorization"),
+			iam.WithDescription(`Provides grants within the dev project scope to allow the initial unprivileged user to authorize sessions against the dev target`),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
+		}
+		sessionRole, err := iamRepo.CreateRole(cancelCtx, pr)
+		if err != nil {
+			return nil, fmt.Errorf("error creating role for unprivileged user generated grants: %w", err)
+		}
+		if _, err := iamRepo.AddRoleGrants(cancelCtx,
+			sessionRole.PublicId,
+			sessionRole.Version,
+			[]string{fmt.Sprintf("id=%s;actions=authorize-session", b.DevTargetId)},
+		); err != nil {
+			return nil, fmt.Errorf("error creating grant for unprivileged user generated grants: %w", err)
+		}
+		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivUserId}, nil); err != nil {
+			return nil, fmt.Errorf("error adding principal to role for unprivileged user generated grants: %w", err)
+		}
+	}
 
 	return tt, nil
 }

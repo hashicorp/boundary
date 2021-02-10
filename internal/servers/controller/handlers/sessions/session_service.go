@@ -234,7 +234,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
-	case action.Read, action.Cancel:
+	case action.Read, action.ReadSelf, action.Cancel, action.CancelSelf:
 		repo, err := s.repoFn()
 		if err != nil {
 			res.Error = err

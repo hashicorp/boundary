@@ -126,7 +126,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRoleMetadata oplog.Metadata
 	var defaultRole *Role
 	var defaultRoleRaw interface{}
-	if !opts.withSkipDefaultRoleCreation && s.Type == scope.Org.String() {
+	if !opts.withSkipDefaultRoleCreation {
 		defaultRole, err = NewRole(scopePublicId)
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("error instantiating new default role"))
@@ -289,13 +289,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 					switch s.Type {
 					case scope.Project.String():
-						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=read:self")
-						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
-						}
-						grants = append(grants, roleGrant)
-
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=cancel:self")
+						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
 						if err != nil {
 							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -331,7 +325,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				// Principals
 				{
 					principals := []interface{}{}
-					rolePrincipal, err := NewUserRole(defaultRolePublicId, "u_anon")
+					userId := "u_anon"
+					if s.Type == scope.Project.String() {
+						userId = "u_auth"
+					}
+					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
 						return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role user"))
 					}

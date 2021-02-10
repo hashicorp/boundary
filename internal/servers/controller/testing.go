@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -25,9 +26,10 @@ import (
 )
 
 const (
-	DefaultTestAuthMethodId = "ampw_1234567890"
-	DefaultTestLoginName    = "user"
-	DefaultTestPassword     = "passpass"
+	DefaultTestAuthMethodId    = "ampw_1234567890"
+	DefaultTestLoginName       = "admin"
+	DefaultTestUnprivLoginName = "user"
+	DefaultTestPassword        = "passpass"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -242,10 +244,13 @@ type TestControllerOpts struct {
 	// DefaultAuthMethodId is the default auth method ID to use, if set.
 	DefaultAuthMethodId string
 
-	// DefaultLoginName is the login name used when creating the default account.
+	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
-	// DefaultPassword is the password used when creating the default account.
+	// DefaultUnprivLoginName is the login name used when creating the default unprivileged account.
+	DefaultUnprivLoginName string
+
+	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
 	// DisableInitialLoginRoleCreation can be set true to disable creating the
@@ -360,10 +365,17 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	} else {
 		tc.b.DevLoginName = DefaultTestLoginName
 	}
+	if opts.DefaultUnprivLoginName != "" {
+		tc.b.DevUnprivLoginName = opts.DefaultUnprivLoginName
+	} else {
+		tc.b.DevUnprivLoginName = DefaultTestUnprivLoginName
+	}
 	if opts.DefaultPassword != "" {
 		tc.b.DevPassword = opts.DefaultPassword
+		tc.b.DevUnprivPassword = opts.DefaultPassword
 	} else {
 		tc.b.DevPassword = DefaultTestPassword
+		tc.b.DevUnprivPassword = DefaultTestPassword
 	}
 
 	// Start a logger
@@ -396,6 +408,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevProjectId = "p_" + suffix
 		tc.b.DevTargetId = "ttcp_" + suffix
 		tc.b.DevUserId = "u_" + suffix
+		tc.b.DevUnprivUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 	}
 
 	// Set up KMSes
