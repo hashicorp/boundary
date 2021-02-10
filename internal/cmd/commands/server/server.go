@@ -391,7 +391,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
