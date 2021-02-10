@@ -13,22 +13,17 @@ import (
 
 func TestAuthenticate(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DefaultAuthMethodId: amId,
-		DefaultLoginName:    "user",
-		DefaultPassword:     "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
 	methods := authmethods.NewClient(client)
 
-	tok, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	tok, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	assert.NotNil(tok)
 
-	_, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "wrong"})
+	_, err = methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, map[string]interface{}{"login_name": "user", "password": "wrong"})
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)

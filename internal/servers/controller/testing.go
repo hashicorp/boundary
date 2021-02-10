@@ -49,6 +49,11 @@ type TestController struct {
 	opts         *TestControllerOpts
 }
 
+// Server returns the underlying base server
+func (tc *TestController) Server() *base.Server {
+	return tc.b
+}
+
 // Controller returns the underlying controller
 func (tc *TestController) Controller() *Controller {
 	return tc.c
@@ -129,6 +134,26 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
+		},
+	)
+	if err != nil {
+		tc.t.Error(fmt.Errorf("error logging in: %w", err))
+		return nil
+	}
+	return token.Item
+}
+
+func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
+	if tc.opts.DisableAuthMethodCreation {
+		tc.t.Error("no default auth method ID configured")
+		return nil
+	}
+	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+		tc.Context(),
+		tc.b.DevAuthMethodId,
+		map[string]interface{}{
+			"login_name": tc.b.DevUnprivilegedLoginName,
+			"password":   tc.b.DevUnprivilegedPassword,
 		},
 	)
 	if err != nil {
