@@ -16,18 +16,23 @@ create table auth_oidc_method (
     references auth_oidc_method_state_enm(name)
     on delete restrict
     on update cascade,
-  discovery_url wt_url not null, -- oidc discovery URL without any .well-known component
-  client_id text not null -- oidc client identifier issued by the oidc provider.
+  discovery_url wt_url, -- oidc discovery URL without any .well-known component
+  client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
-  client_secret bytea not null, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret bytea, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret_hmac text 
+    constraint client_secret_hmac_not_empty
+    check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    references kms_oidc_key_version(private_id) 
+    references kms_database_key_version(private_id) 
     on delete restrict
     on update cascade, 
-  max_age int not null -- the allowable elapsed time in secs since the last time the user was authenticated. zero is allowed and should force the user to be re-authenticated.
-    constraint max_age_equal_or_greater_than_zero
-    check(max_age >= 0), 
+  max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
+    constraint max_age_not_equal_zero
+      check(max_age != 0)
+    constraint max_age_not_less_then_negative_one
+      check(max_age >= -1), 
   foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -40,6 +45,7 @@ create table auth_oidc_method (
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
 create table auth_oidc_signing_alg (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -55,17 +61,20 @@ create table auth_oidc_signing_alg (
 -- oidc auth method.  There must be at least one callback url for each oidc auth
 -- method. 
 create table auth_oidc_callback_url (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
-  callback_url wt_url not null
+  callback_url wt_url not null,
+  primary key(oidc_method_id, callback_url)
 );
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
 -- method has any aud claims, an ID token must contain one of them to be valid. 
 create table auth_oidc_aud_claim (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -84,6 +93,7 @@ create table auth_oidc_aud_claim (
 -- used as trust anchors when connecting to the auth method's oidc provider
 -- (instead of the host system's cert chain).
 create table auth_oidc_certificate (
+  create_time wt_timestamp,
   oidc_method_id wt_public_id 
     references auth_oidc_method(public_id)
     on delete cascade
@@ -189,5 +199,31 @@ create trigger
   insert_auth_account_subtype
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
+
+-- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
+-- auth_oidc_callback_url, 
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_aud_claim
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_callback_url
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_certificate
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_signing_alg
+  for each row execute procedure default_create_time();
 
 commit;
