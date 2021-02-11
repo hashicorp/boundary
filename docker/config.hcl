@@ -1,18 +1,20 @@
-# This is a default configuration provided for our Docker image. It's meant to be a starting point and to 
-# help new users get started. It's strongly recommended that this configuration is not used outside of
-# demonstrations because it uses hard coded AEAD keys.
+# This is a default configuration provided for our Docker image. It's meant to
+# be a starting point and to help new users get started. It's strongly
+# recommended that this configuration is not used outside of demonstrations
+# because it uses hard coded AEAD keys.
 
 disable_mlock = true
 
 controller {
   name = "demo-controller"
-  description = "A controller for a demo!"
+  description = "A default controller created for demonstration"
 
   database {
     # This configuration setting requires the user to execute the container with the URL as an env var
     # to connect to the Boundary postgres DB. An example of how this can be done assuming the postgres 
-    # database is running as a container and you're using docker for mac (replace host.docker.internal with
-    # localhost if you're on linux):
+    # database is running as a container and you're using Docker for Mac (replace host.docker.internal with
+    # localhost if you're on Linux):
+    #
     #    $  docker run -e 'BOUNDARY_POSTGRES_URL=postgresql://postgres:postgres@host.docker.internal:5432/postgres?sslmode=disable' [other options] boundary:[version]
     url = "env://BOUNDARY_POSTGRES_URL"
   }
@@ -22,7 +24,7 @@ controller {
 
 worker {
   name = "demo-worker"
-  description = "A default worker created demonstration"
+  description = "A default worker created for demonstration"
 }
 
 listener "tcp" {
