@@ -89,6 +89,14 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			},
 			cnt: 1,
 		},
+		{
+			name: "update-status",
+			args: args{
+				fieldMask: []string{"Status"},
+				authTok:   &store.AuthToken{Status: string(IssuedStatus)},
+			},
+			cnt: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -147,7 +155,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 			name: "duplicate-id",
 			in: &store.AuthToken{
 				PublicId:      createdAuthToken.GetPublicId(),
-				Token:         "duplicateid_test",
+				Token:         "duplicate_id_test",
 				AuthAccountId: acct.GetPublicId(),
 			},
 			wantError: true,
