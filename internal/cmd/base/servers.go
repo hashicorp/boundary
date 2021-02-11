@@ -71,6 +71,9 @@ type Server struct {
 	DevLoginName                    string
 	DevPassword                     string
 	DevUserId                       string
+	DevUnprivilegedLoginName        string
+	DevUnprivilegedPassword         string
+	DevUnprivilegedUserId           string
 	DevOrgId                        string
 	DevProjectId                    string
 	DevHostCatalogId                string

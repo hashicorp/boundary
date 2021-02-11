@@ -81,7 +81,7 @@ func TestGetSession(t *testing.T) {
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "cancel"},
+		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
 	}
 
 	cases := []struct {
@@ -210,7 +210,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "cancel"},
+			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -245,7 +245,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "cancel"},
+			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
 		})
 	}
 
@@ -362,7 +362,7 @@ func TestCancel(t *testing.T) {
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "cancel"},
+		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
 	}
 
 	version := wireSess.GetVersion()

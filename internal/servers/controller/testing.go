@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -25,9 +26,11 @@ import (
 )
 
 const (
-	DefaultTestAuthMethodId = "ampw_1234567890"
-	DefaultTestLoginName    = "user"
-	DefaultTestPassword     = "passpass"
+	DefaultTestAuthMethodId          = "ampw_1234567890"
+	DefaultTestLoginName             = "admin"
+	DefaultTestUnprivilegedLoginName = "user"
+	DefaultTestPassword              = "passpass"
+	DefaultTestUserId                = "u_1234567890"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -44,6 +47,11 @@ type TestController struct {
 	cancel       context.CancelFunc
 	name         string
 	opts         *TestControllerOpts
+}
+
+// Server returns the underlying base server
+func (tc *TestController) Server() *base.Server {
+	return tc.b
 }
 
 // Controller returns the underlying controller
@@ -126,6 +134,26 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
+		},
+	)
+	if err != nil {
+		tc.t.Error(fmt.Errorf("error logging in: %w", err))
+		return nil
+	}
+	return token.Item
+}
+
+func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
+	if tc.opts.DisableAuthMethodCreation {
+		tc.t.Error("no default auth method ID configured")
+		return nil
+	}
+	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+		tc.Context(),
+		tc.b.DevAuthMethodId,
+		map[string]interface{}{
+			"login_name": tc.b.DevUnprivilegedLoginName,
+			"password":   tc.b.DevUnprivilegedPassword,
 		},
 	)
 	if err != nil {
@@ -242,10 +270,13 @@ type TestControllerOpts struct {
 	// DefaultAuthMethodId is the default auth method ID to use, if set.
 	DefaultAuthMethodId string
 
-	// DefaultLoginName is the login name used when creating the default account.
+	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
-	// DefaultPassword is the password used when creating the default account.
+	// DefaultUnprivilegedLoginName is the login name used when creating the default unprivileged account.
+	DefaultUnprivilegedLoginName string
+
+	// DefaultPassword is the password used when creating the default accounts.
 	DefaultPassword string
 
 	// DisableInitialLoginRoleCreation can be set true to disable creating the
@@ -360,10 +391,17 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	} else {
 		tc.b.DevLoginName = DefaultTestLoginName
 	}
+	if opts.DefaultUnprivilegedLoginName != "" {
+		tc.b.DevUnprivilegedLoginName = opts.DefaultUnprivilegedLoginName
+	} else {
+		tc.b.DevUnprivilegedLoginName = DefaultTestUnprivilegedLoginName
+	}
 	if opts.DefaultPassword != "" {
 		tc.b.DevPassword = opts.DefaultPassword
+		tc.b.DevUnprivilegedPassword = opts.DefaultPassword
 	} else {
 		tc.b.DevPassword = DefaultTestPassword
+		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
 
 	// Start a logger
@@ -396,7 +434,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevProjectId = "p_" + suffix
 		tc.b.DevTargetId = "ttcp_" + suffix
 		tc.b.DevUserId = "u_" + suffix
+		tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
+	} else {
+		tc.b.DevUserId = DefaultTestUserId
 	}
+	tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 
 	// Set up KMSes
 	switch {
@@ -509,6 +551,8 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		RecoveryKms:               tc.c.conf.RecoveryKms,
 		Name:                      opts.Name,
 		Logger:                    tc.c.conf.Logger,
+		DefaultLoginName:          tc.b.DevLoginName,
+		DefaultPassword:           tc.b.DevPassword,
 		DisableKmsKeyCreation:     true,
 		DisableAuthMethodCreation: true,
 	}
