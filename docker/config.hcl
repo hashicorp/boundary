@@ -1,7 +1,11 @@
+# This is a default configuration provided for our Docker image. It's meant to be a starting point and to 
+# help new users get started. It's strongly recommended that this configuration is not used outside of
+# demonstrations because it uses hard coded AEAD keys.
+
 disable_mlock = true
 
 controller {
-  name = "demo-controller-1"
+  name = "demo-controller"
   description = "A controller for a demo!"
 
   database {
@@ -17,19 +21,11 @@ controller {
 }
 
 worker {
-  name = "demo-worker-1"
+  name = "demo-worker"
   description = "A default worker created demonstration"
 }
 
 listener "tcp" {
-  # This configuration assumes the docker container hostname is being overridden using the --hostname
-  # flag. The default configuration of a container uses the ephemeral container ID as the hostname and
-  # this hostname resolves to the ephemeral IP of the container. We need to bind to the ephemeral IP 
-  # of the container on startup, and need to know the hostname in order to do that. A future improvement
-  # would be allowing the listener to set `env://HOSTNAME` as its value but that's not a feature at
-  # the time of this writing. For now, when running boundary in docker you must pass the --hostname 
-  # flag as:
-  #    $ docker run --hostname boundary [other options] boundary:[version]
   address = "0.0.0.0"
   purpose = "api"
   tls_disable = true 
