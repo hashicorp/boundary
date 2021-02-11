@@ -204,6 +204,9 @@ func (c *Command) Run(args []string) int {
 				foundApi = true
 			case "proxy":
 				foundProxy = true
+				if lnConfig.Address == "" {
+					lnConfig.Address = "127.0.0.1:9202"
+				}
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return 1
@@ -227,8 +230,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(err.Error())
 			return 1
 		}
-		c.InfoKeys = append(c.InfoKeys, "public cluster addr")
-		c.Info["public cluster addr"] = c.Config.Controller.PublicClusterAddr
+		c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+		c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
 	}
 
 	if c.Config.Worker != nil {
@@ -242,8 +245,8 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(err.Error())
 				return 1
 			}
-			c.InfoKeys = append(c.InfoKeys, "public proxy addr")
-			c.Info["public proxy addr"] = c.Config.Worker.PublicAddr
+			c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+			c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 		}
 
 		if c.Config.Controller != nil {

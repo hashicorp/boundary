@@ -323,20 +323,6 @@ func (c *Command) Run(args []string) int {
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
 
-	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
-	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
-
-	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	c.InfoKeys = append(c.InfoKeys, "worker public addr")
-	c.Info["worker public addr"] = c.Config.Worker.PublicAddr
-
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
 			c.UI.Error("Only one purpose supported for each listener")
@@ -355,6 +341,8 @@ func (c *Command) Run(args []string) int {
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
 				c.Config.Worker.Controllers = []string{l.Address}
+			} else {
+				l.Address = "127.0.0.1:9201"
 			}
 			if strings.HasPrefix(l.Address, "/") {
 				l.Type = "unix"
@@ -363,9 +351,25 @@ func (c *Command) Run(args []string) int {
 		case "proxy":
 			if c.flagWorkerProxyListenAddr != "" {
 				l.Address = c.flagWorkerProxyListenAddr
+			} else {
+				l.Address = "127.0.0.1:9202"
 			}
 		}
 	}
+
+	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
+
+	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+	c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
 		c.UI.Error(err.Error())
