@@ -28,6 +28,22 @@ Roles are composable; a user's final set of grants will be composed of various
 roles that each contribute grants to a set of principals that include that user
 or groups of which that user is a member.
 
+## Subactions
+
+Starting in Boundary 0.1.6, some subactions are supported. These actions have a
+format `top_level_action:subaction`, such as `read:self`. Being granted the top
+level action infers being granted all subactions. Thus, if a grant conveys
+`read`, it also matches the API actions `read` and `read:self`. However, if a
+grant conveys `read:self`, it will match the API action `read:self` but will not
+match `read`.
+
+Note that not all API subactions are available for grants. As an example, auth
+methods require one or more steps to perform authentication. These are separated
+into separate API actions based on the required workflow for that authentication
+mechanism, e.g. `authenticate:login`. However, the grant system does not
+currently expose subactions for the `authenticate` top level action, as it
+generally does not make sense to allow only one step out of many.
+
 ## Applicable Resource Types
 
 Boundary's [domain model](/docs/concepts/domain-model) is based on resource
@@ -1248,6 +1264,24 @@ wildcard or templated grant strings.
           <ul>
             <li>
               <code>id=&lt;id&gt;;actions=cancel</code>
+            </li>
+          </ul>
+          <li>
+            <code>read:self</code>: Read a session, which must be associated
+            with the calling user
+          </li>
+          <ul>
+            <li>
+              <code>id=*;type=session;actions=read:self</code>
+            </li>
+          </ul>
+          <li>
+            <code>cancel:self</code>: Cancel a session, which must be associated
+            with the calling user
+          </li>
+          <ul>
+            <li>
+              <code>id=*;type=session;actions=cancel:self</code>
             </li>
           </ul>
         </ul>
