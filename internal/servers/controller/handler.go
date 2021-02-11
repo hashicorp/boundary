@@ -260,7 +260,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 	}, props.ListenerConfig.CorsAllowedHeaders...)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if !props.ListenerConfig.CorsEnabled {
+		if props.ListenerConfig.CorsEnabled == nil || !*props.ListenerConfig.CorsEnabled {
 			h.ServeHTTP(w, req)
 			return
 		}
