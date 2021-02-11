@@ -27,8 +27,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * server: When running single-server mode and `controllers` is not specified in
   the `worker` block, use `public_cluster_addr` if given
   ([PR](https://github.com/hashicorp/boundary/pull/904))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
 * server: Add `read` action to default scope grant
   ([PR](https://github.com/hashicorp/boundary/pull/913))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
 
 ### Bug Fixes
 
