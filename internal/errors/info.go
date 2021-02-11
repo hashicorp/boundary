@@ -68,6 +68,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "token mismatch",
 		Kind:    Integrity,
 	},
+	TooShort: {
+		Message: "too short",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
