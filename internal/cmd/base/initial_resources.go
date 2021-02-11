@@ -196,7 +196,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 			return nil, fmt.Errorf("error associating initial %s user with account: %w", typeStr, err)
 		}
 		if !admin {
-			return u, err
+			return u, nil
 		}
 		// Create a role tying them together
 		pr, err := iam.NewRole(scope.Global.String(),
@@ -216,7 +216,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
 			return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 		}
-		return u, err
+		return u, nil
 	}
 
 	if b.DevUnprivilegedLoginName != "" {
