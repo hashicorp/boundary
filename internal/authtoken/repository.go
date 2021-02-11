@@ -54,10 +54,12 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-// CreateAuthToken inserts an Auth Token into the repository and returns a new Auth Token.  The returned auth token
-// contains the auth token value. The provided IAM User ID must be associated to the provided auth account id
-// or an error will be returned. All options are ignored.
-func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
+// CreateAuthToken inserts an Auth Token into the repository and returns a new
+// Auth Token.  The returned auth token contains the auth token value. The
+// provided IAM User ID must be associated to the provided auth account id or an
+// error will be returned.  The Auth Token will have a Status of "issued".
+// All options are ignored.
+func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, _ ...Option) (*AuthToken, error) {
 	const op = "authtoken.(Repository).CreateAuthToken"
 	if withIamUser == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing user")
@@ -68,7 +70,6 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	if withAuthAccountId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth account id")
 	}
-
 	at, err := newAuthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op)
@@ -336,4 +337,20 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	return rowsDeleted, nil
+}
+
+// CreatePendingAuthToken creates a "pending" token in the repository using
+// the tokenRequestId as it's PublicId. The provided IAM User ID must be
+// associated to the provided auth account id or an error will be returned.  All
+// options are ignored.
+func (r *Repository) CreatePendingAuthToken(ctx context.Context, tokenRequestId string, iamUser *iam.User, withAuthAccountId string, opt ...Option) error {
+	panic("to-do")
+}
+
+// IssueAuthToken will retrieve the "pending" token and update it's status to
+// "issued".  If the token has already been issued, an error is returned with a
+// nil token.  If no token is found for the tokenRequestId an error is returned
+// with a nil token.
+func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) (*AuthToken, error) {
+	panic("to-do")
 }
