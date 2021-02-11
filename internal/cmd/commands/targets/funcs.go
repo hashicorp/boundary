@@ -24,6 +24,19 @@ func hostSetSynopsisFunc(inFunc string) string {
 	return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
 }
 
+func hostsSynopsisFunc(inFunc string) string {
+	var in string
+	switch {
+	case strings.HasPrefix(inFunc, "add"):
+		in = "Add hosts to"
+	case strings.HasPrefix(inFunc, "set"):
+		in = "Set the full contents of the hosts on"
+	case strings.HasPrefix(inFunc, "remove"):
+		in = "Remove hosts from"
+	}
+	return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
+}
+
 func generateTargetTableOutput(in *targets.Target) string {
 	nonAttributeMap := map[string]interface{}{
 		"ID":                       in.Id,
@@ -61,6 +74,20 @@ func generateTargetTableOutput(in *targets.Target) string {
 		}
 	}
 
+	var hostMaps []map[string]interface{}
+	if len(in.Hosts) > 0 {
+		for _, host := range in.Hosts {
+			m := map[string]interface{}{
+				"ID":              host.Id,
+				"Host Catalog ID": host.HostCatalogId,
+			}
+			hostMaps = append(hostMaps, m)
+		}
+		if l := len("Host Catalog ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+
 	ret := []string{
 		"",
 		"Target information:",
@@ -84,6 +111,19 @@ func generateTargetTableOutput(in *targets.Target) string {
 			"  Host Sets:",
 		)
 		for _, m := range hostSetMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
+
+	if len(in.Hosts) > 0 {
+		ret = append(ret,
+			"",
+			"  Hosts:",
+		)
+		for _, m := range hostMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
 				"",
@@ -158,6 +198,17 @@ func exampleOutput() string {
 			},
 			{
 				Id:            "hsst_0987654321",
+				HostCatalogId: "hcst_1234567890",
+			},
+		},
+		HostIds: []string{"hst_1234567890", "hst_0987654321"},
+		Hosts: []*targets.Host{
+			{
+				Id:            "hst_1234567890",
+				HostCatalogId: "hcst_1234567890",
+			},
+			{
+				Id:            "hst_0987654321",
 				HostCatalogId: "hcst_1234567890",
 			},
 		},

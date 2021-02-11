@@ -169,7 +169,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	updateTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
 	updateHset := hsets[1]
 
-	_, gotHostSets, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
+	_, gotHostSets, _, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hsets[0].PublicId})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSets))
 	new, err := NewTargetHostSet(projTarget.PublicId, gotHostSets[0].PublicId)
@@ -224,6 +224,85 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", new.TargetId, new.HostSetId)
 			require.NoError(err)
 			assert.True(proto.Equal(orig.(*TargetHostSet), after.(*TargetHostSet)))
+		})
+	}
+}
+
+func TestTargetHost_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	projTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+	hosts := static.TestHosts(t, conn, testCats[0].GetPublicId(), 2)
+	require.Equal(t, 2, len(hosts))
+
+	updateTarget := TestTcpTarget(t, conn, proj.PublicId, testId(t))
+	updateHost := hosts[1]
+
+	_, _, gotHosts, err := repo.AddTargetHosts(context.Background(), projTarget.PublicId, 1, []string{hosts[0].PublicId})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(gotHosts))
+	new, err := NewTargetHost(projTarget.PublicId, gotHosts[0].PublicId)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		update    *TargetHost
+		fieldMask []string
+	}{
+		{
+			name: "target_id",
+			update: func() *TargetHost {
+				target := new.Clone().(*TargetHost)
+				target.TargetId = updateTarget.PublicId
+				return target
+			}(),
+			fieldMask: []string{"TargetId"},
+		},
+		{
+			name: "create time",
+			update: func() *TargetHost {
+				target := new.Clone().(*TargetHost)
+				target.CreateTime = &ts
+				return target
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "host_id",
+			update: func() *TargetHost {
+				target := new.Clone().(*TargetHost)
+				target.HostId = updateHost.PublicId
+				return target
+			}(),
+			fieldMask: []string{"HostId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_id = ?", new.TargetId, new.HostId)
+			require.NoError(err)
+
+			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			require.Error(err)
+			assert.Equal(0, rowsUpdated)
+
+			after := new.Clone()
+			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_id = ?", new.TargetId, new.HostId)
+			require.NoError(err)
+			assert.True(proto.Equal(orig.(*TargetHost), after.(*TargetHost)))
 		})
 	}
 }

@@ -18,6 +18,14 @@ message HostSet{
 	string host_catalog_id = 20 [json_name="host_catalog_id"];
 }
 
+message Host {
+	// Output only. The ID of the Host.
+	string id = 10;
+
+	// Output only. The Host Catalog to which this Host belongs.
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
+}
+
 // Target contains all fields related to a Target resource
 message Target {
 	// Output only. The ID of the resource.
@@ -53,6 +61,12 @@ message Target {
 
 	// Output only. The Host Sets associated with this Target.
 	repeated HostSet host_sets = 110 [json_name="host_sets"];
+
+	// The IDs of the Hosts associated with this Target.
+	repeated string host_ids = 150 [json_name="host_ids"];
+
+	// Output only. The Hosts associated with this Target.
+	repeated Host hosts = 160 [json_name="hosts"];
 
 	// Maximum total lifetime of a created Session, in seconds.
 	google.protobuf.UInt32Value session_max_seconds = 120 [json_name="session_max_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "session_max_seconds" that: "SessionMaxSeconds"}];

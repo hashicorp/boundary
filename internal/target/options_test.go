@@ -97,6 +97,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withHostSets = []string{"alice", "bob"}
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithHosts", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithHosts([]string{"alice", "bob"}))
+		testOpts := getDefaultOptions()
+		testOpts.withHosts = []string{"alice", "bob"}
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithWorkerFilter", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithWorkerFilter(`"/foo" == "bar"`))

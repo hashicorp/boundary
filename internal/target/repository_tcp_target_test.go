@@ -33,6 +33,11 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, s := range hsets {
 		sets = append(sets, s.PublicId)
 	}
+	hsts := static.TestHosts(t, conn, cats[0].GetPublicId(), 2)
+	var hosts []string
+	for _, hst := range hsts {
+		hosts = append(hosts, hst.PublicId)
+	}
 
 	type args struct {
 		target *TcpTarget
@@ -42,6 +47,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 		name         string
 		args         args
 		wantHostSets []string
+		wantHosts    []string
 		wantErr      bool
 		wantIsError  errors.Code
 	}{
@@ -56,10 +62,11 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 					require.NoError(t, err)
 					return target
 				}(),
-				opt: []Option{WithHostSets(sets)},
+				opt: []Option{WithHostSets(sets), WithHosts(hosts)},
 			},
 			wantErr:      false,
 			wantHostSets: sets,
+			wantHosts:    hosts,
 		},
 		{
 			name: "nil-target",
@@ -112,7 +119,7 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			target, hostSets, err := repo.CreateTcpTarget(context.Background(), tt.args.target, tt.args.opt...)
+			target, hostSets, hosts, err := repo.CreateTcpTarget(context.Background(), tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(target)
@@ -121,16 +128,24 @@ func TestRepository_CreateTcpTarget(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(target.GetPublicId())
-			gotIds := make([]string, 0, len(hostSets))
-			for _, s := range hostSets {
-				gotIds = append(gotIds, s.PublicId)
-			}
-			assert.Equal(tt.wantHostSets, gotIds)
 
-			foundTarget, foundHostSets, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			gotHostSetIds := make([]string, 0, len(hostSets))
+			for _, s := range hostSets {
+				gotHostSetIds = append(gotHostSetIds, s.PublicId)
+			}
+			assert.Equal(tt.wantHostSets, gotHostSetIds)
+
+			gotHostIds := make([]string, 0, len(hosts))
+			for _, s := range hosts {
+				gotHostIds = append(gotHostIds, s.PublicId)
+			}
+			assert.Equal(tt.wantHosts, gotHostIds)
+
+			foundTarget, foundHostSets, foundHosts, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(target.(*TcpTarget), foundTarget.(*TcpTarget)))
 			assert.Equal(hostSets, foundHostSets)
+			assert.Equal(hosts, foundHosts)
 
 			err = db.TestVerifyOplog(t, rw, target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
@@ -360,7 +375,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			for _, hs := range hsets {
 				testHostSetIds = append(testHostSetIds, hs.PublicId)
 			}
-			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSets(testHostSetIds))
+			hsts := static.TestHosts(t, conn, testCats[0].GetPublicId(), 5)
+			testHostIds := make([]string, 0, len(hsts))
+			for _, h := range hsts {
+				testHostIds = append(testHostIds, h.PublicId)
+			}
+			tt.newTargetOpts = append(tt.newTargetOpts, WithHostSets(testHostSetIds), WithHosts(testHostIds))
 			name := tt.newName
 			if name == "" {
 				name = testId(t)
@@ -376,7 +396,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			updateTarget.Description = tt.args.description
 			updateTarget.DefaultPort = tt.args.port
 
-			targetAfterUpdate, hostSets, updatedRows, err := repo.UpdateTcpTarget(context.Background(), &updateTarget, target.Version, tt.args.fieldMaskPaths, tt.args.opt...)
+			targetAfterUpdate, hostSets, hosts, updatedRows, err := repo.UpdateTcpTarget(context.Background(), &updateTarget, target.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
@@ -391,11 +411,18 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(targetAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			afterUpdateIds := make([]string, 0, len(hostSets))
+
+			afterUpdateHostSetIds := make([]string, 0, len(hostSets))
 			for _, hs := range hostSets {
-				afterUpdateIds = append(afterUpdateIds, hs.PublicId)
+				afterUpdateHostSetIds = append(afterUpdateHostSetIds, hs.PublicId)
 			}
-			assert.Equal(testHostSetIds, afterUpdateIds)
+			assert.Equal(testHostSetIds, afterUpdateHostSetIds)
+
+			afterUpdateHostIds := make([]string, 0, len(hosts))
+			for _, h := range hosts {
+				afterUpdateHostIds = append(afterUpdateHostIds, h.PublicId)
+			}
+			assert.Equal(testHostIds, afterUpdateHostIds)
 
 			switch tt.name {
 			case "valid-no-op":
@@ -403,7 +430,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			default:
 				assert.NotEqual(target.UpdateTime, targetAfterUpdate.(*TcpTarget).UpdateTime)
 			}
-			foundTarget, _, err := repo.LookupTarget(context.Background(), target.PublicId)
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), target.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*TcpTarget)), foundTarget.((*TcpTarget))))
 			dbassert := dbassert.New(t, conn.DB())

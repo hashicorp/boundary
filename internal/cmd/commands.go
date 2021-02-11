@@ -711,6 +711,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "set-host-sets",
 			}, nil
 		},
+		"targets add-hosts": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-hosts",
+			}, nil
+		},
+		"targets remove-hosts": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-hosts",
+			}, nil
+		},
+		"targets set-hosts": func() (cli.Command, error) {
+			return &targets.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-hosts",
+			}, nil
+		},
 
 		"users": func() (cli.Command, error) {
 			return &users.Command{

@@ -56,6 +56,13 @@ load _helpers
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/target: default user can add default host to created target" {
+  local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
+  run assoc_hosts $id $DEFAULT_HOST 
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
 @test "boundary/target/connect: default user can connect to created target" {
   local id=$(target_id $DEFAULT_P_ID $TGT_NAME)
   run connect_nc $id

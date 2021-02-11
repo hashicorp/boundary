@@ -40,9 +40,6 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.UserId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id")
 	}
-	if newSession.HostSetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing host set id")
-	}
 	if newSession.AuthTokenId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing auth token id")
 	}
