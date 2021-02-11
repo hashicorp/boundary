@@ -60,7 +60,7 @@ message AuthToken {
   // @inject_tag: `gorm:"not_null"`
   string key_id = 14;
 
-  // state is the auth token's state. It will default of "token issued" in the
+  // status is the auth token's status. It will default of "token issued" in the
   // database.
   // @inject_tag: `gorm:"default:null"`
   string status = 15;

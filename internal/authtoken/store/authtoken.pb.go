@@ -68,7 +68,7 @@ type AuthToken struct {
 	// which is useful for caching purposes.
 	// @inject_tag: `gorm:"not_null"`
 	KeyId string `protobuf:"bytes,14,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
-	// state is the auth token's state. It will default of "token issued" in the
+	// status is the auth token's status. It will default of "token issued" in the
 	// database.
 	// @inject_tag: `gorm:"default:null"`
 	Status string `protobuf:"bytes,15,opt,name=status,proto3" json:"status,omitempty" gorm:"default:null"`
