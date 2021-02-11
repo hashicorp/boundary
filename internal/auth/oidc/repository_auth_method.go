@@ -102,15 +102,16 @@ func (r *Repository) StartAuth(ctx context.Context, authMethodId string, clientT
 	panic("to-do")
 }
 
-
 // ExchangeAuthResponse exchanges a successful OIDC Authentication Response for
 // an ID Token, if the exchange is successful, it returns the Account for the
 // user's ID Token sub claim and the client's final redirect URL. If the
 // exchange fails, it returns nil and an empty string, along with any error
-// that occurred.  The steps that typically follow ExchangeAuthResponse in the
-// callback handler should be: iam.LookupUserWithLogin(...) to get the Account's
-// User and then authtoken.CreateAuthToken(...) to create a "pending" token for
-// the successful.
+// that occurred.
+//
+// The steps that typically follow ExchangeAuthResponse in the callback handler
+// should be: iam.LookupUserWithLogin(...) to get the Account's User and then
+// authtoken.CreateAuthToken(...) to create a "pending" token for the
+// successful.
 //
 // For more info on a successful OIDC Authentication Response see:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
@@ -133,9 +134,14 @@ func (r *Repository) ExchangeAuthResponse(ctx context.Context, authMethodId stri
 	panic("to-do")
 }
 
-// DecryptTokenRequestId will decrypt the tokenRequestId which has been
-// encrypted with the OIDC DEK. If decryption fails, an empty string and error
-// is returned.
+// DecryptTokenRequestId will decrypt the tokenRequestId. The tokenRequestId was
+// created and encrypted by the repo's StartAuth(...) function.  If decryption
+// fails, an empty string and error is returned.
+//
+// This function is typically when the auth method service is handling
+// "authenticate:token".  If decryption is successful, then the service would
+// retrieve the pending token associated with the request id, update the token's
+// status to "issued" and return it to the caller.
 func (r *Repository) DecryptTokenRequestId(ctx context.Context, tokenRequestId string) (string, error) {
 	panic("to-do")
 }
