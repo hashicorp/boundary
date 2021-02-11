@@ -18,7 +18,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.1.1-0.20210209144642-519e7f45f48e
 	github.com/hashicorp/boundary/api v0.0.4
 	github.com/hashicorp/boundary/sdk v0.0.2
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -45,6 +45,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mitchellh/pointerstructure v1.1.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.3.0
 	github.com/ory/dockertest/v3 v3.6.0
@@ -58,8 +59,8 @@ require (
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/tools v0.0.0-20210101214203-2dba1e4ea05c
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
-	google.golang.org/grpc v1.34.0
+	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
+	google.golang.org/grpc v1.35.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.1-0.20201020201750-d3470999428b
 	mvdan.cc/gofumpt v0.1.0

@@ -323,6 +323,20 @@ func (c *Command) Run(args []string) int {
 
 	c.Config.PassthroughDirectory = c.flagPassthroughDirectory
 
+	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
+
+	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	c.InfoKeys = append(c.InfoKeys, "worker public addr")
+	c.Info["worker public addr"] = c.Config.Worker.PublicAddr
+
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
 			c.UI.Error("Only one purpose supported for each listener")
@@ -392,20 +406,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
-
-	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
-	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
-
-	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	c.InfoKeys = append(c.InfoKeys, "worker public addr")
-	c.Info["worker public addr"] = c.Config.Worker.PublicAddr
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {

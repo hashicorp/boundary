@@ -640,6 +640,12 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 				}
 			}
 		}
+	} else {
+		var err error
+		conf.Controller.PublicClusterAddr, err = config.ParseAddress(conf.Controller.PublicClusterAddr)
+		if err != nil && err != config.ErrNotAUrl {
+			return fmt.Errorf("Error parsing public cluster addr: %w", err)
+		}
 	}
 	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
 	if err != nil {
@@ -670,6 +676,12 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 					break FindAddr
 				}
 			}
+		}
+	} else {
+		var err error
+		conf.Worker.PublicAddr, err = config.ParseAddress(conf.Worker.PublicAddr)
+		if err != nil && err != config.ErrNotAUrl {
+			return fmt.Errorf("Error parsing public addr: %w", err)
 		}
 	}
 	host, port, err := net.SplitHostPort(conf.Worker.PublicAddr)

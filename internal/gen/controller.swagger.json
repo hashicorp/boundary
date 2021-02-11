@@ -4,6 +4,44 @@
     "title": "Boundary Controller HTTP API",
     "version": "version not set"
   },
+  "tags": [
+    {
+      "name": "ScopeService"
+    },
+    {
+      "name": "AccountService"
+    },
+    {
+      "name": "AuthMethodService"
+    },
+    {
+      "name": "AuthTokenService"
+    },
+    {
+      "name": "GroupService"
+    },
+    {
+      "name": "HostCatalogService"
+    },
+    {
+      "name": "HostService"
+    },
+    {
+      "name": "HostSetService"
+    },
+    {
+      "name": "RoleService"
+    },
+    {
+      "name": "SessionService"
+    },
+    {
+      "name": "TargetService"
+    },
+    {
+      "name": "UserService"
+    }
+  ],
   "schemes": [
     "https",
     "http"
@@ -142,11 +180,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -278,7 +312,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
-        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "summary": "Deprecated: Use AuthenticateLogin instead",
         "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
@@ -302,6 +336,40 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/auth-methods/{auth_method_id}:authenticate:login": {
+      "post": {
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "operationId": "AuthMethodService_AuthenticateLogin",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "description": "The ID of the Auth Method in the system that should be used for authentication.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateLoginRequest"
             }
           }
         ],
@@ -387,11 +455,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -611,11 +675,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -855,11 +915,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -994,11 +1050,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1232,11 +1284,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1377,11 +1425,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1732,11 +1776,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1966,11 +2006,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -2244,11 +2280,7 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
+            "type": "string"
           }
         ],
         "tags": [
@@ -3661,6 +3693,34 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.AuthenticateLoginRequest": {
+      "type": "object",
+      "properties": {
+        "auth_method_id": {
+          "type": "string",
+          "description": "The ID of the Auth Method in the system that should be used for authentication."
+        },
+        "token_type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
+        },
+        "credentials": {
+          "type": "object",
+          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthenticateLoginResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        },
+        "token_type": {
+          "type": "string"
         }
       }
     },
