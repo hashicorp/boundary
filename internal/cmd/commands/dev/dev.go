@@ -126,7 +126,7 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "password",
+		Name:    "unprivileged-password",
 		Target:  &c.flagUnprivilegedPassword,
 		Default: "password",
 		EnvVar:  "BOUNDARY_DEV_UNPRIVILEGED_PASSWORD",
@@ -134,7 +134,7 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "login-name",
+		Name:    "unprivileged-login-name",
 		Target:  &c.flagUnprivilegedLoginName,
 		Default: "user",
 		EnvVar:  "BOUNDARY_DEV_UNPRIVILEGED_LOGIN_NAME",
