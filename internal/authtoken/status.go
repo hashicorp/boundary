@@ -1,25 +1,25 @@
 package authtoken
 
-// State of the AuthToken.  It will default IssuedState in the database.
-type State string
+// Status of the AuthToken.  It will default IssuedStatus in the database.
+type Status string
 
 const (
-	// UnknownState for the token.
-	UnknownState State = "unknown"
+	// UnknownStatus for the token.
+	UnknownStatus Status = "unknown"
 
-	// PendingState means that the token has been created but it pending while
+	// PendingStatus means that the token has been created but it pending while
 	// waiting to be issued.
-	PendingState State = "auth token pending"
+	PendingStatus Status = "auth token pending"
 
-	// IssuedState means the token has been issued.  It is a final state for the
+	// IssuedStatus means the token has been issued.  It is a final status for the
 	// token.
-	IssuedState State = "token issued"
+	IssuedStatus Status = "token issued"
 
-	// FailedState means the token is in a failed state before it was issued and
-	// this is a final state.
-	FailedState State = "authentication failed"
+	// FailedStatus means the token is in a failed status before it was issued and
+	// this is a final status.
+	FailedStatus Status = "authentication failed"
 
-	// SystemErrorState means that the system encountered an error before
-	// issuing the token. This is a final state.
-	SystemErrorState State = "system error"
+	// SystemErrorStatus means that the system encountered an error before
+	// issuing the token. This is a final status.
+	SystemErrorStatus Status = "system error"
 )

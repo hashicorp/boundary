@@ -35,11 +35,11 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 
-	t.Run("withState", func(t *testing.T) {
+	t.Run("withStatus", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithState(IssuedState))
+		opts := getOpts(WithStatus(IssuedStatus))
 		testOpts := getDefaultOptions()
-		testOpts.withState = IssuedState
+		testOpts.withStatus = IssuedStatus
 		assert.Equal(opts, testOpts)
 	})
 }
