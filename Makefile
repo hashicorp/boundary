@@ -149,7 +149,7 @@ test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
 test: 
-	~/.go/bin/go test ./... -timeout 120m
+	~/.go/bin/go test ./... -timeout 30m
 
 install-go:
 	./ci/goinstall.sh
