@@ -15,6 +15,21 @@ module.exports = [
     destination: '/:splat*',
     permanent: true,
   },
+
+  /////////////////////////////////
+  // DESKTOP CLIENT
+  /////////////////////////////////
+  {
+    source: '/help/desktop/targets',
+    destination: '/docs/api-clients/desktop#connect',
+    permanent: false,
+  },
+  {
+    source: '/help/desktop/sessions',
+    destination: '/docs/api-clients/desktop#connect',
+    permanent: false,
+  },
+
   /////////////////////////////////
   // DOMAIN MODEL CONCEPTS
   /////////////////////////////////
