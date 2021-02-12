@@ -609,6 +609,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hashicorp/shared-secure-libs v0.0.2 h1:+izKlB8vxpBK+K6zNmB4DZtDEl1a7fB8JmqdBNhnhjs=
 github.com/hashicorp/shared-secure-libs v0.0.2/go.mod h1:xhtA0FH6AYYFOy0sir7u0O0zzdLi7ofU6oWxy+gjnuc=
+github.com/hashicorp/shared-secure-libs v0.0.3 h1:R1ublyNsxQ1EKHdiKlglZ8uhkzPvBcWstFJ85s1me3A=
+github.com/hashicorp/shared-secure-libs v0.0.3/go.mod h1:xhtA0FH6AYYFOy0sir7u0O0zzdLi7ofU6oWxy+gjnuc=
 github.com/hashicorp/vault/api v1.0.5-0.20200514164214-89b1987e38c2/go.mod h1:P8A7gn1a6j/7qQ4zOaWI6FC/Q9jQWEBRTOwZH33tC9o=
 github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f/go.mod h1:euTFbi2YJgwcju3imEt919lhJKF68nN1cQPq3aA+kBE=
 github.com/hashicorp/vault/api v1.0.5-0.20200805123347-1ef507638af6 h1:ChHpobQse3kjVX7GmbpUFVqaMTf4lb1gcLrJltsUmS4=
