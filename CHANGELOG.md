@@ -22,10 +22,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
 * CORS: CORS is now turned on by default when running with `boundary server`
-  with an `allowed_origins` value of `*`. You can disable it with `cors_enabled
-  = false` or if you want to change parameters, set `cors_enabled = true` and
-  the other related configuration values. It was always turned on when running
-  `boundary dev` and this provides a more consistent experience.
+  with an `allowed_origins` value of `serve://boundary`. You can disable it with
+  `cors_enabled = false`, or if you want to change parameters, set `cors_enabled
+  = true` and the other related configuration values.
 
 ### New and Improved
 

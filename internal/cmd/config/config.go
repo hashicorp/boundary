@@ -333,7 +333,7 @@ func Parse(d string) (*Config, error) {
 			if listener.CorsEnabled == nil {
 				listener.CorsEnabled = new(bool)
 				*listener.CorsEnabled = true
-				listener.CorsAllowedOrigins = []string{"*"}
+				listener.CorsAllowedOrigins = []string{"serve://boundary"}
 			}
 		}
 	}
