@@ -17,9 +17,6 @@ import (
 )
 
 func TestWorkerTagging(t *testing.T) {
-	amId := "ampw_1234567890"
-	user := "user"
-	password := "passpass"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -29,9 +26,6 @@ func TestWorkerTagging(t *testing.T) {
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                 conf,
-		DefaultAuthMethodId:    amId,
-		DefaultLoginName:       user,
-		DefaultPassword:        password,
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
 	})

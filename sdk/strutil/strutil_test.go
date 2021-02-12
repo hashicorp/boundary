@@ -633,3 +633,25 @@ func TestPrintable(t *testing.T) {
 		})
 	}
 }
+
+func TestReverse(t *testing.T) {
+	cases := []struct {
+		in  string
+		out string
+	}{
+		{
+			in:  "abc",
+			out: "cba",
+		},
+		{
+			in:  "abcd",
+			out: "dcba",
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			require.Equal(t, Reverse(tc.in), tc.out)
+		})
+	}
+}

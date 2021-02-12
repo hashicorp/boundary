@@ -3,7 +3,6 @@ package accounts_test
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -17,8 +16,6 @@ import (
 )
 
 func TestList(t *testing.T) {
-	os.Setenv("BOUNDARY_LOG_URLS", "1")
-	os.Setenv("BOUNDARY_DEV_SKIP_AUTHZ", "1")
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -126,23 +123,37 @@ func TestCustomMethods(t *testing.T) {
 	client.SetToken(token.Token)
 	amId := token.AuthMethodId
 
-	accountClient := accounts.NewClient(client)
+	adminAccountClient := accounts.NewClient(client)
+	client = client.Clone()
+	client.SetToken(tc.UnprivilegedToken().Token)
+	userAccountClient := accounts.NewClient(client)
 
-	al, err := accountClient.List(tc.Context(), amId)
+	al, err := adminAccountClient.List(tc.Context(), amId)
 	require.NoError(err)
-	require.Len(al.Items, 1)
+	require.Len(al.Items, 2)
 
-	acct := al.Items[0]
+	userAcct := al.Items[0]
+	if userAcct.Name == "admin" {
+		userAcct = al.Items[1]
+	}
 
-	setAcct, err := accountClient.SetPassword(tc.Context(), acct.Id, "setpassword", acct.Version)
+	_, err = userAccountClient.SetPassword(tc.Context(), userAcct.Id, "setpassword", userAcct.Version)
+	require.Error(err)
+
+	setAcct, err := adminAccountClient.SetPassword(tc.Context(), userAcct.Id, "setpassword", userAcct.Version)
 	require.NoError(err)
 	require.NotNil(setAcct)
-	assert.Equal(acct.Version+1, setAcct.Item.Version)
+	assert.Equal(userAcct.Version+1, setAcct.Item.Version)
 
-	changeAcct, err := accountClient.ChangePassword(tc.Context(), acct.Id, "setpassword", "changepassword", setAcct.Item.Version)
+	changeAcct, err := adminAccountClient.ChangePassword(tc.Context(), userAcct.Id, "setpassword", "changepassword", setAcct.Item.Version)
 	require.NoError(err)
 	require.NotNil(changeAcct)
-	assert.Equal(setAcct.Item.Version+1, changeAcct.Item.Version)
+	assert.Equal(userAcct.Version+2, changeAcct.Item.Version)
+
+	changeAcct, err = userAccountClient.ChangePassword(tc.Context(), userAcct.Id, "changepassword", "password2", changeAcct.Item.Version)
+	require.NoError(err)
+	require.NotNil(changeAcct)
+	assert.Equal(userAcct.Version+3, changeAcct.Item.Version)
 }
 
 func TestErrors(t *testing.T) {

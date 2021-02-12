@@ -717,7 +717,7 @@ func TestCreate(t *testing.T) {
 						require.NoError(err)
 						switch tc.scopeId {
 						case defaultOrg.PublicId:
-							require.Len(roles, 1)
+							require.Len(roles, 2)
 						case "global":
 							require.Len(roles, 2)
 						}
@@ -726,7 +726,9 @@ func TestCreate(t *testing.T) {
 							case "Administration":
 								assert.Equal(fmt.Sprintf("Role created for administration of scope %s by user %s at its creation time", got.GetItem().GetId(), userId), role.GetDescription())
 							case "Login and Default Grants":
-								assert.Equal(fmt.Sprintf("Role created for login capability and account self-management for users of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+								assert.Equal(fmt.Sprintf("Role created for login capability, account self-management, and other default grants for users of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+							case "Default Grants":
+								assert.Equal(fmt.Sprintf("Role created to provide default grants to users of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
 							default:
 								t.Fatal("unexpected role name", role.GetName())
 							}

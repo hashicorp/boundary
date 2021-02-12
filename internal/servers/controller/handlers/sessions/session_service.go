@@ -25,7 +25,9 @@ var (
 	// individual resources
 	IdActions = action.ActionSet{
 		action.Read,
+		action.ReadSelf,
 		action.Cancel,
+		action.CancelSelf,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -61,7 +63,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -69,8 +71,24 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+
+	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
+	// Check to see if we need to verify Read vs. just ReadSelf
+	if ses.GetUserId() != authResults.UserId {
+		var found bool
+		for _, v := range authzdActions {
+			if v == action.Read {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
+	ses.AuthorizedActions = authzdActions.Strings()
 	return &pbs.GetSessionResponse{Item: ses}, nil
 }
 
@@ -101,9 +119,19 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
-			finalItems = append(finalItems, item)
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
+		if len(authorizedActions) > 0 {
+			onlySelf := true
+			for _, v := range authorizedActions {
+				if v != action.ReadSelf && v != action.CancelSelf {
+					onlySelf = false
+					break
+				}
+			}
+			if !onlySelf || item.GetUserId() == authResults.UserId {
+				item.AuthorizedActions = authorizedActions.Strings()
+				finalItems = append(finalItems, item)
+			}
 		}
 	}
 
@@ -115,16 +143,36 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if err := validateCancelRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Cancel)
+	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ses, err := s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
+
+	ses, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
+	// Check to see if we need to verify Read vs. just ReadSelf
+	if ses.GetUserId() != authResults.UserId {
+		var found bool
+		for _, v := range authzdActions {
+			if v == action.Cancel {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
+	ses, err = s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
 	ses.Scope = authResults.Scope
-	ses.AuthorizedActions = authResults.FetchActionSetForId(ctx, ses.Id, IdActions).Strings()
+	ses.AuthorizedActions = authzdActions.Strings()
 	return &pbs.CancelSessionResponse{Item: ses}, nil
 }
 
@@ -196,7 +244,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
-	case action.Read, action.Cancel:
+	case action.Read, action.ReadSelf, action.Cancel, action.CancelSelf:
 		repo, err := s.repoFn()
 		if err != nil {
 			res.Error = err

@@ -138,7 +138,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.(Repository).LookupAuthToken"
 	if id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	opts := getOpts(opt...)
 
@@ -157,7 +157,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	if opts.withTokenValue {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+			return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := at.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(err, op)
@@ -182,7 +182,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, errors.New(errors.InvalidParameter, op, "missing token")
 	}
 	if id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 
 	retAT, err := r.LookupAuthToken(ctx, id, withTokenValue())
@@ -301,7 +301,7 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Option) (int, error) {
 	const op = "authtoken.(Repository).DeleteAuthToken"
 	if id == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 
 	at, err := r.LookupAuthToken(ctx, id)

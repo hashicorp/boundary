@@ -107,7 +107,6 @@ func TestCustom(t *testing.T) {
 			require.NoError(err)
 			assert.EqualValues(updatedRole.Item.Version, version)
 			assert.Empty(updatedRole.Item.Grants)
-			version++
 		})
 	}
 }
@@ -148,7 +147,7 @@ func TestList(t *testing.T) {
 			case "org":
 				numBuiltIn = 2
 			case "proj":
-				numBuiltIn = 1
+				numBuiltIn = 2
 			}
 			require.Len(p1.Items, numBuiltIn)
 			expected = append(expected, p1.Items[0:numBuiltIn]...)

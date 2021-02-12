@@ -14,6 +14,8 @@ func TestDevController(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	truePointer := new(bool)
+	*truePointer = true
 	exp := &Config{
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
@@ -22,7 +24,7 @@ func TestDevController(t *testing.T) {
 					Type:               "tcp",
 					Purpose:            []string{"api"},
 					TLSDisable:         true,
-					CorsEnabled:        true,
+					CorsEnabled:        truePointer,
 					CorsAllowedOrigins: []string{"*"},
 				},
 				{

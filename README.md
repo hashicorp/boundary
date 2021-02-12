@@ -1,5 +1,5 @@
 # Boundary
-![](boundary.png)
+![](boundary.png) [![CircleCI](https://circleci.com/gh/hashicorp/boundary/tree/main.svg?style=svg)](https://circleci.com/gh/hashicorp/boundary/tree/main)
 ----
 
 **Please note**: We take Boundary's security and our users' trust very
@@ -204,3 +204,8 @@ could be taken in a production context:
 There are many, many more things that Boundary will do in the future in terms of
 integrations, features, and more. We have a long roadmap planned out, so stay
 tuned for information about new features and capabilities!
+
+## Contributing
+
+Thank you for your interest in contributing! Please refer to
+[CONTRIBUTING.md](https://github.com/hashicorp/boundary/blob/main/CONTRIBUTING.md) for guidance.

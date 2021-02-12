@@ -172,6 +172,17 @@ func (c *PasswordCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
 				return 2
 			}
+			fmt.Print("Please enter it one more time for confirmation: ")
+			confirmation, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return 2
+			}
+			if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
+				c.UI.Error("Entered password and confirmation value did not match.")
+				return 2
+			}
 			opts = append(opts, accounts.WithPasswordAccountPassword(strings.TrimSpace(value)))
 		default:
 			opts = append(opts, accounts.WithPasswordAccountPassword(c.flagPassword))

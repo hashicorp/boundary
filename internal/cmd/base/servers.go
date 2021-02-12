@@ -71,6 +71,9 @@ type Server struct {
 	DevLoginName                    string
 	DevPassword                     string
 	DevUserId                       string
+	DevUnprivilegedLoginName        string
+	DevUnprivilegedPassword         string
+	DevUnprivilegedUserId           string
 	DevOrgId                        string
 	DevProjectId                    string
 	DevHostCatalogId                string
@@ -266,8 +269,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
-		for _, purpose := range lnConfig.Purpose {
-			purpose = strings.ToLower(purpose)
+		var purpose string
+		for _, p := range lnConfig.Purpose {
+			purpose = strings.ToLower(p)
 			if !strutil.StrListContains(allowedPurposes, purpose) {
 				return fmt.Errorf("Unknown listener purpose %q", purpose)
 			}
@@ -289,6 +293,17 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
+		}
+
+		// CORS props
+		if purpose == "api" {
+			if lnConfig.CorsEnabled != nil && *lnConfig.CorsEnabled {
+				props["cors_enabled"] = "true"
+				props["cors_allowed_origins"] = fmt.Sprintf("%v", lnConfig.CorsAllowedOrigins)
+				props["cors_allowed_headers"] = fmt.Sprintf("%v", lnConfig.CorsAllowedHeaders)
+			} else {
+				props["cors_enabled"] = "false"
+			}
 		}
 
 		// X-Forwarded-For props

@@ -93,6 +93,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: TokenMismatch,
 		},
 		{
+			name: "TooShort",
+			c:    TooShort,
+			want: TooShort,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
