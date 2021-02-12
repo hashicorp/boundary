@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.6
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.15.0
-	github.com/hashicorp/go-kms-wrapping v0.6.0
+	github.com/hashicorp/go-kms-wrapping v0.6.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-uuid v1.0.2
@@ -47,7 +47,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/pointerstructure v1.1.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oligot/go-mod-upgrade v0.3.0
+	github.com/oligot/go-mod-upgrade v0.4.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.4.2

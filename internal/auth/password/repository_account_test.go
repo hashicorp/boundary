@@ -259,6 +259,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		})
 	}
 }
+
 func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -963,7 +964,6 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
@@ -1154,5 +1154,4 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
-
 }

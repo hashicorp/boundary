@@ -232,7 +232,6 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 	if scopeId == "" {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
-
 	}
 
 	var changeLoginName bool
@@ -303,7 +302,6 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
-
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))
 	}
