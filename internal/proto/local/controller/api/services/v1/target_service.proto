@@ -162,11 +162,11 @@ message GetTargetResponse {
 message ListTargetsRequest {
   string scope_id = 1;
   bool recursive = 20 [json_name="recursive"];
+  string filter = 30;
 }
 
 message ListTargetsResponse {
   repeated resources.targets.v1.Target items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateTargetRequest {

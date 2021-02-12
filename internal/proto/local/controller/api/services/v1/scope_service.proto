@@ -101,11 +101,11 @@ message GetScopeResponse {
 message ListScopesRequest {
   string scope_id = 1;
   bool recursive = 20 [json_name="recursive"];
+  string filter = 30;
 }
 
 message ListScopesResponse {
   repeated resources.scopes.v1.Scope items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateScopeRequest {

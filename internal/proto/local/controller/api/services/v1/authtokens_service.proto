@@ -59,11 +59,11 @@ message GetAuthTokenResponse {
 message ListAuthTokensRequest {
   string scope_id = 1 [json_name="scope_id"];
   bool recursive = 20 [json_name="recursive"];
+  string filter = 30;
 }
 
 message ListAuthTokensResponse {
   repeated resources.authtokens.v1.AuthToken items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message DeleteAuthTokenRequest {

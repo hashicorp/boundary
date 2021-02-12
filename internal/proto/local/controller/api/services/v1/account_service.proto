@@ -124,11 +124,11 @@ message GetAccountResponse {
 
 message ListAccountsRequest {
   string auth_method_id = 1 [json_name="auth_method_id"];
+  string filter = 2;
 }
 
 message ListAccountsResponse {
   repeated resources.accounts.v1.Account items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateAccountRequest {

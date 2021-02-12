@@ -94,11 +94,11 @@ message GetHostCatalogResponse {
 message ListHostCatalogsRequest {
   string scope_id = 1 [json_name="scope_id"];
   bool recursive = 20 [json_name="recursive"];
+  string filter = 30;
 }
 
 message ListHostCatalogsResponse {
   repeated api.resources.hostcatalogs.v1.HostCatalog items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateHostCatalogRequest {

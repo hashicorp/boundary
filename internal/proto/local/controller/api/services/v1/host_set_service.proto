@@ -144,11 +144,11 @@ message GetHostSetResponse {
 
 message ListHostSetsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string filter = 20;
 }
 
 message ListHostSetsResponse {
   repeated api.resources.hostsets.v1.HostSet items = 1;
-  string requested_filter = 2 [json_name="requested_filter"];
 }
 
 message CreateHostSetRequest {
