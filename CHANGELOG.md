@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.1.6 (2021/02/12)
 
 ### Changes/Deprecations
 
@@ -39,13 +39,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * server: `public_cluster_addr` in the `controller` block can now be specified
   as a `file://` or `env://` URL to read the value from a file or env var
   ([PR](https://github.com/hashicorp/boundary/pull/907))
+* sessions: Add `read:self` and `cancel:self` actions and enable them by default
+  (in new project scopes) for all sessions. This allows a user to read or cancel
+  any session that is associated with their user ID. `read` and `cancel` actions
+  are still available that allow performing these actions on sessions that are
+  associated with other users.
 
 ### Bug Fixes
 
 * api: Fix nil pointer panic that could occur when using TLS
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
-* server: When shutting down a controller release the shared advisory lock with a non cancelled context.
+* server: When shutting down a controller release the shared advisory lock with
+  a non-cancelled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
 * targets: If a worker filter references a key that doesn't exist, treat it as a
