@@ -6,6 +6,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Changes/Deprecations
 
+* authentication: The `auth-methods/<id>:authenticate` action is deprecated and
+  will be removed in a few releases. Instead, each auth method will define its
+  own action or actions that are valid. This is necessary to support multi-step
+  authentication schemes in upcoming releases. For the `password` auth method,
+  the new action is `auth-methods/<id>:authenticate:login`.
 * permissions: Update some errors to make them more descriptive, and disallow
   permissions in some forms where they will never take effect, preventing
   possible confusion (existing grants already saved to the database will not be
@@ -22,8 +27,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * server: When running single-server mode and `controllers` is not specified in
   the `worker` block, use `public_cluster_addr` if given
   ([PR](https://github.com/hashicorp/boundary/pull/904))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
 * server: Add `read` action to default scope grant
   ([PR](https://github.com/hashicorp/boundary/pull/913))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
 
 ### Bug Fixes
 
@@ -33,6 +44,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * server: When shutting down a controller release the shared advisory lock with a non cancelled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
+* targets: If a worker filter references a key that doesn't exist, treat it as a
+  non-match rather than an error
+  ([PR](https://github.com/hashicorp/boundary/pull/900))
   
 ## 0.1.5 (2021/01/29)
 

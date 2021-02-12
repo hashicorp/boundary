@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -70,19 +69,16 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth account id")
 	}
 
-	at := allocAuthToken()
+	at, err := newAuthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
 	at.AuthAccountId = withAuthAccountId
 	id, err := newAuthTokenId()
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	at.PublicId = id
-
-	token, err := newAuthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	at.Token = token
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase)
 	if err != nil {
@@ -97,7 +93,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	}
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
-	var newAuthToken *writableAuthToken
+	var newAuthToken *AuthToken
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -116,7 +112,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 			at.AuthMethodId = acct.GetAuthMethodId()
 			at.IamUserId = acct.GetIamUserId()
 
-			newAuthToken = at.toWritableAuthToken()
+			newAuthToken = at.clone()
 			if err := newAuthToken.encrypt(ctx, databaseWrapper); err != nil {
 				return err
 			}
@@ -133,7 +129,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return newAuthToken.toAuthToken(), nil
+	return newAuthToken, nil
 }
 
 // LookupAuthToken returns the AuthToken for the provided id. Returns nil, nil if no AuthToken is found for id.
@@ -146,14 +142,18 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 	opts := getOpts(opt...)
 
-	at := allocAuthToken()
-	at.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
+	// use the view, to bring in the required account columns. Just don't forget
+	// to convert it before returning it.
+	atv := allocAuthTokenView()
+	atv.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, atv); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, op)
 	}
+
+	at := atv.toAuthToken()
 	if opts.withTokenValue {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
 		if err != nil {
@@ -218,7 +218,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				delAt := retAT.toWritableAuthToken()
+				delAt := retAT.clone()
 				// tokens are not replicated, so they don't need oplog entries.
 				if _, err := w.Delete(ctx, delAt); err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("delete auth token"))
@@ -247,7 +247,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				at := retAT.toWritableAuthToken()
+				at := retAT.clone()
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 				// trigger to set ApproximateLastAccessTime to the commit
 				// timestamp. Tokens are not replicated, so they don't need oplog entries.
@@ -280,14 +280,18 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	}
 	opts := getOpts(opt...)
 
-	var authTokens []*AuthToken
-	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
+	// use the view, to bring in the required account columns. Just don't forget
+	// to convert them before returning them
+	var atvs []*authTokenView
+	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	for _, at := range authTokens {
-		at.Token = ""
-		at.CtToken = nil
-		at.KeyId = ""
+	authTokens := make([]*AuthToken, 0, len(atvs))
+	for _, atv := range atvs {
+		atv.Token = ""
+		atv.CtToken = nil
+		atv.KeyId = ""
+		authTokens = append(authTokens, atv.toAuthToken())
 	}
 	return authTokens, nil
 }
@@ -317,7 +321,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			deleteAT := at.toWritableAuthToken()
+			deleteAT := at.clone()
 			// tokens are not replicated, so they don't need oplog entries.
 			rowsDeleted, err = w.Delete(ctx, deleteAT)
 			if err == nil && rowsDeleted > 1 {
@@ -332,11 +336,4 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	return rowsDeleted, nil
-}
-
-func allocAuthToken() *AuthToken {
-	fresh := &AuthToken{
-		AuthToken: &store.AuthToken{},
-	}
-	return fresh
 }

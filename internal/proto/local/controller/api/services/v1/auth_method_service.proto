@@ -84,9 +84,24 @@ service AuthMethodService {
   }
 
    // Authenticate validates credentials provided and returns an Auth Token.
+   // Deprecated: use AuthenticateLogin instead.
    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deprecated: Use AuthenticateLogin instead"
+    };
+    option deprecated = true;
+  }
+
+  // AuthenticateLogin validates credentials provided for a single-step login
+  // action and returns an auth token.
+  rpc AuthenticateLogin(AuthenticateLoginRequest) returns (AuthenticateLoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth-methods/{auth_method_id}:authenticate:login"
       body: "*"
       response_body: "item"
     };
@@ -155,6 +170,20 @@ message AuthenticateRequest {
 }
 
 message AuthenticateResponse {
+  resources.authtokens.v1.AuthToken item = 1;
+  string token_type = 2 [json_name="token_type"];
+}
+
+message AuthenticateLoginRequest {
+  // The ID of the Auth Method in the system that should be used for authentication.
+  string auth_method_id = 1 [json_name="auth_method_id"];
+  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser.
+  string token_type = 2 [json_name="token_type"];
+  // Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method.
+  google.protobuf.Struct credentials = 3;
+}
+
+message AuthenticateLoginResponse {
   resources.authtokens.v1.AuthToken item = 1;
   string token_type = 2 [json_name="token_type"];
 }
