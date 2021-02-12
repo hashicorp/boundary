@@ -501,7 +501,6 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 			return nil, fmt.Errorf("unable to list existing roles in project: %w", err)
 		}
 		if len(roles) != 2 {
-			panic("")
 			return nil, fmt.Errorf("unexpected number of roles in default project, expected 2, got %d", len(roles))
 		}
 		var idx int = -1

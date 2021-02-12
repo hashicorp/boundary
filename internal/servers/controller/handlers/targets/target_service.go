@@ -343,6 +343,79 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
+	// First ensure we can actually service a request, that is, we have workers
+	// available (after any filtering). WorkerInfo only contains the address;
+	// worker IDs below is used to contain their IDs in the same order. This is
+	// used to fetch tags for filtering. But we avoid allocation unless we
+	// actually need it.
+	var workers []*pb.WorkerInfo
+	var workerIds []string
+	hasWorkerFilter := len(t.GetWorkerFilter()) > 0
+	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range servers {
+		if hasWorkerFilter {
+			workerIds = append(workerIds, v.GetPrivateId())
+		}
+		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
+	}
+
+	if hasWorkerFilter && len(workerIds) > 0 {
+		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
+		// Fetch the tags for the given worker IDs
+		tags, err := serversRepo.ListTagsForServers(ctx, workerIds)
+		if err != nil {
+			return nil, err
+		}
+		// Build the map for filtering. This is similar to the filter map we
+		// built from the worker config, but with one extra level: a map of the
+		// worker's ID to its filter map.
+		tagMap := make(map[string]map[string][]string)
+		for _, tag := range tags {
+			currWorkerMap := tagMap[tag.ServerId]
+			if currWorkerMap == nil {
+				currWorkerMap = make(map[string][]string)
+				tagMap[tag.ServerId] = currWorkerMap
+			}
+			currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
+			// We don't need to reinsert after the fact because maps are
+			// reference types, so we don't need to re-insert into tagMap
+		}
+
+		// Create the evaluator
+		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
+		if err != nil {
+			return nil, err
+		}
+
+		// Iterate through the known worker IDs, and evaluate. If evaluation
+		// returns true, add to the final worker slice, which is assigned back
+		// to workers after this.
+		for i, worker := range workerIds {
+			filterInput := map[string]interface{}{
+				"name": worker,
+				"tags": tagMap[worker],
+			}
+			ok, err := eval.Evaluate(filterInput)
+			if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
+				return nil, handlers.ApiErrorWithCodeAndMessage(
+					codes.FailedPrecondition,
+					fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+			}
+			if ok {
+				finalWorkers = append(finalWorkers, workers[i])
+			}
+		}
+		workers = finalWorkers
+	}
+	if len(workers) == 0 {
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"No workers are available to handle this session, or all have been filtered.")
+	}
+
 	// First, fetch all available hosts. Unless one was chosen in the request,
 	// we will pick one at random.
 	type compoundHost struct {
@@ -443,77 +516,6 @@ HostSetIterationLoop:
 	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess)
 	if err != nil {
 		return nil, err
-	}
-
-	// WorkerInfo only contains the address; worker IDs below is used to contain
-	// their IDs in the same order. This is used to fetch tags for filtering.
-	// But we avoid allocation unless we actually need it.
-	var workers []*pb.WorkerInfo
-	var workerIds []string
-	hasWorkerFilter := len(t.GetWorkerFilter()) > 0
-	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range servers {
-		if hasWorkerFilter {
-			workerIds = append(workerIds, v.GetPrivateId())
-		}
-		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
-	}
-
-	if hasWorkerFilter && len(workerIds) > 0 {
-		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
-		// Fetch the tags for the given worker IDs
-		tags, err := serversRepo.ListTagsForServers(ctx, workerIds)
-		if err != nil {
-			return nil, err
-		}
-		// Build the map for filtering. This is similar to the filter map we
-		// built from the worker config, but with one extra level: a map of the
-		// worker's ID to its filter map.
-		tagMap := make(map[string]map[string][]string)
-		for _, tag := range tags {
-			currWorkerMap := tagMap[tag.ServerId]
-			if currWorkerMap == nil {
-				currWorkerMap = make(map[string][]string)
-				tagMap[tag.ServerId] = currWorkerMap
-			}
-			currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
-			// We don't need to reinsert after the fact because maps are
-			// reference types, so we don't need to re-insert into tagMap
-		}
-
-		// Create the evaluator
-		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
-		if err != nil {
-			return nil, err
-		}
-
-		// Iterate through the known worker IDs, and evaluate. If evaluation
-		// returns true, add to the final worker slice, which is assigned back
-		// to workers after this.
-		for i, worker := range workerIds {
-			filterInput := map[string]interface{}{
-				"name": worker,
-				"tags": tagMap[worker],
-			}
-			ok, err := eval.Evaluate(filterInput)
-			if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
-				return nil, handlers.ApiErrorWithCodeAndMessage(
-					codes.FailedPrecondition,
-					fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-			}
-			if ok {
-				finalWorkers = append(finalWorkers, workers[i])
-			}
-		}
-		workers = finalWorkers
-	}
-	if len(workers) == 0 {
-		return nil, handlers.ApiErrorWithCodeAndMessage(
-			codes.FailedPrecondition,
-			"No workers are available to handle this session, or all have been filtered.")
 	}
 
 	sad := &pb.SessionAuthorizationData{
