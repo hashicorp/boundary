@@ -1,4 +1,4 @@
-3482052d6edc03f9602666157a87c036da2b41a4 Merge pull request #316 from hashicorp/update-auth-method-and-account-descriptions
+899e59654ffb2902b2a0a0caa17809007cf8a211 Merge pull request #465 from hashicorp/dmg-background
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
