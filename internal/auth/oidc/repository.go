@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"context"
-	"sync"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -15,9 +14,6 @@ type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-
-	providers  map[string]*oidc.Provider
-	providerMu *sync.Mutex
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
@@ -46,25 +42,17 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.withLimit,
-		providerMu:   &sync.Mutex{},
 	}, nil
 }
 
-func (r *Repository) getProvider(ctx context.Context, authMethodId string) (*oidc.Provider, bool) {
-	r.providerMu.Lock()
-	defer r.providerMu.Unlock()
-	p, ok := r.providers[authMethodId]
-	return p, ok
+// getAuthMethods allows the caller to either lookup a specific AuthMethod via
+// its id or search for a set AuthMethods within a set of scopes.  Passing both
+// scopeIds and a authMethodId is an error.   The WithVersion option is
+// supported when an authMethodId is specified.  All other options are ignored.
+func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
+	panic("to-do")
 }
 
-func (r *Repository) setProvider(ctx context.Context, authMethodId string, p *oidc.Provider) {
-	r.providerMu.Lock()
-	defer r.providerMu.Unlock()
-	r.providers[authMethodId] = p
-}
-
-func (r *Repository) delProvider(ctx context.Context, authMethodId string, p *oidc.Provider) {
-	r.providerMu.Lock()
-	defer r.providerMu.Unlock()
-	delete(r.providers, authMethodId)
+func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, error) {
+	panic("to-do")
 }
