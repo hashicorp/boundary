@@ -95,15 +95,3 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ..
 func (r *Repository) upsertAccount(ctx context.Context, authMethodId string, IdTokenClaims map[string]interface{}) (*Account, error) {
 	panic("to-do")
 }
-
-// DecryptTokenRequestId will decrypt the tokenRequestId. The tokenRequestId was
-// created and encrypted by the repo's StartAuth(...) function.  If decryption
-// fails, an empty string and error is returned.
-//
-// This function is typically when the auth method service is handling
-// "authenticate:token".  If decryption is successful, then the service would
-// retrieve the pending token associated with the request id, update the token's
-// status to "issued" and return it to the caller.
-func (r *Repository) DecryptTokenRequestId(ctx context.Context, tokenRequestId string) (string, error) {
-	panic("to-do")
-}
