@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"context"
-	"net/url"
 )
 
 // CreateAuthMethod creates m (*AuthMethod) in the repo and returns the newly
@@ -92,45 +91,8 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ..
 	panic("to-do")
 }
 
-// StartAuth accepts a request to start an OIDC authentication/authorization
-// attempt containing the client_type, the client_version, and a map of client
-// round-tripper k/v pairs.  It returns two URLs.  authUrl is an OIDC
-// authorization request URL.  tokenUrl is the URL the client can use to retrieve
-// the results of the user's OIDC authentication attempt.  No options are
-// currently supported.
-func (r *Repository) StartAuth(ctx context.Context, authMethodId string, clientType, clientVersion string, clientRoundTripKVs map[string]string) (authUrl *url.URL, tokenUrl *url.URL, e error) {
-	panic("to-do")
-}
-
-// ExchangeAuthResponse exchanges a successful OIDC Authentication Response for
-// an ID Token, if the exchange is successful, it returns the Account for the
-// user's ID Token sub claim and the client's final redirect URL. If the
-// exchange fails, it returns nil and an empty string, along with any error
-// that occurred.
-//
-// The steps that typically follow ExchangeAuthResponse in the callback handler
-// should be: iam.LookupUserWithLogin(...) to get the Account's User and then
-// authtoken.CreateAuthToken(...) to create a "pending" token for the
-// successful.
-//
-// For more info on a successful OIDC Authentication Response see:
-// https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
-//
-// Operation steps:
-//
-// * Decrypt the callbackStateParameter which has been encrypted with the OIDC
-// DEK. If decryption fails, and error is returned. callbackStateParameter
-// decrypted payload includes the token_request_id, nonce and
-// final_redirect_url.
-//
-// * Exchange the callbackCodeParameter for provider tokens and validate the
-// tokens.  Call UserInfo endpoint using access token.
-//
-// * Create/update account using "sub" claim as external ID and setting email
-// and full name for the account.
-//
-// * Return the Account and final redirect URL.
-func (r *Repository) ExchangeAuthResponse(ctx context.Context, authMethodId string, callbackStateParameter string, callbackCodeParameter string) (*Account, string, error) {
+// upsertAccount will create/update account using claims from the user's ID Token.
+func (r *Repository) upsertAccount(ctx context.Context, authMethodId string, IdTokenClaims map[string]interface{}) (*Account, error) {
 	panic("to-do")
 }
 
