@@ -29,14 +29,14 @@ func providerCache() *providers {
 // oidc.Provider capabilities see: https://github.com/hashicorp/cap
 type providers struct {
 	cache map[string]*oidc.Provider
-	mu    *sync.Mutex
+	mu    *sync.RWMutex
 }
 
 // newProviderCache make a new cache
 func newProviderCache() *providers {
 	return &providers{
 		cache: map[string]*oidc.Provider{},
-		mu:    &sync.Mutex{},
+		mu:    &sync.RWMutex{},
 	}
 }
 
@@ -58,9 +58,9 @@ func (c *providers) getProvider(ctx context.Context, currentFromDb *AuthMethod) 
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	c.mu.Lock()
+	c.mu.RLock()
 	p, ok := c.cache[currentFromDb.PublicId]
-	c.mu.Unlock()
+	c.mu.RUnlock()
 	if ok {
 		cachedHash, err := p.ConfigHash()
 		if err != nil {
