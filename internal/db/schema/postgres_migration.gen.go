@@ -5094,6 +5094,8 @@ create table auth_oidc_method (
   unique(scope_id, public_id),
   unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
+comment on table auth_oidc_method is
+'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
 
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
@@ -5109,6 +5111,8 @@ create table auth_oidc_signing_alg (
     on update cascade,
   primary key(oidc_method_id, signing_alg_name)
 );
+comment on table auth_oidc_signing_alg is
+'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
 
 -- auth_oidc_callback_url entries are the callback URLs allowed for a specific
 -- oidc auth method.  There must be at least one callback url for each oidc auth
@@ -5122,6 +5126,8 @@ create table auth_oidc_callback_url (
   callback_url wt_url not null,
   primary key(oidc_method_id, callback_url)
 );
+comment on table auth_oidc_callback_url is
+'auth_oidc_callback_url entries are the callback URLs allowed for a specific oidc auth method.  There must be at least one callback url for each oidc auth method.';
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
@@ -5139,6 +5145,9 @@ create table auth_oidc_aud_claim (
       check(length(trim(aud_claim)) < 1024),
   primary key(oidc_method_id, aud_claim)
 );
+comment on table auth_oidc_aud_claim is
+'auth_oidc_aud_claim entries are the audience claims for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any aud claims, an ID token must contain one of them to be valid.';
+
 
 -- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
 -- Each entry is a single certificate.  An oidc auth method may have 0 or more
@@ -5154,8 +5163,12 @@ create table auth_oidc_certificate (
   certificate bytea not null,
   primary key(oidc_method_id, certificate)
 );
+comment on table auth_oidc_certificate is
+'auth_oidc_certificate entries are optional PEM encoded x509 certificates. Each entry is a single certificate.  An oidc auth method may have 0 or more of these optional x509s.  If an auth method has any cert entries, they are used as trust anchors when connecting to the auth methods oidc provider (instead of the host system cert chain)';
 
 
+-- auth_oidc_account entries are subtypes of auth_account and represent an
+-- oidc account.
 create table auth_oidc_account (
     public_id wt_public_id
       primary key,
@@ -5194,6 +5207,8 @@ create table auth_oidc_account (
     unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
+comment on table auth_oidc_method is
+'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 
 -- auth_oidc_method column triggers
 create trigger
