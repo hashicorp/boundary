@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -196,4 +197,30 @@ func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
 	_, _ = mac.Write([]byte(a.ClientSecret))
 	a.ClientSecretHmac = base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return nil
+}
+
+// isComplete() checks the auth method to see if it has all the required
+// components of a complete/valid oidc auth method.
+func (am *AuthMethod) isComplete() error {
+	const op = "oidc.isComplete"
+	var result *multierror.Error
+	if err := am.validate(op); err != nil {
+		result = multierror.Append(result, errors.Wrap(err, op))
+	}
+	if am.DiscoveryUrl == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing discovery URL"))
+	}
+	if am.ClientId == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client id"))
+	}
+	if am.ClientSecret == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client secret"))
+	}
+	if len(am.SigningAlgs) == 0 {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing signing algorithms"))
+	}
+	if len(am.CallbackUrls) == 0 {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing callback URLs"))
+	}
+	return result.ErrorOrNil()
 }
