@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -93,4 +94,35 @@ func (c *providers) delProvider(ctx context.Context, authMethodId string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.cache, authMethodId)
+}
+
+func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, error) {
+	const op = "oidc.convertToProvider"
+	if am == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method")
+	}
+	if err := am.isComplete(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	algs := make([]oidc.Alg, 0, len(am.SigningAlgs))
+	for _, a := range am.SigningAlgs {
+		algs = append(algs, oidc.Alg(a))
+	}
+	c, err := oidc.NewConfig(
+		am.DiscoveryUrl,
+		am.ClientId,
+		oidc.ClientSecret(am.ClientSecret),
+		algs,
+		am.CallbackUrls,
+		oidc.WithAudiences(am.AudClaims...),
+		oidc.WithProviderCA(strings.Join(am.Certificates, "\n")),
+	)
+	if err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider Configuration", errors.WithWrap(err))
+	}
+	p, err := oidc.NewProvider(c)
+	if err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider", errors.WithWrap(err))
+	}
+	return p, nil
 }
