@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
@@ -177,4 +178,28 @@ func testGenerateCA(t *testing.T, hosts ...string) (*x509.Certificate, string) {
 	require.NoError(err)
 
 	return c, string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}))
+}
+
+func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL string, tp *oidc.TestProvider) *oidc.Provider {
+	t.Helper()
+	require := require.New(t)
+	require.NotEmptyf(clientId, "%s: client id is empty")
+	require.NotEmptyf(clientSecret, "%s: client secret is empty")
+	require.NotEmptyf(allowedRedirectURL, "%s: redirect URL is empty")
+
+	tp.SetClientCreds(clientId, clientSecret)
+	_, _, alg, _ := tp.SigningKeys()
+
+	c1, err := oidc.NewConfig(
+		tp.Addr(),
+		clientId,
+		oidc.ClientSecret(clientSecret),
+		[]oidc.Alg{alg},
+		[]string{allowedRedirectURL},
+		oidc.WithProviderCA(tp.CACert()),
+	)
+	require.NoError(err)
+	p1, err := oidc.NewProvider(c1)
+	require.NoError(err)
+	return p1
 }
