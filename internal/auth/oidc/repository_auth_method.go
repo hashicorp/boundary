@@ -40,19 +40,14 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 	return authMethods[0], nil
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit
+// and WithOrder options are supported and all other options are ignored.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope IDs")
 	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, WithLimit(limit))
+	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
