@@ -97,4 +97,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withFullName = "Bob Eve Alice"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithOrder", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithOrder("public_id asc"))
+		testOpts := getDefaultOptions()
+		testOpts.withOrderClause = "public_id asc"
+		assert.Equal(opts, testOpts)
+	})
 }

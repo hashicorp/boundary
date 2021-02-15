@@ -29,6 +29,7 @@ type options struct {
 	withSigningAlgs  []Alg
 	withEmail        string
 	withFullName     string
+	withOrderClause  string
 }
 
 func getDefaultOptions() options {
@@ -113,5 +114,12 @@ func WithEmail(email string) Option {
 func WithFullName(n string) Option {
 	return func(o *options) {
 		o.withFullName = n
+	}
+}
+
+// WithOrder provides an optional with order clause.
+func WithOrder(orderClause string) Option {
+	return func(o *options) {
+		o.withOrderClause = orderClause
 	}
 }
