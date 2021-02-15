@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -62,6 +63,71 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+// TestRepository_ListAuthMethods only covers error conditions, since all the
+// search criteria testing is handled in the TestRepository_getAuthMethods unit
+// tests.
+func TestRepository_ListAuthMethods(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		setupFn      func() (scopeIds []string, want []*AuthMethod)
+		opt          []Option
+		wantErrMatch *errors.Template
+	}{
+		{
+			name: "with-limits",
+			setupFn: func() ([]string, []*AuthMethod) {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				am1a := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "alices-dogs-name")
+				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp-2", "alices-cat-name")
+
+				return []string{am1a.ScopeId}, []*AuthMethod{am1a}
+			},
+			opt: []Option{WithLimit(1), WithOrder("create_time asc")},
+		},
+		{
+			name: "no-search-criteria",
+			setupFn: func() ([]string, []*AuthMethod) {
+				return nil, nil
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kmsCache)
+			assert.NoError(err)
+			scopeIds, want := tt.setupFn()
+
+			got, err := repo.ListAuthMethods(ctx, scopeIds, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			sort.Slice(want, func(a, b int) bool {
+				return want[a].PublicId < want[b].PublicId
+			})
+			sort.Slice(got, func(a, b int) bool {
+				return got[a].PublicId < got[b].PublicId
+			})
+			assert.Equal(want, got)
 		})
 	}
 }
