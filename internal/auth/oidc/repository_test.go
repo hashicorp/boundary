@@ -171,6 +171,19 @@ func TestRepository_getAuthMethods(t *testing.T) {
 			},
 		},
 		{
+			name: "with-limits",
+			setupFn: func() (string, []string, []*AuthMethod) {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				am1a := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "alices-dogs-name")
+				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp-2", "alices-cat-name")
+
+				return "", []string{am1a.ScopeId}, []*AuthMethod{am1a}
+			},
+			opt: []Option{WithLimit(1), WithOrder("create_time asc")},
+		},
+		{
 			name: "not-found-auth-method-id",
 			setupFn: func() (string, []string, []*AuthMethod) {
 				return "not-a-valid-id", nil, nil
