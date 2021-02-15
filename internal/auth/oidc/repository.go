@@ -49,8 +49,8 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
 // its id or search for a set AuthMethods within a set of scopes.  Passing both
-// scopeIds and a authMethodId is an error. The WithLimit option is supported
-// and all other options are ignored.
+// scopeIds and a authMethodId is an error. The WithLimit and WithOrder options
+// are supported and all other options are ignored.
 //
 // The AuthMethod returned has its value objects populated (SigningAlgs,
 // CallbackUrls, AudClaims and Certificates)
@@ -67,13 +67,19 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 
 	const aggregateDelimiter = "|"
 
+	dbArgs := []db.Option{}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
-
 	}
+	dbArgs = append(dbArgs, db.WithLimit(limit))
+
+	if opts.withOrderClause != "" {
+		dbArgs = append(dbArgs, db.WithOrder(opts.withOrderClause))
+	}
+
 	var args []interface{}
 	var where []string
 	switch {
@@ -83,7 +89,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
 	}
 	var aggAuthMethods []*authMethodAgg
-	err := r.reader.SearchWhere(ctx, &aggAuthMethods, strings.Join(where, " and "), args, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &aggAuthMethods, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
