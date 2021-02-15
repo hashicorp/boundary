@@ -2,6 +2,9 @@ package oidc
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // CreateAuthMethod creates m (*AuthMethod) in the repo and returns the newly
@@ -20,12 +23,40 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 // Certificates. If it's not found, it will return nil, nil.  No options are
 // currently supported.
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, error) {
-	panic("to-do")
+	const op = "oidc.(Repository).LookupAuthMethod"
+	if publicId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+	}
+	authMethods, err := r.getAuthMethods(ctx, publicId, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if len(authMethods) > 1 {
+		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("auth method id %s returned more than one result", publicId))
+	}
+	if authMethods == nil {
+		return nil, nil
+	}
+	return authMethods[0], nil
 }
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	panic("to-do")
+	const op = "oidc.(Repository).ListAuthMethods"
+	if len(scopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope IDs")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return authMethods, nil
 }
 
 // DeleteAuthMethod will delete the auth method from the repository.  No options
