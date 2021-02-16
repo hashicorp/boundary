@@ -5295,6 +5295,12 @@ before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
 
+    
+insert into oplog_ticket (name, version)
+values
+  ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
+  ('auth_oidc_account', 1);
+
 
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
 -- with its associated value objects (algs, callbacks, auds, certs) as columns
