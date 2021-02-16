@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -140,7 +139,24 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper2, err := kmsCache.GetWrapper(context.Background(), org2.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				am1a := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "alices-dogs-name")
+				cert1, _ := testGenerateCA(t, "localhost")
+				cert2, _ := testGenerateCA(t, "127.0.0.1")
+
+				// make a test auth method with all options
+				am1a := TestAuthMethod(
+					t,
+					conn,
+					databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, "https://alice.com")[0],
+					"alice_rp",
+					"alices-dogs-name",
+					WithAudClaims("alice_rp", "alice_rp-2"),
+					WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback", "https://alice.com/callback2")...),
+					WithSigningAlgs(RS256, ES256),
+					WithCertificates(cert1, cert2),
+				)
 				am1b := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp-2", "alices-cat-name")
 
 				am2 := TestAuthMethod(t, conn, databaseWrapper2, org2.PublicId, InactiveState, TestConvertToUrls(t, "https://bob.com")[0], "bob_rp", "bobs-dogs-name")
@@ -227,12 +243,8 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			sort.Slice(want, func(a, b int) bool {
-				return want[a].PublicId < want[b].PublicId
-			})
-			sort.Slice(got, func(a, b int) bool {
-				return got[a].PublicId < got[b].PublicId
-			})
+			TestSortAuthMethods(t, want)
+			TestSortAuthMethods(t, got)
 			assert.Equal(want, got)
 		})
 	}
