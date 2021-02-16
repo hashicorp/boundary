@@ -68,7 +68,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 	am.PublicId = publicId
 
 	if err := r.reader.LookupById(ctx, &am); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
@@ -84,9 +84,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			rowsDeleted, err := w.Delete(ctx, &am, db.WithOplog(oplogWrapper, metadata))
-			if err == nil && rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "multiple records")
+			cp := am.Clone()
+			rowsDeleted, err = w.Delete(ctx, cp, db.WithOplog(oplogWrapper, metadata))
+			if err != nil {
+				return err
+			}
+			if rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 auth method would have been deleted")
 			}
 			return nil
 		},
