@@ -13,7 +13,7 @@
     "@hashicorp/react-docs-page": "10.3.1",
     "@hashicorp/react-hashi-stack-menu": "1.1.0",
     "@hashicorp/react-head": "1.1.6",
-    "@hashicorp/react-hero": "4.1.0",
+    "@hashicorp/react-hero": "5.0.0",
     "@hashicorp/react-image": "3.0.3",
     "@hashicorp/react-product-downloader": "7.0.0",
     "@hashicorp/react-product-features-list": "3.0.0",
