@@ -17,9 +17,6 @@ import (
 )
 
 func TestWorkerTagging(t *testing.T) {
-	amId := "ampw_1234567890"
-	user := "user"
-	password := "passpass"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -29,9 +26,6 @@ func TestWorkerTagging(t *testing.T) {
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                 conf,
-		DefaultAuthMethodId:    amId,
-		DefaultLoginName:       user,
-		DefaultPassword:        password,
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
 	})
@@ -56,6 +50,7 @@ func TestWorkerTagging(t *testing.T) {
 	conf.Worker.Name = "w1"
 	conf.Worker.Tags = map[string][]string{
 		"region": {"east"},
+		"foo":    {"bar"},
 	}
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		Config:             conf,
@@ -121,6 +116,11 @@ func TestWorkerTagging(t *testing.T) {
 			name:       "name and az",
 			filter:     `"/name" matches "w[23]" and "three" in "/tags/az"`,
 			expWorkers: []string{w2Addr, w3Addr},
+		},
+		{
+			name:       "key not found doesn't error",
+			filter:     `"bar" in "/tags/foo"`,
+			expWorkers: []string{w1Addr},
 		},
 	}
 	for _, tc := range cases {

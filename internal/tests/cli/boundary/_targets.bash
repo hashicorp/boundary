@@ -31,7 +31,7 @@ function assoc_host_sets() {
   boundary targets add-host-sets -id $id -host-set $hst
 }
 
-function target_id() {
+function target_id_from_name() {
   local sid=$1
   local name=$2
   strip $(list_targets $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")

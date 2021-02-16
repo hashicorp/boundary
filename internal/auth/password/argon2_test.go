@@ -315,10 +315,11 @@ func TestArgon2Credential_New(t *testing.T) {
 		conf      *Argon2Configuration
 	}
 	tests := []struct {
-		name      string
-		args      args
-		want      *Argon2Credential
-		wantIsErr error
+		name       string
+		args       args
+		want       *Argon2Credential
+		wantIsErr  errors.Code
+		wantErrMsg string
 	}{
 		{
 			name: "blank-accountId",
@@ -327,8 +328,9 @@ func TestArgon2Credential_New(t *testing.T) {
 				password:  "foobarcity",
 				conf:      confs[0],
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.newArgon2Credential: missing accountId: parameter violation: error #100",
 		},
 		{
 			name: "blank-password",
@@ -337,8 +339,9 @@ func TestArgon2Credential_New(t *testing.T) {
 				password:  "",
 				conf:      confs[0],
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.newArgon2Credential: missing password: parameter violation: error #100",
 		},
 		{
 			name: "nil-configuration",
@@ -347,8 +350,9 @@ func TestArgon2Credential_New(t *testing.T) {
 				password:  "foobarcity",
 				conf:      nil,
 			},
-			want:      nil,
-			wantIsErr: errors.ErrInvalidParameter,
+			want:       nil,
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "password.newArgon2Credential: missing argon2 configuration: parameter violation: error #100",
 		},
 		{
 			name: "valid-password",
@@ -398,9 +402,9 @@ func TestArgon2Credential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Nil(got)
+			if tt.wantIsErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)

@@ -464,3 +464,13 @@ func StringListToInterfaceList(in []string) []interface{} {
 	}
 	return ret
 }
+
+// Reverse reverses the input string
+func Reverse(in string) string {
+	l := len(in)
+	out := make([]byte, l)
+	for i := 0; i <= l/2; i++ {
+		out[i], out[l-1-i] = in[l-1-i], in[i]
+	}
+	return string(out)
+}

@@ -260,7 +260,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 	}, props.ListenerConfig.CorsAllowedHeaders...)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if !props.ListenerConfig.CorsEnabled {
+		if props.ListenerConfig.CorsEnabled == nil || !*props.ListenerConfig.CorsEnabled {
 			h.ServeHTTP(w, req)
 			return
 		}
@@ -279,12 +279,15 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		case len(allowedOrigins) == 0:
 			// not valid
 
-		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
+		case len(allowedOrigins) == 1 &&
+			(allowedOrigins[0] == "*" ||
+				allowedOrigins[0] == "serve://boundary"):
 			valid = true
 
 		default:
 			valid = strutil.StrListContains(allowedOrigins, origin)
 		}
+
 		if !valid {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)

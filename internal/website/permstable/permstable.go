@@ -689,14 +689,14 @@ var session = &Resource{
 				},
 				{
 					Name:        "read:self",
-					Description: "Read a session, which must belong to the calling user",
+					Description: "Read a session, which must be associated with the calling user",
 					Examples: []string{
 						"id=*;type=session;actions=read:self",
 					},
 				},
 				{
 					Name:        "cancel:self",
-					Description: "Cancel a session, which must belong to the calling user",
+					Description: "Cancel a session, which must be associated with the calling user",
 					Examples: []string{
 						"id=*;type=session;actions=cancel:self",
 					},

@@ -17,7 +17,7 @@ export default [
   },
   {
     category: 'api-clients',
-    content: ['api', 'cli', 'go-sdk'],
+    content: ['api', 'cli', 'go-sdk', 'desktop'],
   },
   {
     category: 'concepts',

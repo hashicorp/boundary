@@ -23,17 +23,18 @@ import (
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
+	const op = "password.(Repository).CreateAuthMethod"
 	if m == nil {
-		return nil, fmt.Errorf("create: password auth method: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing AuthMethod")
 	}
 	if m.AuthMethod == nil {
-		return nil, fmt.Errorf("create: password auth method: embedded AuthMethod: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing embedded AuthMethod")
 	}
 	if m.ScopeId == "" {
-		return nil, fmt.Errorf("create: password auth method: no scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	if m.PublicId != "" {
-		return nil, fmt.Errorf("create: password auth method: public id not empty: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
 	m = m.clone()
 
@@ -41,35 +42,35 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, AuthMethodPrefix, errors.ErrInvalidPublicId)
+			return nil, errors.New(errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
 		}
 		m.PublicId = opts.withPublicId
 	} else {
 		id, err := newAuthMethodId()
 		if err != nil {
-			return nil, fmt.Errorf("create: password auth method: %w", err)
+			return nil, errors.Wrap(err, op)
 		}
 		m.PublicId = id
 	}
 
 	c, ok := opts.withConfig.(*Argon2Configuration)
 	if !ok {
-		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", ErrUnsupportedConfiguration)
+		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 	if err := c.validate(); err != nil {
-		return nil, fmt.Errorf("create: password auth method: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 
 	var err error
 	c.PrivateId, err = newArgon2ConfigurationId()
 	if err != nil {
-		return nil, fmt.Errorf("create: password auth method: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("create: password auth method: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newAuthMethod *AuthMethod
@@ -87,10 +88,9 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, fmt.Errorf("create: password auth method: in scope: %s: name %s already exists: %w",
-				m.ScopeId, m.Name, errors.ErrNotUnique)
+			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in scope: %s: name %s already exists", m.ScopeId, m.Name))
 		}
-		return nil, fmt.Errorf("create: password auth method: in scope: %s: %w", m.ScopeId, err)
+		return nil, errors.Wrap(err, op, errors.WithMsg(m.ScopeId))
 	}
 	return newAuthMethod, nil
 }
@@ -98,8 +98,9 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 // LookupAuthMethod will look up an auth method in the repository.  If the auth method is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
+	const op = "password.(Repository).LookupAuthMethod"
 	if publicId == "" {
-		return nil, fmt.Errorf("lookup: password auth method: missing public id %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	a := allocAuthMethod()
 	a.PublicId = publicId
@@ -107,15 +108,16 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("lookup: password auth method: failed %w for %s", err, publicId)
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return &a, nil
 }
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
+	const op = "password.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
-		return nil, fmt.Errorf("list: password auth method: missing scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -126,7 +128,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 	var authMethods []*AuthMethod
 	err := r.reader.SearchWhere(ctx, &authMethods, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
 	if err != nil {
-		return nil, fmt.Errorf("list: password auth method: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return authMethods, nil
 }
@@ -134,15 +136,17 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 // DeleteAuthMethod deletes the auth method for the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
+	const op = "password.(Repository).DeleteAuthMethod"
 	if publicId == "" {
-		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: missing public id: %w", errors.ErrInvalidParameter)
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	am := allocAuthMethod()
 	am.PublicId = publicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: unable to get oplog wrapper: %w", err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -162,7 +166,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: %s: %w", publicId, err)
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(publicId))
 	}
 
 	return rowsDeleted, nil
@@ -181,14 +185,15 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 // and MinLoginNameLength are the only updatable fields, If no updatable fields
 // are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+	const op = "password.(Repository).UpdateAuthMethod"
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing authMethod")
 	}
 	if authMethod.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing authMethod public id")
 	}
 	if authMethod.ScopeId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: scope id empty: %w", errors.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -197,7 +202,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		case strings.EqualFold("MinLoginNameLength", f):
 		case strings.EqualFold("MinPasswordLength", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, errors.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -212,12 +217,13 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", errors.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "field mask must not be empty")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: unable to get oplog wrapper: %w", err)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	upAuthMethod := authMethod.clone()
@@ -247,9 +253,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", authMethod.Name, authMethod.ScopeId, errors.ErrNotUnique)
+			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId))
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, authMethod.PublicId)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(authMethod.PublicId))
 	}
 	return upAuthMethod, rowsUpdated, err
 }

@@ -19,12 +19,7 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DefaultAuthMethodId: amId,
-		DefaultLoginName:    "user",
-		DefaultPassword:     "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	token := tc.Token()
@@ -36,7 +31,7 @@ func TestList(t *testing.T) {
 	amResult, err := amClient.Create(tc.Context(), "password", org.GetPublicId())
 	require.NoError(err)
 	require.NotNil(amResult)
-	amId = amResult.Item.Id
+	amId := amResult.Item.Id
 
 	rolesClient := roles.NewClient(client)
 	role, err := rolesClient.Create(tc.Context(), org.GetPublicId())
@@ -106,12 +101,7 @@ func comparableSlice(in []*authtokens.AuthToken) []authtokens.AuthToken {
 
 func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	amId := "ampw_1234567890"
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		DefaultAuthMethodId: amId,
-		DefaultLoginName:    "user",
-		DefaultPassword:     "passpass",
-	})
+	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -120,7 +110,7 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	want, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	want, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 
 	at, err := tokens.Read(tc.Context(), want.Item.Id)
