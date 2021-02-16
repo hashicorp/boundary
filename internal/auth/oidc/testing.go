@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"sort"
 	"testing"
 	"time"
 
@@ -54,9 +55,11 @@ func TestAuthMethod(
 			callback, err := NewCallbackUrl(authMethod.PublicId, c)
 			require.NoError(err)
 			newCallbacks = append(newCallbacks, callback)
+			authMethod.CallbackUrls = append(authMethod.CallbackUrls, callback.Url)
 		}
 		err := rw.CreateItems(ctx, newCallbacks)
 		require.NoError(err)
+		require.Equal(len(opts.withCallbackUrls), len(authMethod.CallbackUrls))
 	}
 	if len(opts.withAudClaims) > 0 {
 		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
@@ -64,9 +67,11 @@ func TestAuthMethod(
 			aud, err := NewAudClaim(authMethod.PublicId, a)
 			require.NoError(err)
 			newAudClaims = append(newAudClaims, aud)
+			authMethod.AudClaims = append(authMethod.AudClaims, aud.Aud)
 		}
 		err := rw.CreateItems(ctx, newAudClaims)
 		require.NoError(err)
+		require.Equal(len(opts.withAudClaims), len(authMethod.AudClaims))
 	}
 	if len(opts.withCertificates) > 0 {
 		newCerts := make([]interface{}, 0, len(opts.withCertificates))
@@ -76,9 +81,11 @@ func TestAuthMethod(
 			cert, err := NewCertificate(authMethod.PublicId, pem[0])
 			require.NoError(err)
 			newCerts = append(newCerts, cert)
+			authMethod.Certificates = append(authMethod.Certificates, cert.Cert)
 		}
 		err := rw.CreateItems(ctx, newCerts)
 		require.NoError(err)
+		require.Equal(len(opts.withCertificates), len(authMethod.Certificates))
 	}
 	if len(opts.withSigningAlgs) > 0 {
 		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
@@ -86,11 +93,39 @@ func TestAuthMethod(
 			alg, err := NewSigningAlg(authMethod.PublicId, a)
 			require.NoError(err)
 			newAlgs = append(newAlgs, alg)
+			authMethod.SigningAlgs = append(authMethod.SigningAlgs, alg.Alg)
 		}
 		err := rw.CreateItems(ctx, newAlgs)
 		require.NoError(err)
+		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
 	return authMethod
+}
+
+// TestSortAuthMethods will sort the provided auth methods by public id and it
+// will sort each auth method's embedded value objects (algs, auds, certs,
+// callbacks)
+func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
+	// sort them by public id first...
+	sort.Slice(methods, func(a, b int) bool {
+		return methods[a].PublicId < methods[b].PublicId
+	})
+
+	// sort all the embedded value objects...
+	for _, am := range methods {
+		sort.Slice(am.SigningAlgs, func(a, b int) bool {
+			return am.SigningAlgs[a] < am.SigningAlgs[b]
+		})
+		sort.Slice(am.AudClaims, func(a, b int) bool {
+			return am.AudClaims[a] < am.AudClaims[b]
+		})
+		sort.Slice(am.CallbackUrls, func(a, b int) bool {
+			return am.AudClaims[a] < am.AudClaims[b]
+		})
+		sort.Slice(am.Certificates, func(a, b int) bool {
+			return am.Certificates[a] < am.Certificates[b]
+		})
+	}
 }
 
 // TestAccount creates a test oidc auth account.
