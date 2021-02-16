@@ -2,6 +2,22 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.1.7 (2021/02/16)
+
+*Note* This release fixes an upgrade issue affecting users on Postgres 11
+upgrading to 0.1.5 or 0.1.6 and makes a modification to the `boundary dev`
+environment. It is otherwise identical to 0.1.6; see the entry for that version
+for more details.
+
+### Changes/Deprecations
+
+* `boundary dev` now uses Postgres 11 by default, rather than Postgres 12.
+
+### Bug Fixes
+
+* server: Fix an issue with migrations affecting Postgres 11
+  ([PR](https://github.com/hashicorp/boundary/pull/940))
+
 ## 0.1.6 (2021/02/12)
 
 ### Changes/Deprecations
