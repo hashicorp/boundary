@@ -2,7 +2,7 @@ package action
 
 // Type defines a type for the Actions of Resources
 // actions are also stored as a lookup db table named iam_action
-type Type int
+type Type uint
 
 // not using iota intentionally, since the values are stored in the db as well.
 const (

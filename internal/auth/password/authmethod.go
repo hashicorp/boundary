@@ -1,8 +1,6 @@
 package password
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -27,8 +25,9 @@ func allocAuthMethod() AuthMethod {
 // ignored.  MinLoginNameLength and MinPasswordLength are pre-set to the
 // default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
+	const op = "password.NewAuthMethod"
 	if scopeId == "" {
-		return nil, fmt.Errorf("new: password auth method: no scope id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	opts := getOpts(opt...)

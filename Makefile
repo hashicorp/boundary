@@ -149,13 +149,16 @@ website-start:
 test-ci: install-go
 	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
 
+test: 
+	~/.go/bin/go test ./... -timeout 30m
+
 install-go:
 	./ci/goinstall.sh
 
 # Docker build and publish variables and targets
 REGISTRY_NAME?=docker.io/hashicorp
 IMAGE_NAME=boundary
-VERSION?=0.1.5
+VERSION?=0.1.6
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(VERSION)
 IMAGE_TAG_DEV=$(REGISTRY_NAME)/$(IMAGE_NAME):latest-$(shell git rev-parse --short HEAD)
 DOCKER_DIR=./docker

@@ -34,6 +34,7 @@ const (
 	SessionNotFound       Code = 110 // SessionNotFound represents that the session was not found
 	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
 	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
+	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
