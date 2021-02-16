@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // CreateAuthMethod creates m (*AuthMethod) in the repo and returns the newly
@@ -57,7 +60,41 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 // DeleteAuthMethod will delete the auth method from the repository.  No options
 // are currently supported.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ...Option) (int, error) {
-	panic("to-do")
+	const op = "oidc.(Repository).DeleteAuthMethod"
+	if publicId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	am := AllocAuthMethod()
+	am.PublicId = publicId
+
+	if err := r.reader.LookupById(ctx, &am); err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
+
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			rowsDeleted, err := w.Delete(ctx, &am, db.WithOplog(oplogWrapper, metadata))
+			if err == nil && rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "multiple records")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to delete %s", publicId)))
+	}
+	return rowsDeleted, nil
 }
 
 // UpdateAuthMethod will update the auth method in the repository and return the
