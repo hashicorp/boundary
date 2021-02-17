@@ -8,7 +8,7 @@ description: |-
 
 # Boundary Desktop
 
--> Boundary Desktop is currently an Alpha release still undergoing final testing before its official release. Should you experience any bugs or lack of desired functionality, please let us know so that we can evaluate a fix. You can open an issue at https://github.com/hashicorp/boundary/issues/new/choose. Your help is greatly appreciated! 
+-> Boundary Desktop is currently an Alpha release still undergoing final testing before its official release. Should you experience any bugs or lack of desired functionality, please let us know so that we can evaluate a fix. You can open an issue at https://github.com/hashicorp/boundary/issues/new/choose. Your help is greatly appreciated!
 
 Boundary Desktop is a standalone application that provides a simple interface
 for browsing and connecting to targets on your local computer (macOS currently
@@ -18,7 +18,7 @@ using your favorite tooling!
 ## Getting Started
 
 -> If you're running Boundary for the first time, [download the latest binary](https://www.boundaryproject.io/downloads)
-and run it in `dev` mode locally so you can have a server to run against: 
+and run it in `dev` mode locally so you can have a server to run against:
 
 ```shell-session
 $ boundary dev
@@ -26,37 +26,38 @@ $ boundary dev
 
 ### Install Boundary Desktop
 
-1. Download the latest .dmg installer from our [releases page](https://github.com/hashicorp/boundary-ui/releases/tag/v1.0.0-alpha).
+1. Download the latest .dmg installer from our [releases page](https://releases.hashicorp.com/boundary-desktop/1.0.0-alpha).
 1. Double-click the downloaded .dmg to run the installer
 1. Drag and drop Boundary into the applications folder
-![](/img/boundary-desktop-drag-to-install.png)
+   ![](/img/boundary-desktop-drag-to-install.png)
 
 ### Run Boundary Desktop
 
 1. Open the Boundary Desktop application
-![](/img/boundary-desktop-open.png)
+   ![](/img/boundary-desktop-open.png)
 1. You'll be prompted for the Boundary server origin, this is the URL for the client
-to connect to the Boundary API. If you are running a local `dev` mode server, this
-URL will be `http://localhost:9200`
-![](/img/boundary-desktop-origin.png)
-1. You can now login to Boundary. We're using a `dev` mode server in this example with the 
-username `admin` and the password `password`
-![](/img/boundary-desktop-login.png)
+   to connect to the Boundary API. If you are running a local `dev` mode server, this
+   URL will be `http://localhost:9200`
+   ![](/img/boundary-desktop-origin.png)
+1. You can now login to Boundary. We're using a `dev` mode server in this example with the
+   username `admin` and the password `password`
+   ![](/img/boundary-desktop-login.png)
 1. After logging in, you should see the targets your user is authorized to connect to. Since
-we are using a `dev` mode server we see the default generated target for `127.0.0.1:22`
-![](/img/boundary-desktop-landing.png)
+   we are using a `dev` mode server we see the default generated target for `127.0.0.1:22`
+   ![](/img/boundary-desktop-landing.png)
 
 ### Connect!
+
 -> The rest of this example assumes you're running Boundary in `dev` mode.
 
-1. Click  on `connect` next to the default target. A pop-up window will display the local 
-address of the proxy and the ephemeral port for the session
-![](/img/boundary-desktop-connect.png)
+1. Click on `connect` next to the default target. A pop-up window will display the local
+   address of the proxy and the ephemeral port for the session
+   ![](/img/boundary-desktop-connect.png)
 1. Navigate to the `Sessions` pane and you'll see this session is in `pending` state because we
-haven't made a connection to it yet (but will!)
-![](/img/boundary-desktop-pending.png)
+   haven't made a connection to it yet (but will!)
+   ![](/img/boundary-desktop-pending.png)
 
--> The next step assumes you have a SSH server running that the default target will connect to. 
+-> The next step assumes you have a SSH server running that the default target will connect to.
 
 1. On the CLI, `ssh` to the target using the local ephemeral port created in the previous step
 
@@ -68,10 +69,11 @@ Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 Warning: Permanently added '[127.0.0.1]:49250' (ECDSA) to the list of known hosts.
 Password:
 Last login: Thu Feb 11 17:49:09 2021
-$ 
+$
 ```
+
 1. Navigate back to the sessions view and you'll see this session is now active
-![](/img/boundary-desktop-active.png)
+   ![](/img/boundary-desktop-active.png)
 1. Click `Cancel` to cancel the session and you'll see the status go to `cancelling` briefly, then `terminated`
-![](/img/boundary-desktop-terminated.png)
+   ![](/img/boundary-desktop-terminated.png)
 1. Navigate back to the CLI and you'll see your SSH session has closed
