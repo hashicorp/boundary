@@ -14,14 +14,16 @@ import (
 
 // LookupAuthMethod will lookup an auth method in the repo, along with its
 // associated Value Objects of SigningAlgs, CallbackUrls, AudClaims and
-// Certificates. If it's not found, it will return nil, nil.  No options are
-// currently supported.
-func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, error) {
+// Certificates. If it's not found, it will return nil, nil.  The
+// WithUnauthenticatedUser options is supported and all other options are
+// ignored.
+func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).LookupAuthMethod"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-	authMethods, err := r.getAuthMethods(ctx, publicId, nil)
+	opts := getOpts(opt...)
+	authMethods, err := r.getAuthMethods(ctx, publicId, nil, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -34,8 +36,9 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 	return authMethods[0], nil
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit
-// and WithOrder options are supported and all other options are ignored.
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. The
+// WithUnauthenticatedUser, WithLimit and WithOrder options are supported and
+//  all other options are ignored.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
@@ -50,8 +53,9 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
 // its id or search for a set AuthMethods within a set of scopes.  Passing both
-// scopeIds and a authMethodId is an error. The WithLimit and WithOrder options
-// are supported and all other options are ignored.
+// scopeIds and a authMethodId is an error. The WithUnauthenticatedUser,
+// WithLimit and WithOrder options are supported and all other options are
+// ignored.
 //
 // The AuthMethod returned has its value objects populated (SigningAlgs,
 // CallbackUrls, AudClaims and Certificates)
@@ -89,6 +93,11 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	default:
 		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
 	}
+
+	if opts.withUnauthenticatedUser {
+		where, args = append(where, "state = ?"), append(args, string(ActivePublicState))
+	}
+
 	var aggAuthMethods []*authMethodAgg
 	err := r.reader.SearchWhere(ctx, &aggAuthMethods, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
@@ -136,7 +145,13 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.Certs != "" {
 			am.Certificates = strings.Split(agg.Certs, aggregateDelimiter)
 		}
-		authMethods = append(authMethods, &am)
+		deleted, err := r.verifyOperationalState(ctx, &am)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		if !deleted {
+			authMethods = append(authMethods, &am)
+		}
 	}
 	return authMethods, nil
 }
