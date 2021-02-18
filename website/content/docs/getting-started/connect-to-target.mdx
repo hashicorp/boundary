@@ -13,8 +13,8 @@ sets for this target contain the default host, which has the address
 `127.0.0.1`. When we run `boundary connect` against this target, the single
 available host will be selected and we'll open a local authenticated proxy to
 the target host on the target's default port (`127.0.0.1:22`). Because this
-target is proxying to our local SSH server, we can use our built-in `connect
-ssh` command to wrap the proxied TCP connection and SSH via Boundary:
+target is proxying to our local SSH server, we can use our built-in `connect ssh`
+command to wrap the proxied TCP connection and SSH via Boundary:
 
 ```
 $ boundary connect ssh -target-id ttcp_1234567890
@@ -130,7 +130,25 @@ correct available binary, as WSL must use `.exe` when invoking Windows binaries:
 $ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
 ```
 
+## Connect using Desktop Client
+
+While using desktop client, choose target and connect to retrieve local proxy
+details.
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-desktop"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1613612836-boundary-desktop-clickthrough-connect-target-v1-0-0.mp4"
+  />
+</video>
+
 ## Next Steps
 
-See our [common workflows](/docs/common-workflows) for in depth discussion on managing scopes, targets, 
+See our [common workflows](/docs/common-workflows) for in depth discussion on managing scopes, targets,
 identities, and sessions.

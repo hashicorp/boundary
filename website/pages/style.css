@@ -55,4 +55,8 @@
   margin: 0 auto 3rem auto;
   border-radius: 3px;
   box-shadow: 0 14.3254px 14.3254px rgba(37, 41, 55, 0.16);
+
+&.boundary-desktop {
+  max-width: 800px;
+}
 }
