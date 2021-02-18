@@ -18,10 +18,11 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
-	am := AllocAuthMethod()
-	am.PublicId = publicId
-
-	if err := r.reader.LookupById(ctx, &am); err != nil {
+	am, err := r.LookupAuthMethod(ctx, publicId)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op)
+	}
+	if am == nil {
 		// already deleted and this is not an error.
 		return db.NoRowsAffected, nil
 	}
