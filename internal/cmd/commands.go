@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
+	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
@@ -461,48 +461,48 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"hosts": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"hosts read": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"hosts delete": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"hosts list": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"hosts create": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"hosts create static": func() (cli.Command, error) {
-			return &hosts.StaticCommand{
+			return &hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"hosts update": func() (cli.Command, error) {
-			return &hosts.Command{
+			return &hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"hosts update static": func() (cli.Command, error) {
-			return &hosts.StaticCommand{
+			return &hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
