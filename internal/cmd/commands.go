@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
-	"github.com/hashicorp/boundary/internal/cmd/commands/sessions"
+	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
@@ -617,24 +617,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"sessions": func() (cli.Command, error) {
-			return &sessions.Command{
+			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"sessions read": func() (cli.Command, error) {
-			return &sessions.Command{
+			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"sessions list": func() (cli.Command, error) {
-			return &sessions.Command{
+			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"sessions cancel": func() (cli.Command, error) {
-			return &sessions.Command{
+			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "cancel",
 			}, nil

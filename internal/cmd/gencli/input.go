@@ -297,6 +297,19 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:         []string{"update"},
 		},
 	},
+	"sessions": {
+		{
+			ResourceType:             resource.Session.String(),
+			Pkg:                      "sessions",
+			StdActions:               []string{"read", "list"},
+			Container:                "Scope",
+			HasExtraHelpFunc:         true,
+			HasExtraActions:          true,
+			HasId:                    true,
+			ContainerRequiredActions: []string{"list"},
+			VersionedActions:         []string{"cancel"},
+		},
+	},
 	"targets": {
 		{
 			ResourceType:             resource.Target.String(),
