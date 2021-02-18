@@ -10,6 +10,13 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
+	t.Run("WithOperationalState", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithOperationalState(ActivePrivateState))
+		testOpts := getDefaultOptions()
+		testOpts.withOperationalState = ActivePrivateState
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithName", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithName("test"))
@@ -102,6 +109,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithOrder("public_id asc"))
 		testOpts := getDefaultOptions()
 		testOpts.withOrderClause = "public_id asc"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithUnauthenticatedUser", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithUnauthenticatedUser(true))
+		testOpts := getDefaultOptions()
+		testOpts.withUnauthenticatedUser = true
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -19,21 +19,30 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName         string
-	withDescription  string
-	withLimit        int
-	withMaxAge       int
-	withCallbackUrls []*url.URL
-	withCertificates []*x509.Certificate
-	withAudClaims    []string
-	withSigningAlgs  []Alg
-	withEmail        string
-	withFullName     string
-	withOrderClause  string
+	withOperationalState    AuthMethodState
+	withName                string
+	withDescription         string
+	withLimit               int
+	withMaxAge              int
+	withCallbackUrls        []*url.URL
+	withCertificates        []*x509.Certificate
+	withAudClaims           []string
+	withSigningAlgs         []Alg
+	withEmail               string
+	withFullName            string
+	withOrderClause         string
+	withUnauthenticatedUser bool
 }
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+// WithOperationalState provides an optional auth method operational state.
+func WithOperationalState(s AuthMethodState) Option {
+	return func(o *options) {
+		o.withOperationalState = s
+	}
 }
 
 // WithDescription provides an optional description.
@@ -121,5 +130,13 @@ func WithFullName(n string) Option {
 func WithOrder(orderClause string) Option {
 	return func(o *options) {
 		o.withOrderClause = orderClause
+	}
+}
+
+// WithUnauthenticatedUser provides an option for filtering results for
+// an unauthenticated users.
+func WithUnauthenticatedUser(enabled bool) Option {
+	return func(o *options) {
+		o.withUnauthenticatedUser = enabled
 	}
 }
