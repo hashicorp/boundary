@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-bexpr"
 )
 
 var (
@@ -116,23 +117,44 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	res := &perms.Resource{
 		Type: resource.Session,
 	}
+
+	var filter *bexpr.Evaluator
+	if req.GetFilter() != "" {
+		if filter, err = bexpr.CreateEvaluator(req.GetFilter(),
+			bexpr.WithTagName("json"), bexpr.WithHookFn(handlers.WellKnownTypeFilterHook)); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
+				map[string]string{"filter": "doesn't match the resource being filtered"})
+		}
+	}
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
-		if len(authorizedActions) > 0 {
-			onlySelf := true
-			for _, v := range authorizedActions {
-				if v != action.ReadSelf && v != action.CancelSelf {
-					onlySelf = false
-					break
-				}
-			}
-			if !onlySelf || item.GetUserId() == authResults.UserId {
-				item.AuthorizedActions = authorizedActions.Strings()
-				finalItems = append(finalItems, item)
+		if len(authorizedActions) == 0 {
+			continue
+		}
+		onlySelf := true
+		for _, v := range authorizedActions {
+			if v != action.ReadSelf && v != action.CancelSelf {
+				onlySelf = false
+				break
 			}
 		}
+		if onlySelf && item.GetUserId() == authResults.UserId {
+			continue
+		}
+
+		item.AuthorizedActions = authorizedActions.Strings()
+
+		if filter != nil {
+			if add, err := filter.Evaluate(handlers.FilterItem{item}); err != nil {
+				return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
+					map[string]string{"filter": "doesn't match the resource being filtered"})
+			} else if !add {
+				continue
+			}
+		}
+		finalItems = append(finalItems, item)
 	}
 
 	return &pbs.ListSessionsResponse{Items: finalItems}, nil
@@ -321,6 +343,11 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
+	}
+	if req.GetFilter() != "" {
+		if _, err := bexpr.CreateEvaluator(req.GetFilter()); err != nil {
+			badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

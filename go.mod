@@ -19,7 +19,7 @@ require (
 	github.com/hashicorp/boundary/sdk v0.0.3
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
-	github.com/hashicorp/go-bexpr v0.1.6
+	github.com/hashicorp/go-bexpr v0.1.7
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.15.0
 	github.com/hashicorp/go-kms-wrapping v0.6.1
@@ -41,7 +41,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/mitchellh/pointerstructure v1.1.1
+	github.com/mitchellh/pointerstructure v1.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.4.0
 	github.com/ory/dockertest/v3 v3.6.0

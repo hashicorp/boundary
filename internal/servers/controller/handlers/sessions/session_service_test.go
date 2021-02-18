@@ -2,6 +2,7 @@ package sessions_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -270,6 +271,29 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
 			res:  &pbs.ListSessionsResponse{Items: totalSession},
 		},
+		{
+			name: "List Filtered To 1 Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, totalSession[4].Id)},
+			res:  &pbs.ListSessionsResponse{Items: totalSession[4:5]},
+		},
+		{
+			name: "Filter For Many Sessions",
+			req: &pbs.ListSessionsRequest{
+				ScopeId: scope.Global.String(), Recursive: true,
+				Filter: fmt.Sprintf(`"/item/scope/id" matches "^%s"`, pWithSessions.GetPublicId()[:8]),
+			},
+			res: &pbs.ListSessionsResponse{Items: wantSession},
+		},
+		{
+			name: "Filter out everything",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
+			res:  &pbs.ListSessionsResponse{},
+		},
+		{
+			name: "Filter is unparsable",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/unparsable" matches "foo"`},
+			err:  handlers.InvalidArgumentErrorf("Unable to apply filter.", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -280,8 +304,11 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				require.NoError(t, gErr)
 			}
 			if tc.res != nil {
+				require.Equal(t, len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
 					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
