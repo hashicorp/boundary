@@ -19,7 +19,6 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withOperationalState    AuthMethodState
 	withName                string
 	withDescription         string
 	withLimit               int
@@ -36,13 +35,6 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{}
-}
-
-// WithOperationalState provides an optional auth method operational state.
-func WithOperationalState(s AuthMethodState) Option {
-	return func(o *options) {
-		o.withOperationalState = s
-	}
 }
 
 // WithDescription provides an optional description.

@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthMethod creates a test oidc auth method.  WithOperationalState,
-// WithName, WithDescription, WithMaxAge, WithCallbackUrls, WithCertificates,
-// WithAudClaims, and WithSigningAlgs options are supported.
+// TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
+// WithMaxAge, WithCallbackUrls, WithCertificates, WithAudClaims, and
+// WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
 	conn *gorm.DB,
@@ -42,9 +42,7 @@ func TestAuthMethod(
 	ctx := context.Background()
 
 	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
-	if opts.withOperationalState != "" {
-		authMethod.OperationalState = string(opts.withOperationalState)
-	}
+	authMethod.OperationalState = string(state)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)

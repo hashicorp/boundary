@@ -22,9 +22,9 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	amInactive := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-inactive.com")[0], "alice_rp", "alices-dogs-name", WithOperationalState(InactiveState))
-	amActivePriv := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-active-priv.com")[0], "alice_rp", "alices-dogs-name", WithOperationalState(ActivePrivateState))
-	amActivePub := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-active-pub.com")[0], "alice_rp", "alices-dogs-name", WithOperationalState(ActivePublicState))
+	amInactive := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-inactive.com")[0], "alice_rp", "alices-dogs-name")
+	amActivePriv := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice-active-priv.com")[0], "alice_rp", "alices-dogs-name")
+	amActivePub := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState, TestConvertToUrls(t, "https://alice-active-pub.com")[0], "alice_rp", "alices-dogs-name")
 
 	amId, err := newAuthMethodId()
 	require.NoError(t, err)
