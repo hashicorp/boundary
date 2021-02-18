@@ -1,7 +1,7 @@
 package resource
 
 // Type defines the types of resources in the system
-type Type int
+type Type uint
 
 const (
 	Unknown     Type = 0

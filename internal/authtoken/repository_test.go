@@ -305,8 +305,8 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 			name:       "bad-public-id",
 			id:         "",
 			want:       nil,
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "authtoken.(Repository).LookupAuthToken: missing public id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "authtoken.(Repository).LookupAuthToken: missing public id: parameter violation: error #102",
 		},
 	}
 
@@ -395,7 +395,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		{
 			name:  "doesnt-exist",
 			id:    badId,
-			token: badToken,
+			token: badToken.Token,
 			want:  nil,
 		},
 		{
@@ -409,7 +409,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		{
 			name:      "mismatched-token",
 			id:        at.GetPublicId(),
-			token:     badToken,
+			token:     badToken.Token,
 			want:      nil,
 			wantIsErr: errors.Unknown,
 		},
@@ -575,8 +575,8 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			name:       "empty-public-id",
 			id:         "",
 			want:       0,
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "authtoken.(Repository).DeleteAuthToken: missing public id: parameter violation: error #100",
+			wantIsErr:  errors.InvalidPublicId,
+			wantErrMsg: "authtoken.(Repository).DeleteAuthToken: missing public id: parameter violation: error #102",
 		},
 	}
 

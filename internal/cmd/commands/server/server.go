@@ -198,11 +198,15 @@ func (c *Command) Run(args []string) int {
 				clusterAddr = lnConfig.Address
 				if clusterAddr == "" {
 					clusterAddr = "127.0.0.1:9201"
+					lnConfig.Address = clusterAddr
 				}
 			case "api":
 				foundApi = true
 			case "proxy":
 				foundProxy = true
+				if lnConfig.Address == "" {
+					lnConfig.Address = "127.0.0.1:9202"
+				}
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return 1
@@ -222,12 +226,29 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return 1
 		}
+		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
+		c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
+		c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
 	}
+
 	if c.Config.Worker != nil {
 		if !foundProxy {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return 1
 		}
+
+		if c.Config.Worker != nil {
+			if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
+				c.UI.Error(err.Error())
+				return 1
+			}
+			c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+			c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
+		}
+
 		if c.Config.Controller != nil {
 			switch len(c.Config.Worker.Controllers) {
 			case 0:
@@ -293,14 +314,6 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if c.Config.Worker != nil {
-		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-		c.InfoKeys = append(c.InfoKeys, "public proxy addr")
-		c.Info["public proxy addr"] = c.Config.Worker.PublicAddr
-	}
 	if c.Config.Controller != nil {
 		for _, ln := range c.Config.Listeners {
 			for _, purpose := range ln.Purpose {
@@ -325,13 +338,6 @@ func (c *Command) Run(args []string) int {
 				}
 			}
 		}
-
-		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-		c.InfoKeys = append(c.InfoKeys, "public cluster addr")
-		c.Info["public cluster addr"] = c.Config.Controller.PublicClusterAddr
 	}
 
 	// Write out the PID to the file now that server has successfully started
@@ -371,7 +377,7 @@ func (c *Command) Run(args []string) int {
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.
-			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			if err := sMan.SharedUnlock(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
@@ -391,7 +397,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database."))
+			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
 			return 1
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {

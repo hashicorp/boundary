@@ -327,6 +327,17 @@ func Parse(d string) (*Config, error) {
 	}
 	result.SharedConfig = sharedConfig
 
+	// If cors wasn't specified, enable default values
+	for _, listener := range result.SharedConfig.Listeners {
+		if strutil.StrListContains(listener.Purpose, "api") {
+			if listener.CorsEnabled == nil {
+				listener.CorsEnabled = new(bool)
+				*listener.CorsEnabled = true
+				listener.CorsAllowedOrigins = []string{"serve://boundary"}
+			}
+		}
+	}
+
 	return result, nil
 }
 

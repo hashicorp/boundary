@@ -2,10 +2,31 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.1.7 (2021/02/16)
+
+*Note* This release fixes an upgrade issue affecting users on Postgres 11
+upgrading to 0.1.5 or 0.1.6 and makes a modification to the `boundary dev`
+environment. It is otherwise identical to 0.1.6; see the entry for that version
+for more details.
 
 ### Changes/Deprecations
 
+* `boundary dev` now uses Postgres 11 by default, rather than Postgres 12.
+
+### Bug Fixes
+
+* server: Fix an issue with migrations affecting Postgres 11
+  ([PR](https://github.com/hashicorp/boundary/pull/940))
+
+## 0.1.6 (2021/02/12)
+
+### Changes/Deprecations
+
+* authentication: The `auth-methods/<id>:authenticate` action is deprecated and
+  will be removed in a few releases. Instead, each auth method will define its
+  own action or actions that are valid. This is necessary to support multi-step
+  authentication schemes in upcoming releases. For the `password` auth method,
+  the new action is `auth-methods/<id>:authenticate:login`.
 * permissions: Update some errors to make them more descriptive, and disallow
   permissions in some forms where they will never take effect, preventing
   possible confusion (existing grants already saved to the database will not be
@@ -16,23 +37,42 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * `type=<some_type>;actions=<some_actions>` where one of the actions is _not_
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
+* CORS: CORS is now turned on by default when running with `boundary server`
+  with an `allowed_origins` value of `serve://boundary`. You can disable it with
+  `cors_enabled = false`, or if you want to change parameters, set `cors_enabled
+  = true` and the other related configuration values.
 
 ### New and Improved
 
 * server: When running single-server mode and `controllers` is not specified in
   the `worker` block, use `public_cluster_addr` if given
   ([PR](https://github.com/hashicorp/boundary/pull/904))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
 * server: Add `read` action to default scope grant
   ([PR](https://github.com/hashicorp/boundary/pull/913))
+* server: `public_cluster_addr` in the `controller` block can now be specified
+  as a `file://` or `env://` URL to read the value from a file or env var
+  ([PR](https://github.com/hashicorp/boundary/pull/907))
+* sessions: Add `read:self` and `cancel:self` actions and enable them by default
+  (in new project scopes) for all sessions. This allows a user to read or cancel
+  any session that is associated with their user ID. `read` and `cancel` actions
+  are still available that allow performing these actions on sessions that are
+  associated with other users.
 
 ### Bug Fixes
 
 * api: Fix nil pointer panic that could occur when using TLS
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
-* server: When shutting down a controller release the shared advisory lock with a non cancelled context.
+* server: When shutting down a controller release the shared advisory lock with
+  a non-cancelled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
+* targets: If a worker filter references a key that doesn't exist, treat it as a
+  non-match rather than an error
+  ([PR](https://github.com/hashicorp/boundary/pull/900))
   
 ## 0.1.5 (2021/01/29)
 

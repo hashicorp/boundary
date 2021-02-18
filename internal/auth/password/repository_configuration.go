@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -21,12 +20,13 @@ type Configuration interface {
 
 // GetConfiguration returns the current configuration for authMethodId.
 func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) (Configuration, error) {
+	const op = "password.(Repository).GetConfiguration"
 	if authMethodId == "" {
-		return nil, fmt.Errorf("get password configuration: no auth method id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	cc, err := r.currentConfig(ctx, authMethodId)
 	if err != nil {
-		return nil, fmt.Errorf("get password configuration: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return cc.argon2(), nil
 }
@@ -42,29 +42,31 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 // equal to a previous configuration for c.AuthMethodId, SetConfiguration
 // updates AuthMethod to use the previous configuration.
 func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
+	const op = "password.(Repository).SetConfiguration"
 	if c == nil {
-		return nil, fmt.Errorf("set password configuration: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing configuration")
 	}
 	if c.AuthMethodId() == "" {
-		return nil, fmt.Errorf("set password configuration: no auth method id: %w", errors.ErrInvalidParameter)
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if err := c.validate(); err != nil {
-		return nil, fmt.Errorf("set password configuration: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
 		out, err := r.setArgon2Conf(ctx, scopeId, v)
 		if err != nil {
-			return nil, fmt.Errorf("set password configuration: %w", err)
+			return nil, errors.Wrap(err, op)
 		}
 		return out, nil
 	default:
-		return nil, fmt.Errorf("set password configuration: %w", ErrUnsupportedConfiguration)
+		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 }
 
 func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon2Configuration) (*Argon2Configuration, error) {
+	const op = "password.(Repository).setArgon2Conf"
 	c = c.clone()
 
 	id, err := newArgon2ConfigurationId()
@@ -81,7 +83,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, fmt.Errorf("update: password account: unable to get oplog wrapper: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newArgon2Conf := &Argon2Configuration{Argon2Configuration: &store.Argon2Configuration{}}
@@ -134,6 +136,7 @@ func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*c
 }
 
 func (r *Repository) currentConfigForAccount(ctx context.Context, accountId string) (*currentConfig, error) {
+	const op = "password.(Repository).currentConfigForAccount"
 	var confs []currentConfig
 
 	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})
@@ -155,7 +158,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 		return nil, nil
 	case len(confs) > 1:
 		// this should never happen
-		return nil, fmt.Errorf("multiple current configs returned for account")
+		return nil, errors.New(errors.Unknown, op, "multiple current configs returned for account")
 	default:
 		cc = confs[0]
 	}

@@ -1,17 +1,21 @@
 ---
 layout: docs
-page_title: Installing Boundary Without Generated Resources
-sidebar_title: Without Generated Resources
+page_title: Running Boundary in Non-Dev Environments
+sidebar_title: Non-Dev Environments
 description: |-
-  How to install boundary without generated resources.
+  How to install boundary in non-dev environments.
 ---
 
 # Installing Boundary Without Generated Resources
 
-Initializing Boundary without generated resources for the first time can be a little confusing. How do you
-create your first user and login to administer a Boundary deployment that has no authentication methods,
-users, accounts, etc? This section describes how to get your freshly deployed Boundary installation off the
-ground.
+What are generated resources? When you run `boundary dev` or `boundary database init`, Boundary automatically
+generates a number of resources to make getting started easier. Default scopes, auth methods, user, account, and
+targets are just some of the resources Boundary will generate unless you tell it not to.
+
+In a production or long-running environment, these resoures are not neccessary, but without them, managing
+Boundary from scratch isn't straight forward. How do you create your first user and login to administer a Boundary
+deployment that has no authentication methods, users, accounts, etc? This section describes how to get your freshly
+deployed Boundary installation off the ground for non-dev environments.
 
 ## Recovery KMS Workflow
 

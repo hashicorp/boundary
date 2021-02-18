@@ -13,9 +13,6 @@ import (
 
 func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	require := require.New(t)
-	amId := "ampw_1234567890"
-	user := "user"
-	password := "passpass"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -24,11 +21,8 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	require.NoError(err)
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:              conf,
-		DefaultAuthMethodId: amId,
-		DefaultLoginName:    user,
-		DefaultPassword:     password,
-		Logger:              logger.Named("c1"),
+		Config: conf,
+		Logger: logger.Named("c1"),
 	})
 	defer c1.Shutdown()
 

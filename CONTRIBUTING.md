@@ -66,4 +66,24 @@ Any enhancements, new features, etc fall into this section.
 
 Any bug fixes fall into this section.
 
+## Testing
+
+To run the entire test suite run this command in the root of the project:
+
+```
+$ make test
+```
+
+Before running any test please ensure that Docker is started. Boundary uses a Docker container to initiate a database for testing.
+If a test is interrupted check to make certain that all Docker containers have been properly destroyed. 
+
+### Running individual tests
+
+If you don't want to run the entire test suite, you can just run a singe test
+with go. For example, if you wanted to run the tests TestAuthTokenAuthenticator, you would
+run:
+
+```
+$ go test -run TestAuthTokenAuthenticator -v ./internal/auth
+```
 

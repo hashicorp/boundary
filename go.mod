@@ -2,10 +2,6 @@ module github.com/hashicorp/boundary
 
 go 1.14
 
-replace github.com/hashicorp/boundary/api => ./api
-
-replace github.com/hashicorp/boundary/sdk => ./sdk
-
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.33.0
@@ -18,20 +14,20 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
-	github.com/hashicorp/boundary/api v0.0.4
-	github.com/hashicorp/boundary/sdk v0.0.2
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.1.1-0.20210209144642-519e7f45f48e
+	github.com/hashicorp/boundary/api v0.0.5
+	github.com/hashicorp/boundary/sdk v0.0.3
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-bexpr v0.1.6
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.15.0
-	github.com/hashicorp/go-kms-wrapping v0.6.0
+	github.com/hashicorp/go-kms-wrapping v0.6.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/shared-secure-libs v0.0.2
+	github.com/hashicorp/shared-secure-libs v0.0.3
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jackc/pgx/v4 v4.10.0
@@ -45,8 +41,9 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mitchellh/pointerstructure v1.1.1
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oligot/go-mod-upgrade v0.3.0
+	github.com/oligot/go-mod-upgrade v0.4.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.4.2
@@ -57,9 +54,10 @@ require (
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
+	golang.org/x/term v0.0.0-20201117132131-f5c789dd3221
 	golang.org/x/tools v0.0.0-20210101214203-2dba1e4ea05c
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
-	google.golang.org/grpc v1.34.0
+	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
+	google.golang.org/grpc v1.35.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
 	google.golang.org/protobuf v1.25.1-0.20201020201750-d3470999428b
 	mvdan.cc/gofumpt v0.1.0
