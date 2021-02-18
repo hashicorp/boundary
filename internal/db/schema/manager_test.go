@@ -95,6 +95,7 @@ func TestRollForward(t *testing.T) {
 	require.NoError(t, err)
 	// TODO: Extract out a way to mock the db to test failing rollforwards.
 	_, err = d.ExecContext(ctx, "TRUNCATE boundary_schema_version; INSERT INTO boundary_schema_version (version, dirty) VALUES (2, true)")
+	require.NoError(t, err)
 	assert.Error(t, m.RollForward(ctx))
 }
 
