@@ -54,7 +54,7 @@ func newProviderCache() *providers {
 // getProvider will update the providerCache with the new AuthMethod, if it
 // determines the provider's configuration has been updated in the DB.
 func (c *providers) getProvider(ctx context.Context, currentFromDb *AuthMethod) (*oidc.Provider, error) {
-	const op = "oidc.(Repository).getProvider"
+	const op = "oidc.(providers).getProvider"
 	storedProvider, err := convertToProvider(ctx, currentFromDb)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
