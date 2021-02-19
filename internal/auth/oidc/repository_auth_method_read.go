@@ -23,6 +23,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
+	fmt.Println()
 	authMethods, err := r.getAuthMethods(ctx, publicId, nil, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
@@ -30,7 +31,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	if len(authMethods) > 1 {
 		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("auth method id %s returned more than one result", publicId))
 	}
-	if authMethods == nil {
+	if len(authMethods) == 0 {
 		return nil, nil
 	}
 	return authMethods[0], nil
@@ -145,13 +146,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.Certs != "" {
 			am.Certificates = strings.Split(agg.Certs, aggregateDelimiter)
 		}
-		deleted, err := r.verifyOperationalState(ctx, &am)
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		if !deleted {
-			authMethods = append(authMethods, &am)
-		}
+		authMethods = append(authMethods, &am)
 	}
 	return authMethods, nil
 }
