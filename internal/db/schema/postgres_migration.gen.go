@@ -4745,8 +4745,12 @@ create table wh_host_dimension (
 `),
 			1001: []byte(`
 -- This series of expressions fixes the primary key on the server table
+-- PG 12+
 alter table session
-  drop constraint session_server_id_server_type_fkey;
+  drop constraint if exists session_server_id_server_type_fkey;
+-- PG 11
+alter table session
+  drop constraint if exists session_server_id_fkey;
 alter table server
   drop constraint server_pkey;
 alter table server

@@ -29,6 +29,11 @@ export default function HomePage() {
           srcType: 'mp4',
           playbackRate: 1,
         }}
+        desktopVideo={{
+          url: '/videos/hero-desktop.mp4',
+          srcType: 'mp4',
+          playbackRate: 1,
+        }}
       />
 
       <HowItWorks
