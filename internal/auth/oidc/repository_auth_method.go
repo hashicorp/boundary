@@ -37,15 +37,13 @@ func (r *Repository) TestAuthMethod(ctx context.Context, m *AuthMethod, opt ...O
 }
 
 // MakeInactive will transision an OIDC auth method from either the
-// ActivePrivateState or the ActivePublicState into the temporary StoppingState
-// and then, after a small amount of time, to the InactiveState.
+// ActivePrivateState or the ActivePublicState to the InactiveState.
 func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, _ ...Option) error {
 	panic("to-do")
 }
 
 // MakePrivate will transision an OIDC auth method from either the
-// InactiveState or the ActivePublicState into the temporary StoppingState
-// and then, after a small amount of time, to the ActivePrivateState.  If
+// InactiveState or the ActivePublicState to the ActivePrivateState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the oidc.TestAuthMethod(...) succeeds. No options are currently supported.
 func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt ...Option) error {
@@ -53,8 +51,7 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt .
 }
 
 // MakePublic will transision an OIDC auth method from either the
-// InactiveState or the ActivePrivateState into the temporary StoppingState
-// and then, after a small amount of time, to the ActivePublicState.  If
+// InactiveState or the ActivePrivateState to the ActivePublicState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the oidc.TestAuthMethod(...) succeeds. No options are currently supported.
 func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ...Option) error {

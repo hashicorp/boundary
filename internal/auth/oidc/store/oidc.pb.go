@@ -51,7 +51,7 @@ type AuthMethod struct {
 	// @inject_tag: `gorm:"default:null"`
 	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// state is the current state of the auth_oidc_method (inactive,
-	// active-private, active-public, or stopping).
+	// active-private, or active-public).
 	// @inject_tag: `gorm:"column:state;not_null"`
 	OperationalState string `protobuf:"bytes,80,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" gorm:"column:state;not_null"`
 	// discovery_url is the OIDC Discovery URL without any .well-known component
