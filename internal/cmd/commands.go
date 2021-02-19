@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
-	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
@@ -581,36 +581,36 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"scopes": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"scopes create": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"scopes read": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"scopes update": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"scopes delete": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"scopes list": func() (cli.Command, error) {
-			return &scopes.Command{
+			return &scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil

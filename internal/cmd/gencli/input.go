@@ -297,6 +297,24 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:         []string{"update"},
 		},
 	},
+	"scopes": {
+		{
+			ResourceType:             resource.Scope.String(),
+			Pkg:                      "scopes",
+			StdActions:               []string{"create", "read", "update", "delete", "list"},
+			HasCustomActionFlags:     true,
+			HasExtraCommandVars:      true,
+			HasExtraFlagsFunc:        true,
+			HasExtraFlagHandlingFunc: true,
+			HasId:                    true,
+			Container:                "Scope",
+			ContainerRequiredActions: []string{"create", "list"},
+			HasName:                  true,
+			HasDescription:           true,
+			HasRecursiveListing:      true,
+			VersionedActions:         []string{"update"},
+		},
+	},
 	"sessions": {
 		{
 			ResourceType:             resource.Session.String(),
