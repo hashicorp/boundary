@@ -21,7 +21,7 @@ import (
 )
 
 // defaultAuthMethodTableName defines the default table name for an AuthMethod
-const defaultAuthMethodTableName = "auth_oidc_method"
+const defaultAuthMethodTableName = "auth_oidc_method_detail"
 
 // AuthMethod contains an OIDC auth method configuration. It is owned
 // by a scope.  AuthMethods can have Accounts, AudClaims,

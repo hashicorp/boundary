@@ -159,26 +159,28 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 // authMethodAgg is a view that aggregates the auth method's value objects in to
 // string fields delimited with the aggregateDelimiter of "|"
 type authMethodAgg struct {
-	PublicId         string `gorm:"primary_key"`
-	ScopeId          string
-	Name             string
-	Description      string
-	CreateTime       *timestamp.Timestamp
-	UpdateTime       *timestamp.Timestamp
-	Version          uint32
-	State            string
-	DiscoveryUrl     string
-	ClientId         string
-	CtClientSecret   []byte `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
-	ClientSecret     string `gorm:"-" wrapping:"pt,client_secret"`
-	ClientSecretHmac string
-	KeyId            string
-	MaxAge           int
-	Algs             string
-	Callbacks        string
-	Auds             string
-	Certs            string
+	PublicId           string `gorm:"primary_key"`
+	ScopeId            string
+	Name               string
+	Description        string
+	CreateTime         *timestamp.Timestamp
+	UpdateTime         *timestamp.Timestamp
+	Version            uint32
+	State              string
+	DiscoveryUrl       string
+	ClientId           string
+	CtClientSecret     []byte `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
+	ClientSecret       string `gorm:"-" wrapping:"pt,client_secret"`
+	ClientSecretHmac   string
+	KeyId              string
+	MaxAge             int
+	Algs               string
+	Callbacks          string
+	Auds               string
+	Certs              string
+	EffectiveStartTime *timestamp.Timestamp
+	EffectiveEndTime   *timestamp.Timestamp
 }
 
 // TableName returns the table name for gorm
-func (agg *authMethodAgg) TableName() string { return "oidc_auth_method_with_value_obj" }
+func (agg *authMethodAgg) TableName() string { return "current_oidc_auth_method_with_value_obj" }

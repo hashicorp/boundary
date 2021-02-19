@@ -5053,11 +5053,31 @@ update on auth_oidc_signing_alg_enm
   for each row execute procedure immutable_columns('name');
 `),
 			2084: []byte(`
--- auth_oidc_method entries are the current oidc auth methods configured for
--- existing scopes. 
+-- auth_oidc_method entries are the current oidc auth methods configured for existing scopes.
 create table auth_oidc_method (
-  public_id wt_public_id
-    primary key,
+  public_id wt_public_id primary key
+    references auth_method(public_id),
+  scope_id wt_scope_id
+    not null,
+  foreign key (scope_id, public_id)
+    references auth_method (scope_id, public_id)
+    on delete cascade
+    on update cascade,
+  unique(scope_id, public_id)
+);
+comment on table auth_oidc_method is
+'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
+
+-- auth_oidc_method_detail entries are effective dated (aka: temporal db 
+-- pattern) details for auth_oidc_method entries.
+-- to get the "current" effective detail use 
+-- where: d.effective_start_time <= now() and (d.effective_end_time > now() or d.effective_end_time is null);
+create table auth_oidc_method_detail (
+  primary key(public_id, effective_start_time),
+  public_id wt_public_id 
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
   scope_id wt_scope_id
     not null,
   name wt_name,
@@ -5086,16 +5106,19 @@ create table auth_oidc_method (
       check(max_age != 0)
     constraint max_age_not_less_then_negative_one
       check(max_age >= -1), 
-  foreign key (scope_id, public_id)
-      references auth_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-  unique(scope_id, name),
-  unique(scope_id, public_id),
-  unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
+  effective_start_time timestamp with time zone default current_timestamp not null,
+  effective_end_time timestamp with time zone, -- null means no effective end time.
+    constraint eff_start_and_end_times_in_sequence
+      check (effective_start_time <= effective_end_time),
+  constraint eff_end_time_has_matching_start_time_or_is_null foreign key (public_id, effective_end_time) 
+    references auth_oidc_method_detail(public_id, effective_start_time), 
+  unique(public_id, effective_end_time), -- ensure effective_end_time is unique for each auth method
+  unique(scope_id, name), -- name must be unique within a scope
+  unique(scope_id, public_id), 
+  unique(scope_id, discovery_url, client_id) -- a discovery_url + client_id must be unique for a provider within a scope.
 );
-comment on table auth_oidc_method is
-'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
+comment on table auth_oidc_method_detail is
+'auth_oidc_method_detail  entries are effective dated (aka: temporal db pattern) details for auth_oidc_method entries';
 
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
@@ -5196,7 +5219,7 @@ create table auth_oidc_account (
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
     foreign key (scope_id, auth_method_id)
-      references auth_oidc_method (scope_id, public_id)
+      references auth_oidc_method_detail (scope_id, public_id)
       on delete cascade
       on update cascade,
     foreign key (scope_id, auth_method_id, public_id)
@@ -5216,27 +5239,48 @@ create trigger
 before insert on auth_oidc_method
   for each row execute procedure insert_auth_method_subtype();
 
+-- auth_oidc_method_detail column triggers
+create or replace function
+  insert_auth_method_oidc_detail()
+  returns trigger
+as $$
+begin
+  insert into auth_oidc_method
+    (public_id, scope_id)
+  values
+    (new.public_id, new.scope_id);
+  return new;
+end;
+$$ language plpgsql;
+comment on function insert_auth_method_oidc_detail() is
+'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
+
+create trigger
+  insert_auth_method_oidc_detail
+before insert on auth_oidc_method_detail
+  for each row execute procedure insert_auth_method_oidc_detail();
+
 create trigger
   update_time_column
 before
-update on auth_oidc_method
+update on auth_oidc_method_detail
   for each row execute procedure update_time_column();
 
 create trigger
   immutable_columns
 before
-update on auth_oidc_method
+update on auth_oidc_method_detail
   for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
 create trigger
   default_create_time_column
 before
-insert on auth_oidc_method
+insert on auth_oidc_method_detail
   for each row execute procedure default_create_time();
 
 create trigger
   update_version_column
-after update on auth_oidc_method
+after update on auth_oidc_method_detail
   for each row execute procedure update_version_column();
 
 -- auth_oidc_account column triggers
@@ -5298,7 +5342,7 @@ insert on auth_oidc_signing_alg
     
 insert into oplog_ticket (name, version)
 values
-  ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
+  ('auth_oidc_method_detail', 1), -- auth method is the root aggregate itself and all of its value objects.
   ('auth_oidc_account', 1);
 
 
@@ -5309,36 +5353,62 @@ values
 -- in one column from the associated tables and that value is part of the
 -- primary key and unique.  This view will make things like recursive listing of
 -- oidc auth methods fairly straightforward to implement but the oidc repo. 
+--
+-- to get the "current" effective detail use 
+-- where: d.effective_start_time <= now() and (d.effective_end_time > now() or d.effective_end_time is null);
 create view oidc_auth_method_with_value_obj as
-select 
+with value_object as(
+  select
   am.public_id,
-  am.scope_id,
-  am.name,
-  am.description, 
-  am.create_time,
-  am.update_time,
-  am.version,
-  am.state,
-  am.discovery_url,
-  am.client_id,
-  am.client_secret,
-  am.client_secret_hmac,
-  am.key_id,
-  am.max_age,
-  -- the string_agg(..) column will be null if there are no associated value objects
+    -- the string_agg(..) column will be null if there are no associated value objects
   string_agg(distinct alg.signing_alg_name, '|') as algs, 
   string_agg(distinct cb.callback_url, '|') as callbacks, 
   string_agg(distinct aud.aud_claim, '|') as auds, 
   string_agg(distinct cert.certificate, '|') as certs
-from 	
-	auth_oidc_method am 
+  from auth_oidc_method am 
   left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
   left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
   left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id 
   left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
-group by am.public_id;
+  group by am.public_id
+)
+select 
+  d.public_id,
+  d.scope_id,
+  d.name,
+  d.description, 
+  d.create_time,
+  d.update_time,
+  d.version,
+  d.state,
+  d.discovery_url,
+  d.client_id,
+  d.client_secret,
+  d.client_secret_hmac,
+  d.key_id,
+  d.max_age,
+  vo.algs,
+  vo.callbacks,
+  vo.auds,
+  vo.certs,
+  d.effective_start_time,
+  d.effective_end_time 
+from 	
+	auth_oidc_method_detail d   
+  left outer join value_object vo on d.public_id = vo.public_id;
 comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
+'effective dated oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
+
+create view current_oidc_auth_method_with_value_obj as (
+  select 
+    * 
+  from oidc_auth_method_with_value_obj 
+  where 
+    effective_start_time <= now() and 
+    (effective_end_time > now() or effective_end_time is null)
+);
+comment on view current_oidc_auth_method_with_value_obj is
+'the current oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
 `),
 			2085: []byte(`
 -- auth_token_status_enm entries define the possible auth token
