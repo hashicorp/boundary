@@ -33,12 +33,13 @@ func NewFilter(f string) (*Filter, error) {
 }
 
 // Match returns if the provided interface matches the filter.
-func (f *Filter) Match(i interface{}) (bool, error) {
-	// TODO: Support more than just evaluating the item being filtered.
+// TODO: Support more than just matching against the item being filtered.  Also allow matching against
+//   values in the request or the request context itself.
+func (f *Filter) Match(item interface{}) (bool, error) {
 	if f.eval == nil {
 		return true, nil
 	}
-	return f.eval.Evaluate(filterItem{Item: i})
+	return f.eval.Evaluate(filterItem{Item: item})
 }
 
 // wellKnownTypeFilterHook is passed to bexpr to treat all proto well-known
