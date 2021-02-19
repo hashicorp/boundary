@@ -18,12 +18,12 @@ export default function CommunityPage() {
           {
             header: 'Community Forum',
             body:
-              '[Boundary Community Forum](https://discuss.hashicorp.com/c/boundary)',
+              '<a href="https://discuss.hashicorp.com/c/boundary">Boundary Community Forum</a>',
           },
           {
             header: 'Bug Tracker',
             body:
-              '[Issue tracker on GitHub](https://github.com/hashicorp/boundary/issues). Please only use this for reporting bugs. Do not ask for general help here; use the Community Form for that.',
+              '<a href="https://github.com/hashicorp/boundary/issues">Issue tracker on GitHub</a>. Please only use this for reporting bugs. Do not ask for general help here; use the Community Form for that.',
           },
         ]}
       />
