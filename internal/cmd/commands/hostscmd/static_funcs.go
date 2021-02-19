@@ -6,6 +6,7 @@ import (
 )
 
 func init() {
+	extraStaticActionsFlagsMapFunc = extraStaticActionsFlagsMapFuncImpl
 	extraStaticFlagsFunc = extraStaticFlagsFuncImpl
 	extraStaticFlagsHandlingFunc = extraStaticFlagsHandlingFuncImpl
 }
@@ -14,9 +15,11 @@ type extraStaticCmdVars struct {
 	flagAddress string
 }
 
-var extraStaticActionsFlagsMap = map[string][]string{
-	"create": {"address"},
-	"update": {"address"},
+func extraStaticActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create": {"address"},
+		"update": {"address"},
+	}
 }
 
 func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) string {

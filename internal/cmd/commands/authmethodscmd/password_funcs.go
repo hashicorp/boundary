@@ -9,6 +9,7 @@ import (
 )
 
 func init() {
+	extraPasswordActionsFlagsMapFunc = extraPasswordActionsFlagsMapFuncImpl
 	extraPasswordFlagsFunc = extraPasswordFlagsFuncImpl
 	extraPasswordFlagsHandlingFunc = extraPasswordFlagHandlingFuncImpl
 }
@@ -18,9 +19,11 @@ type extraPasswordCmdVars struct {
 	flagMinPasswordLength  string
 }
 
-var extraPasswordActionsFlagsMap = map[string][]string{
-	"create": {"min-login-name-length", "min-password-length"},
-	"update": {"min-login-name-length", "min-password-length"},
+func extraPasswordActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create": {"min-login-name-length", "min-password-length"},
+		"update": {"min-login-name-length", "min-password-length"},
+	}
 }
 
 func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string) string {

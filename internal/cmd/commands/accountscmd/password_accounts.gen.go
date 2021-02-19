@@ -12,9 +12,12 @@ import (
 	"github.com/posener/complete"
 )
 
-func init() {
-	for k, v := range extraPasswordActionsFlagsMap {
-		flagsPasswordMap[k] = append(flagsPasswordMap[k], v...)
+func initPasswordFlags() {
+	extraFlags := extraPasswordActionsFlagsMapFunc()
+	if extraFlags != nil {
+		for k, v := range extraFlags {
+			flagsPasswordMap[k] = append(flagsPasswordMap[k], v...)
+		}
 	}
 }
 
@@ -37,10 +40,12 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) AutocompleteArgs() complete.Predictor {
+	initPasswordFlags()
 	return complete.PredictAnything
 }
 
 func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
+	initPasswordFlags()
 	return c.Flags().Completions()
 }
 
@@ -48,6 +53,7 @@ func (c *PasswordCommand) Synopsis() string {
 	if extra := extraPasswordSynopsisFunc(c); extra != "" {
 		return extra
 	}
+
 	synopsisStr := "account"
 
 	synopsisStr = fmt.Sprintf("%s %s", "password-type", synopsisStr)
@@ -56,6 +62,8 @@ func (c *PasswordCommand) Synopsis() string {
 }
 
 func (c *PasswordCommand) Help() string {
+	initPasswordFlags()
+
 	var helpStr string
 	helpMap := common.HelpMap("account")
 
@@ -92,6 +100,8 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 }
 
 func (c *PasswordCommand) Run(args []string) int {
+	initPasswordFlags()
+
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
@@ -220,10 +230,11 @@ func (c *PasswordCommand) Run(args []string) int {
 }
 
 var (
-	extraPasswordSynopsisFunc      = func(*PasswordCommand) string { return "" }
-	extraPasswordFlagsFunc         = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraPasswordFlagsHandlingFunc = func(*PasswordCommand, *[]accounts.Option) int { return 0 }
-	executeExtraPasswordActions    = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {
+	extraPasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraPasswordSynopsisFunc        = func(*PasswordCommand) string { return "" }
+	extraPasswordFlagsFunc           = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
+	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]accounts.Option) int { return 0 }
+	executeExtraPasswordActions      = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
 	printCustomPasswordActionOutput = func(*PasswordCommand) (bool, error) { return false, nil }

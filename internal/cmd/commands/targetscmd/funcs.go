@@ -15,6 +15,7 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
@@ -28,11 +29,13 @@ type extraCmdVars struct {
 	sar          *targets.SessionAuthorizationResult
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"authorize-session": {"id", "host-id"},
-	"add-host-sets":     {"id", "host-set", "version"},
-	"remove-host-sets":  {"id", "host-set", "version"},
-	"set-host-sets":     {"id", "host-set", "version"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"authorize-session": {"id", "host-id"},
+		"add-host-sets":     {"id", "host-set", "version"},
+		"remove-host-sets":  {"id", "host-set", "version"},
+		"set-host-sets":     {"id", "host-set", "version"},
+	}
 }
 
 func extraSynopsisFuncImpl(c *Command) string {

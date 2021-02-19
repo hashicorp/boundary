@@ -13,6 +13,7 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
@@ -25,15 +26,17 @@ type extraCmdVars struct {
 	flagGrants       []string
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"create":            {"grant-scope-id"},
-	"update":            {"grant-scope-id"},
-	"add-principals":    {"id", "principal", "version"},
-	"set-principals":    {"id", "principal", "version"},
-	"remove-principals": {"id", "principal", "version"},
-	"add-grants":        {"id", "grant", "version"},
-	"set-grants":        {"id", "grant", "version"},
-	"remove-grants":     {"id", "grant", "version"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create":            {"grant-scope-id"},
+		"update":            {"grant-scope-id"},
+		"add-principals":    {"id", "principal", "version"},
+		"set-principals":    {"id", "principal", "version"},
+		"remove-principals": {"id", "principal", "version"},
+		"add-grants":        {"id", "grant", "version"},
+		"set-grants":        {"id", "grant", "version"},
+		"remove-grants":     {"id", "grant", "version"},
+	}
 }
 
 func extraSynopsisFuncImpl(c *Command) string {

@@ -10,12 +10,15 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"create": {"skip-admin-role-creation", "skip-default-role-creation"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create": {"skip-admin-role-creation", "skip-default-role-creation"},
+	}
 }
 
 type extraCmdVars struct {

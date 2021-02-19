@@ -95,12 +95,13 @@ import (
 	"github.com/posener/complete"
 )
 
-func init() {
-	{{ if .HasCustomActionFlags }}
-	for k, v := range extra{{ camelCase .SubActionPrefix }}ActionsFlagsMap {
-		flags{{ camelCase .SubActionPrefix }}Map[k] = append(flags{{ camelCase .SubActionPrefix }}Map[k], v...)
+func init{{ camelCase .SubActionPrefix }}Flags() {
+	extraFlags := extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc()
+	if extraFlags != nil {
+		for k, v := range extraFlags {
+			flags{{ camelCase .SubActionPrefix }}Map[k] = append(flags{{ camelCase .SubActionPrefix }}Map[k], v...)
+		}
 	}
-	{{ end }}
 }
 
 var (
@@ -123,10 +124,12 @@ type {{ camelCase .SubActionPrefix }}Command struct {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteArgs() complete.Predictor {
+	init{{ camelCase .SubActionPrefix }}Flags()
 	return complete.PredictAnything
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.Flags {
+	init{{ camelCase .SubActionPrefix }}Flags()
 	return c.Flags().Completions()
 }
 
@@ -134,7 +137,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 	if extra := extra{{ camelCase .SubActionPrefix }}SynopsisFunc(c); extra != "" {
 		return extra
 	}
-	
+
 	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
 	{{ if .SubActionPrefix }}
 	synopsisStr = fmt.Sprintf("%s %s", "{{ .SubActionPrefix }}-type", synopsisStr)
@@ -143,6 +146,8 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
+	init{{ camelCase .SubActionPrefix }}Flags()
+	
 	var helpStr string
 	helpMap := common.HelpMap("{{ lowerSpaceCase .ResourceType }}")
 
@@ -201,6 +206,8 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
+	init{{ camelCase .SubActionPrefix }}Flags()
+
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
 		c.UI.Output(exampleOutput())
@@ -443,10 +450,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 }
 
 var (
+	extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
 	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) int { return 0 }
-	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) { return inResult, inErr }
+	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
 	printCustom{{ camelCase .SubActionPrefix }}ActionOutput = func(*{{ camelCase .SubActionPrefix }}Command) (bool, error) { return false, nil }
 )
 `))

@@ -12,6 +12,7 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
@@ -22,10 +23,12 @@ type extraCmdVars struct {
 	flagMembers []string
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"add-members":    {"id", "member", "version"},
-	"remove-members": {"id", "member", "version"},
-	"set-members":    {"id", "member", "version"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"add-members":    {"id", "member", "version"},
+		"remove-members": {"id", "member", "version"},
+		"set-members":    {"id", "member", "version"},
+	}
 }
 
 func extraSynopsisFuncImpl(c *Command) string {

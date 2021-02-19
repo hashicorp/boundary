@@ -12,9 +12,12 @@ import (
 	"github.com/posener/complete"
 )
 
-func init() {
-	for k, v := range extraActionsFlagsMap {
-		flagsMap[k] = append(flagsMap[k], v...)
+func initFlags() {
+	extraFlags := extraActionsFlagsMapFunc()
+	if extraFlags != nil {
+		for k, v := range extraFlags {
+			flagsMap[k] = append(flagsMap[k], v...)
+		}
 	}
 }
 
@@ -35,10 +38,12 @@ type Command struct {
 }
 
 func (c *Command) AutocompleteArgs() complete.Predictor {
+	initFlags()
 	return complete.PredictAnything
 }
 
 func (c *Command) AutocompleteFlags() complete.Flags {
+	initFlags()
 	return c.Flags().Completions()
 }
 
@@ -46,12 +51,15 @@ func (c *Command) Synopsis() string {
 	if extra := extraSynopsisFunc(c); extra != "" {
 		return extra
 	}
+
 	synopsisStr := "session"
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *Command) Help() string {
+	initFlags()
+
 	var helpStr string
 	helpMap := common.HelpMap("session")
 
@@ -96,6 +104,8 @@ func (c *Command) Flags() *base.FlagSets {
 }
 
 func (c *Command) Run(args []string) int {
+	initFlags()
+
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
@@ -238,10 +248,11 @@ func (c *Command) Run(args []string) int {
 }
 
 var (
-	extraSynopsisFunc      = func(*Command) string { return "" }
-	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
-	extraFlagsHandlingFunc = func(*Command, *[]sessions.Option) int { return 0 }
-	executeExtraActions    = func(_ *Command, inResult api.GenericResult, inErr error, _ *sessions.Client, _ uint32, _ []sessions.Option) (api.GenericResult, error) {
+	extraActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraSynopsisFunc        = func(*Command) string { return "" }
+	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
+	extraFlagsHandlingFunc   = func(*Command, *[]sessions.Option) int { return 0 }
+	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *sessions.Client, _ uint32, _ []sessions.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
 	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }

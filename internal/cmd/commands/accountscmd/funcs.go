@@ -14,6 +14,7 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
@@ -26,9 +27,11 @@ type extraCmdVars struct {
 	flagNewPassword     string
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"change-password": {"id", "current-password", "new-password", "version"},
-	"set-password":    {"id", "password", "version"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"change-password": {"id", "current-password", "new-password", "version"},
+		"set-password":    {"id", "password", "version"},
+	}
 }
 
 func extraSynopsisFuncImpl(c *Command) string {
@@ -61,7 +64,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "change-password":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary accounts change-password [sub command] [options] [args]",
+			"Usage: boundary accounts change-password [options] [args]",
 			"",
 			"  This command allows changing the password (with verification of the current password) on account-type resources, if the types match and the operation is allowed by the given account type. Example:",
 			"",
@@ -73,7 +76,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	case "set-password":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary accounts set-password [sub command] [options] [args]",
+			"Usage: boundary accounts set-password [options] [args]",
 			"",
 			"  This command allows setting the password on account-type resources, if the types match and the operation is allowed by the given account type. Example:",
 			"",

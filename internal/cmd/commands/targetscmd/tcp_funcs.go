@@ -11,13 +11,16 @@ import (
 )
 
 func init() {
+	extraTcpActionsFlagsMapFunc = extraTcpActionsFlagsMapFuncImpl
 	extraTcpFlagsFunc = extraTcpFlagsFuncImpl
 	extraTcpFlagsHandlingFunc = extraTcpFlagsHandlingFuncImpl
 }
 
-var extraTcpActionsFlagsMap = map[string][]string{
-	"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
-	"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+func extraTcpActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+	}
 }
 
 type extraTcpCmdVars struct {

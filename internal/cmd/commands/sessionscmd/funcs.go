@@ -11,11 +11,14 @@ import (
 )
 
 func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	executeExtraActions = executeExtraActionsImpl
 }
 
-var extraActionsFlagsMap = map[string][]string{
-	"cancel": {"id"},
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"cancel": {"id"},
+	}
 }
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {

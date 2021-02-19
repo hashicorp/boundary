@@ -12,13 +12,16 @@ import (
 )
 
 func init() {
+	extraPasswordActionsFlagsMapFunc = extraPasswordActionsFlagsMapFuncImpl
 	extraPasswordFlagsFunc = extraPasswordFlagsFuncImpl
 	extraPasswordFlagsHandlingFunc = extraPasswordFlagsHandlingFuncImpl
 }
 
-var extraPasswordActionsFlagsMap = map[string][]string{
-	"create": {"login-name", "password"},
-	"update": {"login-name"},
+func extraPasswordActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"create": {"login-name", "password"},
+		"update": {"login-name"},
+	}
 }
 
 type extraPasswordCmdVars struct {

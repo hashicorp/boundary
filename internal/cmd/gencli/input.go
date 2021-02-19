@@ -14,10 +14,6 @@ type cmdInfo struct {
 	// Standard actions (with standard parameters) used by this resource
 	StdActions []string
 
-	// HasCustomActionFlags controls whether to generate code to add extra
-	// flags, useful for subtype actions
-	HasCustomActionFlags bool
-
 	// HasExtraCommandVars controls whether to generate an embedded struct with
 	// extra command variables
 	HasExtraCommandVars bool
@@ -82,7 +78,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Account.String(),
 			Pkg:                      "accounts",
 			StdActions:               []string{"read", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			IsAbstractType:           true,
@@ -97,7 +92,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Account.String(),
 			Pkg:                      "accounts",
 			StdActions:               []string{"create", "update"},
-			HasCustomActionFlags:     true,
 			SubActionPrefix:          "password",
 			HasExtraCommandVars:      true,
 			SkipNormalHelp:           true,
@@ -125,7 +119,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.AuthMethod.String(),
 			Pkg:                      "authmethods",
 			StdActions:               []string{"create", "update"},
-			HasCustomActionFlags:     true,
 			SubActionPrefix:          "password",
 			HasExtraCommandVars:      true,
 			SkipNormalHelp:           true,
@@ -154,7 +147,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Group.String(),
 			Pkg:                      "groups",
 			StdActions:               []string{"create", "read", "update", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,
@@ -198,7 +190,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.HostSet.String(),
 			Pkg:                      "hostsets",
 			StdActions:               []string{"read", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			IsAbstractType:           true,
@@ -242,7 +233,6 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:                      "hosts",
 			StdActions:               []string{"create", "update"},
 			SubActionPrefix:          "static",
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			SkipNormalHelp:           true,
 			HasExtraHelpFunc:         true,
@@ -259,7 +249,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Role.String(),
 			Pkg:                      "roles",
 			StdActions:               []string{"create", "read", "update", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,
@@ -276,7 +265,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Scope.String(),
 			Pkg:                      "scopes",
 			StdActions:               []string{"create", "read", "update", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasId:                    true,
 			Container:                "Scope",
@@ -294,7 +282,6 @@ var inputStructs = map[string][]*cmdInfo{
 			StdActions:               []string{"read", "list"},
 			Container:                "Scope",
 			HasExtraHelpFunc:         true,
-			HasCustomActionFlags:     true,
 			HasId:                    true,
 			ContainerRequiredActions: []string{"list"},
 			VersionedActions:         []string{"cancel"},
@@ -305,7 +292,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Target.String(),
 			Pkg:                      "targets",
 			StdActions:               []string{"read", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			HasExampleCliOutput:      true,
@@ -321,7 +307,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.Target.String(),
 			Pkg:                      "targets",
 			StdActions:               []string{"create", "update"},
-			HasCustomActionFlags:     true,
 			SubActionPrefix:          "tcp",
 			HasExtraCommandVars:      true,
 			SkipNormalHelp:           true,
@@ -340,7 +325,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:             resource.User.String(),
 			Pkg:                      "users",
 			StdActions:               []string{"create", "read", "update", "delete", "list"},
-			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,

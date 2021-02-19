@@ -12,9 +12,12 @@ import (
 	"github.com/posener/complete"
 )
 
-func init() {
-	for k, v := range extraStaticActionsFlagsMap {
-		flagsStaticMap[k] = append(flagsStaticMap[k], v...)
+func initStaticFlags() {
+	extraFlags := extraStaticActionsFlagsMapFunc()
+	if extraFlags != nil {
+		for k, v := range extraFlags {
+			flagsStaticMap[k] = append(flagsStaticMap[k], v...)
+		}
 	}
 }
 
@@ -37,10 +40,12 @@ type StaticCommand struct {
 }
 
 func (c *StaticCommand) AutocompleteArgs() complete.Predictor {
+	initStaticFlags()
 	return complete.PredictAnything
 }
 
 func (c *StaticCommand) AutocompleteFlags() complete.Flags {
+	initStaticFlags()
 	return c.Flags().Completions()
 }
 
@@ -48,6 +53,7 @@ func (c *StaticCommand) Synopsis() string {
 	if extra := extraStaticSynopsisFunc(c); extra != "" {
 		return extra
 	}
+
 	synopsisStr := "host"
 
 	synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
@@ -56,6 +62,8 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 func (c *StaticCommand) Help() string {
+	initStaticFlags()
+
 	var helpStr string
 	helpMap := common.HelpMap("host")
 
@@ -92,6 +100,8 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 }
 
 func (c *StaticCommand) Run(args []string) int {
+	initStaticFlags()
+
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
@@ -220,10 +230,11 @@ func (c *StaticCommand) Run(args []string) int {
 }
 
 var (
-	extraStaticSynopsisFunc      = func(*StaticCommand) string { return "" }
-	extraStaticFlagsFunc         = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
-	extraStaticFlagsHandlingFunc = func(*StaticCommand, *[]hosts.Option) int { return 0 }
-	executeExtraStaticActions    = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (api.GenericResult, error) {
+	extraStaticActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
+	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
+	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *[]hosts.Option) int { return 0 }
+	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
 	printCustomStaticActionOutput = func(*StaticCommand) (bool, error) { return false, nil }

@@ -12,9 +12,12 @@ import (
 	"github.com/posener/complete"
 )
 
-func init() {
-	for k, v := range extraTcpActionsFlagsMap {
-		flagsTcpMap[k] = append(flagsTcpMap[k], v...)
+func initTcpFlags() {
+	extraFlags := extraTcpActionsFlagsMapFunc()
+	if extraFlags != nil {
+		for k, v := range extraFlags {
+			flagsTcpMap[k] = append(flagsTcpMap[k], v...)
+		}
 	}
 }
 
@@ -37,10 +40,12 @@ type TcpCommand struct {
 }
 
 func (c *TcpCommand) AutocompleteArgs() complete.Predictor {
+	initTcpFlags()
 	return complete.PredictAnything
 }
 
 func (c *TcpCommand) AutocompleteFlags() complete.Flags {
+	initTcpFlags()
 	return c.Flags().Completions()
 }
 
@@ -48,6 +53,7 @@ func (c *TcpCommand) Synopsis() string {
 	if extra := extraTcpSynopsisFunc(c); extra != "" {
 		return extra
 	}
+
 	synopsisStr := "target"
 
 	synopsisStr = fmt.Sprintf("%s %s", "tcp-type", synopsisStr)
@@ -56,6 +62,8 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 func (c *TcpCommand) Help() string {
+	initTcpFlags()
+
 	var helpStr string
 	helpMap := common.HelpMap("target")
 
@@ -92,6 +100,8 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 }
 
 func (c *TcpCommand) Run(args []string) int {
+	initTcpFlags()
+
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
@@ -225,10 +235,11 @@ func (c *TcpCommand) Run(args []string) int {
 }
 
 var (
-	extraTcpSynopsisFunc      = func(*TcpCommand) string { return "" }
-	extraTcpFlagsFunc         = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
-	extraTcpFlagsHandlingFunc = func(*TcpCommand, *[]targets.Option) int { return 0 }
-	executeExtraTcpActions    = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
+	extraTcpActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraTcpSynopsisFunc        = func(*TcpCommand) string { return "" }
+	extraTcpFlagsFunc           = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
+	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *[]targets.Option) int { return 0 }
+	executeExtraTcpActions      = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
 	printCustomTcpActionOutput = func(*TcpCommand) (bool, error) { return false, nil }
