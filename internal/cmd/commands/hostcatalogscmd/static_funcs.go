@@ -1,15 +1,8 @@
 package hostcatalogscmd
 
 import (
-	"fmt"
-	"net/textproto"
-
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
-
-func (c *StaticCommand) extraStaticSynopsisFunc() string {
-	return fmt.Sprintf("%s a static-type host catalog", textproto.CanonicalMIMEHeaderKey(c.Func))
-}
 
 func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string

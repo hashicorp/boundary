@@ -13,6 +13,7 @@ import (
 )
 
 func init() {
+	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 	executeExtraActions = executeExtraActionsImpl
@@ -35,7 +36,7 @@ var extraActionsFlagsMap = map[string][]string{
 	"remove-grants":     {"id", "grant", "version"},
 }
 
-func (c *Command) extraSynopsisFunc() string {
+func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "add-principals", "set-principals", "remove-principals":
 		return c.principalsGrantsSynopsisFunc(c.Func, true)

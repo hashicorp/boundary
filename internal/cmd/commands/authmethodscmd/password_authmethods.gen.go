@@ -45,11 +45,14 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	if extra := c.extraPasswordSynopsisFunc(); extra != "" {
+	if extra := extraPasswordSynopsisFunc(c); extra != "" {
 		return extra
 	}
+	synopsisStr := "auth method"
 
-	return common.SynopsisFunc(c.Func, "auth method")
+	synopsisStr = fmt.Sprintf("%s %s", "password-type", synopsisStr)
+
+	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *PasswordCommand) Help() string {
@@ -222,6 +225,7 @@ func (c *PasswordCommand) Run(args []string) int {
 }
 
 var (
+	extraPasswordSynopsisFunc      = func(*PasswordCommand) string { return "" }
 	extraPasswordFlagsFunc         = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
 	extraPasswordFlagsHandlingFunc = func(*PasswordCommand, *[]authmethods.Option) int { return 0 }
 	executeExtraPasswordActions    = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {

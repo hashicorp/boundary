@@ -40,11 +40,14 @@ func (c *StaticCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *StaticCommand) Synopsis() string {
-	if extra := c.extraStaticSynopsisFunc(); extra != "" {
+	if extra := extraStaticSynopsisFunc(c); extra != "" {
 		return extra
 	}
+	synopsisStr := "host set"
 
-	return common.SynopsisFunc(c.Func, "host set")
+	synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
+
+	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *StaticCommand) Help() string {
@@ -212,6 +215,7 @@ func (c *StaticCommand) Run(args []string) int {
 }
 
 var (
+	extraStaticSynopsisFunc      = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc         = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
 	extraStaticFlagsHandlingFunc = func(*StaticCommand, *[]hostsets.Option) int { return 0 }
 	executeExtraStaticActions    = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {

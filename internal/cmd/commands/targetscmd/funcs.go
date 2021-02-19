@@ -15,6 +15,7 @@ import (
 )
 
 func init() {
+	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 	executeExtraActions = executeExtraActionsImpl
@@ -34,7 +35,7 @@ var extraActionsFlagsMap = map[string][]string{
 	"set-host-sets":     {"id", "host-set", "version"},
 }
 
-func (c *Command) extraSynopsisFunc() string {
+func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "add-host-sets", "set-host-sets", "remove-host-sets":
 		var in string

@@ -2,7 +2,6 @@ package accountscmd
 
 import (
 	"fmt"
-	"net/textproto"
 	"os"
 	"strings"
 
@@ -25,10 +24,6 @@ var extraPasswordActionsFlagsMap = map[string][]string{
 type extraPasswordCmdVars struct {
 	flagLoginName string
 	flagPassword  string
-}
-
-func (c *PasswordCommand) extraPasswordSynopsisFunc() string {
-	return fmt.Sprintf("%s a password-type account", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string) string {

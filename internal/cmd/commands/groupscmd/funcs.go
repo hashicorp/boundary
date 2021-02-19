@@ -12,6 +12,7 @@ import (
 )
 
 func init() {
+	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 	executeExtraActions = executeExtraActionsImpl
@@ -27,7 +28,7 @@ var extraActionsFlagsMap = map[string][]string{
 	"set-members":    {"id", "member", "version"},
 }
 
-func (c *Command) extraSynopsisFunc() string {
+func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "add-members", "set-members", "remove-members":
 		var in string

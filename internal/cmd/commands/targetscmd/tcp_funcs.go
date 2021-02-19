@@ -2,7 +2,6 @@ package targetscmd
 
 import (
 	"fmt"
-	"net/textproto"
 	"strconv"
 	"time"
 
@@ -26,10 +25,6 @@ type extraTcpCmdVars struct {
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
 	flagWorkerFilter           string
-}
-
-func (c *TcpCommand) extraTcpSynopsisFunc() string {
-	return fmt.Sprintf("%s a tcp-type target", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {

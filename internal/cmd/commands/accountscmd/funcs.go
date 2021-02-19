@@ -14,6 +14,7 @@ import (
 )
 
 func init() {
+	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 	executeExtraActions = executeExtraActionsImpl
@@ -30,7 +31,7 @@ var extraActionsFlagsMap = map[string][]string{
 	"set-password":    {"id", "password", "version"},
 }
 
-func (c *Command) extraSynopsisFunc() string {
+func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "change-password":
 		return "Change the password on an account resource"

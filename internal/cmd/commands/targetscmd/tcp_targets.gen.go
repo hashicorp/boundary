@@ -45,11 +45,14 @@ func (c *TcpCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *TcpCommand) Synopsis() string {
-	if extra := c.extraTcpSynopsisFunc(); extra != "" {
+	if extra := extraTcpSynopsisFunc(c); extra != "" {
 		return extra
 	}
+	synopsisStr := "target"
 
-	return common.SynopsisFunc(c.Func, "target")
+	synopsisStr = fmt.Sprintf("%s %s", "tcp-type", synopsisStr)
+
+	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *TcpCommand) Help() string {
@@ -222,6 +225,7 @@ func (c *TcpCommand) Run(args []string) int {
 }
 
 var (
+	extraTcpSynopsisFunc      = func(*TcpCommand) string { return "" }
 	extraTcpFlagsFunc         = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
 	extraTcpFlagsHandlingFunc = func(*TcpCommand, *[]targets.Option) int { return 0 }
 	executeExtraTcpActions    = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {

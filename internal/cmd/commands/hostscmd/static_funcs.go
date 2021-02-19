@@ -1,9 +1,6 @@
 package hostscmd
 
 import (
-	"fmt"
-	"net/textproto"
-
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -20,10 +17,6 @@ type extraStaticCmdVars struct {
 var extraStaticActionsFlagsMap = map[string][]string{
 	"create": {"address"},
 	"update": {"address"},
-}
-
-func (c *StaticCommand) extraStaticSynopsisFunc() string {
-	return fmt.Sprintf("%s a static-type host", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) string {

@@ -46,11 +46,12 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Synopsis() string {
-	if extra := c.extraSynopsisFunc(); extra != "" {
+	if extra := extraSynopsisFunc(c); extra != "" {
 		return extra
 	}
+	synopsisStr := "account"
 
-	return common.SynopsisFunc(c.Func, "account")
+	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *Command) Help() string {
@@ -297,6 +298,7 @@ func (c *Command) Run(args []string) int {
 }
 
 var (
+	extraSynopsisFunc      = func(*Command) string { return "" }
 	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc = func(*Command, *[]accounts.Option) int { return 0 }
 	executeExtraActions    = func(_ *Command, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {

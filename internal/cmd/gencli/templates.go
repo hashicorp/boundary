@@ -131,12 +131,15 @@ func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.F
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
-	{{ if .HasExtraSynopsisFunc }}
-	if extra := c.extra{{ camelCase .SubActionPrefix }}SynopsisFunc(); extra != "" {
+	if extra := extra{{ camelCase .SubActionPrefix }}SynopsisFunc(c); extra != "" {
 		return extra
-	} 
+	}
+	
+	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
+	{{ if .SubActionPrefix }}
+	synopsisStr = fmt.Sprintf("%s %s", "{{ .SubActionPrefix }}-type", synopsisStr)
 	{{ end }}
-	return common.SynopsisFunc(c.Func, "{{ lowerSpaceCase .ResourceType }}")
+	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
@@ -440,6 +443,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 }
 
 var (
+	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
 	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) int { return 0 }
 	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) { return inResult, inErr }

@@ -2,7 +2,6 @@ package authmethodscmd
 
 import (
 	"fmt"
-	"net/textproto"
 	"strconv"
 
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -22,10 +21,6 @@ type extraPasswordCmdVars struct {
 var extraPasswordActionsFlagsMap = map[string][]string{
 	"create": {"min-login-name-length", "min-password-length"},
 	"update": {"min-login-name-length", "min-password-length"},
-}
-
-func (c *PasswordCommand) extraPasswordSynopsisFunc() string {
-	return fmt.Sprintf("%s a password-type auth method", textproto.CanonicalMIMEHeaderKey(c.Func))
 }
 
 func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string) string {
