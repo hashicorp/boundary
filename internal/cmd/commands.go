@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
+	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
@@ -509,72 +509,72 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"roles": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"roles create": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"roles update": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"roles read": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"roles delete": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"roles list": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil
 		},
 		"roles add-principals": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-principals",
 			}, nil
 		},
 		"roles set-principals": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-principals",
 			}, nil
 		},
 		"roles remove-principals": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-principals",
 			}, nil
 		},
 		"roles add-grants": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-grants",
 			}, nil
 		},
 		"roles set-grants": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-grants",
 			}, nil
 		},
 		"roles remove-grants": func() (cli.Command, error) {
-			return &roles.Command{
+			return &rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-grants",
 			}, nil

@@ -81,6 +81,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"    Add static-type hosts to a static-type host set:",
 			"",
 			`      $ boundary host-sets add-hosts -id hsst_1234567890 -host hst_1234567890 -host hst_0987654321`,
+			"",
+			"",
 		})
 	case "remove-hosts":
 		helpStr = base.WrapForHelpText([]string{
@@ -91,6 +93,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"    Remove static-type hosts from a static-type host set:",
 			"",
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_0987654321`,
+			"",
+			"",
 		})
 	case "set-hosts":
 		helpStr = base.WrapForHelpText([]string{
@@ -101,6 +105,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"    Set the complete set of static-type hosts on a static-type host set:",
 			"",
 			`      $ boundary host-sets remove-hosts -id hsst_1234567890 -host hst_1234567890`,
+			"",
+			"",
 		})
 	default:
 		helpStr = helpMap[c.Func]()

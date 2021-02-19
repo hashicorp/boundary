@@ -49,6 +49,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			`  Associates accounts to a user given its ID. The "account" flag can be specified multiple times. Example:`,
 			"",
 			`    $ boundary users add-accounts -id u_1234567890 -account a_1234567890`,
+			"",
+			"",
 		})
 
 	case "set-accounts":
@@ -58,6 +60,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			`  Sets the complete set of associated accounts on a user given its ID. The "account" flag can be specified multiple times. Example:`,
 			"",
 			`    $ boundary users set-principals -id u_1234567890 -account a_0987654321 -account a_1234567890`,
+			"",
+			"",
 		})
 
 	case "remove-accounts":
@@ -67,6 +71,8 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			`  Disassociates accounts from a user given its ID. The "account" flag can be specified multiple times. Example:`,
 			"",
 			`    $ boundary users remove-accounts -id u_1234567890 -account a_1234567890`,
+			"",
+			"",
 		})
 
 	default:
