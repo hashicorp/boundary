@@ -48,6 +48,14 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	databaseWrapper, err := r.kms.GetWrapper(context.Background(), am.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if err := am.encrypt(ctx, databaseWrapper); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
 	var returnedAuthMethod *AuthMethod
 	_, err = r.writer.DoTx(
 		ctx,
@@ -55,7 +63,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 4)
-			ticket, err := w.GetTicket(&am)
+			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
