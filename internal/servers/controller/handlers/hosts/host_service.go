@@ -77,6 +77,11 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if err != nil {
 		return nil, err
 	}
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
+			map[string]string{"filter": "doesn't match the resource being filtered"})
+	}
 	finalItems := make([]*pb.Host, 0, len(hl))
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
@@ -86,7 +91,13 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	for _, item := range hl {
 		item.Scope = authResults.Scope
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if ok, err := filter.Match(item); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
+				map[string]string{"filter": "doesn't match the resource being filtered"})
+		} else if ok {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -459,6 +470,9 @@ func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

@@ -88,6 +88,11 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
+			map[string]string{"filter": "doesn't match the resource being filtered"})
+	}
 	finalItems := make([]*pb.Group, 0, len(gl))
 	res := &perms.Resource{
 		Type: resource.Group,
@@ -96,7 +101,13 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if ok, err := filter.Match(item); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
+				map[string]string{"filter": "doesn't match the resource being filtered"})
+		} else if ok {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -492,6 +503,9 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

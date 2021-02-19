@@ -21,6 +21,6 @@ func TestWellKnownTypeFilterHook(t *testing.T) {
 		wrapperspb.Bool(true):           true,
 	}
 	for in, out := range conversations {
-		assert.Equal(t, reflect.ValueOf(out).Interface(), WellKnownTypeFilterHook(reflect.ValueOf(in)).Interface())
+		assert.Equal(t, reflect.ValueOf(out).Interface(), wellKnownTypeFilterHook(reflect.ValueOf(in)).Interface())
 	}
 }

@@ -272,12 +272,12 @@ func TestList(t *testing.T) {
 			res:  &pbs.ListSessionsResponse{Items: totalSession},
 		},
 		{
-			name: "List Filtered To 1 Sessions",
+			name: "Filter To Single Sessions",
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, totalSession[4].Id)},
 			res:  &pbs.ListSessionsResponse{Items: totalSession[4:5]},
 		},
 		{
-			name: "Filter For Many Sessions",
+			name: "Filter To Many Sessions",
 			req: &pbs.ListSessionsRequest{
 				ScopeId: scope.Global.String(), Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id" matches "^%s"`, pWithSessions.GetPublicId()[:8]),
@@ -285,14 +285,14 @@ func TestList(t *testing.T) {
 			res: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name: "Filter out everything",
+			name: "Filter To Nothing",
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
 			res:  &pbs.ListSessionsResponse{},
 		},
 		{
-			name: "Filter is unparsable",
+			name: "Filter Bad Format",
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/unparsable" matches "foo"`},
-			err:  handlers.InvalidArgumentErrorf("Unable to apply filter.", nil),
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
 		},
 	}
 	for _, tc := range cases {

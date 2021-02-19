@@ -3,20 +3,47 @@ package handlers
 import (
 	"reflect"
 
+	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// FilterItem captures all the different namespaces that can be used when
+// filterItem captures all the different namespaces that can be used when
 // filtering an item.
-type FilterItem struct {
+type filterItem struct {
 	Item interface{} `json:"item"`
 }
 
-// WellKnownTypeFilterHook is passed to bexpr to treat all proto well-known
+type Filter struct {
+	eval *bexpr.Evaluator
+}
+
+// NewFilter returns a Filter which can be evluated against.  An empty string paramter indicates
+// all items passed to it should succeed.
+func NewFilter(f string) (*Filter, error) {
+	if f == "" {
+		return &Filter{}, nil
+	}
+	e, err := bexpr.CreateEvaluator(f, bexpr.WithTagName("json"), bexpr.WithHookFn(wellKnownTypeFilterHook))
+	if err != nil {
+		return nil, err
+	}
+	return &Filter{eval: e}, nil
+}
+
+// Match returns if the provided interface matches the filter.
+func (f *Filter) Match(i interface{}) (bool, error) {
+	// TODO: Support more than just evaluating the item being filtered.
+	if f.eval == nil {
+		return true, nil
+	}
+	return f.eval.Evaluate(filterItem{Item: i})
+}
+
+// wellKnownTypeFilterHook is passed to bexpr to treat all proto well-known
 // types as the types they wrap for comparison.
-func WellKnownTypeFilterHook(v reflect.Value) reflect.Value {
+func wellKnownTypeFilterHook(v reflect.Value) reflect.Value {
 	if !v.CanInterface() {
 		return v
 	}

@@ -232,6 +232,24 @@ func TestList(t *testing.T) {
 				Items: append(wantSomeCatalogs, wantOtherCatalogs...),
 			},
 		},
+		{
+			name: "Filter To Some Catalogs",
+			req: &pbs.ListHostCatalogsRequest{
+				ScopeId: scope.Global.String(), Recursive: true,
+				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, pWithCatalogs.GetPublicId()),
+			},
+			res: &pbs.ListHostCatalogsResponse{Items: wantSomeCatalogs},
+		},
+		{
+			name: "Filter To No Catalogs",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: pWithCatalogs.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res:  &pbs.ListHostCatalogsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListHostCatalogsRequest{ScopeId: pWithCatalogs.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-bexpr"
 )
 
 var (
@@ -113,18 +112,14 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, err
 	}
 
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
+			map[string]string{"filter": "doesn't match the resource being filtered"})
+	}
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
 		Type: resource.Session,
-	}
-
-	var filter *bexpr.Evaluator
-	if req.GetFilter() != "" {
-		if filter, err = bexpr.CreateEvaluator(req.GetFilter(),
-			bexpr.WithTagName("json"), bexpr.WithHookFn(handlers.WellKnownTypeFilterHook)); err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
-				map[string]string{"filter": "doesn't match the resource being filtered"})
-		}
 	}
 	for _, item := range seslist {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
@@ -146,15 +141,12 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 		item.AuthorizedActions = authorizedActions.Strings()
 
-		if filter != nil {
-			if add, err := filter.Evaluate(handlers.FilterItem{item}); err != nil {
-				return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
-					map[string]string{"filter": "doesn't match the resource being filtered"})
-			} else if !add {
-				continue
-			}
+		if ok, err := filter.Match(item); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
+				map[string]string{"filter": "doesn't match the resource being filtered"})
+		} else if ok {
+			finalItems = append(finalItems, item)
 		}
-		finalItems = append(finalItems, item)
 	}
 
 	return &pbs.ListSessionsResponse{Items: finalItems}, nil
@@ -344,10 +336,8 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
-	if req.GetFilter() != "" {
-		if _, err := bexpr.CreateEvaluator(req.GetFilter()); err != nil {
-			badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
-		}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

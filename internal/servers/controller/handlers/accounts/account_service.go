@@ -77,6 +77,11 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err != nil {
 		return nil, err
 	}
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
+			map[string]string{"filter": "doesn't match the resource being filtered"})
+	}
 	finalItems := make([]*pb.Account, 0, len(ul))
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
@@ -86,7 +91,14 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	for _, item := range ul {
 		item.Scope = authResults.Scope
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+
+		if ok, err := filter.Match(item); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
+				map[string]string{"filter": "doesn't match the resource being filtered"})
+		} else if ok {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -501,6 +513,9 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
