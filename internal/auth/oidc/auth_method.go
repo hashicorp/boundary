@@ -60,6 +60,9 @@ type AuthMethod struct {
 // forces the IdP to re-authenticate the End-User.  Zero is not a valid value.
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
+//
+// Supports the options of WithMaxAge, WithSigningAlgs, WithAudClaims,
+// WithCallbackUrls and WithCertificates and all other options are ignored.
 func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
@@ -83,6 +86,32 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 			MaxAge:           int32(opts.withMaxAge),
 		},
 	}
+	if len(opts.withCallbackUrls) > 0 {
+		a.CallbackUrls = make([]string, 0, len(opts.withCallbackUrls))
+		for _, c := range opts.withCallbackUrls {
+			a.CallbackUrls = append(a.CallbackUrls, c.String())
+		}
+	}
+	if len(opts.withAudClaims) > 0 {
+		a.AudClaims = make([]string, 0, len(opts.withAudClaims))
+		a.AudClaims = append(a.AudClaims, opts.withAudClaims...)
+	}
+	if len(opts.withCertificates) > 0 {
+		a.Certificates = make([]string, 0, len(opts.withCertificates))
+		pem, err := EncodeCertificates(opts.withCertificates...)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		a.Certificates = append(a.Certificates, pem...)
+
+	}
+	if len(opts.withSigningAlgs) > 0 {
+		a.SigningAlgs = make([]string, 0, len(opts.withSigningAlgs))
+		for _, alg := range opts.withSigningAlgs {
+			a.SigningAlgs = append(a.SigningAlgs, string(alg))
+		}
+	}
+
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
