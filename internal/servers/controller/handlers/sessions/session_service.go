@@ -134,7 +134,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 				break
 			}
 		}
-		if onlySelf && item.GetUserId() == authResults.UserId {
+		if onlySelf && item.GetUserId() != authResults.UserId {
 			continue
 		}
 
