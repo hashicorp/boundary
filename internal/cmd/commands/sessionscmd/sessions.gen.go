@@ -13,6 +13,9 @@ import (
 )
 
 func init() {
+	for k, v := range extraActionsFlagsMap {
+		flagsMap[k] = append(flagsMap[k], v...)
+	}
 }
 
 var (

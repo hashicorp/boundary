@@ -323,6 +323,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:                "Scope",
 			HasExtraHelpFunc:         true,
 			HasExtraActions:          true,
+			HasCustomActionFlags:     true,
 			HasId:                    true,
 			ContainerRequiredActions: []string{"list"},
 			VersionedActions:         []string{"cancel"},

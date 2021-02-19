@@ -10,6 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+var extraActionsFlagsMap = map[string][]string{
+	"cancel": {"id"},
+}
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -30,7 +34,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary sessions cancel [options] [args]",
 			"",
-			"  Cancel the session specified by ID. Example:",
+			"  Cancel the session specified by ID. If the session is already canceled, this command succeeds with no effect. Example:",
 			"",
 			`    $ boundary sessions cancel -id s_1234567890`,
 			"",
