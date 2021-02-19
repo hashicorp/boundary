@@ -94,8 +94,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
-			map[string]string{"filter": "doesn't match the resource being filtered"})
+		return nil, err
 	}
 	finalItems := make([]*pb.Role, 0, len(items))
 	res := &perms.Resource{
@@ -108,10 +107,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
-		if ok, err := filter.Match(item); err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
-				map[string]string{"filter": "doesn't match the resource being filtered"})
-		} else if ok {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}

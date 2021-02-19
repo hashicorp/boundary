@@ -25,20 +25,23 @@ func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
 		struct{foo string}{foo: "foo"},
 		filterItem{Item: struct{foo string}{foo: "foo"}},
 	}{
-		b, err := f.Match(v)
-		assert.NoError(t, err, "Trying to match %v", v)
-		assert.True(t, b, "Trying to match %v", v)
+		assert.True(t, f.Match(v), "Trying to match %v", v)
 	}
 }
 
 func TestNewFilter(t *testing.T) {
+	type embedded struct {
+		Name string `json:"name"`
+	}
+	type multiLevel struct {
+		E *embedded `json:"e"`
+	}
 	cases := []struct {
 		name string
 		filter string
 		fErr bool
 		in interface{}
 		match bool
-		mErr bool
 	} {
 		{
 			name: "bad format",
@@ -49,7 +52,7 @@ func TestNewFilter(t *testing.T) {
 			name: "no leading /item",
 			filter: `""=="foo"`,
 			in: "foo",
-			mErr: true,
+			match: false,
 		},
 		{
 			name: "simple string",
@@ -71,7 +74,7 @@ func TestNewFilter(t *testing.T) {
 			in: struct{
 				ID string `json:"id"`
 			}{ID: "foo"},
-			mErr: true,
+			match: false,
 		},
 		{
 			name: "proto well known types",
@@ -87,7 +90,19 @@ func TestNewFilter(t *testing.T) {
 			in: struct{
 				ID *wrapperspb.StringValue `json:"id"`
 			}{ID: wrapperspb.String("foo")},
-			mErr: true,
+			match: false,
+		},
+		{
+			name: "multi level struct",
+			filter: `"/item/e/name"=="foo"`,
+			in: multiLevel{E: &embedded{Name: "foo"}},
+			match: true,
+		},
+		{
+			name: "multi level struct",
+			filter: `"/item/e/name"=="foo"`,
+			in: multiLevel{E: nil},
+			match: false,
 		},
 	}
 
@@ -99,13 +114,7 @@ func TestNewFilter(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			m, err := f.Match(tc.in)
-			if tc.mErr {
-				require.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tc.match, m)
+			assert.Equal(t, tc.match, f.Match(tc.in))
 		})
 	}
 }

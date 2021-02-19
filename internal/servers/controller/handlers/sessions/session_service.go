@@ -114,8 +114,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
-			map[string]string{"filter": "doesn't match the resource being filtered"})
+		return nil, err
 	}
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
@@ -141,10 +140,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 		item.AuthorizedActions = authorizedActions.Strings()
 
-		if ok, err := filter.Match(item); err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
-				map[string]string{"filter": "doesn't match the resource being filtered"})
-		} else if ok {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}

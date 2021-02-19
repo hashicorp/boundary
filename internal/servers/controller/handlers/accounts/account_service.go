@@ -79,8 +79,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Unable to parse filter paramater.",
-			map[string]string{"filter": "doesn't match the resource being filtered"})
+		return nil, err
 	}
 	finalItems := make([]*pb.Account, 0, len(ul))
 	res := &perms.Resource{
@@ -94,11 +93,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
-
-		if ok, err := filter.Match(item); err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Unable to apply filter.",
-				map[string]string{"filter": "doesn't match the resource being filtered"})
-		} else if ok {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
