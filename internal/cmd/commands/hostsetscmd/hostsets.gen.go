@@ -166,6 +166,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var version uint32
+
 	switch c.Func {
 
 	case "add-hosts":
@@ -220,7 +221,7 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	result, err = c.executeExtraActions(result, err, hostsetsClient, version, opts)
+	result, err = executeExtraActions(c, result, err, hostsetsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -229,6 +230,15 @@ func (c *Command) Run(args []string) int {
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
+	}
+
+	output, err := printCustomActionOutput(c)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	if output {
+		return 0
 	}
 
 	switch c.Func {
@@ -297,4 +307,8 @@ func (c *Command) Run(args []string) int {
 var (
 	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc = func(*Command, *[]hostsets.Option) int { return 0 }
+	executeExtraActions    = func(_ *Command, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
+	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

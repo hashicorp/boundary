@@ -10,6 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	executeExtraActions = executeExtraActionsImpl
+}
+
 var extraActionsFlagsMap = map[string][]string{
 	"cancel": {"id"},
 }
@@ -48,7 +52,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) executeExtraActions(origResult api.GenericResult, origError error, sessionClient *sessions.Client, version uint32, opts []sessions.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, sessionClient *sessions.Client, version uint32, opts []sessions.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "cancel":
 		return sessionClient.Cancel(c.Context, c.FlagId, version, opts...)

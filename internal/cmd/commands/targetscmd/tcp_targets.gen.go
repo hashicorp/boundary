@@ -153,6 +153,7 @@ func (c *TcpCommand) Run(args []string) int {
 	}
 
 	var version uint32
+
 	switch c.Func {
 	case "update":
 		switch c.FlagVersion {
@@ -180,6 +181,8 @@ func (c *TcpCommand) Run(args []string) int {
 
 	}
 
+	result, err = executeExtraTcpActions(c, result, err, targetsClient, version, opts)
+
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
@@ -187,6 +190,15 @@ func (c *TcpCommand) Run(args []string) int {
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
+	}
+
+	output, err := printCustomTcpActionOutput(c)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	if output {
+		return 0
 	}
 
 	switch c.Func {
@@ -212,4 +224,8 @@ func (c *TcpCommand) Run(args []string) int {
 var (
 	extraTcpFlagsFunc         = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
 	extraTcpFlagsHandlingFunc = func(*TcpCommand, *[]targets.Option) int { return 0 }
+	executeExtraTcpActions    = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
+	printCustomTcpActionOutput = func(*TcpCommand) (bool, error) { return false, nil }
 )

@@ -17,6 +17,8 @@ import (
 func init() {
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
+	printCustomActionOutput = printCustomActionOutputImpl
 }
 
 type extraCmdVars struct {
@@ -254,7 +256,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
 	return 0
 }
 
-func (c *Command) executeExtraActions(origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "add-host-sets":
 		return targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
@@ -401,7 +403,7 @@ func printItemTable(item *targets.Target) string {
 	return base.WrapForHelpText(ret)
 }
 
-func (c *Command) printCustomActionOutput() (bool, error) {
+func printCustomActionOutputImpl(c *Command) (bool, error) {
 	switch c.Func {
 	case "authorize-session":
 		item := c.sar.GetItem().(*targets.SessionAuthorization)

@@ -139,6 +139,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var version uint32
+
 	switch c.Func {
 	case "cancel":
 		switch c.FlagVersion {
@@ -168,7 +169,7 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	result, err = c.executeExtraActions(result, err, sessionsClient, version, opts)
+	result, err = executeExtraActions(c, result, err, sessionsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -177,6 +178,15 @@ func (c *Command) Run(args []string) int {
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
+	}
+
+	output, err := printCustomActionOutput(c)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	if output {
+		return 0
 	}
 
 	switch c.Func {
@@ -225,4 +235,8 @@ func (c *Command) Run(args []string) int {
 var (
 	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc = func(*Command, *[]sessions.Option) int { return 0 }
+	executeExtraActions    = func(_ *Command, inResult api.GenericResult, inErr error, _ *sessions.Client, _ uint32, _ []sessions.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
+	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

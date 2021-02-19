@@ -153,6 +153,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	}
 
 	var version uint32
+
 	switch c.Func {
 	case "update":
 		switch c.FlagVersion {
@@ -180,6 +181,8 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	}
 
+	result, err = executeExtraPasswordActions(c, result, err, authmethodsClient, version, opts)
+
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
@@ -187,6 +190,15 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
+	}
+
+	output, err := printCustomPasswordActionOutput(c)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	if output {
+		return 0
 	}
 
 	switch c.Func {
@@ -212,4 +224,8 @@ func (c *PasswordCommand) Run(args []string) int {
 var (
 	extraPasswordFlagsFunc         = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
 	extraPasswordFlagsHandlingFunc = func(*PasswordCommand, *[]authmethods.Option) int { return 0 }
+	executeExtraPasswordActions    = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
+	printCustomPasswordActionOutput = func(*PasswordCommand) (bool, error) { return false, nil }
 )

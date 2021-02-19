@@ -299,8 +299,8 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if .VersionedActions }}
 	var version uint32
+	{{ if .VersionedActions }}
 	switch c.Func {
 	{{ range $i, $action := .VersionedActions }}
 	case "{{ $action }}":
@@ -353,9 +353,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	{{ if .HasExtraActions }}
-	result, err = c.executeExtraActions(result, err, {{ .Pkg }}Client, version, opts)
-	{{ end }}
+	result, err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, result, err, {{ .Pkg }}Client, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -366,8 +364,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return 2
 	}
 
-	{{ if .HasExtraActionsOutput }}
-	output, err := c.printCustomActionOutput()
+	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -375,7 +372,6 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	if output {
 		return 0
 	}
-	{{ end }}
 
 	switch c.Func {
 	{{ range $i, $action := .StdActions }}
@@ -446,5 +442,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 var (
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
 	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) int { return 0 }
+	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) { return inResult, inErr }
+	printCustom{{ camelCase .SubActionPrefix }}ActionOutput = func(*{{ camelCase .SubActionPrefix }}Command) (bool, error) { return false, nil }
 )
 `))

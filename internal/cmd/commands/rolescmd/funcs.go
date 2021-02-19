@@ -15,6 +15,7 @@ import (
 func init() {
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
 }
 
 type extraCmdVars struct {
@@ -220,7 +221,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
 	return 0
 }
 
-func (c *Command) executeExtraActions(origResult api.GenericResult, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "add-principals":
 		return roleClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)

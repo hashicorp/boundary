@@ -148,6 +148,7 @@ func (c *StaticCommand) Run(args []string) int {
 	}
 
 	var version uint32
+
 	switch c.Func {
 	case "update":
 		switch c.FlagVersion {
@@ -175,6 +176,8 @@ func (c *StaticCommand) Run(args []string) int {
 
 	}
 
+	result, err = executeExtraStaticActions(c, result, err, hostsClient, version, opts)
+
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
@@ -182,6 +185,15 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
+	}
+
+	output, err := printCustomStaticActionOutput(c)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+	if output {
+		return 0
 	}
 
 	switch c.Func {
@@ -207,4 +219,8 @@ func (c *StaticCommand) Run(args []string) int {
 var (
 	extraStaticFlagsFunc         = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
 	extraStaticFlagsHandlingFunc = func(*StaticCommand, *[]hosts.Option) int { return 0 }
+	executeExtraStaticActions    = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (api.GenericResult, error) {
+		return inResult, inErr
+	}
+	printCustomStaticActionOutput = func(*StaticCommand) (bool, error) { return false, nil }
 )

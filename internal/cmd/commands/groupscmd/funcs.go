@@ -14,6 +14,7 @@ import (
 func init() {
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
 }
 
 type extraCmdVars struct {
@@ -123,7 +124,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]groups.Option) int {
 	return 0
 }
 
-func (c *Command) executeExtraActions(origResult api.GenericResult, origError error, groupClient *groups.Client, version uint32, opts []groups.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, groupClient *groups.Client, version uint32, opts []groups.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "add-members":
 		return groupClient.AddMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)

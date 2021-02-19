@@ -26,10 +26,6 @@ type cmdInfo struct {
 	// extra synopsis function
 	HasExtraSynopsisFunc bool
 
-	// HasExtraActions controls whether to generate code to populate extra
-	// flags into the map and switch on those functions
-	HasExtraActions bool
-
 	// SkipNormalHelp indicates skipping the normal help case for when it needs
 	// to be only custom (mainly for subactions)
 	SkipNormalHelp bool
@@ -75,10 +71,6 @@ type cmdInfo struct {
 	// VersionedActions controls which actions to add a case for version checking
 	VersionedActions []string
 
-	// HasExtraActionsOutput controls whether to generate code to call a
-	// function for custom output
-	HasExtraActionsOutput bool
-
 	// SubActionPrefix specifies the prefix to use when generating sub-action
 	// commands (e.g. "targets update tcp")
 	SubActionPrefix string
@@ -97,7 +89,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			IsAbstractType:           true,
 			Container:                "AuthMethod",
@@ -173,7 +164,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,
 			Container:                "Scope",
@@ -220,7 +210,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			IsAbstractType:           true,
 			Container:                "HostCatalog",
@@ -285,7 +274,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,
 			Container:                "Scope",
@@ -319,7 +307,6 @@ var inputStructs = map[string][]*cmdInfo{
 			StdActions:               []string{"read", "list"},
 			Container:                "Scope",
 			HasExtraHelpFunc:         true,
-			HasExtraActions:          true,
 			HasCustomActionFlags:     true,
 			HasId:                    true,
 			ContainerRequiredActions: []string{"list"},
@@ -334,7 +321,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			HasExampleCliOutput:      true,
 			IsAbstractType:           true,
@@ -344,7 +330,6 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:                "Scope",
 			ContainerRequiredActions: []string{"list"},
 			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
-			HasExtraActionsOutput:    true,
 		},
 		{
 			ResourceType:             resource.Target.String(),
@@ -373,7 +358,6 @@ var inputStructs = map[string][]*cmdInfo{
 			HasCustomActionFlags:     true,
 			HasExtraCommandVars:      true,
 			HasExtraSynopsisFunc:     true,
-			HasExtraActions:          true,
 			HasExtraHelpFunc:         true,
 			HasId:                    true,
 			Container:                "Scope",

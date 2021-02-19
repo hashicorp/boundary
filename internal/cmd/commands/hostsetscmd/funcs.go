@@ -13,6 +13,7 @@ import (
 func init() {
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
 }
 
 type extraCmdVars struct {
@@ -155,7 +156,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) int {
 	return 0
 }
 
-func (c *Command) executeExtraActions(origResult api.GenericResult, origError error, hostsetClient *hostsets.Client, version uint32, opts []hostsets.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, hostsetClient *hostsets.Client, version uint32, opts []hostsets.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "add-hosts":
 		return hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
