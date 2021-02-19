@@ -122,7 +122,7 @@ message GetAuthMethodResponse {
 message ListAuthMethodsRequest {
   string scope_id = 1 [json_name="scope_id"];
   bool recursive = 20 [json_name="recursive"];
-  string filter = 30;
+  string filter = 30 [json_name="filter"];
 }
 
 message ListAuthMethodsResponse {
