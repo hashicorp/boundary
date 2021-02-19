@@ -12,7 +12,7 @@ import (
 func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
 	f, err := NewFilter("")
 	require.NoError(t, err)
-	for _, v := range []interface{} {
+	for _, v := range []interface{}{
 		nil,
 		"foo",
 		"",
@@ -22,9 +22,9 @@ func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
 		[]string{"foo"},
 		[]int(nil),
 		(*filterItem)(nil),
-		struct{foo string}{foo: "foo"},
-		filterItem{Item: struct{foo string}{foo: "foo"}},
-	}{
+		struct{ foo string }{foo: "foo"},
+		filterItem{Item: struct{ foo string }{foo: "foo"}},
+	} {
 		assert.True(t, f.Match(v), "Trying to match %v", v)
 	}
 }
@@ -37,72 +37,72 @@ func TestNewFilter(t *testing.T) {
 		E *embedded `json:"e"`
 	}
 	cases := []struct {
-		name string
+		name   string
 		filter string
-		fErr bool
-		in interface{}
-		match bool
-	} {
+		fErr   bool
+		in     interface{}
+		match  bool
+	}{
 		{
-			name: "bad format",
+			name:   "bad format",
 			filter: `random strings that dont match a format`,
-			fErr: true,
+			fErr:   true,
 		},
 		{
-			name: "no leading /item",
+			name:   "no leading /item",
 			filter: `""=="foo"`,
-			in: "foo",
-			match: false,
+			in:     "foo",
+			match:  false,
 		},
 		{
-			name: "simple string",
+			name:   "simple string",
 			filter: `"/item"=="foo"`,
-			in: "foo",
-			match: true,
+			in:     "foo",
+			match:  true,
 		},
 		{
-			name: "struct",
+			name:   "struct",
 			filter: `"/item/id"=="foo"`,
-			in: struct{
+			in: struct {
 				ID string `json:"id"`
 			}{ID: "foo"},
 			match: true,
 		},
 		{
-			name: "doesnt match struct fields",
+			name:   "doesnt match struct fields",
 			filter: `"/item/name"=="foo"`,
-			in: struct{
+			in: struct {
 				ID string `json:"id"`
 			}{ID: "foo"},
 			match: false,
 		},
 		{
-			name: "proto well known types",
+			name:   "proto well known types",
 			filter: `"/item/id"=="foo"`,
-			in: struct{
+			in: struct {
 				ID *wrapperspb.StringValue `json:"id"`
 			}{ID: wrapperspb.String("foo")},
 			match: true,
 		},
 		{
-			name: "pointer include proto well known type structure",
+			name:   "pointer include proto well known type structure",
 			filter: `"/item/id/value"=="foo"`,
-			in: struct{
+			in: struct {
 				ID *wrapperspb.StringValue `json:"id"`
 			}{ID: wrapperspb.String("foo")},
 			match: false,
 		},
 		{
-			name: "multi level struct",
+			name:   "multi level struct",
 			filter: `"/item/e/name"=="foo"`,
-			in: multiLevel{E: &embedded{Name: "foo"}},
-			match: true,
+			in:     multiLevel{E: &embedded{Name: "foo"}},
+			match:  true,
 		},
 		{
-			name: "multi level struct",
+			name:   "multi level struct",
 			filter: `"/item/e/name"=="foo"`,
-			in: multiLevel{E: nil},
-			match: false,
+			in:     multiLevel{E: nil},
+			match:  false,
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestNewFilter(t *testing.T) {
 }
 
 func TestWellKnownTypeFilterHook(t *testing.T) {
-	conversations := map[interface{}]interface{}{
+	conversions := map[interface{}]interface{}{
 		wrapperspb.String("foo"):        "foo",
 		wrapperspb.UInt64(123):          uint64(123),
 		wrapperspb.Int64(123):           int64(123),
@@ -131,7 +131,7 @@ func TestWellKnownTypeFilterHook(t *testing.T) {
 		wrapperspb.Bytes([]byte("foo")): []byte("foo"),
 		wrapperspb.Bool(true):           true,
 	}
-	for in, out := range conversations {
+	for in, out := range conversions {
 		assert.Equal(t, reflect.ValueOf(out).Interface(), wellKnownTypeFilterHook(reflect.ValueOf(in)).Interface())
 	}
 }
