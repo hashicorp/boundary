@@ -191,19 +191,19 @@ func TestList_Self(t *testing.T) {
 	require.NoError(t, err, "Couldn't create new session service.")
 
 	cases := []struct {
-		name string
-		requester  *authtoken.AuthToken
-		count  int
+		name      string
+		requester *authtoken.AuthToken
+		count     int
 	}{
 		{
-			name: "List Self Sessions",
+			name:      "List Self Sessions",
 			requester: at,
-			count: 1,
+			count:     1,
 		},
 		{
-			name: "Can't List Others Sessions",
-			requester:  otherAt,
-			count: 0,
+			name:      "Can't List Others Sessions",
+			requester: otherAt,
+			count:     0,
 		},
 	}
 	for _, tc := range cases {
@@ -211,11 +211,11 @@ func TestList_Self(t *testing.T) {
 			// Setup the auth request information
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/sessions?scope_id=%s", pWithSessions.GetPublicId()), nil)
 			requestInfo := auth.RequestInfo{
-				Path:   req.URL.Path,
-				Method: req.Method,
+				Path:        req.URL.Path,
+				Method:      req.Method,
 				TokenFormat: auth.AuthTokenTypeBearer,
-				PublicId: tc.requester.GetPublicId(),
-				Token: tc.requester.GetToken(),
+				PublicId:    tc.requester.GetPublicId(),
+				Token:       tc.requester.GetToken(),
 			}
 
 			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
