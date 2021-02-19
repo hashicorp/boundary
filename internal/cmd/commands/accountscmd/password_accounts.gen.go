@@ -83,7 +83,7 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "password-type account", flagsPasswordMap[c.Func])
 
-	c.extraPasswordFlagsFunc(set, f)
+	extraPasswordFlagsFunc(c, set, f)
 
 	return set
 }
@@ -158,7 +158,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := c.extraPasswordFlagHandlingFunc(&opts); ret != 0 {
+	if ret := extraPasswordFlagsHandlingFunc(c, &opts); ret != 0 {
 		return ret
 	}
 
@@ -203,3 +203,8 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extraPasswordFlagsFunc         = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
+	extraPasswordFlagsHandlingFunc = func(*PasswordCommand, *[]accounts.Option) int { return 0 }
+)

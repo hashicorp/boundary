@@ -10,6 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/common"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 type extraCmdVars struct {
 	flagHosts []string
 }
@@ -114,7 +119,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "host":
@@ -127,7 +132,7 @@ func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]hostsets.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) int {
 	switch c.Func {
 	case "add-hosts", "remove-hosts":
 		if len(c.flagHosts) == 0 {

@@ -192,9 +192,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map[c.Func])
 
-	{{ if .HasExtraFlagsFunc }}
-	c.extra{{ camelCase .SubActionPrefix }}FlagsFunc(set, f)
-	{{ end }}
+	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
 
 	return set
 }
@@ -316,11 +314,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	{{ if .HasExtraFlagHandlingFunc }}
-	if ret := c.extra{{ camelCase .SubActionPrefix }}FlagHandlingFunc(&opts); ret != 0 {
+	if ret := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, &opts); ret != 0 {
 		return ret
 	}
-	{{ end }}
 
 	c.existed = true
 	var result api.GenericResult
@@ -446,4 +442,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
+	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) int { return 0 }
+)
 `))

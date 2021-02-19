@@ -9,6 +9,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraPasswordFlagsFunc = extraPasswordFlagsFuncImpl
+	extraPasswordFlagsHandlingFunc = extraPasswordFlagHandlingFuncImpl
+}
+
 type extraPasswordCmdVars struct {
 	flagMinLoginNameLength string
 	flagMinPasswordLength  string
@@ -51,7 +56,7 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 	return helpStr + c.Flags().Help()
 }
 
-func (c *PasswordCommand) extraPasswordFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.FlagSet) {
 	f = set.NewFlagSet("Password Auth Method Options")
 
 	for _, name := range flagsPasswordMap[c.Func] {
@@ -72,7 +77,7 @@ func (c *PasswordCommand) extraPasswordFlagsFunc(set *base.FlagSets, f *base.Fla
 	}
 }
 
-func (c *PasswordCommand) extraPasswordFlagHandlingFunc(opts *[]authmethods.Option) int {
+func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.Option) int {
 	var attributes map[string]interface{}
 	addAttribute := func(name string, value interface{}) {
 		if attributes == nil {

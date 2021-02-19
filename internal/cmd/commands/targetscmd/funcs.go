@@ -14,6 +14,11 @@ import (
 	"github.com/posener/complete"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 type extraCmdVars struct {
 	flagHostSets []string
 	flagHostId   string
@@ -144,7 +149,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "host-set":
@@ -192,7 +197,7 @@ func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]targets.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
 	// This is custom logic because of the authorized-session handling. If we
 	// support all resources to be looked up by name + scope info we can
 	// eventually graduate this out to the main template.

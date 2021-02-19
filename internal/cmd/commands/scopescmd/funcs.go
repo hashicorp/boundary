@@ -9,6 +9,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 var extraActionsFlagsMap = map[string][]string{
 	"create": {"skip-admin-role-creation", "skip-default-role-creation"},
 }
@@ -18,7 +23,7 @@ type extraCmdVars struct {
 	flagSkipDefaultRoleCreation bool
 }
 
-func (c *Command) extraFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "skip-admin-role-creation":
@@ -37,7 +42,7 @@ func (c *Command) extraFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]scopes.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) int {
 	if c.flagSkipAdminRoleCreation {
 		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
 	}

@@ -78,6 +78,8 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "static-type host catalog", flagsStaticMap[c.Func])
 
+	extraStaticFlagsFunc(c, set, f)
+
 	return set
 }
 
@@ -156,6 +158,10 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
+	if ret := extraStaticFlagsHandlingFunc(c, &opts); ret != 0 {
+		return ret
+	}
+
 	c.existed = true
 	var result api.GenericResult
 
@@ -197,3 +203,8 @@ func (c *StaticCommand) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extraStaticFlagsFunc         = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
+	extraStaticFlagsHandlingFunc = func(*StaticCommand, *[]hostcatalogs.Option) int { return 0 }
+)

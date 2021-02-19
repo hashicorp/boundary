@@ -88,6 +88,8 @@ func (c *Command) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "auth token", flagsMap[c.Func])
 
+	extraFlagsFunc(c, set, f)
+
 	return set
 }
 
@@ -137,6 +139,10 @@ func (c *Command) Run(args []string) int {
 	switch c.FlagRecursive {
 	case true:
 		opts = append(opts, authtokens.WithRecursive(true))
+	}
+
+	if ret := extraFlagsHandlingFunc(c, &opts); ret != 0 {
+		return ret
 	}
 
 	c.existed = true
@@ -232,3 +238,8 @@ func (c *Command) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
+	extraFlagsHandlingFunc = func(*Command, *[]authtokens.Option) int { return 0 }
+)

@@ -13,6 +13,11 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/password"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 type extraCmdVars struct {
 	flagPassword        string
 	flagCurrentPassword string
@@ -80,7 +85,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "password":
@@ -105,7 +110,7 @@ func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]accounts.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) int {
 	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
 		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)

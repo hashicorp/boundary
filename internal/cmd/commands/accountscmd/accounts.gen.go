@@ -97,7 +97,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "account", flagsMap[c.Func])
 
-	c.extraFlagsFunc(set, f)
+	extraFlagsFunc(c, set, f)
 
 	return set
 }
@@ -186,7 +186,7 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	if ret := c.extraFlagHandlingFunc(&opts); ret != 0 {
+	if ret := extraFlagsHandlingFunc(c, &opts); ret != 0 {
 		return ret
 	}
 
@@ -285,3 +285,8 @@ func (c *Command) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extraFlagsFunc         = func(*Command, *base.FlagSets, *base.FlagSet) {}
+	extraFlagsHandlingFunc = func(*Command, *[]accounts.Option) int { return 0 }
+)

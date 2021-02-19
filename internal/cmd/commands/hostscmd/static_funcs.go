@@ -8,6 +8,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraStaticFlagsFunc = extraStaticFlagsFuncImpl
+	extraStaticFlagsHandlingFunc = extraStaticFlagsHandlingFuncImpl
+}
+
 type extraStaticCmdVars struct {
 	flagAddress string
 }
@@ -52,7 +57,7 @@ func (c *StaticCommand) extraStaticHelpFunc(helpMap map[string]func() string) st
 	return helpStr + c.Flags().Help()
 }
 
-func (c *StaticCommand) extraStaticFlagsFunc(set *base.FlagSets, _ *base.FlagSet) {
+func extraStaticFlagsFuncImpl(c *StaticCommand, set *base.FlagSets, _ *base.FlagSet) {
 	f := set.NewFlagSet("Static Host Options")
 
 	for _, name := range flagsStaticMap[c.Func] {
@@ -67,7 +72,7 @@ func (c *StaticCommand) extraStaticFlagsFunc(set *base.FlagSets, _ *base.FlagSet
 	}
 }
 
-func (c *StaticCommand) extraStaticFlagHandlingFunc(opts *[]hosts.Option) int {
+func extraStaticFlagsHandlingFuncImpl(c *StaticCommand, opts *[]hosts.Option) int {
 	if c.Func == "create" && c.flagAddress == "" {
 		c.UI.Error("Address must be provided via -address")
 		return 1

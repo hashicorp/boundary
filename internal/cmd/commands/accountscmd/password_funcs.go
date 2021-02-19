@@ -12,6 +12,11 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/password"
 )
 
+func init() {
+	extraPasswordFlagsFunc = extraPasswordFlagsFuncImpl
+	extraPasswordFlagsHandlingFunc = extraPasswordFlagsHandlingFuncImpl
+}
+
 var extraPasswordActionsFlagsMap = map[string][]string{
 	"create": {"login-name", "password"},
 	"update": {"login-name"},
@@ -54,7 +59,7 @@ func (c *PasswordCommand) extraPasswordHelpFunc(helpMap map[string]func() string
 	return helpStr + c.Flags().Help()
 }
 
-func (c *PasswordCommand) extraPasswordFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.FlagSet) {
 	f = set.NewFlagSet("Password Account Options")
 
 	for _, name := range flagsPasswordMap[c.Func] {
@@ -75,7 +80,7 @@ func (c *PasswordCommand) extraPasswordFlagsFunc(set *base.FlagSets, f *base.Fla
 	}
 }
 
-func (c *PasswordCommand) extraPasswordFlagHandlingFunc(opts *[]accounts.Option) int {
+func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Option) int {
 	if c.Func == "create" && c.flagLoginName == "" {
 		c.UI.Error("Login Name must be passed in via -login-name")
 		return 1

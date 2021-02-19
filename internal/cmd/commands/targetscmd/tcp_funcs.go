@@ -11,6 +11,11 @@ import (
 	"github.com/hashicorp/go-bexpr"
 )
 
+func init() {
+	extraTcpFlagsFunc = extraTcpFlagsFuncImpl
+	extraTcpFlagsHandlingFunc = extraTcpFlagsHandlingFuncImpl
+}
+
 var extraTcpActionsFlagsMap = map[string][]string{
 	"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 	"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
@@ -55,7 +60,7 @@ func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *TcpCommand) extraTcpFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
+func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 	f = set.NewFlagSet("TCP Target Options")
 
 	for _, name := range flagsTcpMap[c.Func] {
@@ -88,7 +93,7 @@ func (c *TcpCommand) extraTcpFlagsFunc(set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *TcpCommand) extraTcpFlagHandlingFunc(opts *[]targets.Option) int {
+func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
 	switch c.flagDefaultPort {
 	case "":
 	case "null":

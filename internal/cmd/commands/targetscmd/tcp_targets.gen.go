@@ -83,7 +83,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap[c.Func])
 
-	c.extraTcpFlagsFunc(set, f)
+	extraTcpFlagsFunc(c, set, f)
 
 	return set
 }
@@ -163,7 +163,7 @@ func (c *TcpCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := c.extraTcpFlagHandlingFunc(&opts); ret != 0 {
+	if ret := extraTcpFlagsHandlingFunc(c, &opts); ret != 0 {
 		return ret
 	}
 
@@ -208,3 +208,8 @@ func (c *TcpCommand) Run(args []string) int {
 
 	return 0
 }
+
+var (
+	extraTcpFlagsFunc         = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
+	extraTcpFlagsHandlingFunc = func(*TcpCommand, *[]targets.Option) int { return 0 }
+)

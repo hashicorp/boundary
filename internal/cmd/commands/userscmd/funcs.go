@@ -11,6 +11,11 @@ import (
 	"github.com/mitchellh/go-wordwrap"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 type extraCmdVars struct {
 	flagAccounts []string
 }
@@ -81,7 +86,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "account":
@@ -94,7 +99,7 @@ func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]users.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) int {
 	switch c.Func {
 	case "add-accounts", "remove-accounts":
 		if len(c.flagAccounts) == 0 {

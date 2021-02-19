@@ -12,6 +12,11 @@ import (
 	"github.com/mitchellh/go-wordwrap"
 )
 
+func init() {
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
 type extraCmdVars struct {
 	flagGrantScopeId string
 	flagPrincipals   []string
@@ -132,7 +137,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "grant-scope-id":
@@ -157,7 +162,7 @@ func (c *Command) extraFlagsFunc(_ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func (c *Command) extraFlagHandlingFunc(opts *[]roles.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
