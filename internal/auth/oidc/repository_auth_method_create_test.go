@@ -2,15 +2,17 @@ package oidc
 
 import (
 	"context"
+	"crypto/x509"
+	"net/url"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestRepository_CreateAuthMethod(t *testing.T) {
@@ -21,6 +23,20 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	ctx := context.Background()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
+	convertAlg := func(alg ...Alg) []string {
+		s := make([]string, 0, len(alg))
+		for _, a := range alg {
+			s = append(s, string(a))
+		}
+		return s
+	}
+	convertUrls := func(cb ...*url.URL) []string {
+		u := make([]string, 0, len(cb))
+		for _, c := range cb {
+			u = append(u, c.String())
+		}
+		return u
+	}
 	tests := []struct {
 		name         string
 		am           *AuthMethod
@@ -30,23 +46,53 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		{
 			name: "valid",
 			am: func() *AuthMethod {
+				algs := []Alg{RS256, ES256}
+				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")
+				auds := []string{"alice-rp", "bob-rp"}
+				cert1, pem1 := testGenerateCA(t, "localhost")
+				cert2, pem2 := testGenerateCA(t, "localhost")
+				certs := []*x509.Certificate{cert1, cert2}
+				pems := []string{pem1, pem2}
 				am, err := NewAuthMethod(
 					org.PublicId,
 					TestConvertToUrls(t, "https://www.alice.com")[0],
 					"alice-rp",
 					"alice-secret", WithAudClaims("alice-rp"),
-					WithAudClaims("alice-rp", "bob-rp"),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-					WithSigningAlgs(RS256, ES256),
+					WithAudClaims(auds...),
+					WithCallbackUrls(cbs...),
+					WithSigningAlgs(algs...),
+					WithCertificates(certs...),
 					WithName("alice's restaurant"),
 					WithDescription("it's a good place to eat"),
 				)
 				require.NoError(t, err)
-				require.Equal(t, am.SigningAlgs, []string{string(RS256), string(ES256)})
-				require.Equal(t, am.CallbackUrls, []string{"https://www.alice.com/callback"})
-				require.Equal(t, am.AudClaims, []string{"alice-rp", "bob-rp"})
+				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
+				require.Equal(t, am.CallbackUrls, convertUrls(cbs...))
+				require.Equal(t, am.AudClaims, auds)
+				require.Equal(t, am.Certificates, pems)
+				require.Equal(t, am.OperationalState, string(InactiveState))
 				return am
 			}(),
+		},
+		{
+			name: "bad-public-id",
+			am: func() *AuthMethod {
+				id, err := newAuthMethodId()
+				require.NoError(t, err)
+				am := AllocAuthMethod()
+				am.PublicId = id
+				return &am
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "bad-version",
+			am: func() *AuthMethod {
+				am := AllocAuthMethod()
+				am.Version = 22
+				return &am
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 	}
 	for _, tt := range tests {
