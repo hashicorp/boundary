@@ -12,6 +12,7 @@ export default function HomepageHero({
   links,
   uiVideo,
   cliVideo,
+  desktopVideo,
 }) {
   return (
     <div className={styles.homepageHero}>
@@ -40,6 +41,16 @@ export default function HomepageHero({
                 {
                   srcType: cliVideo.srcType,
                   url: cliVideo.url,
+                },
+              ],
+            },
+            {
+              name: 'Desktop',
+              playbackRate: desktopVideo.playbackRate,
+              src: [
+                {
+                  srcType: desktopVideo.srcType,
+                  url: desktopVideo.url,
                 },
               ],
             },
