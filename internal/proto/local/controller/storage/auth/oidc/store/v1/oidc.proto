@@ -37,9 +37,9 @@ message AuthMethod {
   uint32 version = 70;
 
   // state is the current state of the auth_oidc_method (inactive,
-  // active-private, active-public, or stopping).
-  // @inject_tag: `gorm:"not_null"`
-  string state = 80;
+  // active-private, or active-public).
+  // @inject_tag: `gorm:"column:state;not_null"`
+  string operational_state = 80;
 
   // discovery_url is the OIDC Discovery URL without any .well-known component
   // @inject_tag: `gorm:"not_null"`

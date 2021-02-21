@@ -4745,8 +4745,12 @@ create table wh_host_dimension (
 `),
 			1001: []byte(`
 -- This series of expressions fixes the primary key on the server table
+-- PG 12+
 alter table session
-  drop constraint session_server_id_server_type_fkey;
+  drop constraint if exists session_server_id_server_type_fkey;
+-- PG 11
+alter table session
+  drop constraint if exists session_server_id_fkey;
 alter table server
   drop constraint server_pkey;
 alter table server
@@ -4990,7 +4994,7 @@ create table auth_oidc_method_state_enm (
   name text primary key
     constraint only_predefined_oidc_method_states_allowed
     check (
-        name in ('inactive', 'active-private', 'active-public', 'stopping')
+        name in ('inactive', 'active-private', 'active-public')
     )
 );
 
@@ -4999,8 +5003,7 @@ insert into auth_oidc_method_state_enm(name)
   values
     ('inactive'),
     ('active-private'),
-    ('active-public'),
-    ('stopping'); 
+    ('active-public');
 
  -- define the immutable fields for auth_oidc_method_state_enm (all of them)
 create trigger 
@@ -5294,6 +5297,12 @@ create trigger
 before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
+
+    
+insert into oplog_ticket (name, version)
+values
+  ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
+  ('auth_oidc_account', 1);
 
 
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method

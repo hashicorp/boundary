@@ -104,4 +104,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withOrderClause = "public_id asc"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithUnauthenticatedUser", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithUnauthenticatedUser(true))
+		testOpts := getDefaultOptions()
+		testOpts.withUnauthenticatedUser = true
+		assert.Equal(opts, testOpts)
+	})
 }

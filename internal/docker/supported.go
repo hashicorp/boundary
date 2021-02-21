@@ -5,6 +5,7 @@ package docker
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ory/dockertest/v3"
@@ -27,11 +28,18 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	var url string
 	switch dialect {
 	case "postgres":
-		resource, err = pool.Run("postgres", "12", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
-		url = "postgres://postgres:password@localhost:%s?sslmode=disable"
-		if err == nil {
-			url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+		switch {
+		case os.Getenv("BOUNDARY_TESTING_PG_URL") != "":
+			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
+			return func() error { return nil }, url, "", nil
+		default:
+			resource, err = pool.Run("postgres", "11", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
+			if err == nil {
+				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+			}
 		}
+
 	default:
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}

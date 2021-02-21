@@ -60,6 +60,9 @@ type AuthMethod struct {
 // forces the IdP to re-authenticate the End-User.  Zero is not a valid value.
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
+//
+// Supports the options of WithMaxAge, WithSigningAlgs, WithAudClaims,
+// WithCallbackUrls and WithCertificates and all other options are ignored.
 func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
@@ -73,16 +76,42 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 	opts := getOpts(opt...)
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
-			ScopeId:      scopeId,
-			Name:         opts.withName,
-			Description:  opts.withDescription,
-			State:        string(InactiveState),
-			DiscoveryUrl: u,
-			ClientId:     clientId,
-			ClientSecret: string(clientSecret),
-			MaxAge:       int32(opts.withMaxAge),
+			ScopeId:          scopeId,
+			Name:             opts.withName,
+			Description:      opts.withDescription,
+			OperationalState: string(InactiveState),
+			DiscoveryUrl:     u,
+			ClientId:         clientId,
+			ClientSecret:     string(clientSecret),
+			MaxAge:           int32(opts.withMaxAge),
 		},
 	}
+	if len(opts.withCallbackUrls) > 0 {
+		a.CallbackUrls = make([]string, 0, len(opts.withCallbackUrls))
+		for _, c := range opts.withCallbackUrls {
+			a.CallbackUrls = append(a.CallbackUrls, c.String())
+		}
+	}
+	if len(opts.withAudClaims) > 0 {
+		a.AudClaims = make([]string, 0, len(opts.withAudClaims))
+		a.AudClaims = append(a.AudClaims, opts.withAudClaims...)
+	}
+	if len(opts.withCertificates) > 0 {
+		a.Certificates = make([]string, 0, len(opts.withCertificates))
+		pem, err := EncodeCertificates(opts.withCertificates...)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		a.Certificates = append(a.Certificates, pem...)
+
+	}
+	if len(opts.withSigningAlgs) > 0 {
+		a.SigningAlgs = make([]string, 0, len(opts.withSigningAlgs))
+		for _, alg := range opts.withSigningAlgs {
+			a.SigningAlgs = append(a.SigningAlgs, string(alg))
+		}
+	}
+
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
@@ -107,8 +136,8 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	if a.ScopeId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing scope id")
 	}
-	if !validState(a.State) {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.State))
+	if !validState(a.OperationalState) {
+		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
 	}
 	if a.DiscoveryUrl != "" {
 		if _, err := url.Parse(a.DiscoveryUrl); err != nil {
@@ -223,4 +252,120 @@ func (am *AuthMethod) isComplete() error {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing callback URLs"))
 	}
 	return result.ErrorOrNil()
+}
+
+type convertedValues struct {
+	Algs      []interface{}
+	Callbacks []interface{}
+	Auds      []interface{}
+	Certs     []interface{}
+}
+
+// convertValueObjects converts the embedded value objects. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
+	const op = "oidc.(AuthMethod).valueObjects"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	var err error
+	var addAlgs, addCallbacks, addAuds, addCerts []interface{}
+	if addAlgs, err = am.convertSigningAlgs(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if addCallbacks, err = am.convertCallbacks(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if addAuds, err = am.convertAudClaims(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if addCerts, err = am.convertCertificates(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return &convertedValues{
+		Algs:      addAlgs,
+		Callbacks: addCallbacks,
+		Auds:      addAuds,
+		Certs:     addCerts,
+	}, nil
+}
+
+// convertSigningAlgs converts the embedded signing algorithms from []string
+// to []interface{} where each slice element is a *SigningAlg. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertSigningAlgs() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertSigningAlgs"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.SigningAlgs))
+	for _, a := range am.SigningAlgs {
+		obj, err := NewSigningAlg(am.PublicId, Alg(a))
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+// convertAudClaims converts the embedded audience claims from []string
+// to []interface{} where each slice element is a *AudClaim. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertAudClaims() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertAudClaims"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.AudClaims))
+	for _, a := range am.AudClaims {
+		obj, err := NewAudClaim(am.PublicId, a)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+// convertCallbacks converts the embedded callback URLs from []string
+// to []interface{} where each slice element is a *CallbackUrl. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertCallbacks() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertCallbacks"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.CallbackUrls))
+	for _, u := range am.CallbackUrls {
+		newUrl, err := url.Parse(u)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		obj, err := NewCallbackUrl(am.PublicId, newUrl)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+// convertCertificates converts the embedded certificates from []string
+// to []interface{} where each slice element is a *Certificate. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertAudClaims"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.Certificates))
+	for _, cert := range am.Certificates {
+		obj, err := NewCertificate(am.PublicId, cert)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
 }

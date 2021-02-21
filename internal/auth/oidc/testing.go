@@ -22,7 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthMethod creates a test oidc auth method
+// TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
+// WithMaxAge, WithCallbackUrls, WithCertificates, WithAudClaims, and
+// WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
 	conn *gorm.DB,
@@ -40,6 +42,7 @@ func TestAuthMethod(
 	ctx := context.Background()
 
 	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
+	authMethod.OperationalState = string(state)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -55,7 +58,6 @@ func TestAuthMethod(
 			callback, err := NewCallbackUrl(authMethod.PublicId, c)
 			require.NoError(err)
 			newCallbacks = append(newCallbacks, callback)
-			authMethod.CallbackUrls = append(authMethod.CallbackUrls, callback.Url)
 		}
 		err := rw.CreateItems(ctx, newCallbacks)
 		require.NoError(err)
@@ -67,7 +69,6 @@ func TestAuthMethod(
 			aud, err := NewAudClaim(authMethod.PublicId, a)
 			require.NoError(err)
 			newAudClaims = append(newAudClaims, aud)
-			authMethod.AudClaims = append(authMethod.AudClaims, aud.Aud)
 		}
 		err := rw.CreateItems(ctx, newAudClaims)
 		require.NoError(err)
@@ -81,7 +82,6 @@ func TestAuthMethod(
 			cert, err := NewCertificate(authMethod.PublicId, pem[0])
 			require.NoError(err)
 			newCerts = append(newCerts, cert)
-			authMethod.Certificates = append(authMethod.Certificates, cert.Cert)
 		}
 		err := rw.CreateItems(ctx, newCerts)
 		require.NoError(err)
@@ -93,7 +93,6 @@ func TestAuthMethod(
 			alg, err := NewSigningAlg(authMethod.PublicId, a)
 			require.NoError(err)
 			newAlgs = append(newAlgs, alg)
-			authMethod.SigningAlgs = append(authMethod.SigningAlgs, alg.Alg)
 		}
 		err := rw.CreateItems(ctx, newAlgs)
 		require.NoError(err)
