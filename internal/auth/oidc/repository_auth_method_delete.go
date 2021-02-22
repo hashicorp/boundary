@@ -29,7 +29,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
 	var rowsDeleted int
