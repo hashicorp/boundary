@@ -1,6 +1,8 @@
 package accounts
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/api"
 )
 
@@ -18,6 +20,7 @@ type options struct {
 	queryMap                map[string]string
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
+	withFilter              string
 }
 
 func getDefaultOptions() options {
@@ -35,6 +38,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {
 		apiOpts = append(apiOpts, api.WithSkipCurlOutput(true))
+	}
+	if opts.withFilter != "" {
+		opts.queryMap["filter"] = opts.withFilter
 	}
 	return opts, apiOpts
 }
@@ -54,6 +60,15 @@ func WithAutomaticVersioning(enable bool) Option {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
+	}
+}
+
+// WithFilter tells the API to filter the items returned using the provided
+// filter term.  The filter should be in a format supported by
+// hashicorp/go-bexpr.
+func WithFilter(filter string) Option {
+	return func(o *options) {
+		o.withFilter = strings.TrimSpace(filter)
 	}
 }
 
