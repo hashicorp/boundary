@@ -172,6 +172,13 @@ func TestList(t *testing.T) {
 			p3, err := roleClient.List(tc.Context(), tt.scopeId)
 			require.NoError(err)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3.Items))
+
+			filterItem := p3.Items[3]
+			p3, err = roleClient.List(tc.Context(), tt.scopeId,
+				roles.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+			require.NoError(err)
+			assert.Len(p3.Items, 1)
+			assert.Equal(filterItem.Id, p3.Items[0].Id)
 		})
 	}
 }
