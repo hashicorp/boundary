@@ -231,7 +231,7 @@ func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
 // isComplete() checks the auth method to see if it has all the required
 // components of a complete/valid oidc auth method.
 func (am *AuthMethod) isComplete() error {
-	const op = "oidc.isComplete"
+	const op = "oidc.(AuthMethod).isComplete"
 	var result *multierror.Error
 	if err := am.validate(op); err != nil {
 		result = multierror.Append(result, errors.Wrap(err, op))
