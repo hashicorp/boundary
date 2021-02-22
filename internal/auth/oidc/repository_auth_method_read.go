@@ -23,18 +23,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
-	fmt.Println()
-	authMethods, err := r.getAuthMethods(ctx, publicId, nil, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	if len(authMethods) > 1 {
-		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("auth method id %s returned more than one result", publicId))
-	}
-	if len(authMethods) == 0 {
-		return nil, nil
-	}
-	return authMethods[0], nil
+	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
 }
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. The
@@ -50,6 +39,24 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 		return nil, errors.Wrap(err, op)
 	}
 	return authMethods, nil
+}
+
+// lookupAuthMethod will lookup a single auth method
+func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, error) {
+	const op = "oidc.(Repository).lookupAuthMethod"
+	var err error
+	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	switch {
+	case len(ams) == 0:
+		return nil, nil // not an error to return no rows for a "lookup"
+	case len(ams) > 1:
+		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
+	default:
+		return ams[0], nil
+	}
 }
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
