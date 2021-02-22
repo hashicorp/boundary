@@ -50,6 +50,13 @@ func TestList(t *testing.T) {
 	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableCatalogSlice(expected), comparableCatalogSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = catalogClient.List(tc.Context(), proj.GetPublicId(),
+		hostcatalogs.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableCatalogSlice(in []*hostcatalogs.HostCatalog) []hostcatalogs.HostCatalog {

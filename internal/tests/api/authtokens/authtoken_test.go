@@ -1,6 +1,7 @@
 package authtokens_test
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"testing"
@@ -74,6 +75,13 @@ func TestList(t *testing.T) {
 	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
+
+	filterItem := atl.Items[3]
+	atl, err = tokens.List(tc.Context(), org.GetPublicId(),
+		authtokens.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(atl.Items, 1)
+	assert.Equal(filterItem.Id, atl.Items[0].Id)
 }
 
 func comparableResource(i *authtokens.AuthToken) authtokens.AuthToken {

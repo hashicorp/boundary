@@ -226,6 +226,24 @@ func TestList(t *testing.T) {
 				Items: append(wantSomeAuthMethods, wantOtherAuthMethods...),
 			},
 		},
+		{
+			name: "Filter To Some Auth Methods",
+			req: &pbs.ListAuthMethodsRequest{
+				ScopeId: "global", Recursive: true,
+				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithAuthMethods.GetPublicId()),
+			},
+			res: &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+		},
+		{
+			name: "Filter All Auth Methods",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId(), Filter: `"/item/id"=="nothingmatchesthis"`},
+			res:  &pbs.ListAuthMethodsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -237,6 +255,8 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})

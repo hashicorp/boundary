@@ -2,6 +2,7 @@ package authtokens_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -204,6 +205,24 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListAuthTokensRequest{ScopeId: "global", Recursive: true},
 			res:  &pbs.ListAuthTokensResponse{Items: allTokens},
 		},
+		{
+			name: "Filter to Some Tokens",
+			req: &pbs.ListAuthTokensRequest{
+				ScopeId: "global", Recursive: true,
+				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, orgWithSomeTokens.GetPublicId()),
+			},
+			res: &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
+		},
+		{
+			name: "Filter All Tokens",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId(), Filter: `"/item/scope/id"=="thisdoesntmatch"`},
+			res:  &pbs.ListAuthTokensResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithSomeTokens.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -214,6 +233,8 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+			} else {
+				require.NoError(t, gErr)
 			}
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
