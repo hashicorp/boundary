@@ -30,7 +30,6 @@ require (
 	github.com/hashicorp/shared-secure-libs v0.0.3
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.3
-	github.com/jackc/pgx/v4 v4.10.1
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
 	github.com/kr/pretty v0.2.1
