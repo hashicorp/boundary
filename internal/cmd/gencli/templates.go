@@ -96,8 +96,8 @@ import (
 	"github.com/posener/complete"
 )
 
-func init{{ camelCase .SubActionPrefix }}Flags(c *{{ camelCase .SubActionPrefix }}Command) {
-	c.flagsOnce.Do(func() {
+func init{{ camelCase .SubActionPrefix }}Flags() {
+	flagsOnce.Do(func() {
 		extraFlags := extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flags{{ camelCase .SubActionPrefix }}Map[k] = append(flags{{ camelCase .SubActionPrefix }}Map[k], v...)
@@ -122,17 +122,15 @@ type {{ camelCase .SubActionPrefix }}Command struct {
 	{{ if .HasExtraCommandVars }}
 	extra{{ camelCase .SubActionPrefix }}CmdVars
 	{{ end }}
-
-	flagsOnce sync.Once
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteArgs() complete.Predictor {
-	init{{ camelCase .SubActionPrefix }}Flags(c)
+	init{{ camelCase .SubActionPrefix }}Flags()
 	return complete.PredictAnything
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.Flags {
-	init{{ camelCase .SubActionPrefix }}Flags(c)
+	init{{ camelCase .SubActionPrefix }}Flags()
 	return c.Flags().Completions()
 }
 
@@ -149,7 +147,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
-	init{{ camelCase .SubActionPrefix }}Flags(c)
+	init{{ camelCase .SubActionPrefix }}Flags()
 	
 	var helpStr string
 	helpMap := common.HelpMap("{{ lowerSpaceCase .ResourceType }}")
@@ -209,7 +207,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
-	init{{ camelCase .SubActionPrefix }}Flags(c)
+	init{{ camelCase .SubActionPrefix }}Flags()
 
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
@@ -453,6 +451,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 }
 
 var (
+	{{ if not .SubActionPrefix }}
+	flagsOnce = new(sync.Once)
+	{{ end }}
 	extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}

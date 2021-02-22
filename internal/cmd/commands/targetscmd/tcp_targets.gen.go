@@ -2,7 +2,6 @@ package targetscmd
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
@@ -13,8 +12,8 @@ import (
 	"github.com/posener/complete"
 )
 
-func initTcpFlags(c *TcpCommand) {
-	c.flagsOnce.Do(func() {
+func initTcpFlags() {
+	flagsOnce.Do(func() {
 		extraFlags := extraTcpActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flagsTcpMap[k] = append(flagsTcpMap[k], v...)
@@ -38,17 +37,15 @@ type TcpCommand struct {
 	plural string
 
 	extraTcpCmdVars
-
-	flagsOnce sync.Once
 }
 
 func (c *TcpCommand) AutocompleteArgs() complete.Predictor {
-	initTcpFlags(c)
+	initTcpFlags()
 	return complete.PredictAnything
 }
 
 func (c *TcpCommand) AutocompleteFlags() complete.Flags {
-	initTcpFlags(c)
+	initTcpFlags()
 	return c.Flags().Completions()
 }
 
@@ -65,7 +62,7 @@ func (c *TcpCommand) Synopsis() string {
 }
 
 func (c *TcpCommand) Help() string {
-	initTcpFlags(c)
+	initTcpFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("target")
@@ -103,7 +100,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 }
 
 func (c *TcpCommand) Run(args []string) int {
-	initTcpFlags(c)
+	initTcpFlags()
 
 	switch c.Func {
 	case "":

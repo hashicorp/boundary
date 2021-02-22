@@ -13,8 +13,8 @@ import (
 	"github.com/posener/complete"
 )
 
-func initFlags(c *Command) {
-	c.flagsOnce.Do(func() {
+func initFlags() {
+	flagsOnce.Do(func() {
 		extraFlags := extraActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flagsMap[k] = append(flagsMap[k], v...)
@@ -36,17 +36,15 @@ type Command struct {
 	existed bool
 	// Used in some output
 	plural string
-
-	flagsOnce sync.Once
 }
 
 func (c *Command) AutocompleteArgs() complete.Predictor {
-	initFlags(c)
+	initFlags()
 	return complete.PredictAnything
 }
 
 func (c *Command) AutocompleteFlags() complete.Flags {
-	initFlags(c)
+	initFlags()
 	return c.Flags().Completions()
 }
 
@@ -61,7 +59,7 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) Help() string {
-	initFlags(c)
+	initFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("session")
@@ -107,7 +105,7 @@ func (c *Command) Flags() *base.FlagSets {
 }
 
 func (c *Command) Run(args []string) int {
-	initFlags(c)
+	initFlags()
 
 	switch c.Func {
 	case "":
@@ -251,6 +249,8 @@ func (c *Command) Run(args []string) int {
 }
 
 var (
+	flagsOnce = new(sync.Once)
+
 	extraActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
