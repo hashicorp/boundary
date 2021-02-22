@@ -31,6 +31,10 @@ type options struct {
 	withFullName            string
 	withOrderClause         string
 	withUnauthenticatedUser bool
+	withForce               bool
+	withDryRun              bool
+	withAuthMethod          *AuthMethod
+	withPublicId            string
 }
 
 func getDefaultOptions() options {
@@ -130,5 +134,36 @@ func WithOrder(orderClause string) Option {
 func WithUnauthenticatedUser(enabled bool) Option {
 	return func(o *options) {
 		o.withUnauthenticatedUser = enabled
+	}
+}
+
+// WithForce provides an option to force the write operation, regardless of
+// whether or not it's pre-verification succeeds.
+func WithForce() Option {
+	return func(o *options) {
+		o.withForce = true
+	}
+}
+
+// WithDryRun provides an option to do a "dry run" of a write operation, which
+// will run verification steps and return any errors, but will not persist the
+// data into the repository.
+func WithDryRun() Option {
+	return func(o *options) {
+		o.withDryRun = true
+	}
+}
+
+// WithAuthMethod provides an option for passing an AuthMethod to the operation
+func WithAuthMethod(am *AuthMethod) Option {
+	return func(o *options) {
+		o.withAuthMethod = am
+	}
+}
+
+// WithPublicId provides an option for passing a public id to the operation
+func WithPublicId(publicId string) Option {
+	return func(o *options) {
+		o.withPublicId = publicId
 	}
 }
