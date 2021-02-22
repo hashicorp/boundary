@@ -63,6 +63,7 @@ message GetSessionResponse {
 message ListSessionsRequest {
 	string scope_id = 1;
 	bool recursive = 20 [json_name="recursive"];
+	string filter = 30 [json_name="filter"];
 }
 
 message ListSessionsResponse {
