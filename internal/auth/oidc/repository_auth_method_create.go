@@ -50,7 +50,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 
 	databaseWrapper, err := r.kms.GetWrapper(context.Background(), am.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err := am.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -62,7 +62,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 4)
+			msgs := make([]*oplog.Message, 0, 5)
 			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
