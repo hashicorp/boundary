@@ -2,6 +2,7 @@ package hostcatalogscmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
@@ -12,13 +13,13 @@ import (
 	"github.com/posener/complete"
 )
 
-func initStaticFlags() {
-	extraFlags := extraStaticActionsFlagsMapFunc()
-	if extraFlags != nil {
+func initStaticFlags(c *StaticCommand) {
+	c.flagsOnce.Do(func() {
+		extraFlags := extraStaticActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flagsStaticMap[k] = append(flagsStaticMap[k], v...)
 		}
-	}
+	})
 }
 
 var (
@@ -35,15 +36,17 @@ type StaticCommand struct {
 	existed bool
 	// Used in some output
 	plural string
+
+	flagsOnce sync.Once
 }
 
 func (c *StaticCommand) AutocompleteArgs() complete.Predictor {
-	initStaticFlags()
+	initStaticFlags(c)
 	return complete.PredictAnything
 }
 
 func (c *StaticCommand) AutocompleteFlags() complete.Flags {
-	initStaticFlags()
+	initStaticFlags(c)
 	return c.Flags().Completions()
 }
 
@@ -60,7 +63,7 @@ func (c *StaticCommand) Synopsis() string {
 }
 
 func (c *StaticCommand) Help() string {
-	initStaticFlags()
+	initStaticFlags(c)
 
 	var helpStr string
 	helpMap := common.HelpMap("host catalog")
@@ -98,7 +101,7 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 }
 
 func (c *StaticCommand) Run(args []string) int {
-	initStaticFlags()
+	initStaticFlags(c)
 
 	switch c.Func {
 	case "":

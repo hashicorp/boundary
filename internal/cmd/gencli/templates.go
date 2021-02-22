@@ -84,6 +84,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/{{ .Pkg }}"
@@ -95,13 +96,13 @@ import (
 	"github.com/posener/complete"
 )
 
-func init{{ camelCase .SubActionPrefix }}Flags() {
-	extraFlags := extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc()
-	if extraFlags != nil {
+func init{{ camelCase .SubActionPrefix }}Flags(c *{{ camelCase .SubActionPrefix }}Command) {
+	c.flagsOnce.Do(func() {
+		extraFlags := extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flags{{ camelCase .SubActionPrefix }}Map[k] = append(flags{{ camelCase .SubActionPrefix }}Map[k], v...)
 		}
-	}
+	})
 }
 
 var (
@@ -121,15 +122,17 @@ type {{ camelCase .SubActionPrefix }}Command struct {
 	{{ if .HasExtraCommandVars }}
 	extra{{ camelCase .SubActionPrefix }}CmdVars
 	{{ end }}
+
+	flagsOnce sync.Once
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteArgs() complete.Predictor {
-	init{{ camelCase .SubActionPrefix }}Flags()
+	init{{ camelCase .SubActionPrefix }}Flags(c)
 	return complete.PredictAnything
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.Flags {
-	init{{ camelCase .SubActionPrefix }}Flags()
+	init{{ camelCase .SubActionPrefix }}Flags(c)
 	return c.Flags().Completions()
 }
 
@@ -146,7 +149,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
-	init{{ camelCase .SubActionPrefix }}Flags()
+	init{{ camelCase .SubActionPrefix }}Flags(c)
 	
 	var helpStr string
 	helpMap := common.HelpMap("{{ lowerSpaceCase .ResourceType }}")
@@ -206,7 +209,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
-	init{{ camelCase .SubActionPrefix }}Flags()
+	init{{ camelCase .SubActionPrefix }}Flags(c)
 
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {

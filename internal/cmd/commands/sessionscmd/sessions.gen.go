@@ -2,6 +2,7 @@ package sessionscmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -12,13 +13,13 @@ import (
 	"github.com/posener/complete"
 )
 
-func initFlags() {
-	extraFlags := extraActionsFlagsMapFunc()
-	if extraFlags != nil {
+func initFlags(c *Command) {
+	c.flagsOnce.Do(func() {
+		extraFlags := extraActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flagsMap[k] = append(flagsMap[k], v...)
 		}
-	}
+	})
 }
 
 var (
@@ -35,15 +36,17 @@ type Command struct {
 	existed bool
 	// Used in some output
 	plural string
+
+	flagsOnce sync.Once
 }
 
 func (c *Command) AutocompleteArgs() complete.Predictor {
-	initFlags()
+	initFlags(c)
 	return complete.PredictAnything
 }
 
 func (c *Command) AutocompleteFlags() complete.Flags {
-	initFlags()
+	initFlags(c)
 	return c.Flags().Completions()
 }
 
@@ -58,7 +61,7 @@ func (c *Command) Synopsis() string {
 }
 
 func (c *Command) Help() string {
-	initFlags()
+	initFlags(c)
 
 	var helpStr string
 	helpMap := common.HelpMap("session")
@@ -104,7 +107,7 @@ func (c *Command) Flags() *base.FlagSets {
 }
 
 func (c *Command) Run(args []string) int {
-	initFlags()
+	initFlags(c)
 
 	switch c.Func {
 	case "":

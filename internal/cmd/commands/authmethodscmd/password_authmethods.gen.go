@@ -2,6 +2,7 @@ package authmethodscmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -12,13 +13,13 @@ import (
 	"github.com/posener/complete"
 )
 
-func initPasswordFlags() {
-	extraFlags := extraPasswordActionsFlagsMapFunc()
-	if extraFlags != nil {
+func initPasswordFlags(c *PasswordCommand) {
+	c.flagsOnce.Do(func() {
+		extraFlags := extraPasswordActionsFlagsMapFunc()
 		for k, v := range extraFlags {
 			flagsPasswordMap[k] = append(flagsPasswordMap[k], v...)
 		}
-	}
+	})
 }
 
 var (
@@ -37,15 +38,17 @@ type PasswordCommand struct {
 	plural string
 
 	extraPasswordCmdVars
+
+	flagsOnce sync.Once
 }
 
 func (c *PasswordCommand) AutocompleteArgs() complete.Predictor {
-	initPasswordFlags()
+	initPasswordFlags(c)
 	return complete.PredictAnything
 }
 
 func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
-	initPasswordFlags()
+	initPasswordFlags(c)
 	return c.Flags().Completions()
 }
 
@@ -62,7 +65,7 @@ func (c *PasswordCommand) Synopsis() string {
 }
 
 func (c *PasswordCommand) Help() string {
-	initPasswordFlags()
+	initPasswordFlags(c)
 
 	var helpStr string
 	helpMap := common.HelpMap("auth method")
@@ -100,7 +103,7 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 }
 
 func (c *PasswordCommand) Run(args []string) int {
-	initPasswordFlags()
+	initPasswordFlags(c)
 
 	switch c.Func {
 	case "":
