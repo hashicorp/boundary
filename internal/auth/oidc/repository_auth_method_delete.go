@@ -11,7 +11,7 @@ import (
 )
 
 // DeleteAuthMethod will delete the auth method from the repository.  It is
-// idempotent so if the auth method has not found, return 0 (no rows affected)
+// idempotent so if the auth method was not found, return 0 (no rows affected)
 // and nil.  No options are currently supported.
 func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAuthMethod"
