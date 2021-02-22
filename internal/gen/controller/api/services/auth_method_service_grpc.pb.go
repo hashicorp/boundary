@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // AuthMethodServiceClient is the client API for AuthMethodService service.
@@ -199,7 +200,7 @@ type UnsafeAuthMethodServiceServer interface {
 }
 
 func RegisterAuthMethodServiceServer(s grpc.ServiceRegistrar, srv AuthMethodServiceServer) {
-	s.RegisterService(&_AuthMethodService_serviceDesc, srv)
+	s.RegisterService(&AuthMethodService_ServiceDesc, srv)
 }
 
 func _AuthMethodService_GetAuthMethod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -328,7 +329,10 @@ func _AuthMethodService_AuthenticateLogin_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-var _AuthMethodService_serviceDesc = grpc.ServiceDesc{
+// AuthMethodService_ServiceDesc is the grpc.ServiceDesc for AuthMethodService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var AuthMethodService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.AuthMethodService",
 	HandlerType: (*AuthMethodServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
