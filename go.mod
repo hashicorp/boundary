@@ -5,7 +5,6 @@ go 1.14
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.33.0
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dhui/dktest v0.3.3
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
