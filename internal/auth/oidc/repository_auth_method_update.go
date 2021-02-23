@@ -104,7 +104,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		str := fmt.Sprintf("%s", i)
 		return NewSigningAlg(publicId, Alg(str))
 	}
-	addAlgs, deleteAlgs, err := valueObjectChanges(fac, origAm.PublicId, "SigningAlgs", am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
+	addAlgs, deleteAlgs, err := valueObjectChanges(fac, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -113,7 +113,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		pem := fmt.Sprintf("%s", i)
 		return NewCertificate(publicId, pem)
 	}
-	addCerts, deleteCerts, err := valueObjectChanges(fac, origAm.PublicId, "Certificates", am.Certificates, origAm.Certificates, dbMask, nullFields)
+	addCerts, deleteCerts, err := valueObjectChanges(fac, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -125,7 +125,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 		return NewCallbackUrl(publicId, u)
 	}
-	addCallbacks, deleteCallbacks, err := valueObjectChanges(fac, origAm.PublicId, "CallbackUrls", am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
+	addCallbacks, deleteCallbacks, err := valueObjectChanges(fac, origAm.PublicId, CallbackUrlVO, am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -134,7 +134,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(publicId, str)
 	}
-	addAuds, deleteAuds, err := valueObjectChanges(fac, origAm.PublicId, "AudClaims", am.AudClaims, origAm.AudClaims, dbMask, nullFields)
+	addAuds, deleteAuds, err := valueObjectChanges(fac, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -316,25 +316,56 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	return updatedAm, rowsUpdated, nil
 }
 
+type voName string
+
+const (
+	SigningAlgVO  voName = "SigningAlgs"
+	CallbackUrlVO voName = "CallbackUrls"
+	CertificateVO voName = "Certificates"
+	AudClaimVO    voName = "AudClaims"
+)
+
+func validVoName(name voName) bool {
+	switch name {
+	case SigningAlgVO, CallbackUrlVO, CertificateVO, AudClaimVO:
+		return true
+	default:
+		return false
+	}
+}
+
+// valueObjectChanges takes the new and old list of VOs (value objects) and
+// using the dbMasks/nullFields it will return lists of VOs where need to be
+// added and deleted in order to reconcile auth method's value objects.
 func valueObjectChanges(
 	factory func(string, interface{}) (interface{}, error),
-	publicId,
-	valueObjectName string,
+	publicId string,
+	valueObjectName voName,
 	newVOs,
-	origVOs,
+	oldVOs,
 	dbMask,
 	nullFields []string,
 ) (add []interface{}, del []interface{}, e error) {
 	const op = "valueObjectChanges"
+	if publicId == "" {
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+	}
+	if !validVoName(valueObjectName) {
+		return nil, nil, errors.New(errors.InvalidParameter, op, "invalid value object name")
+	}
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, nil, nil
+	}
+
 	foundVOs := map[string]bool{}
-	for _, a := range origVOs {
+	for _, a := range oldVOs {
 		foundVOs[a] = true
 	}
 	var adds []interface{}
 	var deletes []interface{}
-	if strutil.StrListContains(nullFields, valueObjectName) {
-		deletes = make([]interface{}, 0, len(origVOs))
-		for _, a := range origVOs {
+	if strutil.StrListContains(nullFields, string(valueObjectName)) {
+		deletes = make([]interface{}, 0, len(oldVOs))
+		for _, a := range oldVOs {
 			alg, err := factory(publicId, a)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, op)
@@ -343,7 +374,7 @@ func valueObjectChanges(
 			delete(foundVOs, a)
 		}
 	}
-	if strutil.StrListContains(dbMask, valueObjectName) {
+	if strutil.StrListContains(dbMask, string(valueObjectName)) {
 		adds = make([]interface{}, 0, len(newVOs))
 		for _, a := range newVOs {
 			if _, ok := foundVOs[a]; ok {
@@ -394,6 +425,7 @@ func updatableAuthMethodFields(fieldMaskPaths []string) error {
 	return nil
 }
 
+// applyUpdate takes the new and applies it to the orig using the field masks
 func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 	cp := orig.Clone()
 	for _, f := range fieldMaskPaths {
@@ -542,7 +574,13 @@ func (r *Repository) TestAuthMethod(ctx context.Context, opt ...Option) error {
 	return result.ErrorOrNil()
 }
 
-func pingEndpoint(ctx context.Context, client *http.Client, endpointType, method, url string) error {
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// pingEndpoint will make an attempted http request and return errors (non 2xx
+// status is not an error)
+func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, url string) error {
 	const op = "oidc.pingEndpoint"
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
