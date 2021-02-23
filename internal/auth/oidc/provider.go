@@ -41,19 +41,19 @@ func newProviderCache() *providers {
 	}
 }
 
-// getProvider determines if there's already a cached oidc.Provider for the
+// get determines if there's already a cached oidc.Provider for the
 // current AuthMethod from the DB. The cached oidc.Provider is preferred since
 // it maintains a cache of the JWKs required to verify ID Tokens from the IdP.
 //
-// Before returning a cached oidc.Provider, getProvider ensures that the
+// Before returning a cached oidc.Provider, get ensures that the
 // AuthMethod data used for the oidc.Provider's configuration hasn't changed
 // since it was cached. This is necessary because another controller could
 // update the AuthMethod in the DB, which would require changing the
 // configuration of the cached provider.
 //
-// getProvider will update the providerCache with the new AuthMethod, if it
+// get will update the providerCache with the new AuthMethod, if it
 // determines the provider's configuration has been updated in the DB.
-func (c *providers) getProvider(ctx context.Context, currentFromDb *AuthMethod) (*oidc.Provider, error) {
+func (c *providers) get(ctx context.Context, currentFromDb *AuthMethod) (*oidc.Provider, error) {
 	const op = "oidc.(providers).getProvider"
 	storedProvider, err := convertToProvider(ctx, currentFromDb)
 	if err != nil {
@@ -75,22 +75,22 @@ func (c *providers) getProvider(ctx context.Context, currentFromDb *AuthMethod) 
 		case true:
 			return p, nil
 		default:
-			c.delProvider(ctx, currentFromDb.PublicId)
+			c.delete(ctx, currentFromDb.PublicId)
 		}
 	}
-	c.setProvider(ctx, currentFromDb.PublicId, storedProvider)
+	c.set(ctx, currentFromDb.PublicId, storedProvider)
 	return storedProvider, nil
 }
 
-// setProvider will set an entry in the cache.
-func (c *providers) setProvider(ctx context.Context, authMethodId string, p *oidc.Provider) {
+// set will set an entry in the cache.
+func (c *providers) set(ctx context.Context, authMethodId string, p *oidc.Provider) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache[authMethodId] = p
 }
 
-// delProvider will delete an entry in the cache.
-func (c *providers) delProvider(ctx context.Context, authMethodId string) {
+// delete will delete an entry in the cache.
+func (c *providers) delete(ctx context.Context, authMethodId string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.cache, authMethodId)
