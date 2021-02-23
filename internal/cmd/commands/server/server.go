@@ -39,9 +39,6 @@ type Command struct {
 	SighupCh  chan struct{}
 	SigUSR2Ch chan struct{}
 
-	reloadedCh chan struct{} // for tests
-	startedCh  chan struct{} // for tests
-
 	Config     *config.Config
 	controller *controller.Controller
 	worker     *worker.Worker
@@ -54,7 +51,13 @@ type Command struct {
 	flagLogFormat   string
 	flagCombineLogs bool
 
+	reloadedCh   chan struct{}  // for tests
+	startedCh    chan struct{}  // for tests
 	presetConfig *atomic.String // for tests
+	// for tests -- Prometheus seems to use a global collector so if package
+	// tests are run it errors out even if they're not run in parallel 🙄 cause
+	// Go runs the tests within the same overall process
+	skipMetrics bool
 }
 
 func (c *Command) Synopsis() string {
@@ -149,9 +152,11 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Logger)
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-		c.UI.Error(err.Error())
-		return 1
+	if !c.skipMetrics {
+		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
 	}
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
