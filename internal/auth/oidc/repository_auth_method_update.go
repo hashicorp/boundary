@@ -353,6 +353,13 @@ func valueObjectChanges(
 	if !validVoName(valueObjectName) {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "invalid value object name")
 	}
+	if len(strutil.RemoveDuplicates(newVOs, false)) != len(newVOs) {
+		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate new %s", valueObjectName))
+	}
+	if len(strutil.RemoveDuplicates(oldVOs, false)) != len(oldVOs) {
+		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate old %s", valueObjectName))
+	}
+
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, nil
 	}
