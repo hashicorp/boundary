@@ -59,8 +59,7 @@ func New(conf *Config) (*Worker, error) {
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.controllerResolver.Store((*manual.Resolver)(nil))
 
-	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
-	w.updateTags.Store(true)
+	w.ParseAndStoreTags(conf.RawConfig.Worker.Tags)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -148,7 +147,7 @@ func (w *Worker) Resolver() *manual.Resolver {
 	return raw.(*manual.Resolver)
 }
 
-func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
+func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
 		w.tags.Store(map[string]*servers.TagValues{})
 		return
@@ -160,4 +159,5 @@ func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
 		}
 	}
 	w.tags.Store(tags)
+	w.updateTags.Store(true)
 }

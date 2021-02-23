@@ -2,6 +2,18 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next (Unreleased)
+
+### New and Improved
+
+* server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
+  worked before but wasn't fully tested.)
+  ([PR](https://github.com/hashicorp/boundary/pull/959))
+* server: On `SIGHUP`, [worker
+  tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
+  re-parsed and new values used
+  ([PR](https://github.com/hashicorp/boundary/pull/959))
+
 ## 0.1.7 (2021/02/16)
 
 *Note* This release fixes an upgrade issue affecting users on Postgres 11

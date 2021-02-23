@@ -9,10 +9,12 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
@@ -269,13 +271,15 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
-		var purpose string
-		for _, p := range lnConfig.Purpose {
-			purpose = strings.ToLower(p)
-			if !strutil.StrListContains(allowedPurposes, purpose) {
-				return fmt.Errorf("Unknown listener purpose %q", purpose)
-			}
+		if len(lnConfig.Purpose) != 1 {
+			return fmt.Errorf("Invalid size of listener purposes (%d)", len(lnConfig.Purpose))
 		}
+		// In worker/listener setup code we have validated that the purpose is size 1
+		purpose := strings.ToLower(lnConfig.Purpose[0])
+		if !strutil.StrListContains(allowedPurposes, purpose) {
+			return fmt.Errorf("Unknown listener purpose %q", purpose)
+		}
+		lnConfig.Purpose[0] = purpose
 
 		// Override for now
 		// TODO: Way to configure
@@ -320,9 +324,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		}
 
 		if reloadFunc != nil {
-			relSlice := b.ReloadFuncs["listener|"+lnConfig.Type]
+			relSlice := b.ReloadFuncs["listeners"]
 			relSlice = append(relSlice, reloadFunc)
-			b.ReloadFuncs["listener|"+lnConfig.Type] = relSlice
+			b.ReloadFuncs["listeners"] = relSlice
 		}
 
 		if lnConfig.MaxRequestSize == 0 {
@@ -707,4 +711,21 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	}
 	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
 	return nil
+}
+
+// MakeSighupCh returns a channel that can be used for SIGHUP
+// reloading. This channel will send a message for every
+// SIGHUP received.
+func MakeSighupCh() chan struct{} {
+	resultCh := make(chan struct{})
+
+	signalCh := make(chan os.Signal, 4)
+	signal.Notify(signalCh, syscall.SIGHUP)
+	go func() {
+		for {
+			<-signalCh
+			resultCh <- struct{}{}
+		}
+	}()
+	return resultCh
 }
