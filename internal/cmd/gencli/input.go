@@ -56,10 +56,6 @@ type cmdInfo struct {
 	// HasScopeName controls whether to add scope name options
 	HasScopeName bool
 
-	// HasRecursiveListing controls whether to add in options for recursive
-	// listing
-	HasRecursiveListing bool
-
 	// VersionedActions controls which actions to add a case for version checking
 	VersionedActions []string
 
@@ -154,7 +150,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ContainerRequiredActions: []string{"create", "list"},
 			HasName:                  true,
 			HasDescription:           true,
-			HasRecursiveListing:      true,
 			VersionedActions:         []string{"update", "add-members", "remove-members", "set-members"},
 		},
 	},
@@ -256,7 +251,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ContainerRequiredActions: []string{"create", "list"},
 			HasName:                  true,
 			HasDescription:           true,
-			HasRecursiveListing:      true,
 			VersionedActions:         []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals"},
 		},
 	},
@@ -271,7 +265,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ContainerRequiredActions: []string{"create", "list"},
 			HasName:                  true,
 			HasDescription:           true,
-			HasRecursiveListing:      true,
 			VersionedActions:         []string{"update"},
 		},
 	},
@@ -298,7 +291,6 @@ var inputStructs = map[string][]*cmdInfo{
 			IsAbstractType:           true,
 			HasName:                  true,
 			HasDescription:           true,
-			HasRecursiveListing:      true,
 			Container:                "Scope",
 			ContainerRequiredActions: []string{"list"},
 			VersionedActions:         []string{"add-host-sets", "remove-host-sets", "set-host-sets"},
@@ -332,7 +324,6 @@ var inputStructs = map[string][]*cmdInfo{
 			ContainerRequiredActions: []string{"create", "list"},
 			HasName:                  true,
 			HasDescription:           true,
-			HasRecursiveListing:      true,
 			VersionedActions:         []string{"update", "add-accounts", "remove-accounts", "set-accounts"},
 		},
 	},
