@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateAuthMethod creates m (*AuthMethod) in the repo along with its
+// CreateAuthMethod creates am (*AuthMethod) in the repo along with its
 // associated embedded optional value objects of SigningAlgs, CallbackUrls,
 // AudClaims and Certificates. and returns the newly created AuthMethod
 // (with its PublicId set)
