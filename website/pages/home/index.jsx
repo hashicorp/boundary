@@ -20,17 +20,18 @@ export default function HomePage() {
           },
         ]}
         uiVideo={{
-          url: '/videos/hero-ui.mp4',
+          url: 'https://www.datocms-assets.com/2885/1614100050-hero-ui.mp4',
           srcType: 'mp4',
           playbackRate: 2,
         }}
         cliVideo={{
-          url: '/videos/hero-cli.mp4',
+          url: 'https://www.datocms-assets.com/2885/1614100038-hero-cli.mp4',
           srcType: 'mp4',
           playbackRate: 1,
         }}
         desktopVideo={{
-          url: '/videos/hero-desktop.mp4',
+          url:
+            'https://www.datocms-assets.com/2885/1614100044-hero-desktop.mp4',
           srcType: 'mp4',
           playbackRate: 1,
         }}
