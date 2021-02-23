@@ -56,7 +56,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	if err := updatableAuthMethodFields(fieldMaskPaths); err != nil {
+	if err := validateFieldMask(fieldMaskPaths); err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
@@ -402,8 +402,8 @@ func valueObjectChanges(
 	return adds, deletes, nil
 }
 
-// updatableAuthMethodFields check the field mask to ensure all the fields are updatable
-func updatableAuthMethodFields(fieldMaskPaths []string) error {
+// validateFieldMask check the field mask to ensure all the fields are updatable
+func validateFieldMask(fieldMaskPaths []string) error {
 	const op = "validateFieldMask"
 	for _, f := range fieldMaskPaths {
 		switch {
