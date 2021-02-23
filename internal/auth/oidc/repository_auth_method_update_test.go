@@ -11,6 +11,64 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_valueObjectChanges(t *testing.T) {
+	tests := []struct {
+		name       string
+		factory    func(string, interface{}) (interface{}, error)
+		id         string
+		voName     voName
+		new        []string
+		old        []string
+		dbMask     []string
+		nullFields []string
+		wantAdd    []interface{}
+		wantDel    []interface{}
+		wantErr    bool
+	}{
+		{
+			name: "SigningAlgs",
+			factory: func(publicId string, i interface{}) (interface{}, error) {
+				str := fmt.Sprintf("%s", i)
+				return NewSigningAlg(publicId, Alg(str))
+			},
+			id:     "am-public-id",
+			voName: SigningAlgVO,
+			new:    []string{"ES256", "ES384"},
+			old:    []string{"RS256", "RS384", "RS512"},
+			dbMask: []string{string(SigningAlgVO)},
+			wantAdd: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", ES256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", ES384)
+				require.NoError(t, err)
+				return []interface{}{a, a2}
+			}(),
+			wantDel: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", RS256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", RS384)
+				require.NoError(t, err)
+				a3, err := NewSigningAlg("am-public-id", RS512)
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			gotAdd, gotDel, err := valueObjectChanges(tt.factory, tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantAdd, gotAdd)
+			assert.Equal(tt.wantDel, gotDel)
+		})
+	}
+}
+
 func Test_validateFieldMask(t *testing.T) {
 	tests := []struct {
 		name      string
