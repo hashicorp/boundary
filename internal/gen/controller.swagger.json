@@ -71,6 +71,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -278,6 +284,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -487,6 +499,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -566,6 +584,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -806,6 +830,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -938,6 +968,12 @@
         "parameters": [
           {
             "name": "host_catalog_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1175,6 +1211,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1316,6 +1358,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1655,6 +1703,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1808,6 +1862,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1897,6 +1957,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -2171,6 +2237,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [

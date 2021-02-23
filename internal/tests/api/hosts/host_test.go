@@ -56,6 +56,13 @@ func TestList(t *testing.T) {
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
 	assert.ElementsMatch(comparableHostSlice(expected), comparableHostSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = hClient.List(tc.Context(), hc.Item.Id,
+		hosts.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableHostSlice(in []*hosts.Host) []hosts.Host {

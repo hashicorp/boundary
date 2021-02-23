@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // GroupServiceClient is the client API for GroupService service.
@@ -230,7 +231,7 @@ type UnsafeGroupServiceServer interface {
 }
 
 func RegisterGroupServiceServer(s grpc.ServiceRegistrar, srv GroupServiceServer) {
-	s.RegisterService(&_GroupService_serviceDesc, srv)
+	s.RegisterService(&GroupService_ServiceDesc, srv)
 }
 
 func _GroupService_GetGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -377,7 +378,10 @@ func _GroupService_RemoveGroupMembers_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-var _GroupService_serviceDesc = grpc.ServiceDesc{
+// GroupService_ServiceDesc is the grpc.ServiceDesc for GroupService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var GroupService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.GroupService",
 	HandlerType: (*GroupServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

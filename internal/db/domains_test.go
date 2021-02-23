@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang-sql/civil"
-	_ "github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

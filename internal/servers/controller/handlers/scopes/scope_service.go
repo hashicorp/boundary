@@ -147,6 +147,10 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return nil, err
 	}
 
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	finalItems := make([]*pb.Scope, 0, len(pl))
 	res := &perms.Resource{
 		Type: resource.Scope,
@@ -155,7 +159,10 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
 				return nil, err
@@ -582,6 +589,9 @@ func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
 	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)

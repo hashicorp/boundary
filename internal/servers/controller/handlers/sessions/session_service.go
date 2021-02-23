@@ -112,6 +112,10 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, err
 	}
 
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	finalItems := make([]*pb.Session, 0, len(seslist))
 	res := &perms.Resource{
 		Type: resource.Session,
@@ -120,18 +124,24 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
-		if len(authorizedActions) > 0 {
-			onlySelf := true
-			for _, v := range authorizedActions {
-				if v != action.ReadSelf && v != action.CancelSelf {
-					onlySelf = false
-					break
-				}
+		if len(authorizedActions) == 0 {
+			continue
+		}
+		onlySelf := true
+		for _, v := range authorizedActions {
+			if v != action.ReadSelf && v != action.CancelSelf {
+				onlySelf = false
+				break
 			}
-			if !onlySelf || item.GetUserId() == authResults.UserId {
-				item.AuthorizedActions = authorizedActions.Strings()
-				finalItems = append(finalItems, item)
-			}
+		}
+		if onlySelf && item.GetUserId() != authResults.UserId {
+			continue
+		}
+
+		item.AuthorizedActions = authorizedActions.Strings()
+
+		if filter.Match(item) {
+			finalItems = append(finalItems, item)
 		}
 	}
 
@@ -321,6 +331,9 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

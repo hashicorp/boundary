@@ -187,6 +187,21 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true},
 			res:  &pbs.ListUsersResponse{Items: totalUsers},
 		},
+		{
+			name: "Filter Many Users",
+			req:  &pbs.ListUsersRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithUsers.GetPublicId())},
+			res:  &pbs.ListUsersResponse{Items: wantUsers},
+		},
+		{
+			name: "Filter To No Users",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Filter: `"/item/id"=="doesntmatch"`},
+			res:  &pbs.ListUsersResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
