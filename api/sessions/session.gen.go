@@ -2,7 +2,6 @@
 package sessions
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -37,15 +36,7 @@ type Session struct {
 	response *api.Response
 }
 
-func (n Session) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Session) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Session) ResponseStatus() int {
+func (n Session) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -58,12 +49,8 @@ func (n SessionReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n SessionReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n SessionReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n SessionReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -75,12 +62,8 @@ type SessionDeleteResult struct {
 	response *api.Response
 }
 
-func (n SessionDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n SessionDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n SessionDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type SessionListResult struct {
@@ -92,12 +75,8 @@ func (n SessionListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n SessionListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n SessionListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n SessionListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

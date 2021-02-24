@@ -549,15 +549,7 @@ type {{ .Name }} struct { {{ range .Fields }}
 }
 
 {{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
-func (n {{ .Name }}) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n {{ .Name }}) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n {{ .Name }}) ResponseStatus() int {
+func (n {{ .Name }}) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 {{ end }}
@@ -572,12 +564,8 @@ func (n {{ .Name }}ReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n {{ .Name }}ReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n {{ .Name }}ReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n {{ .Name }}ReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type {{ .Name }}CreateResult = {{ .Name }}ReadResult
@@ -587,12 +575,8 @@ type {{ .Name }}DeleteResult struct {
 	response *api.Response
 }
 
-func (n {{ .Name }}DeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n {{ .Name }}DeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n {{ .Name }}DeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type {{ .Name }}ListResult struct {
@@ -604,12 +588,8 @@ func (n {{ .Name }}ListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n {{ .Name }}ListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n {{ .Name }}ListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n {{ .Name }}ListResult) GetResponse() *api.Response {
+	return n.response
 }
 {{ end }}
 `)))

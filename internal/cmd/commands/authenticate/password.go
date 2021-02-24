@@ -134,7 +134,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		})
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, "Error from controller when performing authentication")
 			return 1
 		}
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))

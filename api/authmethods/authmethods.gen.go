@@ -2,7 +2,6 @@
 package authmethods
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,15 +29,7 @@ type AuthMethod struct {
 	response *api.Response
 }
 
-func (n AuthMethod) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethod) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n AuthMethod) ResponseStatus() int {
+func (n AuthMethod) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -51,12 +42,8 @@ func (n AuthMethodReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AuthMethodReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethodReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthMethodReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -68,12 +55,8 @@ type AuthMethodDeleteResult struct {
 	response *api.Response
 }
 
-func (n AuthMethodDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethodDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthMethodDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AuthMethodListResult struct {
@@ -85,12 +68,8 @@ func (n AuthMethodListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AuthMethodListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthMethodListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthMethodListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

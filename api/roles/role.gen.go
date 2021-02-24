@@ -2,7 +2,6 @@
 package roles
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,15 +31,7 @@ type Role struct {
 	response *api.Response
 }
 
-func (n Role) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Role) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Role) ResponseStatus() int {
+func (n Role) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -53,12 +44,8 @@ func (n RoleReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n RoleReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n RoleReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n RoleReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -70,12 +57,8 @@ type RoleDeleteResult struct {
 	response *api.Response
 }
 
-func (n RoleDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n RoleDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n RoleDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type RoleListResult struct {
@@ -87,12 +70,8 @@ func (n RoleListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n RoleListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n RoleListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n RoleListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

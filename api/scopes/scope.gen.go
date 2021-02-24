@@ -2,7 +2,6 @@
 package scopes
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,15 +27,7 @@ type Scope struct {
 	response *api.Response
 }
 
-func (n Scope) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Scope) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Scope) ResponseStatus() int {
+func (n Scope) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -49,12 +40,8 @@ func (n ScopeReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n ScopeReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n ScopeReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n ScopeReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -66,12 +53,8 @@ type ScopeDeleteResult struct {
 	response *api.Response
 }
 
-func (n ScopeDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n ScopeDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n ScopeDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type ScopeListResult struct {
@@ -83,12 +66,8 @@ func (n ScopeListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n ScopeListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n ScopeListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n ScopeListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

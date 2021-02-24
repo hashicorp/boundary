@@ -196,7 +196,7 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintCliError(fmt.Errorf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
 			return 1
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
@@ -221,7 +221,7 @@ func (c *TcpCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(item)
+		return c.PrintJsonItem(result, item)
 	}
 
 	return 0

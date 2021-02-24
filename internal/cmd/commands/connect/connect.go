@@ -208,15 +208,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
 	})
 
-	f.BoolVar(&base.BoolVar{
-		Name:       "output-json-errors",
-		Target:     &c.outputJsonErrors,
-		EnvVar:     "BOUNDARY_CONNECT_OUTPUT_JSON_ERRORS",
-		Completion: complete.PredictNothing,
-		Usage:      "Cause errors coming from this command to be output as JSON. This is experimental only and currently only meant for internal purposes. The format may change at any time and this flag/env var may be removed or modified at any time.",
-		Hidden:     true,
-	})
-
 	switch c.Func {
 	case "connect":
 		f.StringVar(&base.StringVar{
@@ -389,12 +380,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
 			if apiErr := api.AsServerError(err); apiErr != nil {
-				switch c.outputJsonErrors {
-				case true:
-					c.Error(apiErr.ResponseBody().String())
-				default:
-					c.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
-				}
+				c.PrintApiError(apiErr, "Error from controller when performing authorize-session action against given target")
 				return 1
 			}
 			c.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))

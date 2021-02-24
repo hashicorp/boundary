@@ -2,7 +2,6 @@
 package accounts
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,15 +28,7 @@ type Account struct {
 	response *api.Response
 }
 
-func (n Account) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Account) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Account) ResponseStatus() int {
+func (n Account) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -50,12 +41,8 @@ func (n AccountReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AccountReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AccountReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AccountReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -67,12 +54,8 @@ type AccountDeleteResult struct {
 	response *api.Response
 }
 
-func (n AccountDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AccountDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AccountDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AccountListResult struct {
@@ -84,12 +67,8 @@ func (n AccountListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AccountListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AccountListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AccountListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

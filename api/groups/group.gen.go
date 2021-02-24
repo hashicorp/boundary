@@ -2,7 +2,6 @@
 package groups
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,15 +28,7 @@ type Group struct {
 	response *api.Response
 }
 
-func (n Group) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Group) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Group) ResponseStatus() int {
+func (n Group) StatusCode() int {
 	return n.response.HttpResponse().StatusCode
 }
 
@@ -50,12 +41,8 @@ func (n GroupReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n GroupReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n GroupReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n GroupReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -67,12 +54,8 @@ type GroupDeleteResult struct {
 	response *api.Response
 }
 
-func (n GroupDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n GroupDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n GroupDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type GroupListResult struct {
@@ -84,12 +67,8 @@ func (n GroupListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n GroupListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n GroupListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n GroupListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
