@@ -36,10 +36,6 @@ type Session struct {
 	response *api.Response
 }
 
-func (n Session) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type SessionReadResult struct {
 	Item     *Session
 	response *api.Response

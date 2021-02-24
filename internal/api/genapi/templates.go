@@ -548,12 +548,6 @@ type {{ .Name }} struct { {{ range .Fields }}
 {{ end }}
 }
 
-{{ if ( or .CreateResponseTypes ( eq .Name "Error" ) ) }}
-func (n {{ .Name }}) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-{{ end }}
-
 {{ if .CreateResponseTypes }}
 type {{ .Name }}ReadResult struct {
 	Item *{{ .Name }}

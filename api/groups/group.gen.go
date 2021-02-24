@@ -28,10 +28,6 @@ type Group struct {
 	response *api.Response
 }
 
-func (n Group) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type GroupReadResult struct {
 	Item     *Group
 	response *api.Response

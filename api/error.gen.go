@@ -9,7 +9,3 @@ type Error struct {
 
 	response *Response
 }
-
-func (n Error) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}

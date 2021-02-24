@@ -29,10 +29,6 @@ type HostCatalog struct {
 	response *api.Response
 }
 
-func (n HostCatalog) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type HostCatalogReadResult struct {
 	Item     *HostCatalog
 	response *api.Response

@@ -28,10 +28,6 @@ type Account struct {
 	response *api.Response
 }
 
-func (n Account) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type AccountReadResult struct {
 	Item     *Account
 	response *api.Response

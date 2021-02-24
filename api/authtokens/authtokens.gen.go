@@ -28,10 +28,6 @@ type AuthToken struct {
 	response *api.Response
 }
 
-func (n AuthToken) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type AuthTokenReadResult struct {
 	Item     *AuthToken
 	response *api.Response

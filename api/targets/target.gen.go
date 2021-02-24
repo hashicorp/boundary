@@ -33,10 +33,6 @@ type Target struct {
 	response *api.Response
 }
 
-func (n Target) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type TargetReadResult struct {
 	Item     *Target
 	response *api.Response

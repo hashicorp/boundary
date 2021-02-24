@@ -145,7 +145,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 			ApiError json.RawMessage `json:"api_error"`
 		}{
 			Error:    contextStr,
-			Status:   in.StatusCode(),
+			Status:   in.Response().StatusCode(),
 			ApiError: in.Response().Body.Bytes(),
 		}
 		b, _ := JsonFormatter{}.Format(output)
@@ -153,7 +153,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 
 	default:
 		nonAttributeMap := map[string]interface{}{
-			"Status":  in.StatusCode(),
+			"Status":  in.Response().StatusCode(),
 			"Kind":    in.Kind,
 			"Message": in.Message,
 		}

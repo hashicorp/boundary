@@ -29,10 +29,6 @@ type Host struct {
 	response *api.Response
 }
 
-func (n Host) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type HostReadResult struct {
 	Item     *Host
 	response *api.Response

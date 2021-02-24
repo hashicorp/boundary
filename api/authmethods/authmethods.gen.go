@@ -29,10 +29,6 @@ type AuthMethod struct {
 	response *api.Response
 }
 
-func (n AuthMethod) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type AuthMethodReadResult struct {
 	Item     *AuthMethod
 	response *api.Response

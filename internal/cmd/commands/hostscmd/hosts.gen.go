@@ -193,7 +193,7 @@ func (c *Command) Run(args []string) int {
 
 	case "delete":
 		_, err = hostsClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.StatusCode() == http.StatusNotFound {
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}

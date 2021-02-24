@@ -29,10 +29,6 @@ type HostSet struct {
 	response *api.Response
 }
 
-func (n HostSet) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type HostSetReadResult struct {
 	Item     *HostSet
 	response *api.Response

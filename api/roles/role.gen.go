@@ -31,10 +31,6 @@ type Role struct {
 	response *api.Response
 }
 
-func (n Role) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type RoleReadResult struct {
 	Item     *Role
 	response *api.Response

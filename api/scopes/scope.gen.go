@@ -27,10 +27,6 @@ type Scope struct {
 	response *api.Response
 }
 
-func (n Scope) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type ScopeReadResult struct {
 	Item     *Scope
 	response *api.Response

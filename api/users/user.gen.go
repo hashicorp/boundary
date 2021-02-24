@@ -28,10 +28,6 @@ type User struct {
 	response *api.Response
 }
 
-func (n User) StatusCode() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type UserReadResult struct {
 	Item     *User
 	response *api.Response
