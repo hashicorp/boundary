@@ -41,8 +41,6 @@ create table auth_oidc_method (
   unique(scope_id, public_id),
   unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
-comment on table auth_oidc_method is
-'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
 
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
@@ -58,8 +56,6 @@ create table auth_oidc_signing_alg (
     on update cascade,
   primary key(oidc_method_id, signing_alg_name)
 );
-comment on table auth_oidc_signing_alg is
-'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
 
 -- auth_oidc_callback_url entries are the callback URLs allowed for a specific
 -- oidc auth method.  There must be at least one callback url for each oidc auth
@@ -73,8 +69,6 @@ create table auth_oidc_callback_url (
   callback_url wt_url not null,
   primary key(oidc_method_id, callback_url)
 );
-comment on table auth_oidc_callback_url is
-'auth_oidc_callback_url entries are the callback URLs allowed for a specific oidc auth method.  There must be at least one callback url for each oidc auth method.';
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
@@ -92,9 +86,6 @@ create table auth_oidc_aud_claim (
       check(length(trim(aud_claim)) < 1024),
   primary key(oidc_method_id, aud_claim)
 );
-comment on table auth_oidc_aud_claim is
-'auth_oidc_aud_claim entries are the audience claims for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any aud claims, an ID token must contain one of them to be valid.';
-
 
 -- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
 -- Each entry is a single certificate.  An oidc auth method may have 0 or more
@@ -110,12 +101,8 @@ create table auth_oidc_certificate (
   certificate bytea not null,
   primary key(oidc_method_id, certificate)
 );
-comment on table auth_oidc_certificate is
-'auth_oidc_certificate entries are optional PEM encoded x509 certificates. Each entry is a single certificate.  An oidc auth method may have 0 or more of these optional x509s.  If an auth method has any cert entries, they are used as trust anchors when connecting to the auth methods oidc provider (instead of the host system cert chain)';
 
 
--- auth_oidc_account entries are subtypes of auth_account and represent an
--- oidc account.
 create table auth_oidc_account (
     public_id wt_public_id
       primary key,
@@ -154,8 +141,6 @@ create table auth_oidc_account (
     unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
-comment on table auth_oidc_method is
-'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 
 -- auth_oidc_method column triggers
 create trigger
@@ -241,50 +226,5 @@ create trigger
 before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
-
-    
-insert into oplog_ticket (name, version)
-values
-  ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
-  ('auth_oidc_account', 1);
-
-
--- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
--- with its associated value objects (algs, callbacks, auds, certs) as columns
--- with | delimited values.  The use of the postgres string_agg(...) to
--- aggregate the value objects into a column works because we are only pulling
--- in one column from the associated tables and that value is part of the
--- primary key and unique.  This view will make things like recursive listing of
--- oidc auth methods fairly straightforward to implement but the oidc repo. 
-create view oidc_auth_method_with_value_obj as
-select 
-  am.public_id,
-  am.scope_id,
-  am.name,
-  am.description, 
-  am.create_time,
-  am.update_time,
-  am.version,
-  am.state,
-  am.discovery_url,
-  am.client_id,
-  am.client_secret,
-  am.client_secret_hmac,
-  am.key_id,
-  am.max_age,
-  -- the string_agg(..) column will be null if there are no associated value objects
-  string_agg(distinct alg.signing_alg_name, '|') as algs, 
-  string_agg(distinct cb.callback_url, '|') as callbacks, 
-  string_agg(distinct aud.aud_claim, '|') as auds, 
-  string_agg(distinct cert.certificate, '|') as certs
-from 	
-	auth_oidc_method am 
-  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
-  left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
-  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id 
-  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
-group by am.public_id;
-comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
 
 commit;

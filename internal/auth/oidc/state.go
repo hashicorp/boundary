@@ -8,12 +8,13 @@ const (
 	InactiveState      AuthMethodState = "inactive"
 	ActivePrivateState AuthMethodState = "active-private"
 	ActivePublicState  AuthMethodState = "active-public"
+	StoppingState      AuthMethodState = "stopping"
 )
 
 func validState(s string) bool {
 	st := AuthMethodState(s)
 	switch st {
-	case InactiveState, ActivePrivateState, ActivePublicState:
+	case InactiveState, ActivePrivateState, ActivePublicState, StoppingState:
 		return true
 	default:
 		return false

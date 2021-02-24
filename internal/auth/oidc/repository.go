@@ -1,9 +1,12 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/cap/oidc"
 )
 
 // Repository is the oidc repository
@@ -40,4 +43,16 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		kms:          kms,
 		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+// getAuthMethods allows the caller to either lookup a specific AuthMethod via
+// its id or search for a set AuthMethods within a set of scopes.  Passing both
+// scopeIds and a authMethodId is an error.   The WithVersion option is
+// supported when an authMethodId is specified.  All other options are ignored.
+func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
+	panic("to-do")
+}
+
+func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, error) {
+	panic("to-do")
 }

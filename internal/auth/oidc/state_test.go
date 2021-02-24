@@ -13,6 +13,7 @@ func Test_validState(t *testing.T) {
 		{"inactive", true},
 		{"active-private", true},
 		{"active-public", true},
+		{"stopping", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.s, func(t *testing.T) {

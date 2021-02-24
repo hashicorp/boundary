@@ -19,18 +19,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName                string
-	withDescription         string
-	withLimit               int
-	withMaxAge              int
-	withCallbackUrls        []*url.URL
-	withCertificates        []*x509.Certificate
-	withAudClaims           []string
-	withSigningAlgs         []Alg
-	withEmail               string
-	withFullName            string
-	withOrderClause         string
-	withUnauthenticatedUser bool
+	withName         string
+	withDescription  string
+	withLimit        int
+	withMaxAge       int
+	withCallbackUrls []*url.URL
+	withCertificates []*x509.Certificate
+	withAudClaims    []string
+	withSigningAlgs  []Alg
+	withEmail        string
+	withFullName     string
 }
 
 func getDefaultOptions() options {
@@ -115,20 +113,5 @@ func WithEmail(email string) Option {
 func WithFullName(n string) Option {
 	return func(o *options) {
 		o.withFullName = n
-	}
-}
-
-// WithOrder provides an optional with order clause.
-func WithOrder(orderClause string) Option {
-	return func(o *options) {
-		o.withOrderClause = orderClause
-	}
-}
-
-// WithUnauthenticatedUser provides an option for filtering results for
-// an unauthenticated users.
-func WithUnauthenticatedUser(enabled bool) Option {
-	return func(o *options) {
-		o.withUnauthenticatedUser = enabled
 	}
 }
