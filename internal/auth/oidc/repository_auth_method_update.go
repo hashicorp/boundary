@@ -518,6 +518,12 @@ func (r *Repository) TestAuthMethod(ctx context.Context, opt ...Option) error {
 		return result.ErrorOrNil()
 	}
 
+	// we need to prevent redirects during these tests... we don't want to have
+	// redirects going to the controller's callback (aka the configured provider's callback)
+	providerClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
 	// test JWKs URL
 	statusCode, err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL)
 	if err != nil {
