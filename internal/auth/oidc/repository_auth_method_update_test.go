@@ -18,6 +18,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_UpdateAuthMethod(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	tp := oidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+	tpCert, err := ParseCertificates(tp.CACert())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(tpCert))
+
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		setup        func() *AuthMethod
+		updateWith   func(orig *AuthMethod) *AuthMethod
+		fieldMasks   []string
+		version      uint32
+		opt          []Option
+		want         func(orig, updateWith *AuthMethod) *AuthMethod
+		wantErrMatch *errors.Template
+	}{
+		{
+			name: "very-simple",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description", "AudClaims"},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = updateWith.Name
+				am.Description = updateWith.Description
+				am.AudClaims = updateWith.AudClaims
+				return am
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := tt.setup()
+			updateWith := tt.updateWith(orig)
+			updated, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updateWith, tt.version, tt.fieldMasks, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Equal(0, rowsUpdated)
+				assert.Nil(updated)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(updated)
+			assert.Equal(1, rowsUpdated)
+			want := tt.want(orig, updateWith)
+			want.CreateTime = updated.CreateTime
+			want.UpdateTime = updated.UpdateTime
+			want.Version = updated.Version
+			assert.Equal(want, updated)
+		})
+	}
+}
+
 func Test_TestAuthMethod(t *testing.T) {
 	// do not run these tests with t.Parallel()
 	ctx := context.Background()
