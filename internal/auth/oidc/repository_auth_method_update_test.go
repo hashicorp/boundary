@@ -7,12 +7,14 @@ import (
 	"net/url"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,6 +85,49 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				return am
 			},
 		},
+		{
+			name: "with-force-all-value-objects",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				_, pem := testGenerateCA(t, "127.0.0.1")
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.AudClaims = []string{"www.alice.com/admin"}
+				am.CallbackUrls = []string{"https://www.bob.com/callback"}
+				am.SigningAlgs = []string{string(RS384), string(ES256)}
+				am.Certificates = []string{pem}
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "CallbackUrls", "SigningAlgs", "Certificates"},
+			version:    1,
+			opt:        []Option{WithForce()},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = updateWith.Name
+				am.Description = updateWith.Description
+				am.AudClaims = updateWith.AudClaims
+				am.CallbackUrls = updateWith.CallbackUrls
+				am.SigningAlgs = updateWith.SigningAlgs
+				am.Certificates = updateWith.Certificates
+				return am
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,6 +140,9 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				assert.Equal(0, rowsUpdated)
 				assert.Nil(updated)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+
+				err := db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.Errorf(err, "should not have found oplog entry for %s", updateWith.PublicId)
 				return
 			}
 			require.NoError(err)
@@ -104,7 +152,11 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			want.CreateTime = updated.CreateTime
 			want.UpdateTime = updated.UpdateTime
 			want.Version = updated.Version
+			TestSortAuthMethods(t, []*AuthMethod{want, updated})
 			assert.Equal(want, updated)
+
+			err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 		})
 	}
 }
