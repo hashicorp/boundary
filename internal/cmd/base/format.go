@@ -149,7 +149,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 			ApiError: in.Response().Body.Bytes(),
 		}
 		b, _ := JsonFormatter{}.Format(output)
-		c.UI.Output(string(b))
+		c.UI.Error(string(b))
 
 	default:
 		nonAttributeMap := map[string]interface{}{
@@ -206,7 +206,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 			}
 		}
 
-		c.UI.Output(WrapForHelpText(output))
+		c.UI.Error(WrapForHelpText(output))
 	}
 }
 
@@ -222,7 +222,7 @@ func (c *Command) PrintCliError(err error) {
 			Error: err.Error(),
 		}
 		b, _ := JsonFormatter{}.Format(output)
-		c.UI.Output(string(b))
+		c.UI.Error(string(b))
 	}
 }
 
