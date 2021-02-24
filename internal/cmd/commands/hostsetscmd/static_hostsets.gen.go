@@ -32,9 +32,6 @@ type StaticCommand struct {
 
 	Func string
 
-	// Used for delete operations
-	existed bool
-	// Used in some output
 	plural string
 }
 
@@ -175,7 +172,6 @@ func (c *StaticCommand) Run(args []string) int {
 		return ret
 	}
 
-	c.existed = true
 	var result api.GenericResult
 
 	switch c.Func {

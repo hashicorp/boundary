@@ -34,9 +34,6 @@ type Command struct {
 
 	Func string
 
-	// Used for delete operations
-	existed bool
-	// Used in some output
 	plural string
 
 	extraCmdVars
@@ -239,7 +236,8 @@ func (c *Command) Run(args []string) int {
 		return ret
 	}
 
-	c.existed = true
+	existed := true
+
 	var result api.GenericResult
 
 	var listResult api.GenericListResult
@@ -258,7 +256,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		_, err = usersClient.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
-			c.existed = false
+			existed = false
 			err = nil
 		}
 
@@ -292,11 +290,11 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", c.existed))
+			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
 
 		case "table":
 			output := "The delete operation completed successfully"
-			switch c.existed {
+			switch existed {
 			case true:
 				output += "."
 			default:

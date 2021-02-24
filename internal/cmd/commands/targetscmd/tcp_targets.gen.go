@@ -32,9 +32,6 @@ type TcpCommand struct {
 
 	Func string
 
-	// Used for delete operations
-	existed bool
-	// Used in some output
 	plural string
 
 	extraTcpCmdVars
@@ -182,7 +179,6 @@ func (c *TcpCommand) Run(args []string) int {
 		return ret
 	}
 
-	c.existed = true
 	var result api.GenericResult
 
 	switch c.Func {

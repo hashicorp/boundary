@@ -32,9 +32,6 @@ type PasswordCommand struct {
 
 	Func string
 
-	// Used for delete operations
-	existed bool
-	// Used in some output
 	plural string
 
 	extraPasswordCmdVars
@@ -177,7 +174,6 @@ func (c *PasswordCommand) Run(args []string) int {
 		return ret
 	}
 
-	c.existed = true
 	var result api.GenericResult
 
 	switch c.Func {

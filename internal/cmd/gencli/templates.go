@@ -115,9 +115,6 @@ type {{ camelCase .SubActionPrefix }}Command struct {
 
 	Func string
 
-	// Used for delete operations
-	existed bool
-	// Used in some output
 	plural string
 	{{ if .HasExtraCommandVars }}
 	extra{{ camelCase .SubActionPrefix }}CmdVars
@@ -249,14 +246,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "{{ kebabCase .Container }}-id") {
 		switch c.Func {
-		{{ if hasAction .ContainerRequiredActions "create" }}
+		{{ if hasAction .StdActions "create" }}
 		case "create":
 			if c.Flag{{ .Container }}Id == "" {
 				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
 				return 1
 			}
 		{{ end }}
-		{{ if hasAction .ContainerRequiredActions "list" }}
+		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.Flag{{ .Container }}Id == "" {
 				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
@@ -327,7 +324,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return ret
 	}
 
-	c.existed = true
+	{{ if hasAction .StdActions "delete" }}
+	existed := true
+	{{ end }}
 	var result api.GenericResult
 	{{ if hasAction .StdActions "list" }}
 	var listResult api.GenericListResult
@@ -351,7 +350,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "delete":
 		_, err = {{ $input.Pkg}}Client.Delete(c.Context, c.FlagId, opts...)
 		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
-			c.existed = false
+			existed = false
 			err = nil
 		}
 	{{ end }}
@@ -388,11 +387,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", c.existed))
+			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
 
 		case "table":
 			output := "The delete operation completed successfully"
-			switch c.existed {
+			switch existed {
 			case true:
 				output += "."
 			default:
