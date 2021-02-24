@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,24 +20,19 @@ func Test_valueObjectChanges(t *testing.T) {
 	_, pem2 := testGenerateCA(t, "127.0.0.1")
 	_, pem3 := testGenerateCA(t, "www.example.com")
 	tests := []struct {
-		name       string
-		factory    func(string, interface{}) (interface{}, error)
-		id         string
-		voName     voName
-		new        []string
-		old        []string
-		dbMask     []string
-		nullFields []string
-		wantAdd    []interface{}
-		wantDel    []interface{}
-		wantErr    bool
+		name         string
+		id           string
+		voName       voName
+		new          []string
+		old          []string
+		dbMask       []string
+		nullFields   []string
+		wantAdd      []interface{}
+		wantDel      []interface{}
+		wantErrMatch *errors.Template
 	}{
 		{
-			name: string(SigningAlgVO),
-			factory: func(publicId string, i interface{}) (interface{}, error) {
-				str := fmt.Sprintf("%s", i)
-				return NewSigningAlg(publicId, Alg(str))
-			},
+			name:   string(SigningAlgVO),
 			id:     "am-public-id",
 			voName: SigningAlgVO,
 			new:    []string{"ES256", "ES384"},
@@ -60,11 +56,7 @@ func Test_valueObjectChanges(t *testing.T) {
 			}(),
 		},
 		{
-			name: string(CertificateVO),
-			factory: func(publicId string, i interface{}) (interface{}, error) {
-				str := fmt.Sprintf("%s", i)
-				return NewCertificate(publicId, str)
-			},
+			name:   string(CertificateVO),
 			id:     "am-public-id",
 			voName: CertificateVO,
 			new:    []string{pem1, pem2},
@@ -84,11 +76,7 @@ func Test_valueObjectChanges(t *testing.T) {
 			}(),
 		},
 		{
-			name: string(AudClaimVO),
-			factory: func(publicId string, i interface{}) (interface{}, error) {
-				str := fmt.Sprintf("%s", i)
-				return NewAudClaim(publicId, str)
-			},
+			name:   string(AudClaimVO),
 			id:     "am-public-id",
 			voName: AudClaimVO,
 			new:    []string{"new-aud1", "new-aud2"},
@@ -112,12 +100,7 @@ func Test_valueObjectChanges(t *testing.T) {
 			}(),
 		},
 		{
-			name: string(CallbackUrlVO),
-			factory: func(publicId string, i interface{}) (interface{}, error) {
-				u, err := url.Parse(fmt.Sprintf("%s", i))
-				require.NoError(t, err)
-				return NewCallbackUrl(publicId, u)
-			},
+			name:   string(CallbackUrlVO),
 			id:     "am-public-id",
 			voName: CallbackUrlVO,
 			new:    []string{"http://new-1.com/callback", "http://new-2.com/callback"},
@@ -150,13 +133,117 @@ func Test_valueObjectChanges(t *testing.T) {
 				return []interface{}{c, c2, c3}
 			}(),
 		},
+
+		{
+			name:       string(AudClaimVO) + "-null-fields",
+			id:         "am-public-id",
+			voName:     AudClaimVO,
+			new:        nil,
+			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
+			nullFields: []string{string(AudClaimVO)},
+			wantDel: func() []interface{} {
+				a, err := NewAudClaim("am-public-id", "old-aud1")
+				require.NoError(t, err)
+				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				require.NoError(t, err)
+				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+		},
+		{
+			name:       "missing-public-id",
+			voName:     AudClaimVO,
+			new:        nil,
+			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
+			nullFields: []string{string(AudClaimVO)},
+			wantDel: func() []interface{} {
+				a, err := NewAudClaim("am-public-id", "old-aud1")
+				require.NoError(t, err)
+				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				require.NoError(t, err)
+				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:       "invalid-vo-name",
+			voName:     voName("invalid-name"),
+			id:         "am-public-id",
+			new:        nil,
+			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
+			nullFields: []string{string(AudClaimVO)},
+			wantDel: func() []interface{} {
+				a, err := NewAudClaim("am-public-id", "old-aud1")
+				require.NoError(t, err)
+				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				require.NoError(t, err)
+				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:   "dup-new",
+			id:     "am-public-id",
+			voName: SigningAlgVO,
+			new:    []string{"ES256", "ES256"},
+			old:    []string{"RS256", "RS384", "RS512"},
+			dbMask: []string{string(SigningAlgVO)},
+			wantAdd: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", ES256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", ES384)
+				require.NoError(t, err)
+				return []interface{}{a, a2}
+			}(),
+			wantDel: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", RS256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", RS384)
+				require.NoError(t, err)
+				a3, err := NewSigningAlg("am-public-id", RS512)
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:   "dup-old",
+			id:     "am-public-id",
+			voName: SigningAlgVO,
+			new:    []string{"ES256", "ES384"},
+			old:    []string{"RS256", "RS256", "RS512"},
+			dbMask: []string{string(SigningAlgVO)},
+			wantAdd: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", ES256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", ES384)
+				require.NoError(t, err)
+				return []interface{}{a, a2}
+			}(),
+			wantDel: func() []interface{} {
+				a, err := NewSigningAlg("am-public-id", RS256)
+				require.NoError(t, err)
+				a2, err := NewSigningAlg("am-public-id", RS384)
+				require.NoError(t, err)
+				a3, err := NewSigningAlg("am-public-id", RS512)
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotAdd, gotDel, err := valueObjectChanges(tt.factory, tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
-			if tt.wantErr {
+			gotAdd, gotDel, err := valueObjectChanges(tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
+			if tt.wantErrMatch != nil {
 				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				return
 			}
 			require.NoError(err)

@@ -100,87 +100,25 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 	}
 
-	fac := func(publicId string, i interface{}) (interface{}, error) {
-		str := fmt.Sprintf("%s", i)
-		return NewSigningAlg(publicId, Alg(str))
-	}
-	addAlgs, deleteAlgs, err := valueObjectChanges(fac, origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
+	addAlgs, deleteAlgs, err := valueObjectChanges(origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	fac = func(publicId string, i interface{}) (interface{}, error) {
-		pem := fmt.Sprintf("%s", i)
-		return NewCertificate(publicId, pem)
-	}
-	addCerts, deleteCerts, err := valueObjectChanges(fac, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
+	addCerts, deleteCerts, err := valueObjectChanges(origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	fac = func(publicId string, i interface{}) (interface{}, error) {
-		u, err := url.Parse(fmt.Sprintf("%s", i))
-		if err != nil {
-			return nil, err
-		}
-		return NewCallbackUrl(publicId, u)
-	}
-	addCallbacks, deleteCallbacks, err := valueObjectChanges(fac, origAm.PublicId, CallbackUrlVO, am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
+	addCallbacks, deleteCallbacks, err := valueObjectChanges(origAm.PublicId, CallbackUrlVO, am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	fac = func(publicId string, i interface{}) (interface{}, error) {
-		str := fmt.Sprintf("%s", i)
-		return NewAudClaim(publicId, str)
-	}
-	addAuds, deleteAuds, err := valueObjectChanges(fac, origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
+	addAuds, deleteAuds, err := valueObjectChanges(origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-
-	// foundAlgs := map[string]bool{}
-	// for _, a := range origAm.SigningAlgs {
-	// 	foundAlgs[a] = true
-	// }
-	// var addAlgs []interface{}
-	// var deleteAlgs []interface{}
-	// if strutil.StrListContains(nullFields, "SigningAlgs") {
-	// 	deleteAlgs = make([]interface{}, 0, len(origAm.SigningAlgs))
-	// 	for _, a := range origAm.SigningAlgs {
-	// 		alg, err := NewSigningAlg(origAm.PublicId, Alg(a))
-	// 		if err != nil {
-	// 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	// 		}
-	// 		deleteAlgs = append(deleteAlgs, alg)
-	// 		delete(foundAlgs, a)
-	// 	}
-	// }
-	// if strutil.StrListContains(dbMask, "SigningAlgs") {
-	// 	addAlgs = make([]interface{}, 0, len(am.SigningAlgs))
-	// 	for _, a := range am.SigningAlgs {
-	// 		if _, ok := foundAlgs[a]; ok {
-	// 			delete(foundAlgs, a)
-	// 			continue
-	// 		}
-	// 		alg, err := NewSigningAlg(origAm.PublicId, Alg(a))
-	// 		if err != nil {
-	// 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	// 		}
-	// 		addAlgs = append(addAlgs, alg)
-	// 		delete(foundAlgs, a)
-	// 	}
-	// }
-	// if len(foundAlgs) > 0 {
-	// 	for a := range foundAlgs {
-	// 		alg, err := NewSigningAlg(origAm.PublicId, Alg(a))
-	// 		if err != nil {
-	// 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	// 		}
-	// 		deleteAlgs = append(deleteAlgs, alg)
-	// 		delete(foundAlgs, a)
-	// 	}
-	// }
 
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
@@ -316,6 +254,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	return updatedAm, rowsUpdated, nil
 }
 
+// voName represents the names of auth method value objects
 type voName string
 
 const (
@@ -325,6 +264,7 @@ const (
 	AudClaimVO    voName = "AudClaims"
 )
 
+// validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
 	case SigningAlgVO, CallbackUrlVO, CertificateVO, AudClaimVO:
@@ -334,11 +274,36 @@ func validVoName(name voName) bool {
 	}
 }
 
+// factoryFunc defines a func type for value object factories
+type factoryFunc func(publicId string, i interface{}) (interface{}, error)
+
+// supportedFactories are the currently supported factoryFunc for value objects
+var supportedFactories = map[voName]factoryFunc{
+	SigningAlgVO: func(publicId string, i interface{}) (interface{}, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewSigningAlg(publicId, Alg(str))
+	},
+	CertificateVO: func(publicId string, i interface{}) (interface{}, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewCertificate(publicId, str)
+	},
+	AudClaimVO: func(publicId string, i interface{}) (interface{}, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewAudClaim(publicId, str)
+	},
+	CallbackUrlVO: func(publicId string, i interface{}) (interface{}, error) {
+		u, err := url.Parse(fmt.Sprintf("%s", i))
+		if err != nil {
+			return nil, err
+		}
+		return NewCallbackUrl(publicId, u)
+	},
+}
+
 // valueObjectChanges takes the new and old list of VOs (value objects) and
 // using the dbMasks/nullFields it will return lists of VOs where need to be
 // added and deleted in order to reconcile auth method's value objects.
 func valueObjectChanges(
-	factory func(string, interface{}) (interface{}, error),
 	publicId string,
 	valueObjectName voName,
 	newVOs,
@@ -351,13 +316,18 @@ func valueObjectChanges(
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 	if !validVoName(valueObjectName) {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "invalid value object name")
+		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid value object name: %s", valueObjectName))
 	}
 	if len(strutil.RemoveDuplicates(newVOs, false)) != len(newVOs) {
 		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate new %s", valueObjectName))
 	}
 	if len(strutil.RemoveDuplicates(oldVOs, false)) != len(oldVOs) {
 		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate old %s", valueObjectName))
+	}
+
+	factory, ok := supportedFactories[valueObjectName]
+	if !ok {
+		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported factory for value object: %s", valueObjectName))
 	}
 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
