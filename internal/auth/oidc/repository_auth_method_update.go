@@ -50,9 +50,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if am.PublicId == "" {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-	if err := am.validate(op); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	}
 
 	if err := validateFieldMask(fieldMaskPaths); err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
@@ -135,7 +132,8 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err := am.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, origAm.PublicId, kms.KeyPurposeOplog)
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -145,16 +143,16 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, Callbacks*2, Audiences*2
-			ticket, err := w.GetTicket(&am)
+			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
 			dbMask = append(dbMask, "Version")
-			rowsUpdated, err := w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
 			}
@@ -243,6 +241,18 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := &Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the account ids without a limit
+			}
+			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+			}
 			return nil
 		},
 	)
@@ -315,6 +325,9 @@ func valueObjectChanges(
 	}
 	if !validVoName(valueObjectName) {
 		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid value object name: %s", valueObjectName))
+	}
+	if !strutil.StrListContains(dbMask, string(valueObjectName)) && !strutil.StrListContains(nullFields, string(valueObjectName)) {
+		return nil, nil, nil
 	}
 	if len(strutil.RemoveDuplicates(newVOs, false)) != len(newVOs) {
 		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate new %s", valueObjectName))
