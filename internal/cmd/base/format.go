@@ -188,6 +188,51 @@ func PrintApiError(in *api.Error) string {
 	return WrapForHelpText(ret)
 }
 
+func (c *Command) PrintCliError(err error) {
+	switch Format(c.UI) {
+	case "table":
+		c.UI.Error(err.Error())
+	case "json":
+		output := struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		}
+		b, _ := JsonFormatter{}.Format(output)
+		c.UI.Output(string(b))
+	}
+}
+
+func (c *Command) PrintJsonItem(item interface{}) int {
+	output := struct {
+		Item interface{} `json:"item"`
+	}{
+		Item: item,
+	}
+	b, err := JsonFormatter{}.Format(output)
+	if err != nil {
+		c.PrintCliError(err)
+		return 1
+	}
+	c.UI.Output(string(b))
+	return 0
+}
+
+func (c *Command) PrintJsonItems(items []interface{}) int {
+	output := struct {
+		Items []interface{} `json:"items"`
+	}{
+		Items: items,
+	}
+	b, err := JsonFormatter{}.Format(output)
+	if err != nil {
+		c.PrintCliError(err)
+		return 1
+	}
+	c.UI.Output(string(b))
+	return 0
+}
+
 // An output formatter for json output of an object
 type JsonFormatter struct{}
 
