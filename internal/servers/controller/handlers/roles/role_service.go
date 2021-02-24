@@ -92,6 +92,10 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return nil, err
 	}
 
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	finalItems := make([]*pb.Role, 0, len(items))
 	res := &perms.Resource{
 		Type: resource.Role,
@@ -100,7 +104,10 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -685,6 +692,9 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

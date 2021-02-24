@@ -79,6 +79,10 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if err != nil {
 		return nil, err
 	}
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	finalItems := make([]*pb.HostSet, 0, len(hl))
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
@@ -88,7 +92,10 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	for _, item := range hl {
 		item.Scope = authResults.Scope
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -533,6 +540,9 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

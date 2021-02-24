@@ -93,6 +93,13 @@ func TestList(t *testing.T) {
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)
 	require.NoError(err)
 	assert.ElementsMatch(comparableSetSlice(expected), comparableSetSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = hClient.List(tc.Context(), hc.Item.Id,
+		hostsets.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableSetSlice(in []*hostsets.HostSet) []hostsets.HostSet {

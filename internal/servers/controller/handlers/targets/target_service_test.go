@@ -210,6 +210,21 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true},
 			res:  &pbs.ListTargetsResponse{Items: totalTars},
 		},
+		{
+			name: "Filter To Many Targets",
+			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, proj.GetPublicId())},
+			res:  &pbs.ListTargetsResponse{Items: wantTars},
+		},
+		{
+			name: "Filter To No Targets",
+			req:  &pbs.ListTargetsRequest{ScopeId: proj.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res:  &pbs.ListTargetsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListTargetsRequest{ScopeId: proj.GetPublicId(), Filter: `"/badformat/"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -221,6 +236,8 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListTargets(%q) scope %q, got response %q, wanted %q", tc.name, tc.req.GetScopeId(), got, tc.res)
 		})
