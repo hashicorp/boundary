@@ -38,8 +38,8 @@ func Test_ProviderCaching(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		cache := newProviderCache()
 		assert.Equal(0, len(cache.cache))
-		cache.setProvider(ctx, authMethodId, p1)
-		got, err := cache.getProvider(ctx, testAm)
+		cache.set(ctx, authMethodId, p1)
+		got, err := cache.get(ctx, testAm)
 		require.NoError(err)
 		assert.Equal(p1, got)
 	})
@@ -47,10 +47,10 @@ func Test_ProviderCaching(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		cache := newProviderCache()
 		assert.Equal(0, len(cache.cache))
-		cache.setProvider(ctx, authMethodId, p1)
+		cache.set(ctx, authMethodId, p1)
 		newAm := testAm.Clone()
 		newAm.ClientId = "new-client-id"
-		got, err := cache.getProvider(ctx, newAm)
+		got, err := cache.get(ctx, newAm)
 		require.NoError(err)
 		assert.NotEqual(p1, got)
 	})
@@ -58,11 +58,11 @@ func Test_ProviderCaching(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		// use the singleton
 		cache := providerCache()
-		cache.setProvider(ctx, authMethodId, p1)
+		cache.set(ctx, authMethodId, p1)
 
 		// use the singleton via a new var
 		cache2 := providerCache()
-		got, err := cache2.getProvider(ctx, testAm)
+		got, err := cache2.get(ctx, testAm)
 		require.NoError(err)
 		assert.Equal(p1, got)
 	})
@@ -70,10 +70,10 @@ func Test_ProviderCaching(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		// use the singleton
 		cache := newProviderCache()
-		cache.setProvider(ctx, authMethodId, p1)
+		cache.set(ctx, authMethodId, p1)
 		require.Equal(1, len(cache.cache))
 
-		cache.delProvider(ctx, authMethodId)
+		cache.delete(ctx, authMethodId)
 		assert.Equal(0, len(cache.cache))
 	})
 }
