@@ -22,12 +22,12 @@ function assoc_group_acct() {
 
 function group_id() {
   local group=$1
-  strip $(list_groups | jq -c ".[] | select(.name | contains(\"$group\")) | .[\"id\"]")
+  strip $(list_groups | jq -c ".items[] | select(.name | contains(\"$group\")) | .[\"id\"]")
 }
 
 function group_member_ids() {
   local gid=$1
-  boundary groups read -id $gid -format json | jq '.["members"][]["id"]'  
+  boundary groups read -id $gid -format json | jq '.item["members"][]["id"]'  
 }
 
 function group_has_member_id() {
