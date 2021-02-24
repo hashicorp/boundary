@@ -9,7 +9,6 @@ require (
 	github.com/hashicorp/go-kms-wrapping v0.5.16
 	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/hashicorp/vault/api v1.0.5-0.20200805123347-1ef507638af6
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	google.golang.org/grpc v1.32.0
