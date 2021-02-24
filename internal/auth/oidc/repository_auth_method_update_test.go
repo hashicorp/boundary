@@ -97,6 +97,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					InactiveState,
 					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
+					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
@@ -110,7 +111,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com/admin"}
 				am.CallbackUrls = []string{"https://www.bob.com/callback"}
-				am.SigningAlgs = []string{string(RS384), string(ES256)}
+				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				am.Certificates = []string{pem}
 				return &am
 			},
@@ -135,7 +136,8 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			orig := tt.setup()
 			updateWith := tt.updateWith(orig)
 			updated, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updateWith, tt.version, tt.fieldMasks, tt.opt...)
-			if tt.wantErrMatch != nil {
+			opts := getOpts(tt.opt...)
+			if tt.wantErrMatch != nil && !opts.withDryRun {
 				require.Error(err)
 				assert.Equal(0, rowsUpdated)
 				assert.Nil(updated)
@@ -145,18 +147,39 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				require.Errorf(err, "should not have found oplog entry for %s", updateWith.PublicId)
 				return
 			}
-			require.NoError(err)
-			require.NotNil(updated)
-			assert.Equal(1, rowsUpdated)
-			want := tt.want(orig, updateWith)
-			want.CreateTime = updated.CreateTime
-			want.UpdateTime = updated.UpdateTime
-			want.Version = updated.Version
-			TestSortAuthMethods(t, []*AuthMethod{want, updated})
-			assert.Equal(want, updated)
+			switch opts.withDryRun {
+			case true:
+				assert.Equal(0, rowsUpdated)
+				if tt.wantErrMatch != nil {
+					require.Error(err)
+					require.Nil(updated)
+					return
+				}
+				require.NoError(err)
+				require.NotNil(updated)
+				want := tt.want(orig, updateWith)
+				want.CreateTime = orig.CreateTime
+				want.UpdateTime = orig.UpdateTime
+				want.Version = orig.Version
+				TestSortAuthMethods(t, []*AuthMethod{want, updated})
+				assert.Equal(want, updated)
 
-			err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+				err := db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.Errorf(err, "should not have found oplog entry for %s", updateWith.PublicId)
+			default:
+				require.NoError(err)
+				require.NotNil(updated)
+				assert.Equal(1, rowsUpdated)
+				want := tt.want(orig, updateWith)
+				want.CreateTime = updated.CreateTime
+				want.UpdateTime = updated.UpdateTime
+				want.Version = updated.Version
+				TestSortAuthMethods(t, []*AuthMethod{want, updated})
+				assert.Equal(want, updated)
+
+				err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+			}
 		})
 	}
 }

@@ -89,6 +89,12 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 
 	opts := getOpts(opt...)
+	if opts.withDryRun {
+		updated := applyUpdate(am, origAm, fieldMaskPaths)
+		err := r.TestAuthMethod(ctx, WithAuthMethod(updated))
+		return updated, db.NoRowsAffected, err
+	}
+
 	if !opts.withForce {
 		if err := r.TestAuthMethod(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
