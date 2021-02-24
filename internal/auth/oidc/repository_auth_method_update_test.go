@@ -41,7 +41,8 @@ func Test_TestAuthMethod(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testAuthMethodCallback, err := url.Parse("http://localhost/callback")
+	port := testFreePort(t)
+	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://localhost:%d/callback", port))
 	require.NoError(t, err)
 	testAuthMethod := TestAuthMethod(t,
 		conn, databaseWrapper,
@@ -79,10 +80,23 @@ func Test_TestAuthMethod(t *testing.T) {
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
-			name:           "not-complete",
-			authMethod:     func() *AuthMethod { cp := testAuthMethod.Clone(); cp.SigningAlgs = nil; return cp }(),
-			withAuthMethod: true,
-			wantErrMatch:   errors.T(errors.InvalidParameter),
+			name:            "not-complete",
+			authMethod:      func() *AuthMethod { cp := testAuthMethod.Clone(); cp.SigningAlgs = nil; return cp }(),
+			withAuthMethod:  true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: " missing signing algorithms",
+		},
+		{
+			name: "no-discovery",
+			authMethod: func() *AuthMethod {
+				cp := testAuthMethod.Clone()
+				port := testFreePort(t)
+				cp.DiscoveryUrl = fmt.Sprintf("http://localhost:%d", port)
+				return cp
+			}(),
+			withAuthMethod:  true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "AuthMethod cannot be converted to a valid OIDC Provider",
 		},
 		{
 			name:            "fail-jwks",
