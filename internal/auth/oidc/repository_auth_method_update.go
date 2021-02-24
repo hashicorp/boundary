@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
@@ -14,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -473,12 +471,12 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 // Options supported are: WithPublicId, WithAuthMethod
 func (r *Repository) TestAuthMethod(ctx context.Context, opt ...Option) error {
 	const op = "oidc.(Repository).TestAuthMethod"
-	opts := getOpts()
+	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
 	case opts.withPublicId != "":
 		var err error
-		am, err = r.lookupAuthMethod(ctx, opts.withPublicId, nil)
+		am, err = r.lookupAuthMethod(ctx, opts.withPublicId)
 		if err != nil {
 			return errors.Wrap(err, op)
 		}
@@ -519,30 +517,23 @@ func (r *Repository) TestAuthMethod(ctx context.Context, opt ...Option) error {
 		result = multierror.Append(result, errors.New(errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
 		return result.ErrorOrNil()
 	}
-	oidcRequest, err := oidc.NewRequest(10*time.Second, am.CallbackUrls[0])
-	if err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, "unable to create oidc request", errors.WithWrap(err)))
-		return result.ErrorOrNil()
-	}
 
 	// test JWKs URL
-	if err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL); err != nil {
+	statusCode, err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL)
+	if err != nil {
 		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
-		return result.ErrorOrNil()
+	}
+	if statusCode != 200 {
+		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
 	}
 
-	// test oidc auth URL
-	authUrl, err := provider.AuthURL(ctx, oidcRequest)
-	if err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, "unable to create oidc auth URL", errors.WithWrap(err)))
-		return result.ErrorOrNil()
-	}
-	if err := pingEndpoint(ctx, providerClient, "AuthURL", "GET", authUrl); err != nil {
+	// test Auth URL
+	if _, err := pingEndpoint(ctx, providerClient, "AuthURL", "GET", info.AuthURL); err != nil {
 		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
 	}
 
 	// test Token URL
-	if err := pingEndpoint(ctx, providerClient, "TokenURL", "POST", info.TokenURL); err != nil {
+	if _, err := pingEndpoint(ctx, providerClient, "TokenURL", "POST", info.TokenURL); err != nil {
 		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
 	}
 
@@ -555,17 +546,17 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// pingEndpoint will make an attempted http request and return errors (non 2xx
-// status is not an error)
-func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, url string) error {
+// pingEndpoint will make an attempted http request, return status code and errors
+// (non 2xx status codes are not an error)
+func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, url string) (int, error) {
 	const op = "oidc.pingEndpoint"
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
-		return errors.New(errors.Unknown, op, fmt.Sprintf("unable to create %s http request", endpointType), errors.WithWrap(err))
+		return 0, errors.New(errors.Unknown, op, fmt.Sprintf("unable to create %s http request", endpointType), errors.WithWrap(err))
 	}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return errors.New(errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
+		return 0, errors.New(errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
 	}
-	return nil
+	return resp.StatusCode, nil
 }
