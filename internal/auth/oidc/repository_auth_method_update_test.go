@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -12,10 +14,10 @@ import (
 )
 
 func Test_valueObjectChanges(t *testing.T) {
+	t.Parallel()
 	_, pem1 := testGenerateCA(t, "localhost")
 	_, pem2 := testGenerateCA(t, "127.0.0.1")
-	_, pem3 := testGenerateCA(t, "localhost")
-	_, pem4 := testGenerateCA(t, "127.0.0.1")
+	_, pem3 := testGenerateCA(t, "www.example.com")
 	tests := []struct {
 		name       string
 		factory    func(string, interface{}) (interface{}, error)
@@ -66,7 +68,7 @@ func Test_valueObjectChanges(t *testing.T) {
 			id:     "am-public-id",
 			voName: CertificateVO,
 			new:    []string{pem1, pem2},
-			old:    []string{pem3, pem4},
+			old:    []string{pem3},
 			dbMask: []string{string(CertificateVO)},
 			wantAdd: func() []interface{} {
 				c, err := NewCertificate("am-public-id", pem1)
@@ -78,9 +80,74 @@ func Test_valueObjectChanges(t *testing.T) {
 			wantDel: func() []interface{} {
 				c, err := NewCertificate("am-public-id", pem3)
 				require.NoError(t, err)
-				c2, err := NewCertificate("am-public-id", pem4)
+				return []interface{}{c}
+			}(),
+		},
+		{
+			name: string(AudClaimVO),
+			factory: func(publicId string, i interface{}) (interface{}, error) {
+				str := fmt.Sprintf("%s", i)
+				return NewAudClaim(publicId, str)
+			},
+			id:     "am-public-id",
+			voName: AudClaimVO,
+			new:    []string{"new-aud1", "new-aud2"},
+			old:    []string{"old-aud1", "old-aud2", "old-aud3"},
+			dbMask: []string{string(AudClaimVO)},
+			wantAdd: func() []interface{} {
+				a, err := NewAudClaim("am-public-id", "new-aud1")
+				require.NoError(t, err)
+				a2, err := NewAudClaim("am-public-id", "new-aud2")
+				require.NoError(t, err)
+				return []interface{}{a, a2}
+			}(),
+			wantDel: func() []interface{} {
+				a, err := NewAudClaim("am-public-id", "old-aud1")
+				require.NoError(t, err)
+				a2, err := NewAudClaim("am-public-id", "old-aud2")
+				require.NoError(t, err)
+				a3, err := NewAudClaim("am-public-id", "old-aud3")
+				require.NoError(t, err)
+				return []interface{}{a, a2, a3}
+			}(),
+		},
+		{
+			name: string(CallbackUrlVO),
+			factory: func(publicId string, i interface{}) (interface{}, error) {
+				u, err := url.Parse(fmt.Sprintf("%s", i))
+				require.NoError(t, err)
+				return NewCallbackUrl(publicId, u)
+			},
+			id:     "am-public-id",
+			voName: CallbackUrlVO,
+			new:    []string{"http://new-1.com/callback", "http://new-2.com/callback"},
+			old:    []string{"http://old-1.com/callback", "http://old-2.com/callback", "http://old-3.com/callback"},
+			dbMask: []string{string(CallbackUrlVO)},
+			wantAdd: func() []interface{} {
+				u, err := url.Parse("http://new-1.com/callback")
+				require.NoError(t, err)
+				c, err := NewCallbackUrl("am-public-id", u)
+				require.NoError(t, err)
+				u2, err := url.Parse("http://new-2.com/callback")
+				require.NoError(t, err)
+				c2, err := NewCallbackUrl("am-public-id", u2)
 				require.NoError(t, err)
 				return []interface{}{c, c2}
+			}(),
+			wantDel: func() []interface{} {
+				u, err := url.Parse("http://old-1.com/callback")
+				require.NoError(t, err)
+				c, err := NewCallbackUrl("am-public-id", u)
+				require.NoError(t, err)
+				u2, err := url.Parse("http://old-2.com/callback")
+				require.NoError(t, err)
+				c2, err := NewCallbackUrl("am-public-id", u2)
+				require.NoError(t, err)
+				u3, err := url.Parse("http://old-3.com/callback")
+				require.NoError(t, err)
+				c3, err := NewCallbackUrl("am-public-id", u3)
+				require.NoError(t, err)
+				return []interface{}{c, c2, c3}
 			}(),
 		},
 	}
@@ -94,12 +161,40 @@ func Test_valueObjectChanges(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantAdd, gotAdd)
-			assert.Equal(tt.wantDel, gotDel)
+
+			switch tt.voName {
+			case CertificateVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*Certificate).Cert < bb.(*Certificate).Cert
+				})
+			case SigningAlgVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*SigningAlg).Alg < bb.(*SigningAlg).Alg
+				})
+			case CallbackUrlVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*CallbackUrl).Url < bb.(*CallbackUrl).Url
+				})
+			case AudClaimVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*AudClaim).Aud < bb.(*AudClaim).Aud
+				})
+			}
+			assert.Equalf(tt.wantDel, gotDel, "wantDel: %s\ngotDel:  %s\n", tt.wantDel, gotDel)
 		})
 	}
 }
 
 func Test_validateFieldMask(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		fieldMask []string
@@ -141,6 +236,7 @@ func Test_validateFieldMask(t *testing.T) {
 }
 
 func Test_applyUpdate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		new       *AuthMethod
@@ -283,6 +379,7 @@ func (m *mockClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func Test_pingEndpoint(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tests := []struct {
 		name    string
