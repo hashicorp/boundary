@@ -38,6 +38,13 @@ func TestList(t *testing.T) {
 	pl, err = scps.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
+
+	filterItem := pl.Items[3]
+	pl, err = scps.List(tc.Context(), org.GetPublicId(),
+		scopes.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(pl.Items, 1)
+	assert.Equal(filterItem.Id, pl.Items[0].Id)
 }
 
 func comparableSlice(in []*scopes.Scope) []scopes.Scope {

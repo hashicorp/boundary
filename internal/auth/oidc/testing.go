@@ -11,16 +11,20 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthMethod creates a test oidc auth method
+// TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
+// WithMaxAge, WithCallbackUrls, WithCertificates, WithAudClaims, and
+// WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
 	conn *gorm.DB,
@@ -38,6 +42,7 @@ func TestAuthMethod(
 	ctx := context.Background()
 
 	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
+	authMethod.OperationalState = string(state)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -56,6 +61,7 @@ func TestAuthMethod(
 		}
 		err := rw.CreateItems(ctx, newCallbacks)
 		require.NoError(err)
+		require.Equal(len(opts.withCallbackUrls), len(authMethod.CallbackUrls))
 	}
 	if len(opts.withAudClaims) > 0 {
 		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
@@ -66,6 +72,7 @@ func TestAuthMethod(
 		}
 		err := rw.CreateItems(ctx, newAudClaims)
 		require.NoError(err)
+		require.Equal(len(opts.withAudClaims), len(authMethod.AudClaims))
 	}
 	if len(opts.withCertificates) > 0 {
 		newCerts := make([]interface{}, 0, len(opts.withCertificates))
@@ -78,6 +85,7 @@ func TestAuthMethod(
 		}
 		err := rw.CreateItems(ctx, newCerts)
 		require.NoError(err)
+		require.Equal(len(opts.withCertificates), len(authMethod.Certificates))
 	}
 	if len(opts.withSigningAlgs) > 0 {
 		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
@@ -88,8 +96,35 @@ func TestAuthMethod(
 		}
 		err := rw.CreateItems(ctx, newAlgs)
 		require.NoError(err)
+		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
 	return authMethod
+}
+
+// TestSortAuthMethods will sort the provided auth methods by public id and it
+// will sort each auth method's embedded value objects (algs, auds, certs,
+// callbacks)
+func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
+	// sort them by public id first...
+	sort.Slice(methods, func(a, b int) bool {
+		return methods[a].PublicId < methods[b].PublicId
+	})
+
+	// sort all the embedded value objects...
+	for _, am := range methods {
+		sort.Slice(am.SigningAlgs, func(a, b int) bool {
+			return am.SigningAlgs[a] < am.SigningAlgs[b]
+		})
+		sort.Slice(am.AudClaims, func(a, b int) bool {
+			return am.AudClaims[a] < am.AudClaims[b]
+		})
+		sort.Slice(am.CallbackUrls, func(a, b int) bool {
+			return am.CallbackUrls[a] < am.CallbackUrls[b]
+		})
+		sort.Slice(am.Certificates, func(a, b int) bool {
+			return am.Certificates[a] < am.Certificates[b]
+		})
+	}
 }
 
 // TestAccount creates a test oidc auth account.
@@ -177,4 +212,28 @@ func testGenerateCA(t *testing.T, hosts ...string) (*x509.Certificate, string) {
 	require.NoError(err)
 
 	return c, string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}))
+}
+
+func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL string, tp *oidc.TestProvider) *oidc.Provider {
+	t.Helper()
+	require := require.New(t)
+	require.NotEmptyf(clientId, "%s: client id is empty")
+	require.NotEmptyf(clientSecret, "%s: client secret is empty")
+	require.NotEmptyf(allowedRedirectURL, "%s: redirect URL is empty")
+
+	tp.SetClientCreds(clientId, clientSecret)
+	_, _, alg, _ := tp.SigningKeys()
+
+	c1, err := oidc.NewConfig(
+		tp.Addr(),
+		clientId,
+		oidc.ClientSecret(clientSecret),
+		[]oidc.Alg{alg},
+		[]string{allowedRedirectURL},
+		oidc.WithProviderCA(tp.CACert()),
+	)
+	require.NoError(err)
+	p1, err := oidc.NewProvider(c1)
+	require.NoError(err)
+	return p1
 }

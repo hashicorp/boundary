@@ -94,6 +94,7 @@ message GetHostResponse {
 
 message ListHostsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListHostsResponse {

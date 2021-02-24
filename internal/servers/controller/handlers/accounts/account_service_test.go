@@ -144,30 +144,51 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name       string
-		authMethod string
-		res        *pbs.ListAccountsResponse
-		err        error
+		name string
+		req  *pbs.ListAccountsRequest
+		res  *pbs.ListAccountsResponse
+		err  error
 	}{
 		{
-			name:       "List Some Accounts",
-			authMethod: amSomeAccounts.GetPublicId(),
-			res:        &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+			name: "List Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
 		},
 		{
-			name:       "List Other Accounts",
-			authMethod: amOtherAccounts.GetPublicId(),
-			res:        &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+			name: "List Other Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
 		},
 		{
-			name:       "List No Accounts",
-			authMethod: amNoAccounts.GetPublicId(),
-			res:        &pbs.ListAccountsResponse{},
+			name: "List No Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{},
 		},
 		{
-			name:       "Unfound Auth Method",
-			authMethod: password.AuthMethodPrefix + "_DoesntExis",
-			err:        handlers.ApiErrorWithCode(codes.NotFound),
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: password.AuthMethodPrefix + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Filter Some Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].Attributes.AsMap()["login_name"]),
+			},
+			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+		},
+		{
+			name: "Filter All Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       `"/item/id"=="noaccountmatchesthis"`,
+			},
+			res: &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
 		},
 	}
 	for _, tc := range cases {
@@ -176,12 +197,14 @@ func TestList(t *testing.T) {
 			s, err := accounts.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListAccountsRequest{AuthMethodId: tc.authMethod})
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.authMethod, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListUsers() with scope %q got response %q, wanted %q", tc.authMethod, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

@@ -74,8 +74,10 @@ load _helpers
   [ "$status" -eq 0 ]
   run read_session $id
   [ "$status" -eq 0 ]
+  echo $output
   run cancel_session $id
   [ "$status" -eq 0 ]
+  echo $output
 }
 
 @test "boundary/session: verify read and cancelation permissions on unpriv session" {

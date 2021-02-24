@@ -162,6 +162,7 @@ message GetTargetResponse {
 message ListTargetsRequest {
   string scope_id = 1;
   bool recursive = 20 [json_name="recursive"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListTargetsResponse {

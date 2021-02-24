@@ -1,6 +1,6 @@
 ---
 layout: docs
-page_title: Running Boundary in Non-Dev Environments 
+page_title: Running Boundary in Non-Dev Environments
 sidebar_title: Non-Dev Environments
 description: |-
   How to install boundary in non-dev environments.
@@ -10,11 +10,11 @@ description: |-
 
 What are generated resources? When you run `boundary dev` or `boundary database init`, Boundary automatically
 generates a number of resources to make getting started easier. Default scopes, auth methods, user, account, and
-targets are just some of the resources Boundary will generate unless you tell it not to. 
+targets are just some of the resources Boundary will generate unless you tell it not to.
 
-In a production or long-running environment, these resoures are not neccessary, but without them, managing 
-Boundary from scratch isn't straight forward. How do you create your first user and login to administer a Boundary 
-deployment that has no authentication methods, users, accounts, etc? This section describes how to get your freshly 
+In a production or long-running environment, these resoures are not neccessary, but without them, managing
+Boundary from scratch isn't straight forward. How do you create your first user and login to administer a Boundary
+deployment that has no authentication methods, users, accounts, etc? This section describes how to get your freshly
 deployed Boundary installation off the ground for non-dev environments.
 
 ## Recovery KMS Workflow
@@ -102,7 +102,6 @@ EOT
 </Tab>
 </Tabs>
 
-
 ## Initialize the Database
 
 Before you can start Boundary, the database must be initialized. It's useful to look at the help output for the init command:
@@ -177,8 +176,6 @@ resource "boundary_scope" "project" {
 
 </Tab>
 </Tabs>
-
-
 
 ### Create an Auth Method
 
@@ -277,7 +274,6 @@ resource "boundary_user" "myuser" {
 </Tab>
 </Tabs>
 
-
 ### Create Roles to Manage Scopes
 
 The following describes the four baseline roles you'll need to create to manage resources within the org and project
@@ -286,6 +282,7 @@ allows you to manage them independently and fully within Terraform or on the CLI
 them down more or have control over them in a declarative way.
 
 The following example creates 4 roles:
+
 1. To allow anonymouns (unauthenticated) users the ability to list scopes and auth methods in the global scope.
 1. To allow anonymouns (unauthenticated) users the ability to list scopes and auth methods in the orgnaization scope.
 1. To allow `myuser` user administration grants at the org scope.
@@ -370,9 +367,9 @@ resource "boundary_role" "org_anon_listing" {
   principal_ids = ["u_anon"]
 }
 ```
+
 </Tab>
 </Tabs>
-
 
 #### Org admin role for myuser
 
@@ -409,9 +406,9 @@ resource "boundary_role" "org_admin" {
   principal_ids = [boundary_user.myuser.id]
 }
 ```
+
 </Tab>
 </Tabs>
-
 
 #### Project admin for myuser
 
@@ -451,7 +448,6 @@ resource "boundary_role" "project_admin" {
 
 </Tab>
 </Tabs>
-
 
 ### Login as Your New User
 

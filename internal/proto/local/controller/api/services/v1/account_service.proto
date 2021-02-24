@@ -124,6 +124,7 @@ message GetAccountResponse {
 
 message ListAccountsRequest {
   string auth_method_id = 1 [json_name="auth_method_id"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListAccountsResponse {

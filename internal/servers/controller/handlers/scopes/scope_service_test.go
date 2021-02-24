@@ -283,6 +283,12 @@ func TestList(t *testing.T) {
 			req:     &pbs.ListScopesRequest{ScopeId: p1.GetPublicId()},
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name:    "Filter To Single Org",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{ScopeId: "global", Filter: fmt.Sprintf(`"/item/id"==%q`, initialOrgs[1].GetId())},
+			res:     &pbs.ListScopesResponse{Items: initialOrgs[1:2]},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -367,6 +373,23 @@ func TestList(t *testing.T) {
 			scopeId: scope.Global.String(),
 			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true},
 			res:     &pbs.ListScopesResponse{Items: totalScopes},
+		},
+		{
+			name:    "Filter To Orgs",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/type"==%q`, scope.Global.String())},
+			res:     &pbs.ListScopesResponse{Items: wantOrgs},
+		},
+		{
+			name:    "Filter To Projects",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/type"==%q`, scope.Org.String())},
+			res:     &pbs.ListScopesResponse{Items: wantProjects},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListScopesRequest{ScopeId: scope.Global.String(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
 		},
 	}
 	for _, tc := range cases {

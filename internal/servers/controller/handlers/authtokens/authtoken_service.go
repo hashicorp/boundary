@@ -74,6 +74,10 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if err != nil {
 		return nil, err
 	}
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	finalItems := make([]*pb.AuthToken, 0, len(ul))
 	res := &perms.Resource{
 		Type: resource.AuthToken,
@@ -82,7 +86,10 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) == 0 {
+			continue
+		}
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -250,6 +257,9 @@ func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
+	}
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

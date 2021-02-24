@@ -6,7 +6,7 @@ create table auth_oidc_method_state_enm (
   name text primary key
     constraint only_predefined_oidc_method_states_allowed
     check (
-        name in ('inactive', 'active-private', 'active-public', 'stopping')
+        name in ('inactive', 'active-private', 'active-public')
     )
 );
 
@@ -15,8 +15,7 @@ insert into auth_oidc_method_state_enm(name)
   values
     ('inactive'),
     ('active-private'),
-    ('active-public'),
-    ('stopping'); 
+    ('active-public');
 
  -- define the immutable fields for auth_oidc_method_state_enm (all of them)
 create trigger 
