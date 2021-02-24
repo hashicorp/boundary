@@ -55,7 +55,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
@@ -78,7 +78,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
@@ -102,7 +102,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "eve_rp"
 				a.ClientSecret = "rp-secret"
@@ -133,7 +133,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = ""
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
@@ -152,7 +152,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = ""
 				a.ClientSecret = "rp-secret"
@@ -171,7 +171,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
-				a.State = string(InactiveState)
+				a.OperationalState = string(InactiveState)
 				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = ""
