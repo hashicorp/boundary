@@ -9,10 +9,118 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/cap/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_TestAuthMethod(t *testing.T) {
+	// do not run these tests with t.Parallel()
+	ctx := context.Background()
+
+	tp := oidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+	tpCert, err := ParseCertificates(tp.CACert())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(tpCert))
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethodCallback, err := url.Parse("http://localhost/callback")
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t,
+		conn, databaseWrapper,
+		org.PublicId,
+		InactiveState,
+		TestConvertToUrls(t, tp.Addr())[0],
+		tpClientId, ClientSecret(tpClientSecret),
+		WithCertificates(tpCert[0]),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCallbackUrls(testAuthMethodCallback),
+	)
+	tests := []struct {
+		name            string
+		setup           func()
+		cleanup         func()
+		authMethod      *AuthMethod
+		withAuthMethod  bool
+		withPublicId    bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:           "simple-and-valid",
+			authMethod:     testAuthMethod,
+			withAuthMethod: true,
+		},
+		{
+			name:         "simple-and-valid",
+			authMethod:   testAuthMethod,
+			withPublicId: true,
+		},
+		{
+			name:         "missing-withPublicId-or-withAuthMethod",
+			authMethod:   testAuthMethod,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:           "not-complete",
+			authMethod:     func() *AuthMethod { cp := testAuthMethod.Clone(); cp.SigningAlgs = nil; return cp }(),
+			withAuthMethod: true,
+			wantErrMatch:   errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "fail-jwks",
+			setup:           func() { tp.SetDisableJWKs(true) },
+			cleanup:         func() { tp.SetDisableJWKs(false) },
+			authMethod:      testAuthMethod,
+			withAuthMethod:  true,
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "non-200",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var opts []Option
+			switch {
+			case tt.withAuthMethod:
+				opts = append(opts, WithAuthMethod(tt.authMethod))
+			case tt.withPublicId:
+				opts = append(opts, WithPublicId(tt.authMethod.PublicId))
+			}
+			if tt.setup != nil {
+				tt.setup()
+				defer tt.cleanup()
+			}
+			err := repo.TestAuthMethod(ctx, opts...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				if tt.wantErrContains != "" {
+					assert.Containsf(err.Error(), tt.wantErrContains, "want err to contain %s got: %s", tt.wantErrContains, err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
 
 func Test_valueObjectChanges(t *testing.T) {
 	t.Parallel()
@@ -469,9 +577,10 @@ func Test_pingEndpoint(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	tests := []struct {
-		name    string
-		setup   func() (HTTPClient, string, string)
-		wantErr bool
+		name       string
+		setup      func() (HTTPClient, string, string)
+		wantStatus int
+		wantErr    bool
 	}{
 		{
 			name: "valid-endpoint",
@@ -485,6 +594,7 @@ func Test_pingEndpoint(t *testing.T) {
 				}
 				return client, http.MethodGet, "http://localhost/get"
 			},
+			wantStatus: 200,
 		},
 		{
 			name: "valid-500",
@@ -498,6 +608,7 @@ func Test_pingEndpoint(t *testing.T) {
 				}
 				return client, http.MethodGet, "http://localhost/get"
 			},
+			wantStatus: 500,
 		},
 		{
 			name: "failed",
@@ -514,9 +625,10 @@ func Test_pingEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
+			assert, require := assert.New(t), require.New(t)
 			client, method, url := tt.setup()
-			err := pingEndpoint(ctx, client, tt.name, method, url)
+			gotStatus, err := pingEndpoint(ctx, client, tt.name, method, url)
+			assert.Equal(gotStatus, tt.wantStatus)
 			if tt.wantErr {
 				require.Error(err)
 				return
