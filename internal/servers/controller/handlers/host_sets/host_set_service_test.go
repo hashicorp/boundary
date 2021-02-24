@@ -145,20 +145,35 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name          string
-		hostCatalogId string
-		res           *pbs.ListHostSetsResponse
-		err           error
+		name string
+		req  *pbs.ListHostSetsRequest
+		res  *pbs.ListHostSetsResponse
+		err  error
 	}{
 		{
-			name:          "List Many Host Sets",
-			hostCatalogId: hc.GetPublicId(),
-			res:           &pbs.ListHostSetsResponse{Items: wantHs},
+			name: "List Many Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId()},
+			res:  &pbs.ListHostSetsResponse{Items: wantHs},
 		},
 		{
-			name:          "List No Host Sets",
-			hostCatalogId: hcNoHosts.GetPublicId(),
-			res:           &pbs.ListHostSetsResponse{},
+			name: "List No Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hcNoHosts.GetPublicId()},
+			res:  &pbs.ListHostSetsResponse{},
+		},
+		{
+			name: "Filter To One Host Set",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantHs[1].GetId())},
+			res:  &pbs.ListHostSetsResponse{Items: wantHs[1:2]},
+		},
+		{
+			name: "Filter To No Host Sets",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"/item/name"=="doesnt match"`},
+			res:  &pbs.ListHostSetsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListHostSetsRequest{HostCatalogId: hc.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
 		},
 	}
 	for _, tc := range cases {
@@ -167,12 +182,14 @@ func TestList(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
+			} else {
+				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

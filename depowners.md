@@ -81,9 +81,6 @@ the first place.
     * Jeff
 * github.com/iancoleman/strcase
     * Jeff
-* github.com/jackc/pgx/v4
-    * Jim
-    * Mike
 * github.com/jefferai/keyring
     * Jeff
 * github.com/jinzhu/gorm

@@ -290,6 +290,26 @@ func TestList(t *testing.T) {
 				Items: totalGroups,
 			},
 		},
+		{
+			name: "Filter to org groups",
+			req:  &pbs.ListGroupsRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithGroups.GetPublicId())},
+			res:  &pbs.ListGroupsResponse{Items: wantOrgGroups},
+		},
+		{
+			name: "Filter to project groups",
+			req:  &pbs.ListGroupsRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, pWithGroups.GetPublicId())},
+			res:  &pbs.ListGroupsResponse{Items: wantProjGroups},
+		},
+		{
+			name: "Filter to no groups",
+			req:  &pbs.ListGroupsRequest{ScopeId: "global", Recursive: true, Filter: `"/item/id"=="doesntmatch"`},
+			res:  &pbs.ListGroupsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListGroupsRequest{ScopeId: "global", Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

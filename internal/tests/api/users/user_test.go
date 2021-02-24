@@ -90,6 +90,13 @@ func TestList(t *testing.T) {
 	ul, err = userClient.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
+
+	filterItem := ul.Items[3]
+	ul, err = userClient.List(tc.Context(), org.GetPublicId(),
+		users.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+	require.NoError(err)
+	assert.Len(ul.Items, 1)
+	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
 func comparableSlice(in []*users.User) []users.User {

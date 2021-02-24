@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // HostServiceClient is the client API for HostService service.
@@ -164,7 +165,7 @@ type UnsafeHostServiceServer interface {
 }
 
 func RegisterHostServiceServer(s grpc.ServiceRegistrar, srv HostServiceServer) {
-	s.RegisterService(&_HostService_serviceDesc, srv)
+	s.RegisterService(&HostService_ServiceDesc, srv)
 }
 
 func _HostService_GetHost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -257,7 +258,10 @@ func _HostService_DeleteHost_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-var _HostService_serviceDesc = grpc.ServiceDesc{
+// HostService_ServiceDesc is the grpc.ServiceDesc for HostService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var HostService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.HostService",
 	HandlerType: (*HostServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

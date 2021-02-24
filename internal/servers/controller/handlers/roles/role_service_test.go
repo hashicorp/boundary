@@ -222,6 +222,7 @@ func TestList(t *testing.T) {
 		name string
 		req  *pbs.ListRolesRequest
 		res  *pbs.ListRolesResponse
+		err  error
 	}{
 		{
 			name: "List Many Role",
@@ -264,6 +265,26 @@ func TestList(t *testing.T) {
 				Items: totalRoles,
 			},
 		},
+		{
+			name: "Filter to org roles",
+			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithRoles.GetPublicId())},
+			res:  &pbs.ListRolesResponse{Items: wantOrgRoles},
+		},
+		{
+			name: "Filter to proj roles",
+			req:  &pbs.ListRolesRequest{ScopeId: "global", Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, pWithRoles.GetPublicId())},
+			res:  &pbs.ListRolesResponse{Items: wantProjRoles},
+		},
+		{
+			name: "Filter to no roles",
+			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res:  &pbs.ListRolesResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListRolesRequest{ScopeId: pWithRoles.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -272,7 +293,12 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
-			assert.NoError(gErr)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err))
+			} else {
+				require.NoError(gErr)
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}

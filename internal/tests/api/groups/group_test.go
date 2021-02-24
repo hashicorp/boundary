@@ -56,6 +56,13 @@ func TestList(t *testing.T) {
 			require.NotNil(pl)
 			require.Len(pl.Items, 10)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl.Items))
+
+			filterItem := pl.Items[3]
+			pl, err = grps.List(tc.Context(), tt.scopeId,
+				groups.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
+			require.NoError(err)
+			assert.Len(pl.Items, 1)
+			assert.Equal(filterItem.Id, pl.Items[0].Id)
 		})
 	}
 }
