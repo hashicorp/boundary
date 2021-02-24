@@ -140,16 +140,16 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 	switch Format(c.UI) {
 	case "json":
 		output := struct {
-			Error    string          `json:"error,omitempty"`
+			Context  string          `json:"context,omitempty"`
 			Status   int             `json:"status"`
 			ApiError json.RawMessage `json:"api_error"`
 		}{
-			Error:    contextStr,
+			Context:  contextStr,
 			Status:   in.Response().StatusCode(),
 			ApiError: in.Response().Body.Bytes(),
 		}
 		b, _ := JsonFormatter{}.Format(output)
-		c.UI.Error(string(b))
+		c.UI.Output(string(b))
 
 	default:
 		nonAttributeMap := map[string]interface{}{
@@ -157,7 +157,9 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 			"Kind":    in.Kind,
 			"Message": in.Message,
 		}
-
+		if contextStr != "" {
+			nonAttributeMap["context"] = contextStr
+		}
 		if in.Op != "" {
 			nonAttributeMap["Operation"] = in.Op
 		}
@@ -206,7 +208,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 			}
 		}
 
-		c.UI.Error(WrapForHelpText(output))
+		c.UI.Output(WrapForHelpText(output))
 	}
 }
 
