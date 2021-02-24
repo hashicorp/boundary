@@ -1,4 +1,4 @@
-// +build !race,!hsm
+// +build !hsm
 
 // NOTE on the NOTE: This is from Vault, but that doesn't mean it's not valid
 // going forward with us.

@@ -1,12 +1,10 @@
-// +build !race,!hsm
+// +build !hsm
 
 // NOTE on the NOTE: This is from Vault, but that doesn't mean it's not valid
 // going forward with us.
 //
 // NOTE: we can't use this with HSM. We can't set testing mode on and it's not
 // safe to use env vars since that provides an attack vector in the real world.
-//
-// The server tests have a go-metrics/exp manager race condition :(.
 
 package server
 
