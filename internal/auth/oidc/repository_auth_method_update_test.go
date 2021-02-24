@@ -12,6 +12,10 @@ import (
 )
 
 func Test_valueObjectChanges(t *testing.T) {
+	_, pem1 := testGenerateCA(t, "localhost")
+	_, pem2 := testGenerateCA(t, "127.0.0.1")
+	_, pem3 := testGenerateCA(t, "localhost")
+	_, pem4 := testGenerateCA(t, "127.0.0.1")
 	tests := []struct {
 		name       string
 		factory    func(string, interface{}) (interface{}, error)
@@ -26,7 +30,7 @@ func Test_valueObjectChanges(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name: "SigningAlgs",
+			name: string(SigningAlgVO),
 			factory: func(publicId string, i interface{}) (interface{}, error) {
 				str := fmt.Sprintf("%s", i)
 				return NewSigningAlg(publicId, Alg(str))
@@ -51,6 +55,32 @@ func Test_valueObjectChanges(t *testing.T) {
 				a3, err := NewSigningAlg("am-public-id", RS512)
 				require.NoError(t, err)
 				return []interface{}{a, a2, a3}
+			}(),
+		},
+		{
+			name: string(CertificateVO),
+			factory: func(publicId string, i interface{}) (interface{}, error) {
+				str := fmt.Sprintf("%s", i)
+				return NewCertificate(publicId, str)
+			},
+			id:     "am-public-id",
+			voName: CertificateVO,
+			new:    []string{pem1, pem2},
+			old:    []string{pem3, pem4},
+			dbMask: []string{string(CertificateVO)},
+			wantAdd: func() []interface{} {
+				c, err := NewCertificate("am-public-id", pem1)
+				require.NoError(t, err)
+				c2, err := NewCertificate("am-public-id", pem2)
+				require.NoError(t, err)
+				return []interface{}{c, c2}
+			}(),
+			wantDel: func() []interface{} {
+				c, err := NewCertificate("am-public-id", pem3)
+				require.NoError(t, err)
+				c2, err := NewCertificate("am-public-id", pem4)
+				require.NoError(t, err)
+				return []interface{}{c, c2}
 			}(),
 		},
 	}
