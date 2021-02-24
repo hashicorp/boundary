@@ -274,24 +274,23 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		if len(lnConfig.Purpose) != 1 {
 			return fmt.Errorf("Invalid size of listener purposes (%d)", len(lnConfig.Purpose))
 		}
-		// In worker/listener setup code we have validated that the purpose is size 1
 		purpose := strings.ToLower(lnConfig.Purpose[0])
 		if !strutil.StrListContains(allowedPurposes, purpose) {
 			return fmt.Errorf("Unknown listener purpose %q", purpose)
 		}
 		lnConfig.Purpose[0] = purpose
 
-		// Override for now
-		// TODO: Way to configure
-		lnConfig.TLSCipherSuites = []uint16{
-			// 1.3
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-			// 1.2
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+		if lnConfig.TLSCipherSuites == nil {
+			lnConfig.TLSCipherSuites = []uint16{
+				// 1.3
+				tls.TLS_AES_128_GCM_SHA256,
+				tls.TLS_AES_256_GCM_SHA384,
+				tls.TLS_CHACHA20_POLY1305_SHA256,
+				// 1.2
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			}
 		}
 
 		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
