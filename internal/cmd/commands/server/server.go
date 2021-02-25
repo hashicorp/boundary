@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
 )
 
 var (
@@ -35,10 +36,8 @@ var (
 type Command struct {
 	*base.Server
 
-	ExtShutdownCh chan struct{}
-	SighupCh      chan struct{}
-	ReloadedCh    chan struct{}
-	SigUSR2Ch     chan struct{}
+	SighupCh  chan struct{}
+	SigUSR2Ch chan struct{}
 
 	Config     *config.Config
 	controller *controller.Controller
@@ -51,6 +50,14 @@ type Command struct {
 	flagLogLevel    string
 	flagLogFormat   string
 	flagCombineLogs bool
+
+	reloadedCh   chan struct{}  // for tests
+	startedCh    chan struct{}  // for tests
+	presetConfig *atomic.String // for tests
+	// for tests -- Prometheus seems to use a global collector so if package
+	// tests are run it errors out even if they're not run in parallel 🙄 cause
+	// Go runs the tests within the same overall process
+	skipMetrics bool
 }
 
 func (c *Command) Synopsis() string {
@@ -145,9 +152,11 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Logger)
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-		c.UI.Error(err.Error())
-		return 1
+	if !c.skipMetrics {
+		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
+			c.UI.Error(err.Error())
+			return 1
+		}
 	}
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
@@ -438,6 +447,11 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	// Inform any tests that the server is ready
+	if c.startedCh != nil {
+		close(c.startedCh)
+	}
+
 	return c.WaitForInterrupt()
 }
 
@@ -451,29 +465,37 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
-	wrapperPath := c.flagConfig
-	if c.flagConfigKms != "" {
-		wrapperPath = c.flagConfigKms
-	}
-	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
-	if err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-	if wrapper != nil {
-		c.configWrapper = wrapper
-		if err := wrapper.Init(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return 1
-		}
-	}
-
-	if len(c.flagConfig) == 0 {
+	if len(c.flagConfig) == 0 && c.presetConfig == nil {
 		c.UI.Error("Must specify a config file using -config")
 		return 1
 	}
 
-	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
+	switch {
+	case c.presetConfig != nil:
+		c.Config, err = config.Parse(c.presetConfig.Load())
+
+	default:
+		wrapperPath := c.flagConfig
+		if c.flagConfigKms != "" {
+			wrapperPath = c.flagConfigKms
+		}
+		var configWrapper wrapping.Wrapper
+		if wrapperPath != "" {
+			configWrapper, err = wrapper.GetWrapperFromPath(wrapperPath, "config")
+			if err != nil {
+				c.UI.Error(err.Error())
+				return 1
+			}
+			if configWrapper != nil {
+				c.configWrapper = configWrapper
+				if err := configWrapper.Init(c.Context); err != nil {
+					c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
+					return 1
+				}
+			}
+		}
+		c.Config, err = config.LoadFile(c.flagConfig, configWrapper)
+	}
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return 1
@@ -547,14 +569,9 @@ func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	shutdownCh := c.ShutdownCh
-	if c.ExtShutdownCh != nil {
-		shutdownCh = c.ExtShutdownCh
-	}
-
 	for !shutdownTriggered {
 		select {
-		case <-shutdownCh:
+		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary server shutdown triggered")
 
 			if c.Config.Worker != nil {
@@ -579,11 +596,15 @@ func (c *Command) WaitForInterrupt() int {
 			var err error
 			var newConf *config.Config
 
-			if c.flagConfig == "" {
+			if c.flagConfig == "" && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
+			if c.presetConfig != nil {
+				newConf, err = config.Parse(c.presetConfig.Load())
+			} else {
+				newConf, err = config.LoadFile(c.flagConfig, c.configWrapper)
+			}
 			if err != nil {
 				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
 				goto RUNRELOADFUNCS
@@ -616,8 +637,8 @@ func (c *Command) WaitForInterrupt() int {
 			}
 
 		RUNRELOADFUNCS:
-			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Errorf("Error(s) were encountered during server reload: %w", err).Error())
+			if err := c.Reload(newConf); err != nil {
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:
@@ -630,30 +651,31 @@ func (c *Command) WaitForInterrupt() int {
 	return 0
 }
 
-func (c *Command) Reload() error {
+func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
 	var reloadErrors *multierror.Error
 
-	for k, relFuncs := range c.ReloadFuncs {
-		switch {
-		case strings.HasPrefix(k, "listener|"):
-			for _, relFunc := range relFuncs {
-				if relFunc != nil {
-					if err := relFunc(); err != nil {
-						reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
-					}
-				}
+	for _, relFunc := range c.ReloadFuncs["listeners"] {
+		if relFunc != nil {
+			if err := relFunc(); err != nil {
+				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
+	if newConf != nil && c.worker != nil {
+		c.worker.ParseAndStoreTags(newConf.Worker.Tags)
+	}
+
 	// Send a message that we reloaded. This prevents "guessing" sleep times
 	// in tests.
-	select {
-	case c.ReloadedCh <- struct{}{}:
-	default:
+	if c.reloadedCh != nil {
+		select {
+		case c.reloadedCh <- struct{}{}:
+		default:
+		}
 	}
 
 	return reloadErrors.ErrorOrNil()

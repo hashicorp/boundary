@@ -32,7 +32,10 @@ worker {
 - `controllers` - A list of hosts/IP addresses and optionally ports for reaching
   controllers. The port will default to :9201 if not specified.
 
-- `tags` - A map of key-value pairs where values are an array of strings. Most commonly used for [filtering](/docs/concepts/filtering) targets a worker can proxy via [worker tags](/docs/concepts/filtering/worker-tags).
+- `tags` - A map of key-value pairs where values are an array of strings. Most
+  commonly used for [filtering](/docs/concepts/filtering) targets a worker can
+  proxy via [worker tags](/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
+  tags set here will be re-parsed and new values used..
 
 ## KMS Configuration
 
