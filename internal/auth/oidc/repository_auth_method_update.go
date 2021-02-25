@@ -92,12 +92,12 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	opts := getOpts(opt...)
 	if opts.withDryRun {
 		updated := applyUpdate(am, origAm, fieldMaskPaths)
-		err := r.TestAuthMethod(ctx, WithAuthMethod(updated))
+		err := r.ValidateAuthMethod(ctx, WithAuthMethod(updated))
 		return updated, db.NoRowsAffected, err
 	}
 
 	if !opts.withForce {
-		if err := r.TestAuthMethod(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
+		if err := r.ValidateAuthMethod(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
 	}
@@ -476,20 +476,20 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 	return cp
 }
 
-// TestAuthMethod will test/validate the provided AuthMethod.
+// ValidateAuthMethod will test/validate the provided AuthMethod.
 //
 // It will verify that all required fields for a working AuthMethod have values.
 //
-// If the AuthMethod contains a DiscoveryUrl for an OIDC provider, TestAuthMethod
+// If the AuthMethod contains a DiscoveryUrl for an OIDC provider, ValidateAuthMethod
 // retrieves the OpenID Configuration document. The values in the AuthMethod
 // (and associated data) are validated with the retrieved document. The issuer and
 // id token signing algorithm in the configuration are validated with the
-// retrieved document. TestAuthMethod also verifies the authorization, token,
+// retrieved document. ValidateAuthMethod also verifies the authorization, token,
 // and user_info endpoints by connecting to each and uses any certificates in the
 // configuration as trust anchors to confirm connectivity.
 //
 // Options supported are: WithPublicId, WithAuthMethod
-func (r *Repository) TestAuthMethod(ctx context.Context, opt ...Option) error {
+func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) error {
 	const op = "oidc.(Repository).TestAuthMethod"
 	opts := getOpts(opt...)
 	var am *AuthMethod
