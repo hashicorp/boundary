@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
 type SubType int
@@ -23,6 +24,17 @@ func (t SubType) String() string {
 		return "oidc"
 	}
 	return "unknown"
+}
+
+// AuthMethod contains the common methods across all the different types of auth methods.
+type AuthMethod interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetScopeId() string
+	GetVersion() uint32
 }
 
 // SubtypeFromType converts a string to a SubType.
