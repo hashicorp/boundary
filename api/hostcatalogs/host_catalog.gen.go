@@ -2,7 +2,6 @@
 package hostcatalogs
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,18 +29,6 @@ type HostCatalog struct {
 	response *api.Response
 }
 
-func (n HostCatalog) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalog) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n HostCatalog) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type HostCatalogReadResult struct {
 	Item     *HostCatalog
 	response *api.Response
@@ -51,12 +38,8 @@ func (n HostCatalogReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n HostCatalogReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalogReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostCatalogReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -68,12 +51,8 @@ type HostCatalogDeleteResult struct {
 	response *api.Response
 }
 
-func (n HostCatalogDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalogDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostCatalogDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type HostCatalogListResult struct {
@@ -85,12 +64,8 @@ func (n HostCatalogListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n HostCatalogListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostCatalogListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostCatalogListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

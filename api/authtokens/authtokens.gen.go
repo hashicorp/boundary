@@ -2,7 +2,6 @@
 package authtokens
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -29,18 +28,6 @@ type AuthToken struct {
 	response *api.Response
 }
 
-func (n AuthToken) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthToken) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n AuthToken) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type AuthTokenReadResult struct {
 	Item     *AuthToken
 	response *api.Response
@@ -50,12 +37,8 @@ func (n AuthTokenReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n AuthTokenReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthTokenReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthTokenReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -67,12 +50,8 @@ type AuthTokenDeleteResult struct {
 	response *api.Response
 }
 
-func (n AuthTokenDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthTokenDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthTokenDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type AuthTokenListResult struct {
@@ -84,12 +63,8 @@ func (n AuthTokenListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n AuthTokenListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n AuthTokenListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n AuthTokenListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection
