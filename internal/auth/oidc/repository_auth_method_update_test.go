@@ -218,7 +218,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				return &a
 			},
 			version:      1,
-			wantErrMatch: errors.T(errors.InvalidFieldMask),
+			wantErrMatch: errors.T(errors.EmptyFieldMask),
 		},
 	}
 	for _, tt := range tests {
