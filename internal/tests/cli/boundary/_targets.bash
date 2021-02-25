@@ -34,12 +34,12 @@ function assoc_host_sets() {
 function target_id_from_name() {
   local sid=$1
   local name=$2
-  strip $(list_targets $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_targets $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function target_host_set_ids() {
   local tid=$1
-  boundary targets read -id $tid -format json | jq '.host_sets[].id'  
+  boundary targets read -id $tid -format json | jq '.item.host_sets[].id'  
 }
 
 function target_has_host_set_id() {

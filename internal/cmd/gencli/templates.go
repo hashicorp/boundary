@@ -81,16 +81,15 @@ var cmdTemplate = template.Must(template.New("").Funcs(
 package {{ .Pkg }}cmd
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/{{ .Pkg }}"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -231,13 +230,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 
 	{{ if .HasId }}
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") && c.FlagId == "" {
-			c.UI.Error("ID is required but not passed in via -id")
+			c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 			return 1
 	}
 	{{ end }}
@@ -249,14 +248,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		{{ if hasAction .StdActions "create" }}
 		case "create":
 			if c.Flag{{ .Container }}Id == "" {
-				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
+				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
 				return 1
 			}
 		{{ end }}
 		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.Flag{{ .Container }}Id == "" {
-				c.UI.Error("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID")
+				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
 				return 1
 			}
 		{{ end }}
@@ -265,7 +264,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	client, err := c.Client()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
 		return 2
 	}
 	{{ .Pkg }}Client := {{ .Pkg }}.NewClient(client)
@@ -349,7 +348,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if eq $action "delete" }}
 	case "delete":
 		_, err = {{ $input.Pkg}}Client.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}
@@ -365,16 +364,16 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
 			return 1
 		}
-		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
 	}
 
 	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
 	if err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 	if output {
@@ -413,12 +412,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 				c.UI.Output("null")
 			
 			default:
-				b, err := base.JsonFormatter{}.Format(listedItems)
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-					return 1
+				items := make([]interface{}, len(listedItems))
+				for i, v := range listedItems {
+					items[i] = v
 				}
-				c.UI.Output(string(b))
+				return c.PrintJsonItems(listResult, items)
 			}
 
 		case "table":
@@ -436,12 +434,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		b, err := base.JsonFormatter{}.Format(item)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(b))
+		return c.PrintJsonItem(result, item)
 	}
 
 	return 0

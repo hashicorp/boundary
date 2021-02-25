@@ -208,15 +208,6 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
 	})
 
-	f.BoolVar(&base.BoolVar{
-		Name:       "output-json-errors",
-		Target:     &c.outputJsonErrors,
-		EnvVar:     "BOUNDARY_CONNECT_OUTPUT_JSON_ERRORS",
-		Completion: complete.PredictNothing,
-		Usage:      "Cause errors coming from this command to be output as JSON. This is experimental only and currently only meant for internal purposes. The format may change at any time and this flag/env var may be removed or modified at any time.",
-		Hidden:     true,
-	})
-
 	switch c.Func {
 	case "connect":
 		f.StringVar(&base.StringVar{
@@ -274,7 +265,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.Error(err.Error())
+		c.PrintCliError(err)
 		return 3
 	}
 
@@ -282,22 +273,22 @@ func (c *Command) Run(args []string) (retCode int) {
 	case c.flagAuthzToken != "":
 		switch {
 		case c.flagTargetId != "":
-			c.Error(`-target-id and -authz-token cannot both be specified`)
+			c.PrintCliError(errors.New(`-target-id and -authz-token cannot both be specified`))
 			return 3
 		case c.flagTargetName != "":
-			c.Error(`-target-name and -authz-token cannot both be specified`)
+			c.PrintCliError(errors.New(`-target-name and -authz-token cannot both be specified`))
 			return 3
 		}
 	default:
 		if c.flagTargetId == "" &&
 			(c.flagTargetName == "" ||
 				(c.FlagScopeId == "" && c.FlagScopeName == "")) {
-			c.Error("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either")
+			c.PrintCliError(errors.New("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either"))
 			return 3
 		}
 		if c.flagTargetId != "" &&
 			(c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
-			c.Error("Cannot specify a target ID and also other lookup parameters")
+			c.PrintCliError(errors.New("Cannot specify a target ID and also other lookup parameters"))
 			return 3
 		}
 	}
@@ -319,7 +310,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	tofuToken, err := base62.Random(20)
 	if err != nil {
-		c.Error(fmt.Errorf("Could not derive random bytes for tofu token: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("Could not derive random bytes for tofu token: %w", err))
 		return 2
 	}
 
@@ -330,7 +321,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 	listenAddr := net.ParseIP(c.flagListenAddr)
 	if listenAddr == nil {
-		c.Error(fmt.Sprintf("Could not successfully parse listen address of %s", c.flagListenAddr))
+		c.PrintCliError(fmt.Errorf("Could not successfully parse listen address of %s", c.flagListenAddr))
 		return 3
 	}
 
@@ -340,18 +331,18 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString == "-" {
 			authBytes, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
-				c.Error(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err))
 				return 3
 			}
 			if len(authBytes) == 0 {
-				c.Error("No authorization data read from stdin")
+				c.PrintCliError(errors.New("No authorization data read from stdin"))
 				return 3
 			}
 			authzString = string(authBytes)
 		}
 
 		if authzString == "" {
-			c.Error("Authorization data was empty")
+			c.PrintCliError(errors.New("Authorization data was empty"))
 			return 3
 		}
 
@@ -367,7 +358,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	default:
 		client, err := c.Client()
 		if err != nil {
-			c.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+			c.PrintCliError(fmt.Errorf("Error creating API client: %s", err))
 			return 2
 		}
 		targetClient := targets.NewClient(client)
@@ -389,15 +380,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		sar, err := targetClient.AuthorizeSession(c.Context, c.flagTargetId, opts...)
 		if err != nil {
 			if apiErr := api.AsServerError(err); apiErr != nil {
-				switch c.outputJsonErrors {
-				case true:
-					c.Error(apiErr.ResponseBody().String())
-				default:
-					c.Error(fmt.Sprintf("Error from controller when performing authorize-session against target: %s", base.PrintApiError(apiErr)))
-				}
+				c.PrintApiError(apiErr, "Error from controller when performing authorize-session action against given target")
 				return 1
 			}
-			c.Error(fmt.Sprintf("Error trying to authorize a session against target: %s", err.Error()))
+			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return 2
 		}
 		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
@@ -405,22 +391,22 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	if err != nil {
-		c.Error(fmt.Errorf("Unable to base58-decode authorization data: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("Unable to base58-decode authorization data: %w", err))
 		return 3
 	}
 	if len(marshaled) == 0 {
-		c.Error("Zero length authorization information after decoding")
+		c.PrintCliError(errors.New("Zero length authorization information after decoding"))
 		return 3
 	}
 
 	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
 	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
-		c.Error(fmt.Errorf("Unable to proto-decode authorization data: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("Unable to proto-decode authorization data: %w", err))
 		return 3
 	}
 
 	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
-		c.Error("No workers found in authorization string")
+		c.PrintCliError(errors.New("No workers found in authorization string"))
 		return 3
 	}
 
@@ -429,12 +415,12 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
-		c.Error(fmt.Errorf("Unable to decode mTLS certificate: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
 		return 3
 	}
 
 	if len(parsedCert.DNSNames) != 1 {
-		c.Error(fmt.Errorf("mTLS certificate has invalid parameters: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("mTLS certificate has invalid parameters: %w", err))
 		return 3
 	}
 
@@ -474,7 +460,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		Port: c.flagListenPort,
 	})
 	if err != nil {
-		c.Error(fmt.Errorf("Error starting listening port: %w", err).Error())
+		c.PrintCliError(fmt.Errorf("Error starting listening port: %w", err))
 		return 2
 	}
 
@@ -482,7 +468,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		// Forces the for loop to exist instead of spinning on errors
 		c.connectionsLeft.Store(0)
 		if err := c.listener.Close(); err != nil {
-			c.Error(fmt.Errorf("Error closing listener on shutdown: %w", err).Error())
+			c.PrintCliError(fmt.Errorf("Error closing listener on shutdown: %w", err))
 			retCode = 2
 		}
 	}
@@ -510,7 +496,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&sessInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling session information: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
 				return 2
 			}
 			c.UI.Output(string(out))
@@ -536,7 +522,7 @@ func (c *Command) Run(args []string) (retCode int) {
 					if c.connectionsLeft.Load() == 0 {
 						return
 					}
-					c.Error(fmt.Errorf("Error accepting connection: %w", err).Error())
+					c.PrintCliError(fmt.Errorf("Error accepting connection: %w", err))
 					continue
 				}
 			}
@@ -549,10 +535,10 @@ func (c *Command) Run(args []string) (retCode int) {
 					workerAddr,
 					transport)
 				if err != nil {
-					c.Error(err.Error())
+					c.PrintCliError(err)
 				} else {
 					if err := c.runTcpProxyV1(wsConn, listeningConn, tofuToken); err != nil {
-						c.Error(err.Error())
+						c.PrintCliError(err)
 					}
 				}
 			}()
@@ -620,10 +606,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
-			c.Error(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err).Error())
+			c.PrintCliError(fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err))
 		} else {
 			if err := c.sendSessionTeardown(ctx, wsConn, tofuToken); err != nil {
-				c.Error(fmt.Errorf("error sending session teardown request to worker: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error sending session teardown request to worker: %w", err))
 			}
 		}
 		cancel()
@@ -636,7 +622,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		case "json":
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling termination information: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
 				return 2
 			}
 			c.UI.Output(string(out))
@@ -767,7 +753,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		case "json":
 			out, err := json.Marshal(&connInfo)
 			if err != nil {
-				c.Error(fmt.Errorf("error marshaling connection information: %w", err).Error())
+				c.PrintCliError(fmt.Errorf("error marshaling connection information: %w", err))
 			}
 			c.UI.Output(string(out))
 		}
@@ -788,7 +774,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	case "http":
 		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
 		if err != nil {
-			c.Error(fmt.Sprintf("Error parsing session args: %s", err))
+			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
 			return
 		}
@@ -806,7 +792,7 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	case "kube":
 		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
 		if err != nil {
-			c.Error(fmt.Sprintf("Error parsing session args: %s", err))
+			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
 			return
 		}
@@ -860,18 +846,9 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			}
 		}
 
-		c.Error(fmt.Sprintf("Failed to run command: %s", err))
+		c.PrintCliError(fmt.Errorf("Failed to run command: %w", err))
 		c.execCmdReturnValue.Store(int32(exitCode))
 		return
 	}
 	c.execCmdReturnValue.Store(0)
-}
-
-func (c *Command) Error(err string) {
-	switch c.outputJsonErrors {
-	case true:
-		c.UI.Error(fmt.Sprintf(`{"error": %q}`, err))
-	default:
-		c.UI.Error(err)
-	}
 }

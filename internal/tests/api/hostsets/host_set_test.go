@@ -163,7 +163,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 // TODO: Get better coverage for expected errors and error formats.
@@ -192,7 +192,7 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	h, err = hClient.Create(tc.Context(), hc.Item.Id, hostsets.WithName("foo"))
 	require.Error(err)
@@ -204,11 +204,11 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = hClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }
