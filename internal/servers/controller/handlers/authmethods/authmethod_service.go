@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -560,13 +561,13 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
-	return handlers.ValidateGetRequest(password.AuthMethodPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 		}
@@ -574,6 +575,11 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 		case auth.PasswordSubtype:
 			pwAttrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+				badFields["attributes"] = "Attribute fields do not match the expected format."
+			}
+		case auth.OidcSubtype:
+			oidcAttrs := &pb.OidcAuthMethodAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), oidcAttrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
 		default:
@@ -584,7 +590,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
-	return handlers.ValidateUpdateRequest(password.AuthMethodPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
@@ -599,16 +605,16 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
-	})
+	}, password.AuthMethodPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
-	return handlers.ValidateDeleteRequest(password.AuthMethodPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
@@ -626,7 +632,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+	} else if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	// TODO: Update this when we enable different auth method types.
@@ -654,7 +660,7 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+	} else if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetCredentials() == nil {

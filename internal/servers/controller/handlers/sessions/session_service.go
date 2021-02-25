@@ -323,12 +323,12 @@ func toProto(in *session.Session) *pb.Session {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetSessionRequest) error {
-	return handlers.ValidateGetRequest(session.SessionPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, session.SessionPrefix)
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
@@ -343,7 +343,7 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 
 func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
+	if !handlers.ValidId(req.GetId(), session.SessionPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

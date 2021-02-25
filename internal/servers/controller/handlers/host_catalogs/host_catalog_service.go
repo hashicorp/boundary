@@ -423,13 +423,13 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
-	return handlers.ValidateGetRequest(static.HostCatalogPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
@@ -442,7 +442,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
-	return handlers.ValidateUpdateRequest(static.HostCatalogPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
 		case host.StaticSubtype:
@@ -451,16 +451,16 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, static.HostCatalogPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostCatalogPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
