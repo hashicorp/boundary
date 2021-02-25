@@ -31,8 +31,9 @@ import (
 // Options supported:
 //
 // * WithDryRun: when this option is provided, the auth method is retrieved from
-// the repo, updated based on the fieldMask, tested via Repository.TestAuthMethod
-// and any errors reported.  The updates are not peristed to the repository.
+// the repo, updated based on the fieldMask, tested via Repository.TestAuthMethod,
+// the results of the update are returned, and and any errors reported.  The
+// updates are not peristed to the repository.
 //
 // * WithForce: when this option is provided, the auth method is persistented in
 // the repository without testing it fo validity with Repository.TestAuthMethod.
