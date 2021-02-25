@@ -2,6 +2,26 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Changes/Deprecations
+
+All of these changes are from [PR
+962](https://github.com/hashicorp/boundary/pull/962):
+
+* api: A few functions have changed places. Notably, instead of `ResponseMap()`
+  and `ResponseBody()`, resources simply expose `Response()`. This higher-level
+  response object contains the map and body, and also exposes `StatusCode()` in
+  place of indivdidual resources.
+* cli: In `json` output format, a resource item is now an object under the
+  top-level key `item`; a list of resource items is now an list of objects under
+  the top-level key `items`. This preserves the top level for putting in other
+  useful information later on (and the HTTP status code is included now).
+* cli: In `json` output format, errors are now serialized as a JSON object with
+  an `error` key instead of outputting normal text
+* cli: All errors, including API errors, are now written to `stderr`. Previously
+  in the default table format, API errors would be written to `stdout`.
+
 ## 0.1.7 (2021/02/16)
 
 *Note* This release fixes an upgrade issue affecting users on Postgres 11
