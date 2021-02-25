@@ -2,7 +2,6 @@
 package hosts
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,18 +29,6 @@ type Host struct {
 	response *api.Response
 }
 
-func (n Host) ResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n Host) ResponseMap() map[string]interface{} {
-	return n.response.Map
-}
-
-func (n Host) ResponseStatus() int {
-	return n.response.HttpResponse().StatusCode
-}
-
 type HostReadResult struct {
 	Item     *Host
 	response *api.Response
@@ -51,12 +38,8 @@ func (n HostReadResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n HostReadResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostReadResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostReadResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type (
@@ -68,12 +51,8 @@ type HostDeleteResult struct {
 	response *api.Response
 }
 
-func (n HostDeleteResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostDeleteResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostDeleteResult) GetResponse() *api.Response {
+	return n.response
 }
 
 type HostListResult struct {
@@ -85,12 +64,8 @@ func (n HostListResult) GetItems() interface{} {
 	return n.Items
 }
 
-func (n HostListResult) GetResponseBody() *bytes.Buffer {
-	return n.response.Body
-}
-
-func (n HostListResult) GetResponseMap() map[string]interface{} {
-	return n.response.Map
+func (n HostListResult) GetResponse() *api.Response {
+	return n.response
 }
 
 // Client is a client for this collection

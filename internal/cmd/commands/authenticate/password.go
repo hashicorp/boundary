@@ -3,6 +3,7 @@ package authenticate
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -94,16 +95,16 @@ func (c *PasswordCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 
 	switch {
 	case c.flagLoginName == "":
-		c.UI.Error("Login name must be provided via -login-name")
+		c.PrintCliError(errors.New("Login name must be provided via -login-name"))
 		return 1
 	case c.FlagAuthMethodId == "":
-		c.UI.Error("Auth method ID must be provided via -auth-method-id")
+		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
 		return 1
 	}
 
@@ -120,7 +121,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return 2
 	}
 
@@ -134,10 +135,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		})
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing authentication: %s", base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, "Error from controller when performing authentication")
 			return 1
 		}
-		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error trying to perform authentication: %w", err))
 		return 2
 	}
 
@@ -155,12 +156,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 
 	case "json":
-		jsonOut, err := base.JsonFormatter{}.Format(token)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(jsonOut))
+		return c.PrintJsonItem(result, token)
 	}
 
 	var gotErr bool

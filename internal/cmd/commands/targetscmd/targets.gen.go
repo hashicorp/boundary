@@ -2,6 +2,7 @@
 package targetscmd
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -137,7 +138,7 @@ func (c *Command) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 
@@ -147,7 +148,7 @@ func (c *Command) Run(args []string) int {
 		switch c.Func {
 		case "list":
 			if c.FlagScopeId == "" {
-				c.UI.Error("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID")
+				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
 				return 1
 			}
 		}
@@ -155,7 +156,7 @@ func (c *Command) Run(args []string) int {
 
 	client, err := c.Client()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
 		return 2
 	}
 	targetsClient := targets.NewClient(client)
@@ -228,7 +229,7 @@ func (c *Command) Run(args []string) int {
 
 	case "delete":
 		_, err = targetsClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.ResponseStatus() == http.StatusNotFound {
+		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
 			existed = false
 			err = nil
 		}
@@ -242,16 +243,16 @@ func (c *Command) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
 			return 1
 		}
-		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
 	}
 
 	output, err := printCustomActionOutput(c)
 	if err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 	if output {
@@ -288,12 +289,11 @@ func (c *Command) Run(args []string) int {
 				c.UI.Output("null")
 
 			default:
-				b, err := base.JsonFormatter{}.Format(listedItems)
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-					return 1
+				items := make([]interface{}, len(listedItems))
+				for i, v := range listedItems {
+					items[i] = v
 				}
-				c.UI.Output(string(b))
+				return c.PrintJsonItems(listResult, items)
 			}
 
 		case "table":
@@ -310,12 +310,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		b, err := base.JsonFormatter{}.Format(item)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(b))
+		return c.PrintJsonItem(result, item)
 	}
 
 	return 0

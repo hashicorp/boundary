@@ -1,6 +1,8 @@
 module github.com/hashicorp/boundary
 
-go 1.14
+go 1.15
+
+replace github.com/hashicorp/boundary/api => ./api
 
 require (
 	github.com/armon/go-metrics v0.3.6
@@ -15,7 +17,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
-	github.com/hashicorp/boundary/api v0.0.6
+	github.com/hashicorp/boundary/api v0.0.7
 	github.com/hashicorp/boundary/sdk v0.0.3
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0

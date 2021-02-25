@@ -35,5 +35,5 @@ function has_default_user_actions() {
 
 function user_id() {
   local user=$1
-  strip $(list_users | jq -c ".[] | select(.name | contains(\"$user\")) | .[\"id\"]")
+  strip $(list_users | jq -c ".items[] | select(.name | contains(\"$user\")) | .[\"id\"]")
 }

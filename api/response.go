@@ -22,6 +22,11 @@ func (r *Response) HttpResponse() *http.Response {
 	return r.resp
 }
 
+// StatusCode returns the underlying HTTP status code
+func (r *Response) StatusCode() int {
+	return r.resp.StatusCode
+}
+
 func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")

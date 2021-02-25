@@ -59,7 +59,7 @@ load _helpers
   [ "$status" -eq 0 ]
   run list_sessions $DEFAULT_P_ID
   [ "$status" -eq 0 ]
-  id=$(echo "$output" | jq -r '[.[]|select(.user_id == "u_1234567890")][0].id')
+  id=$(echo "$output" | jq -r '[.items[]|select(.user_id == "u_1234567890")][0].id')
 
   # Check unpriv cannot read or cancel an admin's session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
@@ -86,7 +86,7 @@ load _helpers
   [ "$status" -eq 0 ]
   run list_sessions $DEFAULT_P_ID
   [ "$status" -eq 0 ]
-  id=$(echo "$output" | jq -r '[.[]|select(.user_id == "u_0987654321")][0].id')
+  id=$(echo "$output" | jq -r '[.items[]|select(.user_id == "u_0987654321")][0].id')
 
   # Check unpriv can read and cancel their own session
   run login $DEFAULT_UNPRIVILEGED_LOGIN

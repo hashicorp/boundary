@@ -2,6 +2,7 @@
 package hostsetscmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
@@ -112,12 +113,12 @@ func (c *StaticCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 
 	if strutil.StrListContains(flagsStaticMap[c.Func], "id") && c.FlagId == "" {
-		c.UI.Error("ID is required but not passed in via -id")
+		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 		return 1
 	}
 
@@ -127,7 +128,7 @@ func (c *StaticCommand) Run(args []string) int {
 		switch c.Func {
 		case "create":
 			if c.FlagHostCatalogId == "" {
-				c.UI.Error("HostCatalog ID must be passed in via -host-catalog-id or BOUNDARY_HOST_CATALOG_ID")
+				c.PrintCliError(errors.New("HostCatalog ID must be passed in via -host-catalog-id or BOUNDARY_HOST_CATALOG_ID"))
 				return 1
 			}
 		}
@@ -135,7 +136,7 @@ func (c *StaticCommand) Run(args []string) int {
 
 	client, err := c.Client()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
+		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
 		return 2
 	}
 	hostsetsClient := hostsets.NewClient(client)
@@ -188,16 +189,16 @@ func (c *StaticCommand) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, c.plural, base.PrintApiError(apiErr)))
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
 			return 1
 		}
-		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
 		return 2
 	}
 
 	output, err := printCustomStaticActionOutput(c)
 	if err != nil {
-		c.UI.Error(err.Error())
+		c.PrintCliError(err)
 		return 1
 	}
 	if output {
@@ -213,12 +214,7 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		b, err := base.JsonFormatter{}.Format(item)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
-		}
-		c.UI.Output(string(b))
+		return c.PrintJsonItem(result, item)
 	}
 
 	return 0
