@@ -220,6 +220,77 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			version:      1,
 			wantErrMatch: errors.T(errors.EmptyFieldMask),
 		},
+		{
+			name:  "not-found",
+			setup: func() *AuthMethod { return nil },
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				a := AllocAuthMethod()
+				id, _ := newAuthMethodId()
+				a.PublicId = id
+				return &a
+			},
+			fieldMasks:   []string{"Name"},
+			version:      1,
+			wantErrMatch: errors.T(errors.RecordNotFound),
+		},
+		{
+			name: "bad-version",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithAudClaims("www.alice.com"),
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				return &am
+			},
+			fieldMasks:   []string{"Name"},
+			version:      100,
+			wantErrMatch: errors.T(errors.VersionMismatch),
+		},
+		{
+			name: "not-valid-auth-method",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithAudClaims("www.alice.com"),
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.SigningAlgs = []string{string(ES384), string(ES512)}
+				return &am
+			},
+			fieldMasks:   []string{"Name", "Description", "SigningAlgs"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -381,7 +452,7 @@ func Test_TestAuthMethod(t *testing.T) {
 				tt.setup()
 				defer tt.cleanup()
 			}
-			err := repo.TestAuthMethod(ctx, opts...)
+			err := repo.ValidateAuthMethod(ctx, opts...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
