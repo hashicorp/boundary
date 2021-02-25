@@ -576,7 +576,6 @@ type HTTPClient interface {
 }
 
 // pingEndpoint will make an attempted http request, return status code and errors
-// (non 2xx status codes are not an error)
 func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, url string) (int, error) {
 	const op = "oidc.pingEndpoint"
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
