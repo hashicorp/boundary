@@ -266,6 +266,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
+
+	providerCache().delete(ctx, updatedAm.PublicId)
+
 	return updatedAm, rowsUpdated, nil
 }
 
