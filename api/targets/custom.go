@@ -1,28 +1,24 @@
 package targets
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
+
+	"github.com/hashicorp/boundary/api"
 )
 
 type SessionAuthorizationResult struct {
-	Item         *SessionAuthorization
-	responseBody *bytes.Buffer
-	responseMap  map[string]interface{}
+	Item     *SessionAuthorization
+	response *api.Response
 }
 
 func (n SessionAuthorizationResult) GetItem() interface{} {
 	return n.Item
 }
 
-func (n SessionAuthorizationResult) GetResponseBody() *bytes.Buffer {
-	return n.responseBody
-}
-
-func (n SessionAuthorizationResult) GetResponseMap() map[string]interface{} {
-	return n.responseMap
+func (n SessionAuthorizationResult) GetResponse() *api.Response {
+	return n.response
 }
 
 func (c *Client) AuthorizeSession(ctx context.Context, targetId string, opt ...Option) (*SessionAuthorizationResult, error) {
@@ -76,7 +72,5 @@ func (c *Client) AuthorizeSession(ctx context.Context, targetId string, opt ...O
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	sar.responseBody = resp.Body
-	sar.responseMap = resp.Map
 	return sar, nil
 }
