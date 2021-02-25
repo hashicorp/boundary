@@ -129,6 +129,97 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				return am
 			},
 		},
+		{
+			name: "with-dry-run",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithAudClaims("www.alice.com"),
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.AudClaims = []string{"www.alice.com/admin"}
+				am.CallbackUrls = []string{"https://www.bob.com/callback"}
+				am.SigningAlgs = []string{string(ES384), string(ES512)}
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "CallbackUrls", "SigningAlgs"},
+			version:    1,
+			opt:        []Option{WithDryRun()},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = updateWith.Name
+				am.Description = updateWith.Description
+				am.AudClaims = updateWith.AudClaims
+				am.CallbackUrls = updateWith.CallbackUrls
+				am.SigningAlgs = updateWith.SigningAlgs
+				return am
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "nil-authMethod",
+			setup:        func() *AuthMethod { return nil },
+			updateWith:   func(orig *AuthMethod) *AuthMethod { return nil },
+			fieldMasks:   []string{"Name"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "nil-authMethod-store",
+			setup:        func() *AuthMethod { return nil },
+			updateWith:   func(orig *AuthMethod) *AuthMethod { return &AuthMethod{} },
+			fieldMasks:   []string{"Name"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "missing-public-id",
+			setup:        func() *AuthMethod { return nil },
+			updateWith:   func(orig *AuthMethod) *AuthMethod { a := AllocAuthMethod(); return &a },
+			fieldMasks:   []string{"Name"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:  "bad-field-mask",
+			setup: func() *AuthMethod { return nil },
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				a := AllocAuthMethod()
+				id, _ := newAuthMethodId()
+				a.PublicId = id
+				return &a
+			},
+			fieldMasks:   []string{"CreateTime"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:  "no-mask-or-null-fields",
+			setup: func() *AuthMethod { return nil },
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				a := AllocAuthMethod()
+				id, _ := newAuthMethodId()
+				a.PublicId = id
+				return &a
+			},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidFieldMask),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,21 +232,23 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				require.Error(err)
 				assert.Equal(0, rowsUpdated)
 				assert.Nil(updated)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
 
-				err := db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				require.Errorf(err, "should not have found oplog entry for %s", updateWith.PublicId)
+				if updateWith != nil && updateWith.AuthMethod != nil && updateWith.PublicId != "" {
+					err := db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+					require.Errorf(err, "should not have found oplog entry for %s", updateWith.PublicId)
+				}
 				return
 			}
 			switch opts.withDryRun {
 			case true:
 				assert.Equal(0, rowsUpdated)
-				if tt.wantErrMatch != nil {
+				switch tt.wantErrMatch != nil {
+				case true:
 					require.Error(err)
-					require.Nil(updated)
-					return
+				default:
+					require.NoError(err)
 				}
-				require.NoError(err)
 				require.NotNil(updated)
 				want := tt.want(orig, updateWith)
 				want.CreateTime = orig.CreateTime
@@ -291,7 +384,7 @@ func Test_TestAuthMethod(t *testing.T) {
 			err := repo.TestAuthMethod(ctx, opts...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
 				if tt.wantErrContains != "" {
 					assert.Containsf(err.Error(), tt.wantErrContains, "want err to contain %s got: %s", tt.wantErrContains, err.Error())
 				}
@@ -531,7 +624,7 @@ func Test_valueObjectChanges(t *testing.T) {
 			gotAdd, gotDel, err := valueObjectChanges(tt.id, tt.voName, tt.new, tt.old, tt.dbMask, tt.nullFields)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
 				return
 			}
 			require.NoError(err)
