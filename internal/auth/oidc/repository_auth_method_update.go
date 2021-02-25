@@ -158,7 +158,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			}
 			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
-			dbMask = append(dbMask, "Version")
 			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
