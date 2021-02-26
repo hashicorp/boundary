@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_MakeInactive(t *testing.T) {
+func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -37,13 +37,16 @@ func Test_MakeInactive(t *testing.T) {
 
 	tests := []struct {
 		name            string
+		toState         AuthMethodState
 		operateOn       string
+		opt             []Option
 		wantErrMatch    *errors.Template
 		wantErrContains string
 		wantNoOplog     bool
 	}{
 		{
-			name: "ActivePrivate-to-InActive",
+			name:    "ActivePrivate-to-InActive",
+			toState: InactiveState,
 			operateOn: func() string {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -61,7 +64,27 @@ func Test_MakeInactive(t *testing.T) {
 			}(),
 		},
 		{
-			name: "Inactive-to-Inactive",
+			name:    "ActivePublic-to-InActive",
+			toState: InactiveState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePublicState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+		},
+		{
+			name:    "Inactive-to-Inactive",
+			toState: InactiveState,
 			operateOn: func() string {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -80,23 +103,225 @@ func Test_MakeInactive(t *testing.T) {
 			wantNoOplog: true,
 		},
 		{
+			name:    "InActive-to-ActivePrivate",
+			toState: ActivePrivateState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+		},
+		{
+			name:    "ActivePublic-to-ActivePrivate",
+			toState: ActivePrivateState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePublicState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+		},
+		{
+			name:    "ActivePrivate-to-ActivePrivate",
+			toState: ActivePrivateState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePrivateState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			wantNoOplog: true,
+		},
+		{
+			name:    "InActive-to-ActivePublic",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+		},
+		{
+			name:    "ActivePrivate-to-ActivePublic",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePrivateState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+		},
+		{
+			name:    "ActivePublic-to-ActivePublic",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePublicState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			wantNoOplog: true,
+		},
+		{
+			name:    "force-InActive-to-ActivePrivate",
+			toState: ActivePrivateState,
+			opt:     []Option{WithForce()},
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				// the returned oidc auth method is incomplete
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+				).PublicId
+			}(),
+		},
+		{
+			name:    "force-InActive-to-ActivePublic",
+			toState: ActivePublicState,
+			opt:     []Option{WithForce()},
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				// the returned oidc auth method is incomplete
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+				).PublicId
+			}(),
+		},
+		{
 			name:            "missing-auth-method-id",
+			toState:         InactiveState,
 			operateOn:       "",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing auth method id",
 		},
 		{
 			name:            "not-found",
+			toState:         InactiveState,
 			operateOn:       "not-found-auth-method-id",
 			wantErrMatch:    errors.T(errors.RecordNotFound),
 			wantErrContains: "auth method not found",
+		},
+		{
+			name:    "error-for-InActive-to-ActivePrivate",
+			toState: ActivePrivateState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				// the returned oidc auth method is incomplete
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+				).PublicId
+			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to transition from inactive",
+		},
+		{
+			name:    "error-for-InActive-to-ActivePublic",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				// the returned oidc auth method is incomplete
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+				).PublicId
+			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to transition from inactive",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := repo.MakeInactive(ctx, tt.operateOn)
+			var err error
+			switch tt.toState {
+			case InactiveState:
+				err = repo.MakeInactive(ctx, tt.operateOn)
+			case ActivePrivateState:
+				err = repo.MakePrivate(ctx, tt.operateOn, tt.opt...)
+			case ActivePublicState:
+				err = repo.MakePublic(ctx, tt.operateOn, tt.opt...)
+			default:
+				require.Fail("unknown toState %s for test", tt.toState)
+			}
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
@@ -112,7 +337,7 @@ func Test_MakeInactive(t *testing.T) {
 			found, err := repo.LookupAuthMethod(ctx, tt.operateOn)
 			require.NoError(err)
 			require.NotEmpty(found)
-			assert.Equal(string(InactiveState), found.OperationalState)
+			assert.Equal(string(tt.toState), found.OperationalState)
 
 			if !tt.wantNoOplog {
 				err = db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
