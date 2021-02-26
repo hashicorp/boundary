@@ -259,6 +259,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
+			if updatedAm == nil {
+				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
+			}
 			return nil
 		},
 	)
@@ -501,6 +504,9 @@ func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) erro
 		am, err = r.lookupAuthMethod(ctx, opts.withPublicId)
 		if err != nil {
 			return errors.Wrap(err, op)
+		}
+		if am == nil {
+			return errors.New(errors.RecordNotFound, op, fmt.Sprintf("unable to lookup auth method %s", opts.withPublicId))
 		}
 	case opts.withAuthMethod != nil:
 		am = opts.withAuthMethod
