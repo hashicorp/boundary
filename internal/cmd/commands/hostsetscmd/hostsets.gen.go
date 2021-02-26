@@ -94,7 +94,7 @@ var flagsMap = map[string][]string{
 
 	"delete": {"id"},
 
-	"list": {"host-catalog-id"},
+	"list": {"host-catalog-id", "filter"},
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -174,6 +174,10 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, hostsets.DefaultDescription())
 	default:
 		opts = append(opts, hostsets.WithDescription(c.FlagDescription))
+	}
+
+	if c.FlagFilter != "" {
+		opts = append(opts, hostsets.WithFilter(c.FlagFilter))
 	}
 
 	var version uint32

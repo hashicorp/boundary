@@ -86,7 +86,7 @@ var flagsMap = map[string][]string{
 
 	"read": {"id"},
 
-	"list": {"scope-id", "recursive"},
+	"list": {"scope-id", "filter", "recursive"},
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -151,6 +151,10 @@ func (c *Command) Run(args []string) int {
 	switch c.FlagRecursive {
 	case true:
 		opts = append(opts, sessions.WithRecursive(true))
+	}
+
+	if c.FlagFilter != "" {
+		opts = append(opts, sessions.WithFilter(c.FlagFilter))
 	}
 
 	var version uint32

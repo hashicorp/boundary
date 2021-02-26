@@ -164,6 +164,10 @@ func (c *TcpCommand) Run(args []string) int {
 		opts = append(opts, targets.WithRecursive(true))
 	}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, targets.WithFilter(c.FlagFilter))
+	}
+
 	var version uint32
 
 	switch c.Func {

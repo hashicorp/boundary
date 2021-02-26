@@ -164,6 +164,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		opts = append(opts, authmethods.WithRecursive(true))
 	}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, authmethods.WithFilter(c.FlagFilter))
+	}
+
 	var version uint32
 
 	switch c.Func {
