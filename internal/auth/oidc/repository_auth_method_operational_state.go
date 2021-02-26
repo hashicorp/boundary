@@ -23,10 +23,15 @@ func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, _ ..
 // MakePrivate will transision an OIDC auth method from either the
 // InactiveState or the ActivePublicState to the ActivePrivateState.  If
 // transitioning from the InactiveState, the transition will only succeed if
-// the oidc.ValidateAuthMethod(...) succeeds. No options are currently supported.
+// the oidc.ValidateAuthMethod(...) succeeds.
+//
+// Options supported:
+//
+// * WithForce: when this option is provided, the auth method is persistented in
+// the repository without testing it fo validity with Repository.ValidateAuthMethod.
 func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt ...Option) error {
 	const op = "oidc.(Repository).MakePrivate"
-	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState); err != nil {
+	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState, opt...); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -35,16 +40,21 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt .
 // MakePublic will transision an OIDC auth method from either the
 // InactiveState or the ActivePrivateState to the ActivePublicState.  If
 // transitioning from the InactiveState, the transition will only succeed if
-// the oidc.ValidateAuthMethod(...) succeeds. No options are currently supported.
+// the oidc.ValidateAuthMethod(...) succeeds.
+//
+// Options supported:
+//
+// * WithForce: when this option is provided, the auth method is persistented in
+// the repository without testing it fo validity with Repository.ValidateAuthMethod.
 func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ...Option) error {
 	const op = "oidc.(Repository).MakePublic"
-	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState); err != nil {
+	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState, opt...); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
 }
 
-func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState) error {
+func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, opt ...Option) error {
 	const op = "oidc.(Repository).updateOperationalState"
 	if authMethodId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing auth method id")
@@ -62,7 +72,8 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 	if am.OperationalState == string(desiredState) {
 		return nil
 	}
-	if am.OperationalState == string(InactiveState) {
+	opts := getOpts(opt...)
+	if am.OperationalState == string(InactiveState) && !opts.withForce {
 		if err := r.ValidateAuthMethod(ctx, WithAuthMethod(am)); err != nil {
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
 		}
