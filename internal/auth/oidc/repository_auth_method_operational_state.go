@@ -12,6 +12,7 @@ import (
 
 // MakeInactive will transision an OIDC auth method from either the
 // ActivePrivateState or the ActivePublicState to the InactiveState.
+// No options are supported.
 func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, _ ...Option) error {
 	const op = "oidc.(Repository).MakeInactive"
 	if err := r.transitionAuthMethodTo(ctx, authMethodId, InactiveState); err != nil {
