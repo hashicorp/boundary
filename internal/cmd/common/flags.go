@@ -75,7 +75,7 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 			f.StringVar(&base.StringVar{
 				Name:   "filter",
 				Target: &c.FlagFilter,
-				Usage:  "If set, the list operation will be filtered before being returned. The filter operates against each item in the list. Using single quotes is recommended as filters contain double quotes. See https://www.boundaryproject.io/docs/concepts/filtering/listing for details.",
+				Usage:  "If set, the list operation will be filtered before being returned. The filter operates against each item in the list. Using single quotes is recommended as filters contain double quotes. See https://www.boundaryproject.io/docs/concepts/filtering/resource-listing for details.",
 			})
 		}
 	}
