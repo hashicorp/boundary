@@ -153,12 +153,11 @@ func backendErrorToApiError(inErr error) error {
 				Message: stErr.Message(),
 			},
 		}
-	case errors.Is(inErr, errors.ErrRecordNotFound), errors.Match(errors.T(errors.RecordNotFound), inErr):
+	case errors.Match(errors.T(errors.RecordNotFound), inErr):
 		return NotFoundErrorf(genericNotFoundMsg)
-	case errors.Is(inErr, errors.ErrInvalidFieldMask), errors.Is(inErr, errors.ErrEmptyFieldMask),
-		errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
+	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
-	case errors.IsUniqueError(inErr), errors.Is(inErr, errors.ErrNotUnique):
+	case errors.IsUniqueError(inErr):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
 

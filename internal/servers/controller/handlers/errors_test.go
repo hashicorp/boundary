@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -106,35 +105,13 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Db invalid public id error",
-			err:  fmt.Errorf("test error: %w", errors.ErrInvalidPublicId),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
-					Kind:    "Internal",
-					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidPublicId),
-				},
-			},
-		},
-		{
-			name: "Domain error Db invalid parameter",
+			name: "Domain error Db invalid public id",
 			err:  errors.E(errors.WithCode(errors.InvalidPublicId)),
 			expected: apiError{
 				status: http.StatusInternalServerError,
 				inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "invalid public id, parameter violation: error #102",
-				},
-			},
-		},
-		{
-			name: "Db invalid parameter",
-			err:  fmt.Errorf("test error: %w", errors.ErrInvalidParameter),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
-					Kind:    "Internal",
-					Message: fmt.Sprintf("test error: %s", errors.ErrInvalidParameter),
 				},
 			},
 		},
@@ -150,32 +127,8 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Db invalid field mask",
-			err:  fmt.Errorf("test error: %w", errors.ErrInvalidFieldMask),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
-					Kind:    "InvalidArgument",
-					Message: "Error in provided request",
-					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
-				},
-			},
-		},
-		{
 			name: "Domain error Db invalid field mask",
 			err:  errors.E(errors.WithCode(errors.InvalidFieldMask)),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
-					Kind:    "InvalidArgument",
-					Message: "Error in provided request",
-					Details: &pb.ErrorDetails{RequestFields: []*pb.FieldError{{Name: "update_mask", Description: "Invalid update mask provided."}}},
-				},
-			},
-		},
-		{
-			name: "Db empty field mask",
-			err:  fmt.Errorf("test error: %w", errors.ErrEmptyFieldMask),
 			expected: apiError{
 				status: http.StatusBadRequest,
 				inner: &pb.Error{
@@ -198,17 +151,6 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Db not unique",
-			err:  fmt.Errorf("test error: %w", errors.ErrNotUnique),
-			expected: apiError{
-				status: http.StatusBadRequest,
-				inner: &pb.Error{
-					Kind:    "InvalidArgument",
-					Message: genericUniquenessMsg,
-				},
-			},
-		},
-		{
 			name: "Domain error Db not unqiue",
 			err:  errors.E(errors.WithCode(errors.NotUnique)),
 			expected: apiError{
@@ -220,17 +162,6 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Db record not found",
-			err:  fmt.Errorf("test error: %w", errors.ErrRecordNotFound),
-			expected: apiError{
-				status: http.StatusNotFound,
-				inner: &pb.Error{
-					Kind:    "NotFound",
-					Message: genericNotFoundMsg,
-				},
-			},
-		},
-		{
 			name: "Domain error Db record not found",
 			err:  errors.E(errors.WithCode(errors.RecordNotFound)),
 			expected: apiError{
@@ -238,17 +169,6 @@ func TestApiErrorHandler(t *testing.T) {
 				inner: &pb.Error{
 					Kind:    "NotFound",
 					Message: genericNotFoundMsg,
-				},
-			},
-		},
-		{
-			name: "Db multiple records",
-			err:  fmt.Errorf("test error: %w", errors.ErrMultipleRecords),
-			expected: apiError{
-				status: http.StatusInternalServerError,
-				inner: &pb.Error{
-					Kind:    "Internal",
-					Message: fmt.Sprintf("test error: %s", errors.ErrMultipleRecords),
 				},
 			},
 		},

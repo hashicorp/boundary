@@ -89,7 +89,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	// different time resolutions easier.
 	expiration, err := ptypes.TimestampProto(time.Now().Add(r.timeToLiveDuration).Truncate(time.Second))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.InvalidTimeStamp))
 	}
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
@@ -114,11 +114,11 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 
 			newAuthToken = at.clone()
 			if err := newAuthToken.encrypt(ctx, databaseWrapper); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			// tokens are not replicated, so they don't need oplog entries.
 			if err := w.Create(ctx, newAuthToken); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 			newAuthToken.CtToken = nil
 
@@ -227,7 +227,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 				return nil
 			})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		return nil, nil
 	}
@@ -257,10 +257,13 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 					nil,
 					[]string{"ApproximateLastAccessTime"},
 				)
-				if err == nil && rowsUpdated > 1 {
-					return errors.ErrMultipleRecords
+				if err != nil {
+					return errors.Wrap(err, op)
 				}
-				return err
+				if rowsUpdated > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				}
+				return nil
 			},
 		)
 	}
@@ -324,10 +327,13 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 			deleteAT := at.clone()
 			// tokens are not replicated, so they don't need oplog entries.
 			rowsDeleted, err = w.Delete(ctx, deleteAT)
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 
