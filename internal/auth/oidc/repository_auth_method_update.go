@@ -18,7 +18,7 @@ import (
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
 // update it based on the field masks provided, and then validate it using
-// Repository.TestAuthMethod(...).  If the test succeeds, the auth method
+// Repository.ValidateAuthMethod(...).  If the test succeeds, the auth method
 // is persisted in the repository and the written auth method is returned.
 // fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a
@@ -31,12 +31,12 @@ import (
 // Options supported:
 //
 // * WithDryRun: when this option is provided, the auth method is retrieved from
-// the repo, updated based on the fieldMask, tested via Repository.TestAuthMethod,
+// the repo, updated based on the fieldMask, tested via Repository.ValidateAuthMethod,
 // the results of the update are returned, and and any errors reported.  The
 // updates are not peristed to the repository.
 //
 // * WithForce: when this option is provided, the auth method is persistented in
-// the repository without testing it fo validity with Repository.TestAuthMethod.
+// the repository without testing it fo validity with Repository.ValidateAuthMethod.
 //
 // Successful updates must invalidate (delete) the Repository's cache of the
 // oidc.Provider for the AuthMethod.
@@ -492,7 +492,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 //
 // Options supported are: WithPublicId, WithAuthMethod
 func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) error {
-	const op = "oidc.(Repository).TestAuthMethod"
+	const op = "oidc.(Repository).ValidateAuthMethod"
 	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
