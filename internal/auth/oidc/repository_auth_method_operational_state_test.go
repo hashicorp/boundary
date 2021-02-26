@@ -36,9 +36,11 @@ func Test_MakeInactive(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		operateOn    string
-		wantErrMatch *errors.Template
+		name            string
+		operateOn       string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+		wantNoOplog     bool
 	}{
 		{
 			name: "ActivePrivate-to-InActive",
@@ -58,6 +60,37 @@ func Test_MakeInactive(t *testing.T) {
 				).PublicId
 			}(),
 		},
+		{
+			name: "Inactive-to-Inactive",
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			wantNoOplog: true,
+		},
+		{
+			name:            "missing-auth-method-id",
+			operateOn:       "",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth method id",
+		},
+		{
+			name:            "not-found",
+			operateOn:       "not-found-auth-method-id",
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "auth method not found",
+		},
 	}
 
 	for _, tt := range tests {
@@ -67,9 +100,13 @@ func Test_MakeInactive(t *testing.T) {
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
 
 				err := db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Errorf(err, "should not have found oplog entry for %s", tt.operateOn)
+				return
 			}
 			require.NoError(err)
 			found, err := repo.LookupAuthMethod(ctx, tt.operateOn)
@@ -77,8 +114,10 @@ func Test_MakeInactive(t *testing.T) {
 			require.NotEmpty(found)
 			assert.Equal(string(InactiveState), found.OperationalState)
 
-			err = db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+			if !tt.wantNoOplog {
+				err = db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+			}
 		})
 	}
 
