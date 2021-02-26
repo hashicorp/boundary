@@ -56,6 +56,9 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
+	if am == nil {
+		return errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
+	}
 	if am.OperationalState == string(desiredState) {
 		return nil
 	}
