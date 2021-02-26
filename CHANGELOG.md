@@ -24,6 +24,13 @@ All of these changes are from [PR
 
 ### New and Improved
 
+* list filtering: Listing now supports filtering results before being returned to the
+  user. The filtering takes place server side and uses boolean expressions
+  against the JSON representation of returned items. See [the
+  documentation](https://www.boundaryproject.io/docs/concepts/filtering/listing)
+  for more details. ([PR](https://github.com/hashicorp/boundary/pull/952))
+  ([PR](https://github.com/hashicorp/boundary/pull/957))
+  ([PR](https://github.com/hashicorp/boundary/pull/967))
 * server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
