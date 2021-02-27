@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the password package.
+package controller.storage.auth.oidc.request.v1;
+option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/request;request";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/protobuf/wrappers.proto";
+
+message State {
+  // token_request_id is the id of the
+  string token_request_id = 10;
+
+  // create_time of the request
+  timestamp.v1.Timestamp create_time = 20;
+
+  // expiration_time of the request
+  timestamp.v1.Timestamp expiration_time = 30;
+
+  // final_redirect_url that will be sent back to the client after the callback
+  string final_redirect_url = 40;
+
+  // nonce of the request
+  // See https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+  // and https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes.
+  string nonce = 50;
+
+  // provider_config_hash can be used to see if the provider's config has changed
+  // since the request started.
+  uint64 provider_config_hash = 60;
+}
+
+// EncryptedState is a wrapper around an encrypted cipher text of the State
+// with non-sensitive info which allows Boundary to determine how to decrypt
+// the wrappered State
+message EncryptedState {
+  // auth_method_id is the auth method of the oidc request
+  string auth_method_id = 10;
+
+  // scope_id is the auth method's scope
+  string scope_id = 20;
+
+  // wrapper_key_id is the DEK wrapper key id which was used to derive the
+  // cipher's key
+  string wrapper_key_id = 30;
+
+  // ct is the encrypted cipher text
+  bytes ct = 40;
+}
