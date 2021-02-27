@@ -75,7 +75,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 		return nil, errors.Wrap(err, op)
 	}
 	at.AuthAccountId = withAuthAccountId
-	id, err := newAuthTokenId()
+	id, err := NewAuthTokenId()
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
