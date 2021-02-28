@@ -18,7 +18,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Test_encryptState(t *testing.T) {
+// Test_encryptState_decryptState are unit tests for both encryptState(...) and decryptState(...)
+func Test_encryptState_decryptState(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
@@ -115,5 +116,35 @@ func Test_encryptState(t *testing.T) {
 			assert.True(proto.Equal(tt.reqState, reqState))
 		})
 	}
+	t.Run("decryptState-bad-parameter-tests", func(t *testing.T) {
+		tests := []struct {
+			name            string
+			wrapper         wrapping.Wrapper
+			encryptedState  string
+			wantErrMatch    *errors.Template
+			wantErrContains string
+		}{
+			{
+				name:            "missing-wrapper",
+				encryptedState:  "dummy-encrypted-state",
+				wantErrMatch:    errors.T(errors.InvalidParameter),
+				wantErrContains: "missing wrapper",
+			},
+			{
+				name:            "missing-encrypted-state",
+				wrapper:         db.TestWrapper(t),
+				wantErrMatch:    errors.T(errors.InvalidParameter),
+				wantErrContains: "missing encoded/encrypted state",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				assert := assert.New(t)
+				_, _, _, err := decryptState(ctx, tt.wrapper, tt.encryptedState)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Contains(err.Error(), tt.wantErrContains, "missing wrapper")
+			})
+		}
+	})
 
 }
