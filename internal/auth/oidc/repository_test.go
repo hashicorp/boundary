@@ -147,16 +147,29 @@ func TestRepository_stateWrapper(t *testing.T) {
 			name:    "simple-valid",
 			setupFn: func() (string, string) { return org.PublicId, testAuthMethod.PublicId },
 		},
+		{
+			name:         "missing-scope",
+			setupFn:      func() (string, string) { return "", testAuthMethod.PublicId },
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "missing-auth-method-id",
+			setupFn:      func() (string, string) { return org.PublicId, "" },
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			scopeId, authMethodId := tt.setupFn()
+
+			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+			kmsCache.GetDerivedPurposeCache().Delete(wantKeyId)
+
 			stateWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Empty(stateWrapper)
-				wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
 				cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
 				assert.False(found)
 				assert.Empty(cachedWrapper)
@@ -164,7 +177,6 @@ func TestRepository_stateWrapper(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(stateWrapper)
-			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
 			assert.Equalf(wantKeyId, stateWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, stateWrapper.KeyID())
 			assert.Equalf(wrapping.AEAD, stateWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, stateWrapper.Type())
 			assert.NotEmpty(stateWrapper.(*aead.Wrapper).GetKeyBytes())
@@ -173,6 +185,11 @@ func TestRepository_stateWrapper(t *testing.T) {
 			require.True(found)
 			require.NotEmpty(cachedWrapper)
 			assert.Equal(stateWrapper, cachedWrapper)
+
+			dupWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
+			require.NoError(err)
+			require.NotEmpty(dupWrapper)
+			assert.Equal(stateWrapper, dupWrapper)
 		})
 	}
 }
