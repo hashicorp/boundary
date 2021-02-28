@@ -37,7 +37,7 @@ func encryptState(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMethod,
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 	if am == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth methoed")
+		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
 	}
 	if reqState == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing request state")
