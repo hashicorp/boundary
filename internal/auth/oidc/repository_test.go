@@ -193,3 +193,21 @@ func TestRepository_stateWrapper(t *testing.T) {
 		})
 	}
 }
+
+func Test_derivedKeyPurpose_String(t *testing.T) {
+
+	tests := []struct {
+		purpose derivedKeyPurpose
+		want    string
+	}{
+		{100, "oidc_unknown"},
+		{derivedKeyPurposeUnknown, "oidc_unknown"},
+		{derivedKeyPurposeState, "oidc_state"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.purpose.String(), func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.purpose.String(), "wanted %s and got: %s", tt.want, tt.purpose.String())
+		})
+	}
+
+}
