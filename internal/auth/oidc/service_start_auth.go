@@ -95,7 +95,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
-	encodedEncryptedSt, err := encryptState(ctx, stateWrapper, am.ScopeId, authMethodId, st)
+	encodedEncryptedSt, err := encryptState(ctx, stateWrapper, am, st)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
