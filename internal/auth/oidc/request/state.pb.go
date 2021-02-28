@@ -25,20 +25,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// First, State is used in constructing the authorization URL, in the first
+// leg of the authen flow. State represents the unique data used to construct
+// an oidc.Request (see: https://github.com/hashicorp/cap/blob/main/oidc/request.go).
+// State needs enough information, that when combined with a Boundary oidc auth method,
+// a proper oidc.Request can be recreated during the second leg of the authen flow.  State
+// also needs the provider.ConfigHash() used to from the first leg, so it can verify
+// the Boundary's oidc auth method configuration hasn't changed since the authen flow
+// began.
 type State struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// token_request_id is the id of the
+	// token_request_id is the id. This id is used by the client to poll for a Boundary
+	// token, once the final leg of the authen flow is compeleted.  The Callback uses this
+	// id to create a "pending" token for that polling process.
 	TokenRequestId string `protobuf:"bytes,10,opt,name=token_request_id,json=tokenRequestId,proto3" json:"token_request_id,omitempty"`
-	// create_time of the request
+	// create_time of the request that started the authentication flow.
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	// expiration_time of the request
+	// expiration_time of the authenticaion flow.
 	ExpirationTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=expiration_time,json=expirationTime,proto3" json:"expiration_time,omitempty"`
 	// final_redirect_url that will be sent back to the client after the callback
 	FinalRedirectUrl string `protobuf:"bytes,40,opt,name=final_redirect_url,json=finalRedirectUrl,proto3" json:"final_redirect_url,omitempty"`
-	// nonce of the request
+	// nonce of the request which is used to verify the ID Token in the third leg
+	// as a way to prevent replay attacks.
+	//
 	// See https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 	// and https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes.
 	Nonce string `protobuf:"bytes,50,opt,name=nonce,proto3" json:"nonce,omitempty"`
@@ -123,7 +135,7 @@ func (x *State) GetProviderConfigHash() uint64 {
 
 // EncryptedState is a wrapper around an encrypted cipher text of the State
 // with non-sensitive info which allows Boundary to determine how to decrypt
-// the wrappered State
+// the wrappered State in the ct field.
 type EncryptedState struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
