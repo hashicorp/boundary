@@ -35,11 +35,12 @@ func Test_encryptState(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		wrapper      wrapping.Wrapper
-		authMethod   *AuthMethod
-		reqState     *request.State
-		wantErrMatch *errors.Template
+		name            string
+		wrapper         wrapping.Wrapper
+		authMethod      *AuthMethod
+		reqState        *request.State
+		wantErrMatch    *errors.Template
+		wantErrContains string
 	}{
 		{
 			name:       "valid",
@@ -54,6 +55,42 @@ func Test_encryptState(t *testing.T) {
 				ProviderConfigHash: 100,
 			},
 		},
+		{
+			name:       "missing-wrapper",
+			wrapper:    nil,
+			authMethod: testAuthMethod,
+			reqState: &request.State{
+				TokenRequestId:     "test-token-request-id",
+				CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
+				ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
+				Nonce:              "test-nonce",
+				FinalRedirectUrl:   "www.alice.com/final",
+				ProviderConfigHash: 100,
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name:    "missing-auth-method",
+			wrapper: db.TestWrapper(t),
+			reqState: &request.State{
+				TokenRequestId:     "test-token-request-id",
+				CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
+				ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
+				Nonce:              "test-nonce",
+				FinalRedirectUrl:   "www.alice.com/final",
+				ProviderConfigHash: 100,
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth method",
+		},
+		{
+			name:            "missing-req-state",
+			wrapper:         db.TestWrapper(t),
+			authMethod:      testAuthMethod,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing request state",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,6 +100,10 @@ func Test_encryptState(t *testing.T) {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Empty(encrypted)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
 			}
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
