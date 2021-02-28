@@ -121,8 +121,14 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
-
-	oidcReq, err := oidc.NewRequest(AttemptExpiration, callbackRedirect, oidc.WithState(string(encodedEncryptedSt)), oidc.WithNonce(nonce))
+	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated
+	// things like Audiences, because this oidc.Request isn't cached and not intended for use in future legs
+	// of the authen flow.
+	oidcReq, err := oidc.NewRequest(
+		AttemptExpiration,
+		callbackRedirect,
+		oidc.WithState(string(encodedEncryptedSt)),
+		oidc.WithNonce(nonce))
 	if err != nil {
 		return nil, nil, errors.New(errors.Unknown, op, "unable to create oidc request", errors.WithWrap(err))
 	}
