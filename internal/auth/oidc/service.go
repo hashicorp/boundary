@@ -31,16 +31,19 @@ type (
 	AuthTokenRepFactory func() (*authtoken.Repository, error)
 )
 
-func encryptState(ctx context.Context, wrapper wrapping.Wrapper, scopeId, authMethodId string, reqState *request.State) (encodedEncryptedState string, e error) {
+func encryptState(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMethod, reqState *request.State) (encodedEncryptedState string, e error) {
 	const op = "oidc.encryptState"
 	if wrapper == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
-	if scopeId == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing scope id")
+	if am == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing auth methoed")
 	}
-	if authMethodId == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method id")
+	if reqState == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing request state")
+	}
+	if err := reqState.Validate(); err != nil {
+		return "", errors.Wrap(err, op)
 	}
 	marshaled, err := proto.Marshal(reqState)
 	if err != nil {
@@ -55,8 +58,8 @@ func encryptState(ctx context.Context, wrapper wrapping.Wrapper, scopeId, authMe
 		return "", errors.Wrap(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 	encryptedSt := &request.EncryptedState{
-		AuthMethodId: authMethodId,
-		ScopeId:      scopeId,
+		AuthMethodId: am.PublicId,
+		ScopeId:      am.ScopeId,
 		WrapperKeyId: wrapper.KeyID(),
 		Ct:           marshaledBlob,
 	}
@@ -80,8 +83,8 @@ func decryptState(ctx context.Context, wrapper wrapping.Wrapper, encodedEncrypte
 	if err != nil {
 		return "", "", nil, errors.New(errors.Unknown, op, "unable to decode state", errors.WithWrap(err))
 	}
-	var encryptedSt *request.EncryptedState
-	if err := proto.Unmarshal(decoded, encryptedSt); err != nil {
+	var encryptedSt request.EncryptedState
+	if err := proto.Unmarshal(decoded, &encryptedSt); err != nil {
 		return "", "", nil, errors.New(errors.Unknown, op, "unable to marshal encoded/encrypted state", errors.WithWrap(err))
 	}
 
@@ -94,10 +97,10 @@ func decryptState(ctx context.Context, wrapper wrapping.Wrapper, encodedEncrypte
 	if err != nil {
 		return "", "", nil, errors.New(errors.Encrypt, op, "unable to decrypt state", errors.WithWrap(err))
 	}
-	var st *request.State
-	if err := proto.Unmarshal(marshaledSt, st); err != nil {
+	var st request.State
+	if err := proto.Unmarshal(marshaledSt, &st); err != nil {
 		return "", "", nil, errors.New(errors.Unknown, op, "unable to marshal request state", errors.WithWrap(err))
 	}
 
-	return encryptedSt.ScopeId, encryptedSt.AuthMethodId, st, nil
+	return encryptedSt.ScopeId, encryptedSt.AuthMethodId, &st, nil
 }
