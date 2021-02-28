@@ -14,63 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_stateWrapper(t *testing.T) {
-	t.Parallel()
-	ctx := context.TODO()
-	conn, _ := db.TestSetup(t, "postgres")
-	rootWrapper := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, rootWrapper)
-
-	rw := db.New(conn)
-	repo, err := NewRepository(rw, rw, kmsCache)
-	require.NoError(t, err)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-	require.NoError(t, err)
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido")
-
-	oidcWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeOidc)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name         string
-		setupFn      func() (string, string)
-		opt          []Option
-		wantErrMatch *errors.Template
-	}{
-		{
-			name:    "simple-valid",
-			setupFn: func() (string, string) { return org.PublicId, testAuthMethod.PublicId },
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			scopeId, authMethodId := tt.setupFn()
-			stateWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
-			if tt.wantErrMatch != nil {
-				require.Error(err)
-				assert.Empty(stateWrapper)
-				wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
-				cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
-				assert.False(found)
-				assert.Empty(cachedWrapper)
-				return
-			}
-			require.NoError(err)
-			assert.NotEmpty(stateWrapper)
-			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
-			assert.Equalf(wantKeyId, stateWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, stateWrapper.KeyID())
-			assert.Equalf(wrapping.AEAD, stateWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, stateWrapper.Type())
-			assert.NotEmpty(stateWrapper.(*aead.Wrapper).GetKeyBytes())
-
-			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
-			require.True(found)
-			require.NotEmpty(cachedWrapper)
-			assert.Equal(stateWrapper, cachedWrapper)
-		})
-	}
-}
 func TestNewRepository(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -172,6 +115,64 @@ func TestNewRepository(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_stateWrapper(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido")
+
+	oidcWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeOidc)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		setupFn      func() (string, string)
+		opt          []Option
+		wantErrMatch *errors.Template
+	}{
+		{
+			name:    "simple-valid",
+			setupFn: func() (string, string) { return org.PublicId, testAuthMethod.PublicId },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			scopeId, authMethodId := tt.setupFn()
+			stateWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Empty(stateWrapper)
+				wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+				cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
+				assert.False(found)
+				assert.Empty(cachedWrapper)
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(stateWrapper)
+			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+			assert.Equalf(wantKeyId, stateWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, stateWrapper.KeyID())
+			assert.Equalf(wrapping.AEAD, stateWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, stateWrapper.Type())
+			assert.NotEmpty(stateWrapper.(*aead.Wrapper).GetKeyBytes())
+
+			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
+			require.True(found)
+			require.NotEmpty(cachedWrapper)
+			assert.Equal(stateWrapper, cachedWrapper)
 		})
 	}
 }
