@@ -19,7 +19,7 @@ import (
 )
 
 // Test_encryptState_decryptState are unit tests for both encryptState(...) and decryptState(...)
-func Test_encryptState_decryptState(t *testing.T) {
+func Test_encryptMessage_decryptMessage(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
@@ -90,13 +90,13 @@ func Test_encryptState_decryptState(t *testing.T) {
 			wrapper:         db.TestWrapper(t),
 			authMethod:      testAuthMethod,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing request state",
+			wantErrContains: "missing state",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			encrypted, err := encryptState(ctx, tt.wrapper, tt.authMethod, tt.reqState)
+			encrypted, err := encryptMessage(ctx, tt.wrapper, tt.authMethod, tt.reqState)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
@@ -109,11 +109,15 @@ func Test_encryptState_decryptState(t *testing.T) {
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
 
-			gotScopeId, gotAuthMethodId, reqState, err := decryptState(ctx, tt.wrapper, encrypted)
+			gotScopeId, gotAuthMethodId, reqStateBytes, err := decryptMessage(ctx, tt.wrapper, encrypted)
 			require.NoError(err)
 			assert.Equalf(tt.authMethod.PublicId, gotAuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, gotAuthMethodId)
 			assert.Equalf(tt.authMethod.ScopeId, gotScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, gotScopeId)
-			assert.True(proto.Equal(tt.reqState, reqState))
+
+			var reqState request.State
+			err = proto.Unmarshal(reqStateBytes, &reqState)
+			require.NoError(err)
+			assert.True(proto.Equal(tt.reqState, &reqState))
 		})
 	}
 	t.Run("decryptState-bad-parameter-tests", func(t *testing.T) {
@@ -134,13 +138,13 @@ func Test_encryptState_decryptState(t *testing.T) {
 				name:            "missing-encrypted-state",
 				wrapper:         db.TestWrapper(t),
 				wantErrMatch:    errors.T(errors.InvalidParameter),
-				wantErrContains: "missing encoded/encrypted state",
+				wantErrContains: "missing encoded/encrypted message",
 			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				assert := assert.New(t)
-				_, _, _, err := decryptState(ctx, tt.wrapper, tt.encryptedState)
+				_, _, _, err := decryptMessage(ctx, tt.wrapper, tt.encryptedState)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Contains(err.Error(), tt.wantErrContains, "missing wrapper")
 			})
