@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -118,10 +119,13 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
 
-			gotScopeId, gotAuthMethodId, reqBytes, err := decryptMessage(ctx, tt.wrapper, encrypted)
+			wrappedMsg, err := unwrapMessage(ctx, encrypted)
+			assert.Equalf(tt.authMethod.PublicId, wrappedMsg.AuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, wrappedMsg.AuthMethodId)
+			assert.Equalf(tt.authMethod.ScopeId, wrappedMsg.ScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, wrappedMsg.ScopeId)
+
 			require.NoError(err)
-			assert.Equalf(tt.authMethod.PublicId, gotAuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, gotAuthMethodId)
-			assert.Equalf(tt.authMethod.ScopeId, gotScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, gotScopeId)
+			reqBytes, err := decryptMessage(ctx, tt.wrapper, wrappedMsg)
+			require.NoError(err)
 
 			var msg proto.Message
 			switch v := tt.message.(type) {
@@ -141,31 +145,124 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 		tests := []struct {
 			name            string
 			wrapper         wrapping.Wrapper
-			encryptedState  string
+			wrappedMsg      *request.Wrapper
 			wantErrMatch    *errors.Template
 			wantErrContains string
 		}{
 			{
 				name:            "missing-wrapper",
-				encryptedState:  "dummy-encrypted-state",
+				wrappedMsg:      &request.Wrapper{},
 				wantErrMatch:    errors.T(errors.InvalidParameter),
-				wantErrContains: "missing wrapper",
+				wantErrContains: "missing wrapping wrapper",
 			},
 			{
 				name:            "missing-encrypted-state",
 				wrapper:         db.TestWrapper(t),
 				wantErrMatch:    errors.T(errors.InvalidParameter),
-				wantErrContains: "missing encoded/encrypted message",
+				wantErrContains: "missing wrapped request",
 			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				assert := assert.New(t)
-				_, _, _, err := decryptMessage(ctx, tt.wrapper, tt.encryptedState)
+				_, err = decryptMessage(ctx, tt.wrapper, tt.wrappedMsg)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
-				assert.Contains(err.Error(), tt.wantErrContains, "missing wrapper")
+				assert.Contains(err.Error(), tt.wantErrContains)
 			})
 		}
 	})
+
+}
+
+func Test_requestWrappingWrapper(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido")
+
+	oidcWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeOidc)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		setupFn      func() (string, string)
+		opt          []Option
+		wantErrMatch *errors.Template
+	}{
+		{
+			name:    "simple-valid",
+			setupFn: func() (string, string) { return org.PublicId, testAuthMethod.PublicId },
+		},
+		{
+			name:         "missing-scope",
+			setupFn:      func() (string, string) { return "", testAuthMethod.PublicId },
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "missing-auth-method-id",
+			setupFn:      func() (string, string) { return org.PublicId, "" },
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			scopeId, authMethodId := tt.setupFn()
+
+			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+			kmsCache.GetDerivedPurposeCache().Delete(wantKeyId)
+
+			reqWrapper, err := requestWrappingWrapper(ctx, repo.kms, scopeId, authMethodId, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Empty(reqWrapper)
+				cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
+				assert.False(found)
+				assert.Empty(cachedWrapper)
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(requestWrappingWrapper)
+			assert.Equalf(wantKeyId, reqWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, reqWrapper.KeyID())
+			assert.Equalf(wrapping.AEAD, reqWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, reqWrapper.Type())
+			assert.NotEmpty(reqWrapper.(*aead.Wrapper).GetKeyBytes())
+
+			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
+			require.True(found)
+			require.NotEmpty(cachedWrapper)
+			assert.Equal(reqWrapper, cachedWrapper)
+
+			dupWrapper, err := requestWrappingWrapper(ctx, repo.kms, scopeId, authMethodId, tt.opt...)
+			require.NoError(err)
+			require.NotEmpty(dupWrapper)
+			assert.Equal(reqWrapper, dupWrapper)
+		})
+	}
+}
+
+func Test_derivedKeyPurpose_String(t *testing.T) {
+
+	tests := []struct {
+		purpose derivedKeyPurpose
+		want    string
+	}{
+		{100, "oidc_unknown"},
+		{derivedKeyPurposeUnknown, "oidc_unknown"},
+		{derivedKeyPurposeState, "oidc_state"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.purpose.String(), func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.purpose.String(), "wanted %s and got: %s", tt.want, tt.purpose.String())
+		})
+	}
 
 }
