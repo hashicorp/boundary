@@ -50,45 +50,100 @@ func Test_StartAuth(t *testing.T) {
 		WithCertificates(tpCert...),
 	)
 
+	testAuthMethodInactive := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, InactiveState,
+		TestConvertToUrls(t, tp.Addr())[0],
+		"test-rp2", "fido",
+		WithCallbackUrls(TestConvertToUrls(t, testController.URL)...),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCertificates(tpCert...),
+	)
+
+	stdSetup := func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (a *AuthMethod, allowedRedirect string) {
+		// update the allowed redirects for the TestProvider
+		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL, am.PublicId)
+		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
+		allowedCallback, err := NewCallbackUrl(am.PublicId, TestConvertToUrls(t, tpAllowedRedirect)[0])
+		require.NoError(t, err)
+		err = rw.Create(ctx, allowedCallback)
+		require.NoError(t, err)
+		r, err := repoFn()
+		require.NoError(t, err)
+		// update the test's auth method, now that we've added a new callback
+		am, err = r.lookupAuthMethod(ctx, am.PublicId)
+		require.NoError(t, err)
+		require.NotNil(t, am)
+		return am, tpAllowedRedirect
+	}
 	tests := []struct {
-		name         string
-		repoFn       OidcRepoFactory
-		apiSrv       *httptest.Server
-		authMethod   *AuthMethod
-		wantErrMatch *errors.Template
+		name            string
+		repoFn          OidcRepoFactory
+		apiSrv          *httptest.Server
+		authMethod      *AuthMethod
+		setup           func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (*AuthMethod, string)
+		wantErrMatch    *errors.Template
+		wantErrContains string
 	}{
 		{
 			name:       "simple",
 			repoFn:     repoFn,
 			apiSrv:     testController,
 			authMethod: testAuthMethod,
+			setup:      stdSetup,
+		},
+		{
+			name:            "inactive",
+			repoFn:          repoFn,
+			apiSrv:          testController,
+			authMethod:      testAuthMethodInactive,
+			wantErrMatch:    errors.T(errors.AuthMethodInactive),
+			wantErrContains: "not allowed to start authentication attempt",
+			setup:           stdSetup,
+		},
+		{
+			name:            "missing-authmethod-id",
+			repoFn:          repoFn,
+			apiSrv:          testController,
+			authMethod:      func() *AuthMethod { am := AllocAuthMethod(); return &am }(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth method id",
+		},
+		{
+			name:            "bad-authmethod-id",
+			repoFn:          repoFn,
+			apiSrv:          testController,
+			authMethod:      func() *AuthMethod { am := AllocAuthMethod(); am.PublicId = "not-valid"; return &am }(),
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "auth method not-valid not found:",
+		},
+		{
+			name:            "bad-api-addr",
+			repoFn:          repoFn,
+			apiSrv:          nil,
+			authMethod:      testAuthMethod,
+			wantErrMatch:    errors.T(errors.InvalidAddress),
+			wantErrContains: "missing api address",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NotNilf(tt.apiSrv, "invalid test parameter: tt.apiSrv is nil")
-			require.NotNilf(tt.authMethod, "invalid test parameter: tt.authMethod is nil")
+			var allowedRedirect string
+			if tt.setup != nil {
+				tt.authMethod, allowedRedirect = tt.setup(tt.authMethod, tt.repoFn, tt.apiSrv)
+			}
+			var apiAddr string
+			if tt.apiSrv != nil {
+				apiAddr = tt.apiSrv.URL
+			}
 
-			// update the allowed redirects for the TestProvider
-			tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.apiSrv.URL, tt.authMethod.PublicId)
-			tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
-			allowedCallback, err := NewCallbackUrl(tt.authMethod.PublicId, TestConvertToUrls(t, tpAllowedRedirect)[0])
-			require.NoError(err)
-			err = rw.Create(ctx, allowedCallback)
-			require.NoError(err)
-			r, err := tt.repoFn()
-			require.NoError(err)
-			// update the test's auth method, now that we've added a new callback
-			tt.authMethod, err = r.lookupAuthMethod(ctx, tt.authMethod.PublicId)
-			require.NoError(err)
-			require.NotNil(tt.authMethod)
-
-			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, tt.apiSrv.URL, tt.authMethod.PublicId)
+			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(authUrl)
 				assert.Nil(tokenUrl)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Contains(err.Error(), tt.wantErrContains)
 				return
 			}
 			require.NoError(err)
@@ -100,7 +155,7 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(authParams["response_type"], []string{"code"})
 			assert.Equal(authParams["scope"], []string{"openid"})
 			assert.Equal(authParams["response_type"], []string{"code"})
-			assert.Equal(authParams["redirect_uri"], []string{tpAllowedRedirect})
+			assert.Equal(authParams["redirect_uri"], []string{allowedRedirect})
 			assert.Equal(authParams["client_id"], []string{tt.authMethod.ClientId})
 			require.Equal(1, len(authParams["nonce"]))
 			require.Equal(1, len(authParams["state"]))
