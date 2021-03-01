@@ -26,3 +26,25 @@ func (s *State) Validate() error {
 	}
 	return nil
 }
+
+// Validate the Wrapper
+func (w *Wrapper) Validate() error {
+	const op = "request.(Wrapper).Validate"
+	if w.AuthMethodId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing auth method id")
+
+	}
+	if w.ScopeId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing scope id")
+
+	}
+	if w.WrapperKeyId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing wrapper key id")
+
+	}
+	if len(w.Ct) == 0 {
+		return errors.New(errors.InvalidParameter, op, "missing ct")
+
+	}
+	return nil
+}
