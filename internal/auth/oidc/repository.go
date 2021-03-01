@@ -48,14 +48,14 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	}, nil
 }
 
-// stateWrapper finds the wrapper to use when encrypting/decrypting oidc
-// Request.State.  It first checks the cache of derived wrappers.  If it's not
-// found in the cache it generates a key based on the scope's oidc DEK, using
+// requestWrapper finds the wrapper to use when encrypting/decrypting oidc
+// Request.State and Request.Token.  It first checks the cache of derived wrappers.
+// If it's not found in the cache it generates a key based on the scope's oidc DEK, using
 // the scopeId and authMethodId as salt and info for derivation, and returns
 // a wrapper for that newly derived key.  It supports the WithKeyId(...) option
 // which allows you to specify which oidc DEK to use vs just using the latest version
 // of the DEK.
-func (r *Repository) stateWrapper(ctx context.Context, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
+func (r *Repository) requestWrapper(ctx context.Context, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
 	const op = "oidc.(Repository).oidcWrapper"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")

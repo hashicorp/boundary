@@ -120,5 +120,15 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 		return nil, nil, errors.New(errors.Unknown, op, "unable to parse auth url", errors.WithWrap(err))
 	}
 
+	t := &request.Token{
+		RequestId:      tokenRequestId,
+		ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
+	}
+	encodedEncryptedTk, err := encryptMessage(ctx, stateWrapper, am, t)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, op)
+	}
+	fmt.Println(encodedEncryptedTk)
+
 	return authUrl, tokenUrl, nil
 }
