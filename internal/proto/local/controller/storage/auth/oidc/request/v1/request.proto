@@ -47,10 +47,18 @@ message State {
   uint64 provider_config_hash = 60;
 }
 
-// EncryptedState is a wrapper around an encrypted cipher text of the State
-// with non-sensitive info which allows Boundary to determine how to decrypt
-// the wrappered State in the ct field.
-message EncryptedState {
+message Token {
+  // request_id for the token.
+  string request_id = 10;
+
+  // expiration_time of the authenticaion flow.
+  timestamp.v1.Timestamp expiration_time = 20;
+}
+
+// Wrapper wraps an encrypted cipher text with non-sensitive info
+// which allows Boundary to determine how to decrypt
+// the wrappered cipher text (ct) field.
+message Wrapper {
   // auth_method_id is the auth method of the oidc request
   string auth_method_id = 10;
 
