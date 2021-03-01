@@ -159,6 +159,10 @@ func (c *StaticCommand) Run(args []string) int {
 		opts = append(opts, hosts.WithDescription(c.FlagDescription))
 	}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, hosts.WithFilter(c.FlagFilter))
+	}
+
 	var version uint32
 
 	switch c.Func {

@@ -104,10 +104,10 @@ func TestServer_ReloadListener(t *testing.T) {
 	// Setup initial certs
 	inBytes, err := ioutil.ReadFile(wd + "bundle1.pem")
 	require.NoError(err)
-	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0777))
+	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0o777))
 
 	relHcl := fmt.Sprintf(reloadConfig, cmd.DatabaseUrl, controllerKey, workerAuthKey, recoveryKey, td, td)
-	require.NoError(ioutil.WriteFile(td+"/reload.hcl", []byte(relHcl), 0777))
+	require.NoError(ioutil.WriteFile(td+"/reload.hcl", []byte(relHcl), 0o777))
 
 	// Populate CA pool
 	inBytes, _ = ioutil.ReadFile(td + "/bundle.pem")
@@ -146,7 +146,7 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	inBytes, err = ioutil.ReadFile(wd + "bundle2.pem")
 	require.NoError(err)
-	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0777))
+	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0o777))
 
 	cmd.SighupCh <- struct{}{}
 	select {

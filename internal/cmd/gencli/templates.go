@@ -183,7 +183,7 @@ var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
-	"list": { "{{ kebabCase $input.Container }}-id" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
+	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
 	{{ end }}
 	{{ end }}
 }
@@ -295,6 +295,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		opts = append(opts, {{ .Pkg }}.WithRecursive(true))
 	}
 	{{ end }}
+
+	if c.FlagFilter != "" {
+		opts = append(opts, {{ .Pkg }}.WithFilter(c.FlagFilter))
+	}
 
 	{{ if .HasScopeName }}
 	switch c.FlagScopeName {
