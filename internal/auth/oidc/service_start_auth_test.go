@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/db"
@@ -137,6 +138,7 @@ func Test_StartAuth(t *testing.T) {
 				apiAddr = tt.apiSrv.URL
 			}
 
+			now := time.Now()
 			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
@@ -181,6 +183,9 @@ func Test_StartAuth(t *testing.T) {
 			assert.NotEmpty(reqState.FinalRedirectUrl)
 			assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL), reqState.FinalRedirectUrl)
 			assert.Equal(authParams["nonce"][0], reqState.Nonce)
+
+			assert.WithinDuration(reqState.CreateTime.Timestamp.AsTime(), now, 1*time.Second)
+			assert.WithinDuration(reqState.ExpirationTime.Timestamp.AsTime(), now.Add(AttemptExpiration), 1*time.Second)
 
 			p, err := convertToProvider(ctx, tt.authMethod)
 			require.NoError(err)
