@@ -47,6 +47,8 @@ message State {
   uint64 provider_config_hash = 60;
 }
 
+// Token is the request token that's returned as part of the auth_token_url from
+// oidc.StartAuth(...)
 message Token {
   // request_id for the token.
   string request_id = 10;

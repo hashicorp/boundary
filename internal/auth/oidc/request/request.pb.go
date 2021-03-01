@@ -133,6 +133,8 @@ func (x *State) GetProviderConfigHash() uint64 {
 	return 0
 }
 
+// Token is the request token that's returned as part of the auth_token_url from
+// oidc.StartAuth(...)
 type Token struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
