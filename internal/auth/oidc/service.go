@@ -17,8 +17,9 @@ import (
 
 const (
 	AttemptExpiration     = 2 * 60 * time.Second
-	FinalRedirectEndpoint = "/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
-	CallbackEndpoint      = "/callback"                // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	FinalRedirectEndpoint = "%s/authentication-complete"                           // TODO jimlambrt 2/2021 get redirect from FE before PR
+	CallbackEndpoint      = "%s/v1/auth-methods/%s:authenticate:callback"          // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	TokenEndpoint         = "%s/v1/auth-methods/%s:authenticate:token?token_id=%s" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
 )
 
 type (
