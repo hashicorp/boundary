@@ -121,7 +121,7 @@ func Test_StartAuth(t *testing.T) {
 			repoFn:          repoFn,
 			apiSrv:          nil,
 			authMethod:      testAuthMethod,
-			wantErrMatch:    errors.T(errors.InvalidAddress),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing api address",
 		},
 	}
