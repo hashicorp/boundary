@@ -54,10 +54,10 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
-	callbackRedirect := fmt.Sprintf("%s/%s", apiAddr, CallbackEndpoint)
+	callbackRedirect := fmt.Sprintf(CallbackEndpoint, apiAddr, authMethodId)
 
 	opts := getOpts(opt...)
-	finalRedirect := fmt.Sprintf("%s/%s", apiAddr, FinalRedirectEndpoint)
+	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, apiAddr)
 	if opts.withRoundtripPayload != "" {
 		finalRedirect = fmt.Sprintf("%s?%s", finalRedirect, opts.withRoundtripPayload)
 	}
@@ -91,11 +91,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 		ProviderConfigHash: hash,
 	}
 
-	stateWrapper, err := r.stateWrapper(ctx, am.ScopeId, authMethodId)
+	requestWrapper, err := r.requestWrapper(ctx, am.ScopeId, authMethodId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
-	encodedEncryptedSt, err := encryptMessage(ctx, stateWrapper, am, st)
+	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
@@ -124,11 +124,14 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 		RequestId:      tokenRequestId,
 		ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
 	}
-	encodedEncryptedTk, err := encryptMessage(ctx, stateWrapper, am, t)
+	encodedEncryptedTk, err := encryptMessage(ctx, requestWrapper, am, t)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
-	fmt.Println(encodedEncryptedTk)
+	tokenUrl, err = url.Parse(fmt.Sprintf(TokenEndpoint, apiAddr, authMethodId, encodedEncryptedTk))
+	if err != nil {
+		return nil, nil, errors.New(errors.Unknown, op, "unable to generate token URL", errors.WithWrap(err))
+	}
 
 	return authUrl, tokenUrl, nil
 }
