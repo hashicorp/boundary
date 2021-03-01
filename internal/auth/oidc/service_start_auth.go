@@ -23,6 +23,7 @@ import (
 // client can use to retrieve the results of the user's OIDC authentication
 // attempt. The tokenUrl contains a token_request_id, which is encrypted.
 //
+// If the auth method is in an InactiveState, then an error is returned.
 // Options supported:
 //
 // WithRoundTripPayload(string) provides an option for a client roundtrip
@@ -49,6 +50,9 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 	}
 	if am == nil {
 		return nil, nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
+	}
+	if am.OperationalState == string(InactiveState) {
+		return nil, nil, errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
 	provider, err := convertToProvider(ctx, am)
 	if err != nil {
