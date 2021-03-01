@@ -119,7 +119,7 @@ func TestNewRepository(t *testing.T) {
 	}
 }
 
-func TestRepository_stateWrapper(t *testing.T) {
+func TestRepository_requestWrapper(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -166,30 +166,30 @@ func TestRepository_stateWrapper(t *testing.T) {
 			wantKeyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
 			kmsCache.GetDerivedPurposeCache().Delete(wantKeyId)
 
-			stateWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
+			requestWrapper, err := repo.requestWrapper(ctx, scopeId, authMethodId, tt.opt...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
-				assert.Empty(stateWrapper)
+				assert.Empty(requestWrapper)
 				cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
 				assert.False(found)
 				assert.Empty(cachedWrapper)
 				return
 			}
 			require.NoError(err)
-			assert.NotEmpty(stateWrapper)
-			assert.Equalf(wantKeyId, stateWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, stateWrapper.KeyID())
-			assert.Equalf(wrapping.AEAD, stateWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, stateWrapper.Type())
-			assert.NotEmpty(stateWrapper.(*aead.Wrapper).GetKeyBytes())
+			assert.NotEmpty(requestWrapper)
+			assert.Equalf(wantKeyId, requestWrapper.KeyID(), "expected key id %s and got: %s", wantKeyId, requestWrapper.KeyID())
+			assert.Equalf(wrapping.AEAD, requestWrapper.Type(), "expected type %s and got: %s", wrapping.AEAD, requestWrapper.Type())
+			assert.NotEmpty(requestWrapper.(*aead.Wrapper).GetKeyBytes())
 
 			cachedWrapper, found := kmsCache.GetDerivedPurposeCache().Load(wantKeyId)
 			require.True(found)
 			require.NotEmpty(cachedWrapper)
-			assert.Equal(stateWrapper, cachedWrapper)
+			assert.Equal(requestWrapper, cachedWrapper)
 
-			dupWrapper, err := repo.stateWrapper(ctx, scopeId, authMethodId, tt.opt...)
+			dupWrapper, err := repo.requestWrapper(ctx, scopeId, authMethodId, tt.opt...)
 			require.NoError(err)
 			require.NotEmpty(dupWrapper)
-			assert.Equal(stateWrapper, dupWrapper)
+			assert.Equal(requestWrapper, dupWrapper)
 		})
 	}
 }
