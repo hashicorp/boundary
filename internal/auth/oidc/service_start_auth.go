@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 )
 
@@ -29,13 +28,10 @@ import (
 // WithRoundTripPayload(string) provides an option for a client roundtrip
 // payload.  This payload will be added to the final redirect as a query
 // parameter.
-func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, apiAddr string, authMethodId string, opt ...Option) (authUrl *url.URL, tokenUrl *url.URL, e error) {
+func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, apiAddr string, authMethodId string, opt ...Option) (authUrl *url.URL, tokenUrl *url.URL, e error) {
 	const op = "oidc.StartAuth"
 	if apiAddr == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing api address")
-	}
-	if kms == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
 	if authMethodId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
@@ -95,7 +91,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, kms *kms.Kms, ap
 		ProviderConfigHash: hash,
 	}
 
-	requestWrapper, err := r.requestWrapper(ctx, am.ScopeId, authMethodId)
+	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, authMethodId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}

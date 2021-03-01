@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"crypto/ed25519"
 	"fmt"
 	"time"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
@@ -94,32 +97,110 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 
 // decryptMessage will decrypt messages that were previously encrypted with oidc.encryptMessage(...)
 // The messageBytes returned can be marshaled via proto.Marshal into the appropriate message.
-func decryptMessage(ctx context.Context, wrapper wrapping.Wrapper, encodedEncryptedMessage string) (scopeId string, authMethodId string, messageBytes []byte, e error) {
+func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrappedRequest *request.Wrapper) (messageBytes []byte, e error) {
 	const op = "oidc.decryptMessage"
-	if wrapper == nil {
-		return "", "", nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+	if wrappedRequest == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapped request")
 	}
-	if encodedEncryptedMessage == "" {
-		return "", "", nil, errors.New(errors.InvalidParameter, op, "missing encoded/encrypted message")
+	if wrappingWrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapping wrapper")
 	}
-	decoded, err := base58.FastBase58Decoding(encodedEncryptedMessage)
-	if err != nil {
-		return "", "", nil, errors.New(errors.Unknown, op, "unable to decode message", errors.WithWrap(err))
-	}
-	var wrapped request.Wrapper
-	if err := proto.Unmarshal(decoded, &wrapped); err != nil {
-		return "", "", nil, errors.New(errors.Unknown, op, "unable to marshal encoded/encrypted message", errors.WithWrap(err))
-	}
-
 	var blobInfo wrapping.EncryptedBlobInfo
-	if err := proto.Unmarshal(wrapped.Ct, &blobInfo); err != nil {
-		return "", "", nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
+	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
 	}
-
-	decryptedMsg, err := wrapper.Decrypt(ctx, &blobInfo, nil)
+	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, nil)
 	if err != nil {
-		return "", "", nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
+		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
+	}
+	return decryptedMsg, nil
+}
+
+func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
+	const op = ""
+	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
+	if err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to decode message", errors.WithWrap(err))
+	}
+	var wrapper request.Wrapper
+	if err := proto.Unmarshal(decoded, &wrapper); err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to marshal encoded/encrypted message", errors.WithWrap(err))
+	}
+	return &wrapper, nil
+}
+
+// requestWrappingWrapper finds the wrapping wrapper to use when encrypting/decrypting oidc
+// Request.State and Request.Token.  It first checks the cache of derived wrappers.
+// If it's not found in the cache it generates a key based on the scope's oidc DEK, using
+// the scopeId and authMethodId as salt and info for derivation, and returns
+// a wrapper for that newly derived key.  It supports the WithKeyId(...) option
+// which allows you to specify which oidc DEK to use vs just using the latest version
+// of the DEK.
+func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
+	const op = "oidc.(Repository).oidcWrapper"
+	if k == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+	}
+	if scopeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
+	if authMethodId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+	}
+	opts := getOpts(opt...)
+	// get a specific oidcWrapper using the WithKeyId(...) option
+	oidcWrapper, err := k.GetWrapper(ctx, scopeId, kms.KeyPurposeOidc, kms.WithKeyId(opts.withKeyId))
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oidc wrapper"))
 	}
 
-	return wrapped.ScopeId, wrapped.AuthMethodId, decryptedMsg, nil
+	// What derived key are we looking for?
+	keyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+	derivedWrapper, ok := k.GetDerivedPurposeCache().Load(keyId)
+	if ok {
+		return derivedWrapper.(*aead.Wrapper), nil
+	}
+
+	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethodId
+	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	privKey, _, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return nil, errors.New(errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
+	}
+	wrapper := aead.NewWrapper(nil)
+	if _, err := wrapper.SetConfig(map[string]string{
+		"key_id": keyId,
+	}); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
+	}
+	if err := wrapper.SetAESGCMKeyBytes(privKey); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
+	}
+	// store the derived key in our cache
+	k.GetDerivedPurposeCache().Store(keyId, wrapper)
+
+	return wrapper, nil
+}
+
+func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) string {
+	return fmt.Sprintf("%s.%s.%s", purpose.String(), wrapperKeyId, authMethodId)
+}
+
+type derivedKeyPurpose uint
+
+const (
+	derivedKeyPurposeUnknown = iota
+	derivedKeyPurposeState
+)
+
+func (k derivedKeyPurpose) String() string {
+	switch k {
+	case derivedKeyPurposeState:
+		return "oidc_state"
+	default:
+		return "oidc_unknown"
+	}
 }
