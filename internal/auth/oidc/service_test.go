@@ -39,15 +39,15 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 		name            string
 		wrapper         wrapping.Wrapper
 		authMethod      *AuthMethod
-		reqState        *request.State
+		message         proto.Message
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
 		{
-			name:       "valid",
+			name:       "valid-request-state",
 			wrapper:    db.TestWrapper(t),
 			authMethod: testAuthMethod,
-			reqState: &request.State{
+			message: &request.State{
 				TokenRequestId:     "test-token-request-id",
 				CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
 				ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
@@ -57,10 +57,19 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			},
 		},
 		{
+			name:       "valid-request-token",
+			wrapper:    db.TestWrapper(t),
+			authMethod: testAuthMethod,
+			message: &request.Token{
+				RequestId:      "test-token-request-id",
+				ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
+			},
+		},
+		{
 			name:       "missing-wrapper",
 			wrapper:    nil,
 			authMethod: testAuthMethod,
-			reqState: &request.State{
+			message: &request.State{
 				TokenRequestId:     "test-token-request-id",
 				CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
 				ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
@@ -74,7 +83,7 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 		{
 			name:    "missing-auth-method",
 			wrapper: db.TestWrapper(t),
-			reqState: &request.State{
+			message: &request.State{
 				TokenRequestId:     "test-token-request-id",
 				CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
 				ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
@@ -90,13 +99,13 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			wrapper:         db.TestWrapper(t),
 			authMethod:      testAuthMethod,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing state",
+			wantErrContains: "missing message",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			encrypted, err := encryptMessage(ctx, tt.wrapper, tt.authMethod, tt.reqState)
+			encrypted, err := encryptMessage(ctx, tt.wrapper, tt.authMethod, tt.message)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
@@ -109,15 +118,23 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
 
-			gotScopeId, gotAuthMethodId, reqStateBytes, err := decryptMessage(ctx, tt.wrapper, encrypted)
+			gotScopeId, gotAuthMethodId, reqBytes, err := decryptMessage(ctx, tt.wrapper, encrypted)
 			require.NoError(err)
 			assert.Equalf(tt.authMethod.PublicId, gotAuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, gotAuthMethodId)
 			assert.Equalf(tt.authMethod.ScopeId, gotScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, gotScopeId)
 
-			var reqState request.State
-			err = proto.Unmarshal(reqStateBytes, &reqState)
+			var msg proto.Message
+			switch v := tt.message.(type) {
+			case *request.State:
+				msg = &request.State{}
+			case *request.Token:
+				msg = &request.Token{}
+			default:
+				assert.Fail("unsupported message type: %v", v)
+			}
+			err = proto.Unmarshal(reqBytes, msg)
 			require.NoError(err)
-			assert.True(proto.Equal(tt.reqState, &reqState))
+			assert.True(proto.Equal(tt.message, msg))
 		})
 	}
 	t.Run("decryptState-bad-parameter-tests", func(t *testing.T) {
