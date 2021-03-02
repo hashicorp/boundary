@@ -67,7 +67,10 @@ func Test_StartAuth(t *testing.T) {
 		allowedCallback, err := NewCallbackUrl(am.PublicId, TestConvertToUrls(t, tpAllowedRedirect)[0])
 		require.NoError(t, err)
 		err = rw.Create(ctx, allowedCallback)
-		require.NoError(t, err)
+		if err != nil && !errors.Match(errors.T(errors.NotUnique), err) {
+			// ignore dup errors, but raise all others as an invalid test setup
+			require.NoError(t, err)
+		}
 		r, err := repoFn()
 		require.NoError(t, err)
 		// update the test's auth method, now that we've added a new callback
@@ -81,6 +84,7 @@ func Test_StartAuth(t *testing.T) {
 		repoFn          OidcRepoFactory
 		apiSrv          *httptest.Server
 		authMethod      *AuthMethod
+		roundTripper    string
 		setup           func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (*AuthMethod, string)
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -91,6 +95,14 @@ func Test_StartAuth(t *testing.T) {
 			apiSrv:     testController,
 			authMethod: testAuthMethod,
 			setup:      stdSetup,
+		},
+		{
+			name:         "simple-with-roundtripper",
+			repoFn:       repoFn,
+			apiSrv:       testController,
+			authMethod:   testAuthMethod,
+			setup:        stdSetup,
+			roundTripper: "alice-says-hi-bob&eve-chuckles-&bob-says-hi-alice",
 		},
 		{
 			name:            "inactive",
@@ -139,7 +151,7 @@ func Test_StartAuth(t *testing.T) {
 			}
 
 			now := time.Now()
-			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId)
+			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(authUrl)
@@ -181,7 +193,13 @@ func Test_StartAuth(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(reqState.CreateTime)
 			assert.NotEmpty(reqState.FinalRedirectUrl)
-			assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL), reqState.FinalRedirectUrl)
+			switch tt.roundTripper != "" {
+			case true:
+				assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL)+"?"+tt.roundTripper, reqState.FinalRedirectUrl)
+				assert.Contains(reqState.FinalRedirectUrl, tt.roundTripper)
+			default:
+				assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL), reqState.FinalRedirectUrl)
+			}
 			assert.Equal(authParams["nonce"][0], reqState.Nonce)
 
 			assert.WithinDuration(reqState.CreateTime.Timestamp.AsTime(), now, 1*time.Second)
