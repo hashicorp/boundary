@@ -111,4 +111,35 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withUnauthenticatedUser = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithForce", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithForce())
+		testOpts := getDefaultOptions()
+		testOpts.withForce = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDryRun", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithDryRun())
+		testOpts := getDefaultOptions()
+		testOpts.withDryRun = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithAuthMethod", func(t *testing.T) {
+		assert := assert.New(t)
+		am := AllocAuthMethod()
+		am.PublicId = "alice's-auth-method"
+		opts := getOpts(WithAuthMethod(&am))
+		testOpts := getDefaultOptions()
+		testOpts.withAuthMethod = &am
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithPublicId", func(t *testing.T) {
+		assert := assert.New(t)
+		id := "alice's-auth-method"
+		opts := getOpts(WithPublicId(id))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = id
+		assert.Equal(opts, testOpts)
+	})
 }

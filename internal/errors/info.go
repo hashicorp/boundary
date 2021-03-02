@@ -148,6 +148,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "db exception",
 		Kind:    Integrity,
 	},
+	VersionMismatch: {
+		Message: "version mismatch",
+		Kind:    Integrity,
+	},
 	MaxRetries: {
 		Message: "too many retries",
 		Kind:    Transaction,
