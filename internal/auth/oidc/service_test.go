@@ -176,7 +176,7 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 
 func Test_requestWrappingWrapper(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
