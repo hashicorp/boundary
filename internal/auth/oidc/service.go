@@ -19,30 +19,44 @@ import (
 )
 
 const (
-	AttemptExpiration     = 2 * 60 * time.Second
-	FinalRedirectEndpoint = "%s/authentication-complete"                           // TODO jimlambrt 2/2021 get redirect from FE before PR
-	CallbackEndpoint      = "%s/v1/auth-methods/%s:authenticate:callback"          // TODO jimlambrt 2/2021 get endpoint from Todd before PR
-	TokenEndpoint         = "%s/v1/auth-methods/%s:authenticate:token?token_id=%s" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	// AttemptExpiration defines the TTL for an authentication attempt
+	AttemptExpiration = 5 * 60 * time.Second
+
+	// FinalRedirectEndpoint is the endpoint that the oidc callback redirect
+	// client to after the callback is complete.
+	FinalRedirectEndpoint = "%s/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
+
+	// CallbackEndpoint is the endpoint for the oidc callback which will be
+	// included in the auth URL returned when an authen attempted is kicked off.
+	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+
+	// TokenEndpoint is the endpoint the client will poll to see if their
+	// authentication attempt has completed and if successful, they'll
+	// retrieve their Boundary token.
+	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token?token_id=%s" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
 )
 
 type (
-	// OidcRepoFactory creates a new oidc repo
+	// OidcRepoFactory is used by "service functions" to create a new oidc repo
 	OidcRepoFactory func() (*Repository, error)
 
-	// IamRepoFactory creates a new iam repo
+	// IamRepoFactory is used by "service functions" to create a new iam repo
 	IamRepoFactory func() (*iam.Repository, error)
 
-	// AuthTokenRepFactory creates a new auth token repo
+	// AuthTokenRepFactory is used by "service functions" to create a new auth token repo
 	AuthTokenRepFactory func() (*authtoken.Repository, error)
 )
 
+// validator defines an optional interface that proto messages can implement
+// which will allow encryptMessage to validate them before encryption.
 type validator interface {
 	Validate() error
 }
 
 // encryptMessage will encrypt the message.  The encrypted message will be wrapped in a
 // request.Wrapper and then encoded into the returned string. This function
-// supports encrypting: request.State and request.Token messages
+// supports encrypting: request.State and request.Token messages.  proto Messages should
+// implement the validator interface, so they can be validated before encryption.
 func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMethod, m proto.Message) (encodedEncryptedState string, e error) {
 	const op = "oidc.encryptMessage"
 	if wrapper == nil {
@@ -96,7 +110,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 }
 
 // decryptMessage will decrypt messages that were previously encrypted with oidc.encryptMessage(...)
-// The messageBytes returned can be marshaled via proto.Marshal into the appropriate message.
+// The returned messageBytes can be marshaled via proto.Marshal into the appropriate message.
 func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrappedRequest *request.Wrapper) (messageBytes []byte, e error) {
 	const op = "oidc.decryptMessage"
 	if wrappedRequest == nil {
@@ -116,6 +130,7 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	return decryptedMsg, nil
 }
 
+// unwrapMessage does just that, it unwrappes the encoded reqquest.Wrapper proto message
 func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
 	const op = ""
 	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
@@ -129,13 +144,16 @@ func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrap
 	return &wrapper, nil
 }
 
-// requestWrappingWrapper finds the wrapping wrapper to use when encrypting/decrypting oidc
-// Request.State and Request.Token.  It first checks the cache of derived wrappers.
-// If it's not found in the cache it generates a key based on the scope's oidc DEK, using
-// the scopeId and authMethodId as salt and info for derivation, and returns
-// a wrapper for that newly derived key.  It supports the WithKeyId(...) option
-// which allows you to specify which oidc DEK to use vs just using the latest version
-// of the DEK.
+// requestWrappingWrapper finds the wrapping wrapper to use when encrypting/decrypting
+// both a Request.State and Request.Token.
+//
+// It first checks the cache of derived wrappers. If it's not found in the cache, it
+// generates a key based on the scope's oidc DEK, using the scopeId and authMethodId
+// as salt and info for derivation, creates a wrapper for the new key, adds that wrapper
+// to the cache and the returns the wrapper for the new key.
+//
+// It supports the WithKeyId(...) option which allows you to specify which oidc DEK
+// to use vs the default of just using the latest version of the DEK.
 func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
 	const op = "oidc.(Repository).oidcWrapper"
 	if k == nil {
@@ -185,10 +203,15 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	return wrapper, nil
 }
 
+// derivedKeyId returns a key that represents the derived key
 func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) string {
 	return fmt.Sprintf("%s.%s.%s", purpose.String(), wrapperKeyId, authMethodId)
 }
 
+// derivedKeyPurpose represents the purpose of the derived key.
+//
+// TODO (jimlambrt 3/2021) ask @jefferai if this should be moved to the kms package
+// and exported for others to use.
 type derivedKeyPurpose uint
 
 const (
@@ -196,6 +219,7 @@ const (
 	derivedKeyPurposeState
 )
 
+// String returns a representative string for the key's purpose
 func (k derivedKeyPurpose) String() string {
 	switch k {
 	case derivedKeyPurposeState:
