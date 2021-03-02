@@ -97,7 +97,8 @@ const (
 	tokenLength             = 24
 )
 
-func newAuthTokenId() (string, error) {
+// NewAuthTokenId creates a new id for an auth token.
+func NewAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {

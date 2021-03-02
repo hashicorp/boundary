@@ -36,6 +36,8 @@ const (
 	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
 	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
 
+	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
+
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
 

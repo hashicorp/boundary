@@ -280,7 +280,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at.CtToken = nil
 	at.KeyId = ""
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -370,7 +370,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -550,7 +550,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
