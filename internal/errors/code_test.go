@@ -183,6 +183,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Exception,
 		},
 		{
+			name: "VersionMismatch",
+			c:    VersionMismatch,
+			want: VersionMismatch,
+		},
+		{
 			name: "MultipleRecords",
 			c:    MultipleRecords,
 			want: MultipleRecords,
