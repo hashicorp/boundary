@@ -18,11 +18,11 @@ import (
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
 // update it based on the field masks provided, and then validate it using
-// Repository.TestAuthMethod(...).  If the test succeeds, the auth method
+// Repository.ValidateAuthMethod(...).  If the test succeeds, the auth method
 // is persisted in the repository and the written auth method is returned.
 // fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a
-// zero value and included in fieldMask. Name, Description, OperationalState, DiscoveryUrl,
+// zero value and included in fieldMask. Name, Description, DiscoveryUrl,
 // ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
 // Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
 // also updatable. if no updatable fields are included in the fieldMaskPaths,
@@ -31,16 +31,33 @@ import (
 // Options supported:
 //
 // * WithDryRun: when this option is provided, the auth method is retrieved from
-// the repo, updated based on the fieldMask, tested via Repository.TestAuthMethod,
+// the repo, updated based on the fieldMask, tested via Repository.ValidateAuthMethod,
 // the results of the update are returned, and and any errors reported.  The
 // updates are not peristed to the repository.
 //
 // * WithForce: when this option is provided, the auth method is persistented in
-// the repository without testing it fo validity with Repository.TestAuthMethod.
+// the repository without testing it fo validity with Repository.ValidateAuthMethod.
 //
 // Successful updates must invalidate (delete) the Repository's cache of the
 // oidc.Provider for the AuthMethod.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+
+	// ************************************************************************
+	// ************************************************************************
+	// TODO(jimlambrt) 3/2021: after some discussion, we've aligned on a need to
+	// disambiguate an error raised because the auth method is not "complete" vs
+	// "warnings" raised from Repository.ValidateAuthMethod(...). when an auth
+	// method and the discovery info published by the OIDC provider seem to
+	// indicate that there's a possible configuration issue.  A future PR, will
+	// distinguish between these two different auth method concerns (one an error
+	// and the other being a warning about a possible error/concern).  In that
+	// future PR, callers will not be allowed to "force" and update to an auth
+	// method which is active (private or public), if that updated would result
+	// in an incomplete auth method which would be unusable by users of the
+	// system.
+	// ************************************************************************
+	// ************************************************************************
+
 	const op = "oidc.(Repository).UpdateAuthMethod"
 	if am == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
@@ -58,17 +75,16 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":             am.Name,
-			"Description":      am.Description,
-			"OperationalState": am.OperationalState,
-			"DiscoveryUrl":     am.DiscoveryUrl,
-			"ClientId":         am.ClientId,
-			"ClientSecret":     am.ClientSecret,
-			"MaxAge":           am.MaxAge,
-			"SigningAlgs":      am.SigningAlgs,
-			"CallbackUrls":     am.CallbackUrls,
-			"AudClaims":        am.AudClaims,
-			"Certificates":     am.Certificates,
+			"Name":         am.Name,
+			"Description":  am.Description,
+			"DiscoveryUrl": am.DiscoveryUrl,
+			"ClientId":     am.ClientId,
+			"ClientSecret": am.ClientSecret,
+			"MaxAge":       am.MaxAge,
+			"SigningAlgs":  am.SigningAlgs,
+			"CallbackUrls": am.CallbackUrls,
+			"AudClaims":    am.AudClaims,
+			"Certificates": am.Certificates,
 		},
 		fieldMaskPaths,
 		nil,
@@ -158,7 +174,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			}
 			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
-			dbMask = append(dbMask, "Version")
 			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
@@ -259,6 +274,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+			}
+			if updatedAm == nil {
+				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return nil
 		},
@@ -407,7 +425,6 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		switch {
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
-		case strings.EqualFold("OperationalState", f):
 		case strings.EqualFold("DiscoveryUrl", f):
 		case strings.EqualFold("ClientId", f):
 		case strings.EqualFold("ClientSecret", f):
@@ -432,8 +449,6 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			cp.Name = new.Name
 		case "Description":
 			cp.Description = new.Description
-		case "OperationalState":
-			cp.OperationalState = new.OperationalState
 		case "DiscoveryUrl":
 			cp.DiscoveryUrl = new.DiscoveryUrl
 		case "ClientId":
@@ -493,7 +508,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 //
 // Options supported are: WithPublicId, WithAuthMethod
 func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) error {
-	const op = "oidc.(Repository).TestAuthMethod"
+	const op = "oidc.(Repository).ValidateAuthMethod"
 	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
@@ -502,6 +517,9 @@ func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) erro
 		am, err = r.lookupAuthMethod(ctx, opts.withPublicId)
 		if err != nil {
 			return errors.Wrap(err, op)
+		}
+		if am == nil {
+			return errors.New(errors.RecordNotFound, op, fmt.Sprintf("unable to lookup auth method %s", opts.withPublicId))
 		}
 	case opts.withAuthMethod != nil:
 		am = opts.withAuthMethod
@@ -576,7 +594,6 @@ type HTTPClient interface {
 }
 
 // pingEndpoint will make an attempted http request, return status code and errors
-// (non 2xx status codes are not an error)
 func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, url string) (int, error) {
 	const op = "oidc.pingEndpoint"
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)

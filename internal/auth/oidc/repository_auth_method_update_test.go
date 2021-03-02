@@ -348,7 +348,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 	}
 }
 
-func Test_TestAuthMethod(t *testing.T) {
+func Test_ValidateAuthMethod(t *testing.T) {
 	// do not run these tests with t.Parallel()
 	ctx := context.Background()
 
@@ -744,7 +744,6 @@ func Test_validateFieldMask(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"OperationalState",
 				"DiscoveryUrl",
 				"ClientId",
 				"ClientSecret",
@@ -819,7 +818,7 @@ func Test_applyUpdate(t *testing.T) {
 				AuthMethod: &store.AuthMethod{
 					Name:             "new-name",
 					Description:      "new-description",
-					OperationalState: string(ActivePublicState),
+					OperationalState: string(InactiveState),
 					DiscoveryUrl:     "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
@@ -833,7 +832,6 @@ func Test_applyUpdate(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"OperationalState",
 				"DiscoveryUrl",
 				"ClientId",
 				"ClientSecret",
@@ -876,7 +874,7 @@ func Test_applyUpdate(t *testing.T) {
 				AuthMethod: &store.AuthMethod{
 					Name:             "new-name",
 					Description:      "new-description",
-					OperationalState: string(ActivePublicState),
+					OperationalState: string(InactiveState),
 					DiscoveryUrl:     "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
@@ -886,7 +884,6 @@ func Test_applyUpdate(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"OperationalState",
 				"DiscoveryUrl",
 				"ClientId",
 				"ClientSecret",
