@@ -98,6 +98,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: TooShort,
 		},
 		{
+			name: "AuthMethodInactive",
+			c:    AuthMethodInactive,
+			want: AuthMethodInactive,
+		},
+		{
+			name: "AuthAttemptExpired",
+			c:    AuthAttemptExpired,
+			want: AuthAttemptExpired,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,

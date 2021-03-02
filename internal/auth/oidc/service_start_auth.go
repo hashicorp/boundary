@@ -54,7 +54,9 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, apiAddr string, 
 	if am.OperationalState == string(InactiveState) {
 		return nil, nil, errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
-	provider, err := convertToProvider(ctx, am)
+
+	// get the provider from the cache (if possible)
+	provider, err := providerCache().get(ctx, am)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
 	}
