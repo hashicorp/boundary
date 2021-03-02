@@ -39,7 +39,6 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 		name            string
 		toState         AuthMethodState
 		operateOn       string
-		opt             []Option
 		wantErrMatch    *errors.Template
 		wantErrContains string
 		wantNoOplog     bool
@@ -221,7 +220,6 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 		{
 			name:    "force-InActive-to-ActivePrivate",
 			toState: ActivePrivateState,
-			opt:     []Option{WithForce()},
 			operateOn: func() string {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -235,11 +233,12 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					"alice-rp", "alice-secret",
 				).PublicId
 			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to transition from inactive",
 		},
 		{
 			name:    "force-InActive-to-ActivePublic",
 			toState: ActivePublicState,
-			opt:     []Option{WithForce()},
 			operateOn: func() string {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
@@ -253,6 +252,8 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					"alice-rp", "alice-secret",
 				).PublicId
 			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to transition from inactive",
 		},
 		{
 			name:            "missing-auth-method-id",
@@ -316,9 +317,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			case InactiveState:
 				err = repo.MakeInactive(ctx, tt.operateOn)
 			case ActivePrivateState:
-				err = repo.MakePrivate(ctx, tt.operateOn, tt.opt...)
+				err = repo.MakePrivate(ctx, tt.operateOn)
 			case ActivePublicState:
-				err = repo.MakePublic(ctx, tt.operateOn, tt.opt...)
+				err = repo.MakePublic(ctx, tt.operateOn)
 			default:
 				require.Fail("unknown toState %s for test", tt.toState)
 			}
