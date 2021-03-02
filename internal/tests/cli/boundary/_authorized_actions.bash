@@ -4,5 +4,5 @@ function has_authorized_action() {
   #    has_authorized_action $out authorize-session
   local out=$1
   local action=$2
-  echo $out | jq -c ".authorized_actions | contains([\"$action\"])"
+  echo $out | jq -c ".item.authorized_actions | contains([\"$action\"])"
 }

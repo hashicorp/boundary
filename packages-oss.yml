@@ -51,7 +51,7 @@ package-aliases:
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
 # golang:1.15.8-buster
-base-image: "hashicorp.jfrog.io/docker/golang@sha256:cbd6b4a560adbd00e3fe1eb1a6191a85e82839a69dcb757d57aa5be311f09cfe"
+base-image: "docker.mirror.hashicorp.services/golang@sha256:cbd6b4a560adbd00e3fe1eb1a6191a85e82839a69dcb757d57aa5be311f09cfe"
 
 layers:
   - name: base

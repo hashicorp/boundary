@@ -25,7 +25,7 @@ function list_host_catalogs() {
 function host_catalog_id() {
   local id=$1
   local sid=$2
-  strip $(list_host_catalogs $sid | jq -c ".[] | select(.name | contains(\"$id\")) | .[\"id\"]")
+  strip $(list_host_catalogs $sid | jq -c ".items[] | select(.name | contains(\"$id\")) | .[\"id\"]")
 }
 
 function has_default_host_catalog_actions() {

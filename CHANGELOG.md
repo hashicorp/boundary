@@ -2,6 +2,43 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next (Unreleased)
+
+### Changes/Deprecations
+
+All of these changes are from [PR
+962](https://github.com/hashicorp/boundary/pull/962):
+
+* api: A few functions have changed places. Notably, instead of `ResponseMap()`
+  and `ResponseBody()`, resources simply expose `Response()`. This higher-level
+  response object contains the map and body, and also exposes `StatusCode()` in
+  place of indivdidual resources.
+* cli: In `json` output format, a resource item is now an object under the
+  top-level key `item`; a list of resource items is now an list of objects under
+  the top-level key `items`. This preserves the top level for putting in other
+  useful information later on (and the HTTP status code is included now).
+* cli: In `json` output format, errors are now serialized as a JSON object with
+  an `error` key instead of outputting normal text
+* cli: All errors, including API errors, are now written to `stderr`. Previously
+  in the default table format, API errors would be written to `stdout`.
+
+### New and Improved
+
+* list filtering: Listing now supports filtering results before being returned
+  to the user. The filtering takes place server side and uses boolean
+  expressions against the JSON representation of returned items. See [the
+  documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
+  for more details. ([PR](https://github.com/hashicorp/boundary/pull/952))
+  ([PR](https://github.com/hashicorp/boundary/pull/957))
+  ([PR](https://github.com/hashicorp/boundary/pull/967))
+* server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
+  worked before but wasn't fully tested.)
+  ([PR](https://github.com/hashicorp/boundary/pull/959))
+* server: On `SIGHUP`, [worker
+  tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
+  re-parsed and new values used
+  ([PR](https://github.com/hashicorp/boundary/pull/959))
+
 ## 0.1.7 (2021/02/16)
 
 *Note* This release fixes an upgrade issue affecting users on Postgres 11

@@ -44,7 +44,7 @@ export default [
       },
       {
         category: 'filtering',
-        content: ['worker-tags'],
+        content: ['resource-listing', 'worker-tags'],
       },
     ],
   },
