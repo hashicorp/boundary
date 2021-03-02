@@ -23,6 +23,7 @@ import (
 // attempt. The tokenUrl contains a token_request_id, which is encrypted.
 //
 // If the auth method is in an InactiveState, then an error is returned.
+//
 // Options supported:
 //
 // WithRoundTripPayload(string) provides an option for a client roundtrip
