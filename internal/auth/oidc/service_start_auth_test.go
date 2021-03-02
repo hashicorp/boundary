@@ -114,6 +114,14 @@ func Test_StartAuth(t *testing.T) {
 			setup:           stdSetup,
 		},
 		{
+			name:            "missing-repo-func",
+			repoFn:          nil,
+			apiSrv:          testController,
+			authMethod:      testAuthMethodInactive,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing oidc repo function",
+		},
+		{
 			name:            "missing-authmethod-id",
 			repoFn:          repoFn,
 			apiSrv:          testController,

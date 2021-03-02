@@ -37,6 +37,9 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, apiAddr string, 
 	if authMethodId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
+	if oidcRepoFn == nil {
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing oidc repo function")
+	}
 	r, err := oidcRepoFn()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)
