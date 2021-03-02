@@ -53,7 +53,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	// and the other being a warning about a possible error/concern).  In that
 	// future PR, callers will not be allowed to "force" and update to an auth
 	// method which is active (private or public), if that updated would result
-	// in an incomplete auth method which would be useable by users of the
+	// in an incomplete auth method which would be unusable by users of the
 	// system.
 	// ************************************************************************
 	// ************************************************************************
