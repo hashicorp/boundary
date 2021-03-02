@@ -145,7 +145,7 @@ func DevWorker() (*Config, error) {
 	return parsed, nil
 }
 
-func devKeyGeneration() (string, string, string) {
+func DevKeyGeneration() (string, string, string) {
 	var numBytes int64 = 96
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
@@ -168,7 +168,7 @@ func devKeyGeneration() (string, string, string) {
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := devKeyGeneration()
+	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
 	parsed, err := Parse(hclStr)
@@ -183,7 +183,7 @@ func DevController() (*Config, error) {
 }
 
 func DevCombined() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := devKeyGeneration()
+	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {

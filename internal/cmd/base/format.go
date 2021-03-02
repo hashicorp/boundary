@@ -134,58 +134,134 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 	return strings.Join(ret, "\n")
 }
 
-func PrintApiError(in *api.Error) string {
-	nonAttributeMap := map[string]interface{}{
-		"Status":  in.ResponseStatus(),
-		"Kind":    in.Kind,
-		"Message": in.Message,
-	}
+// PrintApiError prints the given API error, optionally with context
+// information, to the UI in the appropriate format
+func (c *Command) PrintApiError(in *api.Error, contextStr string) {
+	switch Format(c.UI) {
+	case "json":
+		output := struct {
+			Context  string          `json:"context,omitempty"`
+			Status   int             `json:"status"`
+			ApiError json.RawMessage `json:"api_error"`
+		}{
+			Context:  contextStr,
+			Status:   in.Response().StatusCode(),
+			ApiError: in.Response().Body.Bytes(),
+		}
+		b, _ := JsonFormatter{}.Format(output)
+		c.UI.Error(string(b))
 
-	if in.Op != "" {
-		nonAttributeMap["Operation"] = in.Op
-	}
-
-	maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)
-
-	ret := []string{
-		"",
-		"Error information:",
-		WrapMap(2, maxLength+2, nonAttributeMap),
-	}
-
-	if in.Details != nil {
-		if len(in.Details.WrappedErrors) > 0 {
-			ret = append(ret,
-				"",
-				"  Wrapped Errors:",
-			)
-			for _, we := range in.Details.WrappedErrors {
-				ret = append(ret,
-					fmt.Sprintf("    Message:             %s", we.Message),
-					fmt.Sprintf("    Operation:           %s", we.Op),
-				)
-			}
+	default:
+		nonAttributeMap := map[string]interface{}{
+			"Status":  in.Response().StatusCode(),
+			"Kind":    in.Kind,
+			"Message": in.Message,
+		}
+		if contextStr != "" {
+			nonAttributeMap["context"] = contextStr
+		}
+		if in.Op != "" {
+			nonAttributeMap["Operation"] = in.Op
 		}
 
-		if len(in.Details.RequestFields) > 0 {
-			ret = append(ret,
-				"",
-				"  Field-specific Errors:",
-			)
-			for _, field := range in.Details.RequestFields {
-				if field.Name == "update_mask" {
-					// TODO: Report useful error messages related to "update_mask".
-					continue
+		maxLength := MaxAttributesLength(nonAttributeMap, nil, nil)
+
+		var output []string
+		if contextStr != "" {
+			output = append(output, contextStr)
+		}
+		output = append(output,
+			"",
+			"Error information:",
+			WrapMap(2, maxLength+2, nonAttributeMap),
+		)
+
+		if in.Details != nil {
+			if len(in.Details.WrappedErrors) > 0 {
+				output = append(output,
+					"",
+					"  Wrapped Errors:",
+				)
+				for _, we := range in.Details.WrappedErrors {
+					output = append(output,
+						fmt.Sprintf("    Message:             %s", we.Message),
+						fmt.Sprintf("    Operation:           %s", we.Op),
+					)
 				}
-				ret = append(ret,
-					fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
-					fmt.Sprintf("      Error:           %s", field.Description),
+			}
+
+			if len(in.Details.RequestFields) > 0 {
+				output = append(output,
+					"",
+					"  Field-specific Errors:",
 				)
+				for _, field := range in.Details.RequestFields {
+					if field.Name == "update_mask" {
+						// TODO: Report useful error messages related to "update_mask".
+						continue
+					}
+					output = append(output,
+						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
+						fmt.Sprintf("      Error:           %s", field.Description),
+					)
+				}
 			}
 		}
-	}
 
-	return WrapForHelpText(ret)
+		c.UI.Error(WrapForHelpText(output))
+	}
+}
+
+// PrintCliError prints the given CLI error to the UI in the appropriate format
+func (c *Command) PrintCliError(err error) {
+	switch Format(c.UI) {
+	case "table":
+		c.UI.Error(err.Error())
+	case "json":
+		output := struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		}
+		b, _ := JsonFormatter{}.Format(output)
+		c.UI.Error(string(b))
+	}
+}
+
+// PrintJsonItem prints the given item to the UI in JSON format
+func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) int {
+	output := struct {
+		StatusCode int         `json:"status_code"`
+		Item       interface{} `json:"item"`
+	}{
+		StatusCode: result.GetResponse().HttpResponse().StatusCode,
+		Item:       item,
+	}
+	b, err := JsonFormatter{}.Format(output)
+	if err != nil {
+		c.PrintCliError(err)
+		return 1
+	}
+	c.UI.Output(string(b))
+	return 0
+}
+
+// PrintJsonItems prints the given items to the UI in JSON format
+func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface{}) int {
+	output := struct {
+		StatusCode int           `json:"status_code"`
+		Items      []interface{} `json:"items"`
+	}{
+		StatusCode: result.GetResponse().HttpResponse().StatusCode,
+		Items:      items,
+	}
+	b, err := JsonFormatter{}.Format(output)
+	if err != nil {
+		c.PrintCliError(err)
+		return 1
+	}
+	c.UI.Output(string(b))
+	return 0
 }
 
 // An output formatter for json output of an object

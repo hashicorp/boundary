@@ -16,5 +16,5 @@ function list_accounts() {
 
 function account_id() {
   local acct=$1
-  strip $(list_accounts | jq -c ".[] | select(.attributes.login_name | contains(\"$acct\")) | .[\"id\"]")
+  strip $(list_accounts | jq -c ".items[] | select(.attributes.login_name | contains(\"$acct\")) | .[\"id\"]")
 }

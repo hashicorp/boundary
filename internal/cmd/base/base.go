@@ -77,6 +77,7 @@ type Command struct {
 	FlagHostCatalogId string
 	FlagVersion       int
 	FlagRecursive     bool
+	FlagFilter        string
 
 	client *api.Client
 }

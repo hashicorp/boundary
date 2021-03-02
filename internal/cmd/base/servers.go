@@ -9,10 +9,12 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/boundary/globals"
@@ -269,25 +271,26 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
-		var purpose string
-		for _, p := range lnConfig.Purpose {
-			purpose = strings.ToLower(p)
-			if !strutil.StrListContains(allowedPurposes, purpose) {
-				return fmt.Errorf("Unknown listener purpose %q", purpose)
-			}
+		if len(lnConfig.Purpose) != 1 {
+			return fmt.Errorf("Invalid size of listener purposes (%d)", len(lnConfig.Purpose))
 		}
+		purpose := strings.ToLower(lnConfig.Purpose[0])
+		if !strutil.StrListContains(allowedPurposes, purpose) {
+			return fmt.Errorf("Unknown listener purpose %q", purpose)
+		}
+		lnConfig.Purpose[0] = purpose
 
-		// Override for now
-		// TODO: Way to configure
-		lnConfig.TLSCipherSuites = []uint16{
-			// 1.3
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-			// 1.2
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+		if lnConfig.TLSCipherSuites == nil {
+			lnConfig.TLSCipherSuites = []uint16{
+				// 1.3
+				tls.TLS_AES_128_GCM_SHA256,
+				tls.TLS_AES_256_GCM_SHA384,
+				tls.TLS_CHACHA20_POLY1305_SHA256,
+				// 1.2
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			}
 		}
 
 		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
@@ -320,9 +323,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		}
 
 		if reloadFunc != nil {
-			relSlice := b.ReloadFuncs["listener|"+lnConfig.Type]
+			relSlice := b.ReloadFuncs["listeners"]
 			relSlice = append(relSlice, reloadFunc)
-			b.ReloadFuncs["listener|"+lnConfig.Type] = relSlice
+			b.ReloadFuncs["listeners"] = relSlice
 		}
 
 		if lnConfig.MaxRequestSize == 0 {
@@ -707,4 +710,21 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 	}
 	conf.Worker.PublicAddr = net.JoinHostPort(host, port)
 	return nil
+}
+
+// MakeSighupCh returns a channel that can be used for SIGHUP
+// reloading. This channel will send a message for every
+// SIGHUP received.
+func MakeSighupCh() chan struct{} {
+	resultCh := make(chan struct{})
+
+	signalCh := make(chan os.Signal, 4)
+	signal.Notify(signalCh, syscall.SIGHUP)
+	go func() {
+		for {
+			<-signalCh
+			resultCh <- struct{}{}
+		}
+	}()
+	return resultCh
 }

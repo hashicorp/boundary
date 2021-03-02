@@ -155,7 +155,7 @@ func TestCrud(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
 func TestErrors(t *testing.T) {
@@ -178,7 +178,7 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Create another resource with the same name.
 	_, err = userClient.Create(tc.Context(), org.GetPublicId(), users.WithName("first"))
@@ -190,17 +190,17 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = userClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	_, err = userClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }

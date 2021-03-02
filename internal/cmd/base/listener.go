@@ -56,10 +56,10 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	var purpose string
-	if len(l.Purpose) == 1 {
-		purpose = l.Purpose[0]
+	if len(l.Purpose) != 1 {
+		return nil, nil, nil, fmt.Errorf("Expected single listener purpose, found %d", len(l.Purpose))
 	}
+	purpose := l.Purpose[0]
 
 	switch purpose {
 	case "cluster":

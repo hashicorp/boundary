@@ -183,7 +183,7 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Create another resource with the same name.
 	_, err = accountClient.Create(tc.Context(), amId, accounts.WithPasswordAccountLoginName("first"))
@@ -195,17 +195,17 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusNotFound, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	_, err = accountClient.Read(tc.Context(), "invalid id")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	_, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version)
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.EqualValues(http.StatusBadRequest, apiErr.ResponseStatus())
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }
