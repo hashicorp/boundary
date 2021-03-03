@@ -27,7 +27,7 @@ function host_id() {
   local name=$1
   local hcid=$2
   
-  strip $(list_hosts $hcid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_hosts $hcid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function has_default_host_actions() {

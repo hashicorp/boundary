@@ -27,7 +27,7 @@ function scope_id() {
   local name=$1
   local sid=$2
   
-  strip $(list_scopes $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_scopes $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function has_default_scope_actions() {

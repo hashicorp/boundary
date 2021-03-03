@@ -5,7 +5,7 @@ function list_sessions() {
 }
 
 function count_sessions() {
-  list_sessions $1 | jq '. | length'
+  list_sessions $1 | jq '.items | length'
 }
 
 function cancel_session() {

@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
@@ -37,14 +33,14 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"server": func() (cli.Command, error) {
 			return &server.Command{
 				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
-				SighupCh:  MakeSighupCh(),
+				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
 				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
-				SighupCh:  MakeSighupCh(),
+				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
@@ -766,21 +762,4 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 	}
-}
-
-// MakeSighupCh returns a channel that can be used for SIGHUP
-// reloading. This channel will send a message for every
-// SIGHUP received.
-func MakeSighupCh() chan struct{} {
-	resultCh := make(chan struct{})
-
-	signalCh := make(chan os.Signal, 4)
-	signal.Notify(signalCh, syscall.SIGHUP)
-	go func() {
-		for {
-			<-signalCh
-			resultCh <- struct{}{}
-		}
-	}()
-	return resultCh
 }

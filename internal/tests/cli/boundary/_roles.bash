@@ -55,12 +55,12 @@ function remove_role_principal() {
 function role_id() {
   local name=$1
   local sid=$2
-  strip $(list_roles $sid | jq -c ".[] | select(.name | contains(\"$name\")) | .[\"id\"]")
+  strip $(list_roles $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
 function role_principal_ids() {
   local rid=$1
-  strip $(read_role $rid | jq '.["principals"][]["id"]') 
+  strip $(read_role $rid | jq '.item["principals"][]["id"]') 
 }
 
 function role_has_principal_id() {
@@ -77,7 +77,7 @@ function role_has_principal_id() {
 
 function role_grants() {
   local rid=$1
-  read_role $rid | jq -rc '.grant_strings | @sh'
+  read_role $rid | jq -rc '.item.grant_strings | @sh'
 }
 
 function role_has_grant() {
