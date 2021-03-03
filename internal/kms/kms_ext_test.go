@@ -24,12 +24,12 @@ func TestKms(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	badWrapper := db.TestWrapper(t)
+	extWrapper := db.TestWrapper(t)
+	badExtWrapper := db.TestWrapper(t)
 	repo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	kmsCache := kms.TestKms(t, conn, extWrapper)
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, extWrapper))
 
 	// Verify that the cache is empty, so we can show that by the end of the
 	// test sequence we did actually look up keys and store them in the cache
@@ -61,7 +61,7 @@ func TestKms(t *testing.T) {
 		rootKeys, err := repo.ListRootKeys(ctx)
 		require.NoError(err)
 		for _, key := range rootKeys {
-			_, err := repo.ListRootKeyVersions(ctx, badWrapper, key.GetPrivateId())
+			_, err := repo.ListRootKeyVersions(ctx, badExtWrapper, key.GetPrivateId())
 			require.Error(err)
 			assert.True(strings.Contains(err.Error(), "message authentication failed"), err.Error())
 		}

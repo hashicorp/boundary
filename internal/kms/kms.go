@@ -305,6 +305,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListTokenKeys(ctx)
 	case KeyPurposeSessions:
 		keys, err = repo.ListSessionKeys(ctx)
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("error listing root keys"))

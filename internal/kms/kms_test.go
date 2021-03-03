@@ -17,18 +17,18 @@ func TestKms_KeyId(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	rootWrapper := db.TestWrapper(t)
+	extWrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw)
 	require.NoError(err)
 
 	// Make the global scope base keys
-	_, err = CreateKeysTx(ctx, rw, rw, rootWrapper, rand.Reader, scope.Global.String())
+	_, err = CreateKeysTx(ctx, rw, rw, extWrapper, rand.Reader, scope.Global.String())
 	require.NoError(err)
 
 	// Get the global scope's root wrapper
 	kmsCache, err := NewKms(repo)
 	require.NoError(err)
-	require.NoError(kmsCache.AddExternalWrappers(WithRootWrapper(rootWrapper)))
+	require.NoError(kmsCache.AddExternalWrappers(WithRootWrapper(extWrapper)))
 	globalRootWrapper, _, err := kmsCache.loadRoot(ctx, scope.Global.String())
 	require.NoError(err)
 
