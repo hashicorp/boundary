@@ -5,11 +5,13 @@ import (
 	"crypto/x509"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -106,6 +108,9 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Nil(got)
+
+				err := db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+				require.Errorf(err, "should not have found oplog entry for %s", tt.am.PublicId)
 				return
 			}
 			require.NoError(err)
@@ -114,6 +119,9 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			tt.am.UpdateTime = got.UpdateTime
 			tt.am.Version = got.Version
 			assert.Truef(proto.Equal(tt.am.AuthMethod, got.AuthMethod), "got %+v expected %+v", got, tt.am)
+
+			err = db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 		})
 	}
 }
