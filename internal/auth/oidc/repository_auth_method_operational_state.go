@@ -86,14 +86,11 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			updatedAm = am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			dbMask := []string{"OperationalState"}
-			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
-			}
-			if rowsUpdated != 1 {
+			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			if err == nil && rowsUpdated > 1 {
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			}
-			return nil
+			return err
 		},
 	)
 	if err != nil {

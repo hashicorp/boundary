@@ -36,13 +36,14 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name            string
-		toState         AuthMethodState
-		operateOn       string
-		version         uint32
-		wantErrMatch    *errors.Template
-		wantErrContains string
-		wantNoOplog     bool
+		name              string
+		toState           AuthMethodState
+		operateOn         string
+		version           uint32
+		wantNoRowsUpdated bool
+		wantErrMatch      *errors.Template
+		wantErrContains   string
+		wantNoOplog       bool
 	}{
 		{
 			name:    "ActivePrivate-to-InActive",
@@ -102,8 +103,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:     1,
-			wantNoOplog: true,
+			version:           1,
+			wantNoOplog:       true,
+			wantNoRowsUpdated: true,
 		},
 		{
 			name:    "InActive-to-ActivePrivate",
@@ -163,8 +165,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:     1,
-			wantNoOplog: true,
+			version:           1,
+			wantNoRowsUpdated: true,
+			wantNoOplog:       true,
 		},
 		{
 			name:    "InActive-to-ActivePublic",
@@ -224,8 +227,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:     1,
-			wantNoOplog: true,
+			version:           1,
+			wantNoRowsUpdated: true,
+			wantNoOplog:       true,
 		},
 		{
 			name:    "bad-version",
@@ -245,7 +249,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version: 111111,
+			version:           111111,
+			wantNoRowsUpdated: true,
+			wantNoOplog:       true,
 		},
 		{
 			name:            "missing-auth-method-id",
@@ -330,12 +336,14 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(updated)
-			assert.Equal(updated.OperationalState, string(tt.toState))
+
 			found, err := repo.LookupAuthMethod(ctx, tt.operateOn)
 			require.NoError(err)
 			require.NotEmpty(found)
-			assert.Equal(string(tt.toState), found.OperationalState)
-
+			if !tt.wantNoRowsUpdated {
+				assert.Equal(updated.OperationalState, string(tt.toState))
+				assert.Equal(string(tt.toState), found.OperationalState)
+			}
 			if !tt.wantNoOplog {
 				err = db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
