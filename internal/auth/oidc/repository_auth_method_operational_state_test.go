@@ -39,6 +39,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 		name            string
 		toState         AuthMethodState
 		operateOn       string
+		version         uint32
 		wantErrMatch    *errors.Template
 		wantErrContains string
 		wantNoOplog     bool
@@ -61,6 +62,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "ActivePublic-to-InActive",
@@ -80,6 +82,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "Inactive-to-Inactive",
@@ -99,6 +102,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version:     1,
 			wantNoOplog: true,
 		},
 		{
@@ -119,6 +123,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "ActivePublic-to-ActivePrivate",
@@ -138,6 +143,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "ActivePrivate-to-ActivePrivate",
@@ -157,6 +163,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version:     1,
 			wantNoOplog: true,
 		},
 		{
@@ -177,6 +184,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "ActivePrivate-to-ActivePublic",
@@ -196,6 +204,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version: 1,
 		},
 		{
 			name:    "ActivePublic-to-ActivePublic",
@@ -215,45 +224,28 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
+			version:     1,
 			wantNoOplog: true,
 		},
 		{
-			name:    "force-InActive-to-ActivePrivate",
-			toState: ActivePrivateState,
+			name:    "bad-version",
+			toState: InactiveState,
 			operateOn: func() string {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				// the returned oidc auth method is incomplete
 				return TestAuthMethod(t,
 					conn, databaseWrapper,
 					org.PublicId,
-					InactiveState,
+					ActivePrivateState,
 					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "unable to transition from inactive",
-		},
-		{
-			name:    "force-InActive-to-ActivePublic",
-			toState: ActivePublicState,
-			operateOn: func() string {
-				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
-				require.NoError(t, err)
-				// the returned oidc auth method is incomplete
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-				).PublicId
-			}(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "unable to transition from inactive",
+			version: 111111,
 		},
 		{
 			name:            "missing-auth-method-id",
@@ -313,18 +305,20 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var err error
+			var updated *AuthMethod
 			switch tt.toState {
 			case InactiveState:
-				err = repo.MakeInactive(ctx, tt.operateOn)
+				updated, err = repo.MakeInactive(ctx, tt.operateOn, tt.version)
 			case ActivePrivateState:
-				err = repo.MakePrivate(ctx, tt.operateOn)
+				updated, err = repo.MakePrivate(ctx, tt.operateOn, tt.version)
 			case ActivePublicState:
-				err = repo.MakePublic(ctx, tt.operateOn)
+				updated, err = repo.MakePublic(ctx, tt.operateOn, tt.version)
 			default:
 				require.Fail("unknown toState %s for test", tt.toState)
 			}
 			if tt.wantErrMatch != nil {
 				require.Error(err)
+				assert.Nil(updated)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
@@ -335,6 +329,8 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			require.NotNil(updated)
+			assert.Equal(updated.OperationalState, string(tt.toState))
 			found, err := repo.LookupAuthMethod(ctx, tt.operateOn)
 			require.NoError(err)
 			require.NotEmpty(found)

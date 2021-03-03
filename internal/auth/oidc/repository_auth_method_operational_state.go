@@ -13,72 +13,77 @@ import (
 // MakeInactive will transision an OIDC auth method from either the
 // ActivePrivateState or the ActivePublicState to the InactiveState.
 // No options are supported.
-func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, _ ...Option) error {
+func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, version uint32, _ ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).MakeInactive"
-	if err := r.transitionAuthMethodTo(ctx, authMethodId, InactiveState); err != nil {
-		return errors.Wrap(err, op)
+	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, InactiveState, version)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
-	return nil
+	return updated, nil
 }
 
 // MakePrivate will transision an OIDC auth method from either the
 // InactiveState or the ActivePublicState to the ActivePrivateState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the oidc.ValidateAuthMethod(...) succeeds. No options are supported.
-func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, _ ...Option) error {
+func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, version uint32, _ ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).MakePrivate"
-	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState); err != nil {
-		return errors.Wrap(err, op)
+	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState, version)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
-	return nil
+	return updated, nil
 }
 
 // MakePublic will transision an OIDC auth method from either the
 // InactiveState or the ActivePrivateState to the ActivePublicState.  If
 // transitioning from the InactiveState, the transition will only succeed if
 // the oidc.ValidateAuthMethod(...) succeeds. No options are supported.
-func (r *Repository) MakePublic(ctx context.Context, authMethodId string, _ ...Option) error {
+func (r *Repository) MakePublic(ctx context.Context, authMethodId string, version uint32, _ ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).MakePublic"
-	if err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState); err != nil {
-		return errors.Wrap(err, op)
+	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState, version)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
-	return nil
+	return updated, nil
 }
 
-func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, _ ...Option) error {
+func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, version uint32, _ ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).updateOperationalState"
 	if authMethodId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if !validState(string(desiredState)) {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op)
 	}
 	if am == nil {
-		return errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
 	}
 	if am.OperationalState == string(desiredState) {
-		return nil
+		return am, nil
 	}
 	if am.OperationalState == string(InactiveState) {
 		if err := am.isComplete(); err != nil {
-			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	var updatedAm *AuthMethod
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			updatedAm := am.Clone()
+			updatedAm = am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			dbMask := []string{"OperationalState"}
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)))
@@ -92,7 +97,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 		},
 	)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op)
 	}
-	return nil
+	return updatedAm, nil
 }
