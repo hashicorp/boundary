@@ -84,7 +84,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	if err != nil {
 		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
 	}
-	blobInfo, err := wrapper.Encrypt(ctx, marshaled, nil)
+	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
 	if err != nil {
 		return "", errors.New(errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
 	}
@@ -123,7 +123,8 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
 		return nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
 	}
-	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, nil)
+
+	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
 	if err != nil {
 		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
@@ -210,7 +211,7 @@ func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) 
 
 // derivedKeyPurpose represents the purpose of the derived key.
 //
-// TODO (jimlambrt 3/2021) ask @jefferai if this should be moved to the kms package
+// In the future, this could be moved to the kms package
 // and exported for others to use.
 type derivedKeyPurpose uint
 
