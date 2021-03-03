@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/cap/oidc"
 )
 
@@ -144,7 +145,14 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
-	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)
+	// TODO (jimlambrt 3/2021) - we need to fix the hard coding of WithAutoVivify(true) here
+	// an in the auth password repo.  It will require schema changes to support the user
+	// being able to manage which auth method they want to have auto vivify turn-on for.
+	// For now, just hard coding it here to keep making some progress on this function
+	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId, iam.WithAutoVivify(true))
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
 	fmt.Println(user)
 	panic("to-do")
 }
