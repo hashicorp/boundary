@@ -332,6 +332,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
 	case KeyPurposeSessions:
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up %s key versions for scope %s with key ID %s", purpose.String(), scopeId, rootWrapper.KeyID())))
