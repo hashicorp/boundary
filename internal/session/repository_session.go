@@ -76,6 +76,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
+	newSession.KeyId = sessionWrapper.KeyID()
 
 	var returnedSession *Session
 	_, err = r.writer.DoTx(
