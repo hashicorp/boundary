@@ -122,6 +122,29 @@ func Callback(
 	if len(am.AudClaims) > 0 {
 		opts = append(opts, oidc.WithAudiences(am.AudClaims...))
 	}
-	// oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, apiAddr, am.PublicId), opts...)
+	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, apiAddr, am.PublicId), opts...)
+	if err != nil {
+		return "", errors.New(errors.Unknown, op, "unable to create oidc request for token exchange", errors.WithWrap(err))
+	}
+	tk, err := provider.Exchange(ctx, oidcRequest, state, code)
+	if err != nil {
+		return "", errors.New(errors.Unknown, op, "unable to complete exchange with oidc provider", errors.WithWrap(err))
+	}
+	var claims map[string]interface{}
+	if err := tk.IDToken().Claims(claims); err != nil {
+		return "", errors.New(errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
+	}
+	acct, err := r.upsertAccount(ctx, am.PublicId, claims)
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+
+	iamRepo, err := iamRepoFn()
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+
+	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)
+	fmt.Println(user)
 	panic("to-do")
 }

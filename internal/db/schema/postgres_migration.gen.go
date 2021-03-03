@@ -5242,6 +5242,63 @@ create trigger
 after update on auth_oidc_method
   for each row execute procedure update_version_column();
 
+-- active_auth_oidc_method_must_be_complete() defines a function to be used in 
+-- a "before update" trigger for auth_oidc_method entries.  Its intent: prevent
+-- incomplete oidc methods from transitioning out of the "inactive" state.
+create or replace function
+  active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+  begin
+    if new.state != 'inactive' then
+      perform 
+      from 
+        auth_oidc_method am
+       join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
+       join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+      where
+        new.public_id = am.public_id;
+      if not found then 
+        raise exception 'an incomplete oidc auth method must remain inactive';
+      end if;
+    end if;
+    return new;
+  end;
+$$ language plpgsql;
+comment on function active_auth_oidc_method_must_be_complete() is
+'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
+
+create trigger 
+  update_active_auth_oidc_method_must_be_complete
+before
+update on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
+-- new_auth_oidc_method_must_be_inactive() defines a function to be used in 
+-- a "before insert" trigger for auth_oidc_method entries.  Its intent: 
+-- only allow "inactive" auth methods to be inserted.  Why? there's no way
+-- you can insert an entry that's anything but incomplete, since we have a 
+-- chicken/egg problem: you need the auth method id to create the required
+-- signing algs and callback URL value objects.
+create or replace function
+  new_auth_oidc_method_must_be_inactive()
+  returns trigger 
+as $$
+  begin
+    if new.state != 'inactive' then
+      raise exception 'an incomplete oidc method must be inactive';
+    end if;
+  end;
+$$ language plpgsql;
+comment on function new_auth_oidc_method_must_be_inactive() is
+'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
+
+create trigger 
+  new_auth_oidc_method_must_be_inactive
+before
+insert on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
 -- auth_oidc_account column triggers
 create trigger
   update_time_column
@@ -5272,8 +5329,53 @@ before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
--- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg,
--- auth_oidc_requested_scope 
+-- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg
+
+
+-- on_delete_active_auth_oidc_method_must_be_complete() defines a function
+-- to be used in an "after delete" trigger for auth_oidc_callback_url and
+-- auth_oidc_signing_alg Its intent: prevent deletes that would result in
+-- an "active" oidc auth method which is incomplete.
+create or replace function
+  on_delete_active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+declare am_state text;
+declare alg_cnt int;
+declare cb_cnt int;
+  begin
+    select 
+      am.state,
+      count(alg.oidc_method_id) as alg_cnt,
+      count(cb.oidc_method_id) as cb_cnt
+    from 
+      auth_oidc_method am
+      left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+      left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
+    where
+      new.oidc_method_id = am.public_id
+    group by am.public_id
+    into am_state, alg_cnt, cb_cnt;
+    
+    if not found then 
+      return new; -- auth method was deleted, so we're done
+    end if;
+
+    if am_state != inactive then
+      case 
+        when alg_cnt = 0 then
+          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no signing algorithms'; 
+        when cb_cnt = 0 then
+          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no callback URLs';
+      end case;
+    end if; 
+  
+    return new;
+  end;
+$$ language plpgsql;
+comment on function on_delete_active_auth_oidc_method_must_be_complete() is
+'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs or callbacks';
+
 create trigger
   default_create_time_column
 before
@@ -5285,6 +5387,12 @@ create trigger
 before
 insert on auth_oidc_callback_url
   for each row execute procedure default_create_time();
+
+create trigger 
+  on_delete_active_auth_oidc_method_must_be_complete
+after
+delete on auth_oidc_callback_url
+  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
 
 create trigger
   default_create_time_column
@@ -5298,6 +5406,11 @@ before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
 
+create trigger 
+  on_delete_active_auth_oidc_method_must_be_complete
+after
+delete on auth_oidc_signing_alg
+  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
     
 insert into oplog_ticket (name, version)
 values
