@@ -39,6 +39,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 		name              string
 		toState           AuthMethodState
 		operateOn         string
+		opt               []Option
 		version           uint32
 		wantNoRowsUpdated bool
 		wantErrMatch      *errors.Template
@@ -283,6 +284,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					"alice-rp", "alice-secret",
 				).PublicId
 			}(),
+			opt:             []Option{WithForce()},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "unable to transition from inactive",
 		},
@@ -302,8 +304,31 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					"alice-rp", "alice-secret",
 				).PublicId
 			}(),
+			opt:             []Option{WithForce()},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "unable to transition from inactive",
+		},
+		{
+			name:    "InActive-to-ActivePublic-no-force",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(ES512), // won't match discovery info returned
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			version:         1,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "auth method signing alg is not in discovered",
 		},
 	}
 
@@ -314,11 +339,11 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			var updated *AuthMethod
 			switch tt.toState {
 			case InactiveState:
-				updated, err = repo.MakeInactive(ctx, tt.operateOn, tt.version)
+				updated, err = repo.MakeInactive(ctx, tt.operateOn, tt.version, tt.opt...)
 			case ActivePrivateState:
-				updated, err = repo.MakePrivate(ctx, tt.operateOn, tt.version)
+				updated, err = repo.MakePrivate(ctx, tt.operateOn, tt.version, tt.opt...)
 			case ActivePublicState:
-				updated, err = repo.MakePublic(ctx, tt.operateOn, tt.version)
+				updated, err = repo.MakePublic(ctx, tt.operateOn, tt.version, tt.opt...)
 			default:
 				require.Fail("unknown toState %s for test", tt.toState)
 			}
