@@ -2,7 +2,6 @@ package authmethods
 
 import (
 	"context"
-	"crypto/x509"
 	stderrors "errors"
 	"fmt"
 	"net/url"
@@ -362,7 +361,9 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	return outUl, nil
 }
 
-func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
+// createOidcInRepo creates an oidc auth method in a repo and returns the result.
+// This method should never return a nil AuthMethod without returning an error.
+func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	var opts []password.Option
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -385,7 +386,9 @@ func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.Au
 	return out, err
 }
 
-func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
+// createOidcInRepo creates an oidc auth method in a repo and returns the result.
+// This method should never return a nil AuthMethod without returning an error.
+func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
 	attrs := &pb.OidcAuthMethodAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -404,9 +407,12 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 
 	var discoveryUrl *url.URL
 	if ds := attrs.GetDiscoveryUrl().GetValue(); ds != "" {
-		ds = strings.TrimSuffix(strings.TrimSpace(ds), "/.well-known/openid-configuration")
 		var err error
 		if discoveryUrl, err = url.Parse(ds); err != nil {
+			return nil, err
+		}
+		// remove everything except for protocol, hostname, and port.
+		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
 			return nil, err
 		}
 	}
@@ -438,16 +444,11 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 		opts = append(opts, oidc.WithCallbackUrls(cbs...))
 	}
 
-	var certs []*x509.Certificate
-	for _, c := range attrs.GetCertificates() {
-		pc, err := x509.ParseCertificate([]byte(c))
+	if len(attrs.GetCertificates()) > 0 {
+		certs, err := oidc.ParseCertificates(attrs.GetCertificates()...)
 		if err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{"attributes.certificates": "Unparseable certificate"})
+			return nil, err
 		}
-		certs = append(certs, pc)
-	}
-	if len(certs) > 0 {
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
@@ -468,19 +469,25 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var out auth.AuthMethod
-	var err error
 	switch auth.SubtypeFromType(item.GetType()) {
 	case auth.PasswordSubtype:
-		if out, err = s.createPwInRepo(ctx, scopeId, item); err != nil {
+		am, err := s.createPwInRepo(ctx, scopeId, item)
+		if err != nil {
 			return nil, err
 		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
 	case auth.OidcSubtype:
-		if out, err = s.createOidcInRepo(ctx, scopeId, item); err != nil {
+		am, err := s.createOidcInRepo(ctx, scopeId, item)
+		if err != nil {
 			return nil, err
 		}
-	}
-	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
 	}
 	return toAuthMethodProto(out)
 }
@@ -684,16 +691,26 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		out.Name = wrapperspb.String(in.GetName())
 	}
 	switch i := in.(type) {
+	case *password.AuthMethod:
+		out.Type = auth.PasswordSubtype.String()
+		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
+			MinLoginNameLength: i.GetMinLoginNameLength(),
+			MinPasswordLength:  i.GetMinPasswordLength(),
+		})
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		}
+		out.Attributes = st
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAuthMethodAttributes{
-			DiscoveryUrl: wrapperspb.String(i.DiscoveryUrl),
-			ClientId: wrapperspb.String(i.GetClientId()),
-			ClientSecretHmac: i.ClientSecretHmac,
-			Certificates: i.GetCertificates(),
-			State: i.GetOperationalState(),
-			SigningAlgorithms: i.GetSigningAlgs(),
-			Audiences: i.GetAudClaims(),
+			DiscoveryUrl:        wrapperspb.String(i.DiscoveryUrl),
+			ClientId:            wrapperspb.String(i.GetClientId()),
+			ClientSecretHmac:    i.ClientSecretHmac,
+			Certificates:        i.GetCertificates(),
+			State:               i.GetOperationalState(),
+			SigningAlgorithms:   i.GetSigningAlgs(),
+			Audiences:           i.GetAudClaims(),
 			CallbackUrlPrefixes: i.GetCallbackUrls(),
 		}
 		if i.GetMaxAge() != 0 {
@@ -707,16 +724,6 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		st, err := handlers.ProtoToStruct(attrs)
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
-		}
-		out.Attributes = st
-	case *password.AuthMethod:
-		out.Type = auth.PasswordSubtype.String()
-		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-			MinLoginNameLength: i.GetMinLoginNameLength(),
-			MinPasswordLength:  i.GetMinPasswordLength(),
-		})
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 		}
 		out.Attributes = st
 	}
@@ -766,6 +773,14 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			}
 			if attrs.GetDiscoveryUrl().GetValue() == "" {
 				badFields["attributes.discovery_url"] = "Field required for creating an OIDC auth method."
+			} else {
+				du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
+				if err != nil {
+					badFields["attributes.discovery_url"] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				}
+				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+					badFields["attributes.discovery_url"] = "The path should be empty or `/.well-known/openid-configuration`"
+				}
 			}
 			if attrs.GetClientId().GetValue() == "" {
 				badFields["attributes.client_id"] = "Field required for creating an OIDC auth method."
@@ -779,6 +794,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			if attrs.GetState() != "" {
 				badFields["attributes.state"] = "Field is read only."
 			}
+			if len(attrs.GetCallbackUrls()) > 0 {
+				badFields["attributes.callback_urls"] = "Field is read only."
+			}
 
 			if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
 				badFields["attributes.max_age"] = "If defined, must not be `0`."
@@ -791,19 +809,15 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 			}
-			if len(attrs.GetAudiences()) > 0 {
-				// TODO: Validate audience values
-			}
-
 			for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
-				if _, err := url.Parse(cbUrl); err != nil {
+				if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
 					badFields["attributes.callback_url_prefixes"] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
 					break
 				}
 			}
-			for i, c := range attrs.GetCertificates() {
-				if _, err := x509.ParseCertificate([]byte(c)); err != nil {
-					badFields["attributes.certificates"] = fmt.Sprintf("Value #%d cannot be parsed as a certificate.", i)
+			if len(attrs.GetCertificates()) > 0 {
+				if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
+					badFields["attributes.certificates"] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
 				}
 			}
 		default:
@@ -826,7 +840,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
 		case auth.OidcSubtype:
-			badFields["id"] = "OIDC does not yet support update."
+			badFields["id"] = "Updating OIDC is not yet support."
 		default:
 			badFields["id"] = "Incorrectly formatted identifier."
 		}

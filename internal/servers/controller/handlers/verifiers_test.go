@@ -29,10 +29,12 @@ func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 
 func TestValidId(t *testing.T) {
 	assert.True(t, ValidId("prefix_somerandomid", "prefix"))
+	assert.True(t, ValidId("prefix_somerandomid", "notprefix", "prefix"))
 	assert.True(t, ValidId("prefix_short", "prefix"))
 	assert.True(t, ValidId("prefix_thisisalongidentifierwhichstillworks", "prefix"))
 
 	assert.False(t, ValidId("prefixsomerandomid", "prefix"))
+	assert.False(t, ValidId("prefixsomerandomid", "prefix", "alsobadprefix"))
 	assert.False(t, ValidId("prefix_this has spaces", "prefix"))
 	assert.False(t, ValidId("prefix_includes-dash", "prefix"))
 	assert.False(t, ValidId("prefix_other@strange!characters", "prefix"))
