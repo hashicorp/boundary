@@ -49,7 +49,7 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, versio
 }
 
 func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, version uint32, _ ...Option) (*AuthMethod, error) {
-	const op = "oidc.(Repository).updateOperationalState"
+	const op = "oidc.(Repository).transitionAuthMethodTo"
 	if authMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
