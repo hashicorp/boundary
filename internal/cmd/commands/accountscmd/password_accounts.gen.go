@@ -159,6 +159,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		opts = append(opts, accounts.WithDescription(c.FlagDescription))
 	}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, accounts.WithFilter(c.FlagFilter))
+	}
+
 	var version uint32
 
 	switch c.Func {
