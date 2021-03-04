@@ -26,9 +26,9 @@ const (
 	// client to after the callback is complete.
 	FinalRedirectEndpoint = "%s/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
 
-	// CallbackReachableEndpoint is the endpoint that will returned as the final redirect
-	// from the callback when the auth method is "inactive".
-	CallbackReachableEndpoint = "%s/authentication-callback-status" // TODO jimlambrt 3/2021 get endpoint from FE before PR
+	// AuthenticationErrorsEndpoint is the endpoint that will returned as the final redirect
+	// from the callback when there are auth errors
+	AuthenticationErrorsEndpoint = "%s/authentication-error" // TODO jimlambrt 3/2021 get endpoint from FE before PR
 
 	// CallbackEndpoint is the endpoint for the oidc callback which will be
 	// included in the auth URL returned when an authen attempted is kicked off.
