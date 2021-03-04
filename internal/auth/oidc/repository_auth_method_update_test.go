@@ -291,6 +291,32 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			version:      1,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
+		{
+			name: "active-with-update-to-incomplete",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					ActivePublicState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				return &am
+			},
+			fieldMasks:   []string{"SigningAlgs"},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -348,7 +374,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 	}
 }
 
-func Test_ValidateAuthMethod(t *testing.T) {
+func Test_ValidateDiscoveryInfo(t *testing.T) {
 	// do not run these tests with t.Parallel()
 	ctx := context.Background()
 
@@ -452,7 +478,7 @@ func Test_ValidateAuthMethod(t *testing.T) {
 				tt.setup()
 				defer tt.cleanup()
 			}
-			err := repo.ValidateAuthMethod(ctx, opts...)
+			err := repo.ValidateDiscoveryInfo(ctx, opts...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
