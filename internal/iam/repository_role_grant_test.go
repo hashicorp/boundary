@@ -22,8 +22,6 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	_, proj := TestScopes(t, repo)
 	role := TestRole(t, conn, proj.PublicId)
-
-	TestRoleGrant(t, conn, role.GetPublicId(), "id=hc_0;actions=*")
 	createGrantsFn := func() []string {
 		results := []string{}
 		for i := 0; i < 5; i++ {
