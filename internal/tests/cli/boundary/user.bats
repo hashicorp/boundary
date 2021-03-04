@@ -91,12 +91,6 @@ export NEW_USER='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/account/password: can not delete already deleted $NEW_USER account" {
-  local aid=$(account_id $NEW_USER)
-  run delete_account $aid 
-  [ "$status" -eq 1 ]
-}
-
 @test "boundary/account/password: can not read deleted $NEW_USER account" {
   local aid=$(account_id $NEW_USER)
 	run read_account $aid

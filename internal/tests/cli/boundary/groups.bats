@@ -62,13 +62,6 @@ export NEW_GROUP='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/group: can not delete already deleted $NEW_GROUP group" {
-  local gid=$(group_id $NEW_GROUP)
-  run delete_group $gid 
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
 @test "boundary/groups: can not read deleted $NEW_GROUP group" {
   local gid=$(group_id $NEW_GROUP)
 	run read_group $gid
