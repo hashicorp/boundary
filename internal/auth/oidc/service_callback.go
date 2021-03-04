@@ -153,6 +153,13 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	fmt.Println(user)
-	panic("to-do")
+
+	tokenRepo, err := atRepoFn()
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	if err := tokenRepo.CreatePendingAuthToken(ctx, reqState.TokenRequestId, user, acct.PublicId); err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return reqState.FinalRedirectUrl, nil
 }
