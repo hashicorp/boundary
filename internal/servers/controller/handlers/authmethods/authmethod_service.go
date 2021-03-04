@@ -302,21 +302,44 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
-	repo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	u, err := repo.LookupAuthMethod(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
+	var am auth.AuthMethod
+	switch auth.SubtypeFromId(id) {
+	case auth.PasswordSubtype:
+		repo, err := s.pwRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		u, err := repo.LookupAuthMethod(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+			}
+			return nil, err
+		}
+		if u == nil {
 			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 		}
-		return nil, err
+		am = u
+	case auth.OidcSubtype:
+		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		u, err := repo.LookupAuthMethod(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+			}
+			return nil, err
+		}
+		if u == nil {
+			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+		}
+		am = u
+	default:
+		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	if u == nil {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
-	}
-	return toAuthMethodProto(u)
+	return toAuthMethodProto(am)
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
@@ -371,8 +394,6 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 	clientId := attrs.GetClientId().GetValue()
 	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
 
-	var discoveryUrl *url.URL
-
 	var opts []oidc.Option
 	if item.GetName() != nil {
 		opts = append(opts, oidc.WithName(item.GetName().GetValue()))
@@ -380,14 +401,21 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 	if item.GetDescription() != nil {
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
-	// TODO: validate the following values
+
+	var discoveryUrl *url.URL
+	if ds := attrs.GetDiscoveryUrl().GetValue(); ds != "" {
+		ds = strings.TrimSuffix(strings.TrimSpace(ds), "/.well-known/openid-configuration")
+		var err error
+		if discoveryUrl, err = url.Parse(ds); err != nil {
+			return nil, err
+		}
+	}
+
 	if attrs.GetMaxAge().GetValue() != 0 {
 		opts = append(opts, oidc.WithMaxAge(int(attrs.GetMaxAge().GetValue())))
 	}
-
 	var signAlgs []oidc.Alg
 	for _, a := range attrs.GetSigningAlgorithms() {
-		// TODO: Figure out the signing algorithms
 		signAlgs = append(signAlgs, oidc.Alg(a))
 	}
 	if len(signAlgs) > 0 {
@@ -658,7 +686,25 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	switch i := in.(type) {
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
-		st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAttributes{})
+		attrs := &pb.OidcAuthMethodAttributes{
+			DiscoveryUrl: wrapperspb.String(i.DiscoveryUrl),
+			ClientId: wrapperspb.String(i.GetClientId()),
+			ClientSecretHmac: i.ClientSecretHmac,
+			Certificates: i.GetCertificates(),
+			State: i.GetOperationalState(),
+			SigningAlgorithms: i.GetSigningAlgs(),
+			Audiences: i.GetAudClaims(),
+			CallbackUrlPrefixes: i.GetCallbackUrls(),
+		}
+		if i.GetMaxAge() != 0 {
+			attrs.MaxAge = wrapperspb.Int32(i.GetMaxAge())
+		}
+		for _, f := range i.GetCallbackUrls() {
+			attrs.CallbackUrls = append(attrs.CallbackUrls,
+				fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", f, i.GetPublicId()))
+		}
+
+		st, err := handlers.ProtoToStruct(attrs)
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
 		}
@@ -738,7 +784,12 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				badFields["attributes.max_age"] = "If defined, must not be `0`."
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
-				// TODO: Figure out the signing algorithms
+				for _, sa := range attrs.GetSigningAlgorithms() {
+					if !oidc.SupportedAlgorithms[oidc.Alg(sa)] {
+						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+						break
+					}
+				}
 			}
 			if len(attrs.GetAudiences()) > 0 {
 				// TODO: Validate audience values

@@ -28,7 +28,7 @@ const (
 	EdDSA Alg = "EdDSA"
 )
 
-var supportedAlgorithms = map[Alg]bool{
+var SupportedAlgorithms = map[Alg]bool{
 	RS256: true,
 	RS384: true,
 	RS512: true,
@@ -73,7 +73,7 @@ func (s *SigningAlg) validate(caller errors.Op) error {
 	if s.OidcMethodId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
-	if _, ok := supportedAlgorithms[Alg(s.Alg)]; !ok {
+	if _, ok := SupportedAlgorithms[Alg(s.Alg)]; !ok {
 		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
 	}
 	return nil
