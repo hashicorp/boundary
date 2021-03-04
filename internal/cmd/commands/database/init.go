@@ -248,12 +248,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	urlToParse := c.Config.Controller.Database.Url
 	if urlToParse == "" {
 		c.UI.Error(`"url" not specified in "database" config block`)
-		return 1
+		return 3
 	}
 	c.srv.DatabaseUrl, err = config.ParseAddress(urlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-		return 2
+		return 3
 	}
 	// Everything after is done with normal database URL and is affecting actual data
 	if err := c.srv.ConnectToDatabase(dialect); err != nil {
