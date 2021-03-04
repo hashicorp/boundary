@@ -39,10 +39,10 @@ message Scope {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 
-  // account_info_auth_method_id specifies which auth method will be used as a
+  // primary_auth_method_id specifies which auth method will be used as a
   // source for account information for users within the scope.  This auth
-  // method will also be designated as the auth method which will autovivify
+  // method will also be designated as the auth method which can autovivify
   // users.
   // @inject_tag: `gorm:"default:null"`
-  string account_info_auth_method_id = 20;
+  string primary_auth_method_id = 20;
 }

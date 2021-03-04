@@ -386,8 +386,9 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"name":        scope.Name,
-			"description": scope.Description,
+			"name":                scope.Name,
+			"description":         scope.Description,
+			"primaryAuthMethodId": scope.PrimaryAuthMethodId,
 		},
 		fieldMaskPaths,
 		nil,

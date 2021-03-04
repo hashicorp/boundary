@@ -5503,23 +5503,24 @@ create or replace view auth_token_account as
           on at.auth_account_id = aa.public_id;
 `),
 			2086: []byte(`
--- add the account_info_auth_method_id which determines which auth_method is
--- designated as for "account info" in the user's scope.  
+-- add the primary_auth_method_id which determines which auth_method is
+-- designated as for "account info" in the user's scope. It also determines
+-- which auth method is allowed to auto viviify users.  
 alter table iam_scope
-add column account_info_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
+add column primary_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
 references auth_method(public_id)
     on update cascade
     on delete set null;
 
 -- establish a compond fk, but there's no cascading of deletes or updates, since
--- we only want to cascade changes to the account_info_auth_method_id portion of
+-- we only want to cascade changes to the primary_auth_method_id portion of
 -- the compond fk and that is handled in a separate fk declaration.
 alter table iam_scope
-add foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id); 
+add foreign key (public_id, primary_auth_method_id) references auth_method(scope_id, public_id); 
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
--- scope's account_info_auth_method_id.  Every sub-type of auth_account must be
+-- scope's primary_auth_method_id.  Every sub-type of auth_account must be
 -- added to this view's union.
 create view iam_acct_info as
 select 
@@ -5533,7 +5534,7 @@ from
     auth_oidc_account oa
 where
     aa.public_id = oa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id 
+    aa.auth_method_id = s.primary_auth_method_id 
 union 
 select 
     aa.iam_user_id,
@@ -5546,7 +5547,7 @@ from
     auth_password_account pa
 where
     aa.public_id = pa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id;
+    aa.auth_method_id = s.primary_auth_method_id;
 
 -- iam_user_acct_info provides a simple way to retrieve entries that include
 -- both the iam_user fields with an outer join to the user's account info.
