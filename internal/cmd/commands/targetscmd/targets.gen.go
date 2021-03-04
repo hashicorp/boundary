@@ -117,7 +117,7 @@ func (c *Command) Run(args []string) int {
 
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
 		c.UI.Output(exampleOutput())
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -139,7 +139,7 @@ func (c *Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 
 	var opts []targets.Option
@@ -149,7 +149,7 @@ func (c *Command) Run(args []string) int {
 		case "list":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 3
+				return base.CommandUserError
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func (c *Command) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	targetsClient := targets.NewClient(client)
 
@@ -217,7 +217,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if ok := extraFlagsHandlingFunc(c, &opts); !ok {
-		return 3
+		return base.CommandUserError
 	}
 
 	existed := true
@@ -248,19 +248,19 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustomActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -281,7 +281,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(output)
 		}
 
-		return 0
+		return base.CommandSuccess
 
 	case "list":
 		listedItems := listResult.GetItems().([]*targets.Target)
@@ -298,7 +298,7 @@ func (c *Command) Run(args []string) int {
 					items[i] = v
 				}
 				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return 2
+					return base.CommandCliError
 				}
 			}
 
@@ -306,7 +306,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
-		return 0
+		return base.CommandSuccess
 
 	}
 
@@ -317,11 +317,11 @@ func (c *Command) Run(args []string) int {
 
 	case "json":
 		if ok := c.PrintJsonItem(result, item); !ok {
-			return 2
+			return base.CommandCliError
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (

@@ -147,7 +147,7 @@ func (c *Command) Run(args []string) int {
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
-		return 3
+		return base.CommandUserError
 	}
 
 	base.StartMemProfiler(c.Logger)
@@ -155,23 +155,23 @@ func (c *Command) Run(args []string) int {
 	if !c.skipMetrics {
 		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
 			c.UI.Error(err.Error())
-			return 3
+			return base.CommandUserError
 		}
 	}
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
-		return 3
+		return base.CommandUserError
 	}
 	if c.Config.Controller != nil {
 		if c.RootKms == nil {
 			c.UI.Error("Root KMS not found after parsing KMS blocks")
-			return 3
+			return base.CommandUserError
 		}
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return 3
+		return base.CommandUserError
 	}
 
 	if c.Config.DefaultMaxRequestDuration != 0 {
@@ -198,7 +198,7 @@ func (c *Command) Run(args []string) int {
 		switch len(lnConfig.Purpose) {
 		case 0:
 			c.UI.Error("Listener specified without a purpose")
-			return 3
+			return base.CommandUserError
 
 		case 1:
 			purpose := lnConfig.Purpose[0]
@@ -218,26 +218,26 @@ func (c *Command) Run(args []string) int {
 				}
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
-				return 3
+				return base.CommandUserError
 			}
 
 		default:
 			c.UI.Error("Specifying a listener with more than one purpose is not supported")
-			return 3
+			return base.CommandUserError
 		}
 	}
 	if c.Config.Controller != nil {
 		if !foundApi {
 			c.UI.Error(`Config activates controller but no listener with "api" purpose found`)
-			return 3
+			return base.CommandUserError
 		}
 		if clusterAddr == "" {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
-			return 3
+			return base.CommandUserError
 		}
 		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
-			return 3
+			return base.CommandUserError
 		}
 		c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
 		c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
@@ -246,13 +246,13 @@ func (c *Command) Run(args []string) int {
 	if c.Config.Worker != nil {
 		if !foundProxy {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
-			return 3
+			return base.CommandUserError
 		}
 
 		if c.Config.Worker != nil {
 			if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 				c.UI.Error(err.Error())
-				return 3
+				return base.CommandUserError
 			}
 			c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
 			c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
@@ -289,7 +289,7 @@ func (c *Command) Run(args []string) int {
 				fallthrough
 			default:
 				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
-				return 3
+				return base.CommandUserError
 			}
 		}
 		for _, controller := range c.Config.Worker.Controllers {
@@ -299,7 +299,7 @@ func (c *Command) Run(args []string) int {
 					host = controller
 				} else {
 					c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
-					return 3
+					return base.CommandUserError
 				}
 			}
 			ip := net.ParseIP(host)
@@ -313,14 +313,14 @@ func (c *Command) Run(args []string) int {
 				}
 				if errMsg != "" {
 					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
-					return 3
+					return base.CommandUserError
 				}
 			}
 		}
 	}
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
-		return 3
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller != nil {
@@ -335,14 +335,14 @@ func (c *Command) Run(args []string) int {
 						host = ln.Address
 					} else {
 						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())
-						return 3
+						return base.CommandUserError
 					}
 				}
 				ip := net.ParseIP(host)
 				if ip != nil {
 					if ip.IsUnspecified() && c.Config.Controller.PublicClusterAddr == "" {
 						c.UI.Error(fmt.Sprintf("When %q listener has an unspecified address, %q must be set", "cluster", "public_cluster_addr"))
-						return 3
+						return base.CommandUserError
 					}
 				}
 			}
@@ -352,34 +352,34 @@ func (c *Command) Run(args []string) int {
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
-		return 3
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller != nil {
 		if c.Config.Controller.Database == nil || c.Config.Controller.Database.Url == "" {
 			c.UI.Error(`"url" not specified in "controller.database" config block"`)
-			return 3
+			return base.CommandUserError
 		}
 		var err error
 		c.DatabaseUrl, err = config.ParseAddress(c.Config.Controller.Database.Url)
 		if err != nil && err != config.ErrNotAUrl {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-			return 3
+			return base.CommandUserError
 		}
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
-			return 2
+			return base.CommandCliError
 		}
 
 		sMan, err := schema.NewManager(c.Context, "postgres", c.Database.DB())
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
-			return 2
+			return base.CommandCliError
 		}
 		// This is an advisory locks on the DB which is released when the db session ends.
 		if err := sMan.SharedLock(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
-			return 2
+			return base.CommandCliError
 		}
 		defer func() {
 			// The base context has already been cancelled so we shouldn't use it here.
@@ -395,29 +395,29 @@ func (c *Command) Run(args []string) int {
 		ckState, err := sMan.CurrentState(c.Context)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
-			return 2
+			return base.CommandCliError
 		}
 		if !ckState.InitializationStarted {
 			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
-			return 2
+			return base.CommandCliError
 		}
 		if ckState.Dirty {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
-			return 2
+			return base.CommandCliError
 		}
 		if ckState.BinarySchemaVersion > ckState.DatabaseSchemaVersion {
 			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
-			return 2
+			return base.CommandCliError
 		}
 		if ckState.BinarySchemaVersion < ckState.DatabaseSchemaVersion {
 			c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%d) "+
 				"than this binary expects. Please use a newer version of the boundary "+
 				"binary.", ckState.DatabaseSchemaVersion)))
-			return 2
+			return base.CommandCliError
 		}
 		if err := c.verifyKmsSetup(); err != nil {
 			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
-			return 2
+			return base.CommandCliError
 		}
 	}
 
@@ -433,7 +433,7 @@ func (c *Command) Run(args []string) int {
 	if c.Config.Controller != nil {
 		if err := c.StartController(); err != nil {
 			c.UI.Error(err.Error())
-			return 2
+			return base.CommandCliError
 		}
 	}
 
@@ -443,7 +443,7 @@ func (c *Command) Run(args []string) int {
 			if err := c.controller.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
-			return 2
+			return base.CommandCliError
 		}
 	}
 
@@ -462,12 +462,12 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 3
+		return base.CommandUserError
 	}
 
 	if len(c.flagConfig) == 0 && c.presetConfig == nil {
 		c.UI.Error("Must specify a config file using -config")
-		return 3
+		return base.CommandUserError
 	}
 
 	switch {
@@ -484,13 +484,13 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			configWrapper, err = wrapper.GetWrapperFromPath(wrapperPath, "config")
 			if err != nil {
 				c.UI.Error(err.Error())
-				return 3
+				return base.CommandUserError
 			}
 			if configWrapper != nil {
 				c.configWrapper = configWrapper
 				if err := configWrapper.Init(c.Context); err != nil {
 					c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-					return 2
+					return base.CommandCliError
 				}
 			}
 		}
@@ -498,23 +498,23 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	}
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
-		return 3
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller == nil && c.Config.Worker == nil {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
-		return 3
+		return base.CommandUserError
 	}
 	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
 		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return 3
+		return base.CommandUserError
 	}
 	if c.Config.Worker != nil && c.Config.Worker.Name == "" {
 		c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
-		return 3
+		return base.CommandUserError
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 func (c *Command) StartController() error {
@@ -648,7 +648,7 @@ func (c *Command) WaitForInterrupt() int {
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 func (c *Command) Reload(newConf *config.Config) error {

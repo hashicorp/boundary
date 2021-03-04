@@ -104,7 +104,7 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	var optCount int
@@ -120,7 +120,7 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 
 	if optCount > 1 {
 		c.UI.Error("Only zero or one output option can be specified.")
-		return 1
+		return base.CommandUserError
 	}
 
 	// Read from client first as that will override keyring anyways
@@ -129,7 +129,7 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandCliError
 	}
 	if client.Token() != "" {
 		authToken = &authtokens.AuthToken{Token: client.Token()}
@@ -139,7 +139,7 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
 			c.UI.Error(err.Error())
-			return 1
+			return base.CommandCliError
 		}
 
 		authToken = c.ReadTokenFromKeyring(keyringType, tokenName)
@@ -147,34 +147,34 @@ func (c *TokenCommand) Run(args []string) (ret int) {
 
 	if authToken == nil {
 		c.UI.Error("No token could be discovered")
-		return 1
+		return base.CommandCliError
 	}
 
 	switch {
 	case c.flagUserId:
 		if authToken.UserId == "" {
-			return 1
+			return base.CommandUserError
 		}
 		c.UI.Output(authToken.UserId)
 
 	case c.flagAccountId:
 		if authToken.AccountId == "" {
-			return 1
+			return base.CommandUserError
 		}
 		c.UI.Output(authToken.AccountId)
 
 	case c.flagAuthMethodId:
 		if authToken.AuthMethodId == "" {
-			return 1
+			return base.CommandUserError
 		}
 		c.UI.Output(authToken.AuthMethodId)
 
 	default:
 		if authToken.Token == "" {
-			return 1
+			return base.CommandUserError
 		}
 		c.UI.Output(authToken.Token)
 	}
 
-	return 0
+	return base.CommandSuccess
 }

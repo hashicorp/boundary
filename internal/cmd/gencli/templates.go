@@ -208,7 +208,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
 		c.UI.Output(exampleOutput())
-		return 0
+		return base.CommandSuccess
 	}
 	{{ end }}
 
@@ -231,13 +231,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 
 	{{ if .HasId }}
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") && c.FlagId == "" {
 			c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-			return 3
+			return base.CommandUserError
 	}
 	{{ end }}
 
@@ -249,14 +249,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		case "create":
 			if c.Flag{{ .Container }}Id == "" {
 				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
-				return 3
+				return base.CommandUserError
 			}
 		{{ end }}
 		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.Flag{{ .Container }}Id == "" {
 				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
-				return 3
+				return base.CommandUserError
 			}
 		{{ end }}
 		}
@@ -265,7 +265,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	{{ .Pkg }}Client := {{ .Pkg }}.NewClient(client)
 
@@ -324,7 +324,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 
 	if ok := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, &opts); !ok {
-		return 3
+		return base.CommandUserError
 	}
 
 	{{ if hasAction .StdActions "delete" }}
@@ -369,19 +369,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -403,7 +403,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			c.UI.Output(output)
 		}
 
-		return 0
+		return base.CommandSuccess
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
@@ -421,7 +421,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 					items[i] = v
 				}
 				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return 2
+					return base.CommandCliError
 				}
 			}
 
@@ -429,7 +429,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
-		return 0
+		return base.CommandSuccess
 	{{ end }}
 	{{ end }}
 	}
@@ -441,11 +441,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	case "json":
 		if ok := c.PrintJsonItem(result, item); !ok {
-			return 2
+			return base.CommandCliError
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (

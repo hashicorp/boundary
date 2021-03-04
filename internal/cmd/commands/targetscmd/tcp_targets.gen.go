@@ -116,12 +116,12 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 
 	if strutil.StrListContains(flagsTcpMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 3
+		return base.CommandUserError
 	}
 
 	var opts []targets.Option
@@ -131,7 +131,7 @@ func (c *TcpCommand) Run(args []string) int {
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 3
+				return base.CommandUserError
 			}
 		}
 	}
@@ -139,7 +139,7 @@ func (c *TcpCommand) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	targetsClient := targets.NewClient(client)
 
@@ -181,7 +181,7 @@ func (c *TcpCommand) Run(args []string) int {
 	}
 
 	if ok := extraTcpFlagsHandlingFunc(c, &opts); !ok {
-		return 3
+		return base.CommandUserError
 	}
 
 	var result api.GenericResult
@@ -201,19 +201,19 @@ func (c *TcpCommand) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustomTcpActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -226,11 +226,11 @@ func (c *TcpCommand) Run(args []string) int {
 
 	case "json":
 		if ok := c.PrintJsonItem(result, item); !ok {
-			return 2
+			return base.CommandCliError
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (
