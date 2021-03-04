@@ -109,10 +109,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 
 	// prevent an "active" auth method from being updated in a manner that would create
-	// an incomplete and usable auth method.
+	// an incomplete and unusable auth method.
 	if origAm.OperationalState != string(InactiveState) {
 		if err := applyUpdate(am, origAm, fieldMaskPaths).isComplete(); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("update would result an an incomplete auth method"))
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("update would result in an incomplete auth method"))
 		}
 	}
 
