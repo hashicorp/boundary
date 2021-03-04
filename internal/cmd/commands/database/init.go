@@ -181,17 +181,17 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 2
 	}
 
 	if err := c.srv.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 2
 	}
 
 	if c.srv.RootKms == nil {
 		c.UI.Error("Root KMS not found after parsing KMS blocks")
-		return 1
+		return 2
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
@@ -208,12 +208,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	if c.Config.Controller == nil {
 		c.UI.Error(`"controller" config block not found`)
-		return 1
+		return 3
 	}
 
 	if c.Config.Controller.Database == nil {
 		c.UI.Error(`"controller.database" config block not found`)
-		return 1
+		return 3
 	}
 
 	var migrationUrlToParse string
@@ -230,13 +230,13 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	if migrationUrlToParse == "" {
 		c.UI.Error(base.WrapAtLength(`neither "url" nor "migration_url" correctly set in "database" config block nor was the "migration-url" flag used`))
-		return 1
+		return 3
 	}
 
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
-		return 1
+		return 3
 	}
 
 	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
@@ -253,20 +253,20 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	c.srv.DatabaseUrl, err = config.ParseAddress(urlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-		return 1
+		return 2
 	}
 	// Everything after is done with normal database URL and is affecting actual data
 	if err := c.srv.ConnectToDatabase(dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
-		return 1
+		return 2
 	}
 	if err := c.verifyOplogIsEmpty(); err != nil {
 		c.UI.Error(fmt.Sprintf("The database appears to have already been initialized: %v", err))
-		return 1
+		return 2
 	}
 	if err := c.srv.CreateGlobalKmsKeys(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating global-scope KMS keys: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	if base.Format(c.UI) == "table" {
@@ -280,7 +280,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 			b, err := base.JsonFormatter{}.Format(jsonMap)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-				retCode = 1
+				retCode = 2
 				return
 			}
 			c.UI.Output(string(b))
@@ -294,7 +294,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	role, err := c.srv.CreateInitialLoginRole(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial global-scoped login role: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	roleInfo := &RoleInfo{
@@ -317,7 +317,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	authMethodInfo := &AuthInfo{
@@ -343,7 +343,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	orgScope, projScope, err := c.srv.CreateInitialScopes(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial scopes: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	orgScopeInfo := &ScopeInfo{
@@ -377,7 +377,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	hc, hs, h, err := c.srv.CreateInitialHostResources(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial host resources: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	hostInfo := &HostInfo{
@@ -405,7 +405,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	t, err := c.srv.CreateInitialTarget(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	targetInfo := &TargetInfo{
@@ -434,14 +434,14 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 3
 	}
 
 	// Validation
 	switch {
 	case len(c.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
-		return 1
+		return 3
 	}
 
 	wrapperPath := c.flagConfig
@@ -451,20 +451,20 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 3
 	}
 	if wrapper != nil {
 		c.configWrapper = wrapper
 		if err := wrapper.Init(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return 1
+			return 3
 		}
 	}
 
 	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
-		return 1
+		return 3
 	}
 
 	return 0

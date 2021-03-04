@@ -116,12 +116,12 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 
 	if strutil.StrListContains(flagsPasswordMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 1
+		return 3
 	}
 
 	var opts []authmethods.Option
@@ -131,7 +131,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 1
+				return 3
 			}
 		}
 	}
@@ -180,8 +180,8 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := extraPasswordFlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extraPasswordFlagsHandlingFunc(c, &opts); !ok {
+		return 3
 	}
 
 	var result api.GenericResult
@@ -210,7 +210,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	output, err := printCustomPasswordActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 	if output {
 		return 0
@@ -225,7 +225,9 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return 2
+		}
 	}
 
 	return 0
@@ -235,7 +237,7 @@ var (
 	extraPasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraPasswordSynopsisFunc        = func(*PasswordCommand) string { return "" }
 	extraPasswordFlagsFunc           = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]authmethods.Option) int { return 0 }
+	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]authmethods.Option) bool { return true }
 	executeExtraPasswordActions      = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

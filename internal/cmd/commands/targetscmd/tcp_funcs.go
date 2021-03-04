@@ -91,7 +91,7 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
+func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) bool {
 	switch c.flagDefaultPort {
 	case "":
 	case "null":
@@ -100,7 +100,7 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
 		port, err := strconv.ParseUint(c.flagDefaultPort, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagDefaultPort, err))
-			return 1
+			return false
 		}
 		*opts = append(*opts, targets.WithTcpTargetDefaultPort(uint32(port)))
 	}
@@ -118,7 +118,7 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
 			dur, err := time.ParseDuration(c.flagSessionMaxSeconds)
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionMaxSeconds, err))
-				return 1
+				return false
 			}
 			final = uint32(dur.Seconds())
 		}
@@ -133,7 +133,7 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
 		limit, err := strconv.ParseInt(c.flagSessionConnectionLimit, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagSessionConnectionLimit, err))
-			return 1
+			return false
 		}
 		*opts = append(*opts, targets.WithSessionConnectionLimit(int32(limit)))
 	}
@@ -145,10 +145,10 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) int {
 	default:
 		if _, err := bexpr.CreateEvaluator(c.flagWorkerFilter); err != nil {
 			c.UI.Error(fmt.Sprintf("Unable to successfully parse filter expression: %s", err))
-			return 1
+			return false
 		}
 		*opts = append(*opts, targets.WithWorkerFilter(c.flagWorkerFilter))
 	}
 
-	return 0
+	return true
 }

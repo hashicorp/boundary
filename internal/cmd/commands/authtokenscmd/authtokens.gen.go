@@ -127,12 +127,12 @@ func (c *Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 
 	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 1
+		return 3
 	}
 
 	var opts []authtokens.Option
@@ -142,7 +142,7 @@ func (c *Command) Run(args []string) int {
 		case "list":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 1
+				return 3
 			}
 		}
 	}
@@ -165,8 +165,8 @@ func (c *Command) Run(args []string) int {
 
 	var version uint32
 
-	if ret := extraFlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extraFlagsHandlingFunc(c, &opts); !ok {
+		return 3
 	}
 
 	existed := true
@@ -206,7 +206,7 @@ func (c *Command) Run(args []string) int {
 	output, err := printCustomActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 	if output {
 		return 0
@@ -246,7 +246,9 @@ func (c *Command) Run(args []string) int {
 				for i, v := range listedItems {
 					items[i] = v
 				}
-				return c.PrintJsonItems(listResult, items)
+				if ok := c.PrintJsonItems(listResult, items); !ok {
+					return 2
+				}
 			}
 
 		case "table":
@@ -263,7 +265,9 @@ func (c *Command) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return 2
+		}
 	}
 
 	return 0
@@ -275,7 +279,7 @@ var (
 	extraActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
-	extraFlagsHandlingFunc   = func(*Command, *[]authtokens.Option) int { return 0 }
+	extraFlagsHandlingFunc   = func(*Command, *[]authtokens.Option) bool { return true }
 	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *authtokens.Client, _ uint32, _ []authtokens.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

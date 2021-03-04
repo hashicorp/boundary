@@ -124,13 +124,13 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 3
 	}
 
 	switch c.flagConfig {
 	case "":
 		c.UI.Error(`Missing required parameter -config`)
-		return 1
+		return 3
 	default:
 		c.flagConfig = strings.TrimSpace(c.flagConfig)
 	}
@@ -146,16 +146,16 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	wrapper, err := wrapper.GetWrapperFromPath(kmsDefFile, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return 3
 	}
 	if wrapper == nil {
 		c.UI.Error(`No wrapper with "config" purpose found"`)
-		return 1
+		return 3
 	}
 
 	if err := wrapper.Init(c.Context); err != nil {
 		c.UI.Error(fmt.Errorf("Error initializing KMS: %w", err).Error())
-		return 1
+		return 3
 	}
 	defer func() {
 		if err := wrapper.Finalize(c.Context); err != nil {
@@ -166,7 +166,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	d, err := ioutil.ReadFile(c.flagConfig)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error reading config file: %w", err).Error())
-		return 1
+		return 3
 	}
 
 	raw := string(d)
@@ -174,7 +174,7 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	raw, err = configutil.EncryptDecrypt(raw, c.Func == "decrypt", c.flagStrip, wrapper)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error %sing via kms: %w", c.Func, err).Error())
-		return 1
+		return 2
 	}
 
 	if !c.flagOverwrite {
@@ -185,20 +185,20 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	file, err := os.Create(c.flagConfig)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error opening file for writing: %w", err).Error())
-		return 1
+		return 2
 	}
 
 	defer func() {
 		if err := file.Close(); err != nil {
 			c.UI.Error(fmt.Errorf("Error closing file after writing: %w", err).Error())
-			ret = 1
+			ret = 2
 		}
 	}()
 
 	n, err := file.WriteString(raw)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error writing to file: %w", err).Error())
-		return 1
+		return 2
 	}
 	if n != len(raw) {
 		c.UI.Error(fmt.Sprintf("Wrong number of bytes written to file, expected %d, wrote %d", len(raw), n))

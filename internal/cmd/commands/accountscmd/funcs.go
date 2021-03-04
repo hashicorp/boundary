@@ -115,25 +115,25 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) bool {
 	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
 		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return false
 		}
 		fmt.Print("Please enter it one more time for confirmation: ")
 		confirmation, err := password.Read(os.Stdin)
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return false
 		}
 		if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
 			c.UI.Error("Entered password and confirmation value did not match.")
-			return 2
+			return false
 		}
 		c.flagPassword = strings.TrimSpace(value)
 	}
@@ -144,18 +144,18 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) int {
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return false
 		}
 		fmt.Print("Please enter it one more time for confirmation: ")
 		confirmation, err := password.Read(os.Stdin)
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return false
 		}
 		if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
 			c.UI.Error("Entered password and confirmation value did not match.")
-			return 2
+			return false
 		}
 		c.flagCurrentPassword = strings.TrimSpace(value)
 	}
@@ -166,12 +166,12 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) int {
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return false
 		}
 		c.flagNewPassword = strings.TrimSpace(value)
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, accountClient *accounts.Client, version uint32, opts []accounts.Option) (api.GenericResult, error) {

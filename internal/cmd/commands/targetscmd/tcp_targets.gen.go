@@ -116,12 +116,12 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 
 	if strutil.StrListContains(flagsTcpMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 1
+		return 3
 	}
 
 	var opts []targets.Option
@@ -131,7 +131,7 @@ func (c *TcpCommand) Run(args []string) int {
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 1
+				return 3
 			}
 		}
 	}
@@ -180,8 +180,8 @@ func (c *TcpCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := extraTcpFlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extraTcpFlagsHandlingFunc(c, &opts); !ok {
+		return 3
 	}
 
 	var result api.GenericResult
@@ -210,7 +210,7 @@ func (c *TcpCommand) Run(args []string) int {
 	output, err := printCustomTcpActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 	if output {
 		return 0
@@ -225,7 +225,9 @@ func (c *TcpCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return 2
+		}
 	}
 
 	return 0
@@ -235,7 +237,7 @@ var (
 	extraTcpActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraTcpSynopsisFunc        = func(*TcpCommand) string { return "" }
 	extraTcpFlagsFunc           = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
-	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *[]targets.Option) int { return 0 }
+	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *[]targets.Option) bool { return true }
 	executeExtraTcpActions      = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

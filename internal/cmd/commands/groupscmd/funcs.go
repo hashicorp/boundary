@@ -105,19 +105,19 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]groups.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]groups.Option) bool {
 	switch c.Func {
 	case "add-members", "remove-members":
 		if len(c.flagMembers) == 0 {
 			c.UI.Error("No members supplied via -member")
-			return 1
+			return false
 		}
 
 	case "set-members":
 		switch len(c.flagMembers) {
 		case 0:
 			c.UI.Error("No members supplied via -member")
-			return 1
+			return false
 		case 1:
 			if c.flagMembers[0] == "null" {
 				c.flagMembers = nil
@@ -125,7 +125,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]groups.Option) int {
 		}
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, groupClient *groups.Client, version uint32, opts []groups.Option) (api.GenericResult, error) {

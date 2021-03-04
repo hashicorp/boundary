@@ -229,7 +229,7 @@ func (c *Command) PrintCliError(err error) {
 }
 
 // PrintJsonItem prints the given item to the UI in JSON format
-func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) int {
+func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) bool {
 	output := struct {
 		StatusCode int         `json:"status_code"`
 		Item       interface{} `json:"item"`
@@ -240,14 +240,14 @@ func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) int 
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return false
 	}
 	c.UI.Output(string(b))
-	return 0
+	return true
 }
 
 // PrintJsonItems prints the given items to the UI in JSON format
-func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface{}) int {
+func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface{}) bool {
 	output := struct {
 		StatusCode int           `json:"status_code"`
 		Items      []interface{} `json:"items"`
@@ -258,10 +258,10 @@ func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return false
 	}
 	c.UI.Output(string(b))
-	return 0
+	return true
 }
 
 // An output formatter for json output of an object

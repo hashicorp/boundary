@@ -96,16 +96,16 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return 3
 	}
 
 	switch {
 	case c.flagLoginName == "":
 		c.PrintCliError(errors.New("Login name must be provided via -login-name"))
-		return 1
+		return 3
 	case c.FlagAuthMethodId == "":
 		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
-		return 1
+		return 3
 	}
 
 	if c.flagPassword == "" {
@@ -114,7 +114,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return 3
 		}
 		c.flagPassword = strings.TrimSpace(value)
 	}
@@ -156,7 +156,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 
 	case "json":
-		return c.PrintJsonItem(result, token)
+		if ok := c.PrintJsonItem(result, token); !ok {
+			return 2
+		}
+		return 0
 	}
 
 	var gotErr bool
