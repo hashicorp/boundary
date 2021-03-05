@@ -92,11 +92,15 @@ func Callback(
 		return "", errors.New(errors.Unknown, op, "unable to unmarshal request state", errors.WithWrap(err))
 	}
 
-	// get the provider from the cache (if possible)
+	// get the provider from the cache (if possible).  FYI: "get" just does the right thing
+	// about comparing the cache with the auth method from the db.
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
+
+	// if auth method is inactive, we don't allow inflight requests to finish if the
+	// auth method's config has changed since the request was kicked off.
 	hash, err := provider.ConfigHash()
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to get provider config hash", errors.WithWrap(err))
@@ -105,10 +109,14 @@ func Callback(
 		return fmt.Sprintf(FinalRedirectEndpoint, apiAddr), nil
 	}
 
+	// before proceeding, make sure the request hasn't timed out
 	if time.Now().After(reqState.CreateTime.Timestamp.AsTime()) {
 		return "", errors.New(errors.AuthAttemptExpired, op, "request state has expired")
 	}
 
+	// now, we need to prep for the token exchange with the oidc provider, which
+	// means sort of re-creating the orig oidc.Request with enough info to properly
+	// validate the ID Token
 	opts := []oidc.Option{
 		oidc.WithState(state),
 		oidc.WithNonce(reqState.Nonce),
@@ -131,6 +139,9 @@ func Callback(
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to complete exchange with oidc provider", errors.WithWrap(err))
 	}
+
+	// okay, now we need some claims from both the ID Token and userinfo, so we can
+	// upsert an auth account
 	var idTkClaims map[string]interface{}
 	var userInfoClaims map[string]interface{}
 
@@ -154,6 +165,9 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
+	// before searching for the iam.User associated with the account,
+	// we need to see if this particular auth method is allowed to
+	// autovivify users for the scope.
 	iamRepo, err := iamRepoFn()
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -173,6 +187,9 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
+	// wow, we're getting close.  we just need to create a pending token for this
+	// successful authentication process, so it can be retrieved by the polling client
+	// that initialed the authentication attempt.
 	tokenRepo, err := atRepoFn()
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -180,5 +197,7 @@ func Callback(
 	if err := tokenRepo.CreatePendingAuthToken(ctx, reqState.TokenRequestId, user, acct.PublicId); err != nil {
 		return "", errors.Wrap(err, op)
 	}
+
+	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil
 }
