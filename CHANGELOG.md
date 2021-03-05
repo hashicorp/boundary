@@ -13,14 +13,25 @@ All of these changes are from [PR
   and `ResponseBody()`, resources simply expose `Response()`. This higher-level
   response object contains the map and body, and also exposes `StatusCode()` in
   place of indivdidual resources.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
+* cli: Error return codes have been standardized across CLI commands. An error
+  code of `1` indicates an error generated from the actual controller API; an
+  error code of `2` is an error encountered due to the CLI command's logic; and
+  an error code of `3` indicates an error that was caused due to user input to
+  the command. (There is some nuance sometimes whether an error is really due to
+  user input or not, but we attempt to be consistent.)
+  [PR](https://github.com/hashicorp/boundary/pull/976)
 
 ### New and Improved
 
