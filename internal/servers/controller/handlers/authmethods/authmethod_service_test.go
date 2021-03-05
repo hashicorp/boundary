@@ -527,7 +527,8 @@ func TestCreate(t *testing.T) {
 						"callback_urls": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{
 								fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
-								fmt.Sprintf("http://another.url.com:82471/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
+								fmt.Sprintf("http://another.url.com:82471/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
+							})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
