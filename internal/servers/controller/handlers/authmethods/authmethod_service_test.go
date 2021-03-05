@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	capoidc "github.com/hashicorp/cap/oidc"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -1325,13 +1326,23 @@ func TestUpdate_OIDC(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
 
+	tp := capoidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
 	defaultAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821"),
+			"discovery_url": structpb.NewStringValue(tp.Addr()),
 			"client_id":     structpb.NewStringValue("someclientid"),
 			"client_secret": structpb.NewStringValue("secret"),
+			"certificates": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
 			"signing_algorithms": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{string(oidc.ES256)})
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
 				return structpb.NewListValue(lv)
 			}(),
 			"callback_url_prefixes": func() *structpb.Value {
@@ -1342,12 +1353,16 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 	defaultReadAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821"),
+			"discovery_url": structpb.NewStringValue(tp.Addr()),
 			"client_id":     structpb.NewStringValue("someclientid"),
-			"client_secret": structpb.NewStringValue("secret"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"certificates": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
 			"signing_algorithms": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{string(oidc.ES256)})
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
 				return structpb.NewListValue(lv)
 			}(),
 			"callback_url_prefixes": func() *structpb.Value {
@@ -1355,7 +1370,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				return structpb.NewListValue(lv)
 			}(),
 			"callback_urls": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{"http://example.com/v1/auth-methods/oidcam_:authenticate:callback"})
+				lv, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
 				return structpb.NewListValue(lv)
 			}(),
 		}
@@ -1672,6 +1687,21 @@ func TestUpdate_OIDC(t *testing.T) {
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
+				if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
+					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
+					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
+						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
+						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
+						require.NoError(err)
+						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
+					}
+					delete(got.Item.Attributes.Fields, "callback_urls")
+					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				}
+
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 				assert.EqualValues(2, got.Item.Version)
