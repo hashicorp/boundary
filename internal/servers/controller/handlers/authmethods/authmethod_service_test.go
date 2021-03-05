@@ -222,7 +222,6 @@ func TestList(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
 
-
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
 		wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 			Id:          am.GetPublicId(),
