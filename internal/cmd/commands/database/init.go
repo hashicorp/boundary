@@ -326,7 +326,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		LoginName:      c.srv.DevLoginName,
 		Password:       c.srv.DevPassword,
 		ScopeId:        scope.Global.String(),
-		UserId:         c.srv.DevUserId,
+		UserId:         user.PublicId,
 		UserName:       user.Name,
 	}
 	switch base.Format(c.UI) {
