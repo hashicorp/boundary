@@ -64,6 +64,17 @@ func Callback(
 	if code == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing code")
 	}
+
+	// One comment before we begin, Callback orchestrates repository which
+	// execute order dependent database transactions: create an account,
+	// perhaps create an iam.User, and if everything is successful it will
+	// create a pending token.  Any of these independent transactions could
+	// fail, but we don't need to undo an previous successful transactions
+	// in the Callback.  The sequentially order transactions all leave the
+	// database is a consistent state, even if subsequent transactions fail.
+	// Future requests will not be hampered by previous unsuccessful Callback
+	// operations.
+
 	r, err := oidcRepoFn()
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -75,6 +86,9 @@ func Callback(
 	if am == nil {
 		return "", errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
 	}
+
+	// state is a proto request.Wrapper msg, which contains a cipher text field, so
+	// we need the derived wrapper that was used to encrypt it.
 	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, authMethodId)
 	if err != nil {
 		return "", errors.Wrap(err, op)
