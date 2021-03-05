@@ -342,16 +342,29 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
-	repo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListAuthMethods(ctx, scopeIds)
+	oidcRepo, err := s.oidcRepoFn()
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.AuthMethod
-	for _, u := range ul {
+	for _, u := range ol {
+		ou, err := toAuthMethodProto(u)
+		if err != nil {
+			return nil, err
+		}
+		outUl = append(outUl, ou)
+	}
+
+	repo, err := s.pwRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	pl, err := repo.ListAuthMethods(ctx, scopeIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range pl {
 		ou, err := toAuthMethodProto(u)
 		if err != nil {
 			return nil, err
