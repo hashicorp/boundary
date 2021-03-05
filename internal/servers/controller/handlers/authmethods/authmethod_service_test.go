@@ -181,18 +181,18 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -201,6 +201,28 @@ func TestList(t *testing.T) {
 	oWithOtherAuthMethods, _ := iam.TestScopes(t, iamRepo)
 
 	var wantSomeAuthMethods []*pb.AuthMethod
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     oWithAuthMethods.GetPublicId(),
+		CreatedTime: oidcam.GetCreateTime().GetTimestamp(),
+		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+		Version:     1,
+		Type:        auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"discovery_url":      structpb.NewStringValue("https://alice.com"),
+			"client_id":          structpb.NewStringValue("alice_rp"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+		}},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
+
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
 		wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 			Id:          am.GetPublicId(),
@@ -293,15 +315,22 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
-			} else {
-				require.NoError(gErr)
+				return
+			}
+			require.NoError(gErr)
+			for i, g := range got.Items {
+				if _, ok := g.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", g.Attributes.Fields["client_secret_hmac"])
+					delete(g.Attributes.Fields, "client_secret_hmac")
+					delete(tc.res.Items[i].Attributes.Fields, "client_secret_hmac")
+				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
