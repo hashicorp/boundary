@@ -130,6 +130,40 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
+			name: "inactive-not-complete-no-with-force",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description", "AudClaims"},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = updateWith.Name
+				am.Description = updateWith.Description
+				am.AudClaims = updateWith.AudClaims
+				return am
+			},
+		},
+		{
 			name: "with-dry-run",
 			setup: func() *AuthMethod {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -403,7 +437,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 	testAuthMethod := TestAuthMethod(t,
 		conn, databaseWrapper,
 		org.PublicId,
-		InactiveState,
+		ActivePrivateState,
 		TestConvertToUrls(t, tp.Addr())[0],
 		tpClientId, ClientSecret(tpClientSecret),
 		WithCertificates(tpCert[0]),

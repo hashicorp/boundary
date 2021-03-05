@@ -104,6 +104,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	opts := getOpts(opt...)
 	if opts.withDryRun {
 		updated := applyUpdate(am, origAm, fieldMaskPaths)
+		if err := am.isComplete(); err != nil {
+			return updated, db.NoRowsAffected, err
+		}
 		err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updated))
 		return updated, db.NoRowsAffected, err
 	}
@@ -149,6 +152,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
+		}
+	}
+	for _, f := range filteredNullFields {
+		switch f {
+		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
+			continue
+		default:
+			filteredNullFields = append(filteredNullFields, f)
 		}
 	}
 
@@ -513,7 +524,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 //
 // Options supported are: WithPublicId, WithAuthMethod
 func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) error {
-	const op = "oidc.(Repository).ValidateAuthMethod"
+	const op = "oidc.(Repository).ValidateDiscoveryInfo"
 	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
@@ -532,12 +543,11 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		return errors.New(errors.InvalidParameter, op, "neither WithPublicId(...) nor WithAuthMethod(...) options were provided")
 	}
 
-	if err := am.isComplete(); err != nil {
-		return errors.Wrap(err, op)
-	}
-
 	// FYI: once converted to an oidc.Provider, any certs configured will be used as trust anchors for all HTTP requests
 	provider, err := convertToProvider(ctx, am)
+	if err != nil && am.OperationalState == string(InactiveState) {
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
