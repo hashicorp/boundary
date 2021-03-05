@@ -13,7 +13,7 @@ func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, _ ..
 // MakePrivate will transision an OIDC auth method from either the
 // InactiveState or the ActivePublicState to the ActivePrivateState.  If
 // transitioning from the InactiveState, the transition will only succeed if
-// the oidc.ValidateAuthMethod(...) succeeds. No options are currently supported.
+// the oidc.ValidateDiscoveryInfo(...) succeeds. No options are currently supported.
 func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt ...Option) error {
 	panic("to-do")
 }
@@ -21,7 +21,7 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, opt .
 // MakePublic will transision an OIDC auth method from either the
 // InactiveState or the ActivePrivateState to the ActivePublicState.  If
 // transitioning from the InactiveState, the transition will only succeed if
-// the oidc.ValidateAuthMethod(...) succeeds. No options are currently supported.
+// the oidc.ValidateDiscoveryInfo(...) succeeds. No options are currently supported.
 func (r *Repository) MakePublic(ctx context.Context, authMethodId string, opt ...Option) error {
 	panic("to-do")
 }
