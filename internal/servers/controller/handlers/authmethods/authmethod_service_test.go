@@ -1353,8 +1353,8 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 	defaultReadAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url": structpb.NewStringValue(tp.Addr()),
-			"client_id":     structpb.NewStringValue("someclientid"),
+			"discovery_url":      structpb.NewStringValue(tp.Addr()),
+			"client_id":          structpb.NewStringValue("someclientid"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 			"certificates": func() *structpb.Value {
@@ -1496,7 +1496,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
-					Type:        auth.PasswordSubtype.String(),
+					Type: auth.PasswordSubtype.String(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1515,6 +1515,30 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					ScopeId:     o.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name: &wrapperspb.StringValue{Value: "default"},
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
@@ -1639,7 +1663,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"type"},
 				},
 				Item: &pb.AuthMethod{
-					Type:        auth.OidcSubtype.String(),
+					Type: auth.OidcSubtype.String(),
 				},
 			},
 			res: nil,

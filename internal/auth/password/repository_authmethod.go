@@ -197,8 +197,8 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("name", f):
-		case strings.EqualFold("description", f):
+		case strings.EqualFold("Name", f):
+		case strings.EqualFold("Description", f):
 		case strings.EqualFold("MinLoginNameLength", f):
 		case strings.EqualFold("MinPasswordLength", f):
 		default:

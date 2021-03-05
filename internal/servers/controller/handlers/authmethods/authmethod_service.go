@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
-	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	pwMaskManager handlers.MaskManager
+	pwMaskManager   handlers.MaskManager
 	oidcMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
