@@ -5069,9 +5069,10 @@ create table auth_oidc_method (
   update_time wt_timestamp,
   version wt_version,
   state text not null
-    references auth_oidc_method_state_enm(name)
-    on delete restrict
-    on update cascade,
+    constraint state_fkey
+      references auth_oidc_method_state_enm(name)
+      on delete restrict
+      on update cascade,
   discovery_url wt_url, -- oidc discovery URL without any .well-known component
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -5081,21 +5082,26 @@ create table auth_oidc_method (
     constraint client_secret_hmac_not_empty
     check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    references kms_database_key_version(private_id) 
-    on delete restrict
-    on update cascade, 
+    constraint key_id_fkey
+      references kms_database_key_version(private_id) 
+      on delete restrict
+      on update cascade, 
   max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
     constraint max_age_not_equal_zero
       check(max_age != 0)
     constraint max_age_not_less_then_negative_one
       check(max_age >= -1), 
-  foreign key (scope_id, public_id)
-      references auth_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-  unique(scope_id, name),
-  unique(scope_id, public_id),
-  unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
+  constraint scope_id_public_id_fkey
+    foreign key (scope_id, public_id)
+        references auth_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+  constraint scope_id_name_unique
+    unique(scope_id, name),
+  constraint scope_id_public_id_unique
+    unique(scope_id, public_id),
+  constraint scope_id_discover_url_client_id_unique
+    unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
 'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
@@ -5105,10 +5111,12 @@ comment on table auth_oidc_method is
 create table auth_oidc_signing_alg (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
   signing_alg_name text 
+    constraint signing_alg_name_fkey
     references auth_oidc_signing_alg_enm(name)
     on delete restrict
     on update cascade,
@@ -5123,6 +5131,7 @@ comment on table auth_oidc_signing_alg is
 create table auth_oidc_callback_url (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5138,6 +5147,7 @@ comment on table auth_oidc_callback_url is
 create table auth_oidc_aud_claim (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5160,6 +5170,7 @@ comment on table auth_oidc_aud_claim is
 create table auth_oidc_certificate (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5198,16 +5209,20 @@ create table auth_oidc_account (
       ),
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
-    foreign key (scope_id, auth_method_id)
-      references auth_oidc_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    foreign key (scope_id, auth_method_id, public_id)
-      references auth_account (scope_id, auth_method_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(auth_method_id, name),
-    unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
+    constraint scope_id_auth_method_id_fkey
+      foreign key (scope_id, auth_method_id)
+        references auth_oidc_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint scope_id_auth_method_id_public_id_fkey
+      foreign key (scope_id, auth_method_id, public_id)
+        references auth_account (scope_id, auth_method_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint auth_method_id_name_unique
+      unique(auth_method_id, name),
+    constraint auth_method_id_issuer_id_subject_id_unique
+      unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
 comment on table auth_oidc_method is
