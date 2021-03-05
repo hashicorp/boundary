@@ -63,7 +63,7 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 		defer db.Close()
 		return nil
 	}); err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not ping postgres on startup: %w", err)
+		return cleanup, "", "", fmt.Errorf("could not ping postgres on startup: %w", err)
 	}
 
 	return cleanup, url, resource.Container.Name, nil
