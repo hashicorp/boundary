@@ -146,7 +146,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 		return nil, nil, errors.Wrap(err, op)
 	}
 	if len(session.CtTofuToken) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(session.KeyId))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -694,7 +694,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
 			if len(updatedSession.CtTofuToken) > 0 {
-				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(updatedSession.KeyId))
+				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 				}
