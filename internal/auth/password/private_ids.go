@@ -17,7 +17,7 @@ func newArgon2ConfigurationId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 func newArgon2CredentialId() (string, error) {
@@ -26,5 +26,5 @@ func newArgon2CredentialId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }

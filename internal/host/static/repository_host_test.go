@@ -205,7 +205,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -660,7 +660,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		hB.Name = name
 		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 		err = db.TestVerifyOplog(t, rw, hB.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))

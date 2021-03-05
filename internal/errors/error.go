@@ -130,13 +130,13 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return E(WithMsg(pqError.Message), WithWrap(ErrNotUnique)).(*Err)
+				return E(WithMsg(pqError.Message), WithWrap(E(WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return E(WithMsg(msg), WithWrap(ErrNotNull)).(*Err)
+				return E(WithMsg(msg), WithWrap(E(WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return E(WithMsg(msg), WithWrap(ErrCheckConstraint)).(*Err)
+				return E(WithMsg(msg), WithWrap(E(WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
 			default:
 				return E(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
 			}

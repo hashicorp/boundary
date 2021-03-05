@@ -385,15 +385,15 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 // * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with it's states.  If the authorization fails, it
-// an error of ErrInvalidStateForOperation.
+// an error with Code InvalidSessionState.
 func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).AuthorizeConnection"
 	if sessionId == "" {
-		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", errors.ErrInvalidParameter)
+		return nil, nil, nil, errors.Wrap(status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
-		return nil, nil, nil, status.Errorf(codes.Internal, "authorize connection: %v", err)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
 
 	connection := AllocConnection()
@@ -406,13 +406,13 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		func(reader db.Reader, w db.Writer) error {
 			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId})
 			if err != nil {
-				return status.Errorf(codes.Internal, "unable to authorize connection %s: %v", sessionId, err)
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return status.Errorf(codes.PermissionDenied, "authorize connection: session %s is not authorized (not active, expired or connection limit reached): %v", sessionId, ErrInvalidStateForOperation)
+				return errors.Wrap(status.Errorf(codes.PermissionDenied, "session %s is not authorized (not active, expired or connection limit reached)", sessionId), op, errors.WithCode(errors.InvalidSessionState))
 			}
 			if err := reader.LookupById(ctx, &connection); err != nil {
-				return status.Errorf(codes.Internal, "authorize connection: failed for session %s: %v", sessionId, err)
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
 			}
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
 			if err != nil {

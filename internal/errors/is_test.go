@@ -39,13 +39,13 @@ func TestError_IsUnique(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "ErrCodeUnique",
-			in:   errors.ErrNotUnique,
+			name: "CodeUnique",
+			in:    errors.E(errors.WithCode(errors.NotUnique)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-unique",
-			in: errors.E(errors.WithCode(errors.NotUnique),
+			in: errors.E(
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23505"),
 				}),
@@ -53,8 +53,8 @@ func TestError_IsUnique(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "ErrRecordNotFound",
-			in:   errors.ErrRecordNotFound,
+			name: "RecordNotFound",
+			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
@@ -115,8 +115,8 @@ func TestError_IsCheckConstraint(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "ErrRecordNotFound",
-			in:   errors.ErrRecordNotFound,
+			name: "RecordNotFound",
+			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
@@ -184,8 +184,8 @@ func TestError_IsNotNullError(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "ErrRecordNotFound",
-			in:   errors.ErrRecordNotFound,
+			name: "RecordNotFound",
+			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
@@ -271,11 +271,6 @@ func TestError_IsNotFoundError(t *testing.T) {
 		{
 			name: "not-found-error",
 			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
-			want: true,
-		},
-		{
-			name: "sentinel-not-found",
-			in:   errors.ErrRecordNotFound,
 			want: true,
 		},
 		{

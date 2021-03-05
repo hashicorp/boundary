@@ -71,7 +71,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 
 	id, err := newArgon2ConfigurationId()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	c.PrivateId = id
 
@@ -93,24 +93,27 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 			where, args := c.whereDup()
 			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args...); err != nil {
 				if !errors.IsNotFoundError(err) {
-					return err
+					return errors.Wrap(err, op)
 				}
 				newArgon2Conf = c.clone()
 				if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-					return err
+					return errors.Wrap(err, op)
 				}
 			}
 
 			a.PasswordConfId = newArgon2Conf.PrivateId
 			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
-			if err == nil && rowsUpdated > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsUpdated > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	return newArgon2Conf, nil
 }
@@ -128,9 +131,10 @@ func (c *currentConfig) TableName() string {
 }
 
 func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
+	const op = "password.(Repository).currentConfig"
 	var cc currentConfig
 	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	return &cc, nil
 }
@@ -141,13 +145,13 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 
 	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var conf currentConfig
 		if err := r.reader.ScanRows(rows, &conf); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		confs = append(confs, conf)
 	}
