@@ -131,11 +131,25 @@ func Callback(
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to complete exchange with oidc provider", errors.WithWrap(err))
 	}
-	var claims map[string]interface{}
-	if err := tk.IDToken().Claims(claims); err != nil {
+	var idTkClaims map[string]interface{}
+	var userInfoClaims map[string]interface{}
+
+	if err := tk.IDToken().Claims(idTkClaims); err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
 	}
-	acct, err := r.upsertAccount(ctx, am.PublicId, claims)
+
+	userInfoTokenSource := tk.StaticTokenSource()
+	if userInfoTokenSource != nil {
+		sub, ok := idTkClaims["sub"].(string)
+		if !ok {
+			return "", errors.New(errors.Unknown, op, "subject is not present in return, which should not be possible")
+		}
+		if err := provider.UserInfo(ctx, userInfoTokenSource, sub, userInfoClaims); err != nil {
+			return "", errors.New(errors.Unknown, op, "unable to get user info from provider", errors.WithWrap(err))
+		}
+	}
+
+	acct, err := r.upsertAccount(ctx, am.PublicId, idTkClaims, userInfoClaims)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
@@ -145,11 +159,16 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
-	// TODO (jimlambrt 3/2021) - we need to fix the hard coding of WithAutoVivify(true) here
-	// an in the auth password repo.  It will require schema changes to support the user
-	// being able to manage which auth method they want to have auto vivify turn-on for.
-	// For now, just hard coding it here to keep making some progress on this function
-	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId, iam.WithAutoVivify(true))
+	scope, err := iamRepo.LookupScope(ctx, am.ScopeId)
+	if err != nil {
+		return "", errors.Wrap(err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
+	}
+	var loginOpts []iam.Option
+	if scope.PrimaryAuthMethodId == acct.AuthMethodId {
+		loginOpts = append(loginOpts, iam.WithAutoVivify(true))
+	}
+
+	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId, loginOpts...)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
