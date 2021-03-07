@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/cap/oidc"
 )
 
@@ -191,12 +190,8 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
 	}
-	var loginOpts []iam.Option
-	if scope.PrimaryAuthMethodId == acct.AuthMethodId {
-		loginOpts = append(loginOpts, iam.WithAutoVivify(true))
-	}
 
-	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId, loginOpts...)
+	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
