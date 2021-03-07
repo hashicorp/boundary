@@ -58,7 +58,7 @@ type structInfo struct {
 	sliceSubTypes map[string]string
 
 	// outputOnly indicates that we shouldn't create options for setting members
-	// for this struct
+	// for mapping src field struct
 	outputOnly bool
 
 	// versionEnabled indicates that we should build a Version handler in

@@ -318,6 +318,9 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
+		opts = append(opts, iam.WithPrimaryAuthMethodId(primaryAuthMethodId.GetValue()))
+	}
 	version := item.GetVersion()
 
 	var iamScope *iam.Scope
@@ -442,6 +445,10 @@ func ToProto(in *iam.Scope) *pb.Scope {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if in.GetPrimaryAuthMethodId() != "" {
+		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+
 	return &out
 }
 

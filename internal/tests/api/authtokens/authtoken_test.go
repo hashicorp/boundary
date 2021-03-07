@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -33,6 +34,12 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(amResult)
 	amId := amResult.Item.Id
+
+	scopeClient := scopes.NewClient(client)
+	scopeResult, err := scopeClient.Update(tc.Context(), org.PublicId, org.Version, scopes.WithAutomaticVersioning(true), scopes.WithPrimaryAuthMethodId(amId))
+	require.NoError(err)
+	require.NotNil(scopeResult)
+	require.Equal(amId, scopeResult.Item.PrimaryAuthMethodId)
 
 	rolesClient := roles.NewClient(client)
 	role, err := rolesClient.Create(tc.Context(), org.GetPublicId())

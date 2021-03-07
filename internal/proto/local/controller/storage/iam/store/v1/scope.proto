@@ -44,5 +44,5 @@ message Scope {
   // method will also be designated as the auth method which can autovivify
   // users.
   // @inject_tag: `gorm:"default:null"`
-  string primary_auth_method_id = 20;
+  string primary_auth_method_id = 20 [(custom_options.v1.mask_mapping) = { this: "PrimaryAuthMethodId" that: "primary_auth_method_id" }];
 }

@@ -54,7 +54,8 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 // newScope creates a new Scope with options: WithName specifies the Scope's
 // friendly name. WithDescription specifies the scope's description. WithScope
 // specifies the Scope's parent and must be filled in. The type of the parent is
-// used to determine the type of the child.
+// used to determine the type of the child. WithPrimaryAuthMethodId specifies
+// the primary auth method for the scope
 func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	const op = "iam.newScope"
 	if parent == nil || parent.PublicId == "" {
@@ -74,10 +75,11 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	s := &Scope{
 		Scope: &store.Scope{
-			Type:        typ.String(),
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			ParentId:    parent.PublicId,
+			Type:                typ.String(),
+			Name:                opts.withName,
+			Description:         opts.withDescription,
+			ParentId:            parent.PublicId,
+			PrimaryAuthMethodId: opts.withPrimaryAuthMethodId,
 		},
 	}
 

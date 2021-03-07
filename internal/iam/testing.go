@@ -39,6 +39,17 @@ func TestRepo(t *testing.T, conn *gorm.DB, rootWrapper wrapping.Wrapper, opt ...
 	return repo
 }
 
+// TestSetPrimaryAuthMethod will set the PrimaryAuthMethodId for a scope.
+func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMethodId string) {
+	t.Helper()
+	require := require.New(t)
+	require.NotEmpty(s)
+	require.NotEmpty(authMethodId)
+	s.PrimaryAuthMethodId = authMethodId
+	_, _, err := repo.UpdateScope(context.Background(), s, s.Version, []string{"PrimaryAuthMethodId"})
+	require.NoError(err)
+}
+
 // TestScopes creates an org and project suitable for testing.
 func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
 	t.Helper()
@@ -121,7 +132,8 @@ func testPublicId(t *testing.T, prefix string) string {
 	return publicId
 }
 
-// TestUser creates a user suitable for testing.
+// TestUser creates a user suitable for testing.  Supports the options:
+// WithName, WithDescription and WithAccountIds.
 func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *User {
 	t.Helper()
 	require := require.New(t)
@@ -131,6 +143,11 @@ func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *Us
 	user, err = repo.CreateUser(context.Background(), user)
 	require.NoError(err)
 	require.NotEmpty(user.PublicId)
+	opts := getOpts(opt...)
+	if len(opts.withAccountIds) > 0 {
+		_, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, opts.withAccountIds)
+		require.NoError(err)
+	}
 	return user
 }
 

@@ -397,7 +397,6 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
-
 	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if errors.IsUniqueError(err) {
