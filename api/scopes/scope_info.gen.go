@@ -2,9 +2,10 @@
 package scopes
 
 type ScopeInfo struct {
-	Id            string `json:"id,omitempty"`
-	Type          string `json:"type,omitempty"`
-	Name          string `json:"name,omitempty"`
-	Description   string `json:"description,omitempty"`
-	ParentScopeId string `json:"parent_scope_id,omitempty"`
+	Id                  string `json:"id,omitempty"`
+	Type                string `json:"type,omitempty"`
+	Name                string `json:"name,omitempty"`
+	Description         string `json:"description,omitempty"`
+	ParentScopeId       string `json:"parent_scope_id,omitempty"`
+	PrimaryAuthMethodId string `json:"primary_auth_method_id,omitempty"`
 }

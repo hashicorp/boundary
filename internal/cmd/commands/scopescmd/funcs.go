@@ -9,6 +9,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+const (
+	flagPrimaryAuthMethodIdName     = "primary-auth-method-id"
+	flagSkipAdminRoleCreationName   = "skip-admin-role-creation"
+	flagSkipDefaultRoleCreationName = "skip-default-role-creation"
+)
+
 func init() {
 	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
@@ -17,29 +23,37 @@ func init() {
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"skip-admin-role-creation", "skip-default-role-creation"},
+		"create": {flagSkipAdminRoleCreationName, flagSkipDefaultRoleCreationName},
+		"update": {flagPrimaryAuthMethodIdName},
 	}
 }
 
 type extraCmdVars struct {
 	flagSkipAdminRoleCreation   bool
 	flagSkipDefaultRoleCreation bool
+	flagPrimaryAuthMethodId     string
 }
 
 func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
-		case "skip-admin-role-creation":
+		case flagSkipAdminRoleCreationName:
 			f.BoolVar(&base.BoolVar{
-				Name:   "skip-admin-role-creation",
+				Name:   flagSkipAdminRoleCreationName,
 				Target: &c.flagSkipAdminRoleCreation,
 				Usage:  "If set, a role granting the current user access to administer the newly-created scope will not automatically be created",
 			})
-		case "skip-default-role-creation":
+		case flagSkipDefaultRoleCreationName:
 			f.BoolVar(&base.BoolVar{
-				Name:   "skip-default-role-creation",
+				Name:   flagSkipDefaultRoleCreationName,
 				Target: &c.flagSkipDefaultRoleCreation,
 				Usage:  "If set, a role granting the anonymous user access to log into auth methods and a few other actions within the newly-created scope will not automatically be created",
+			})
+		case flagPrimaryAuthMethodIdName:
+			f.StringVar(&base.StringVar{
+				Name:   flagPrimaryAuthMethodIdName,
+				Target: &c.flagPrimaryAuthMethodId,
+				Usage:  "If set, the primary auth method id for the scope.  A primary auth method is allowed to autovivify users and is used as a source for account full name and email for a scope's users",
 			})
 		}
 	}
@@ -51,6 +65,9 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) int {
 	}
 	if c.flagSkipDefaultRoleCreation {
 		*opts = append(*opts, scopes.WithSkipDefaultRoleCreation(c.flagSkipDefaultRoleCreation))
+	}
+	if c.flagPrimaryAuthMethodId != "" {
+		*opts = append(*opts, scopes.WithPrimaryAuthMethodId(c.flagPrimaryAuthMethodId))
 	}
 
 	return 0
@@ -94,6 +111,11 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.PrimaryAuthMethodId != "" {
+			output = append(output,
+				fmt.Sprintf("    PrimaryAuthMethodId: %s", item.PrimaryAuthMethodId),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -118,6 +140,9 @@ func printItemTable(in *scopes.Scope) string {
 	}
 	if in.Description != "" {
 		nonAttributeMap["Description"] = in.Description
+	}
+	if in.PrimaryAuthMethodId != "" {
+		nonAttributeMap[flagPrimaryAuthMethodIdName] = in.PrimaryAuthMethodId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)

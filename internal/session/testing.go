@@ -138,8 +138,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 
 	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
 	acct := password.TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
-	user, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
-	require.NoError(err)
+	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
 	authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
 	require.NoError(err)

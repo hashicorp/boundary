@@ -386,8 +386,9 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"name":        scope.Name,
-			"description": scope.Description,
+			"name":                scope.Name,
+			"description":         scope.Description,
+			"primaryAuthMethodId": scope.PrimaryAuthMethodId,
 		},
 		fieldMaskPaths,
 		nil,
@@ -396,7 +397,6 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
-
 	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if errors.IsUniqueError(err) {

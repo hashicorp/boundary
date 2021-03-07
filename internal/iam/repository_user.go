@@ -214,13 +214,13 @@ func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt .
 
 // LookupUserWithLogin will attempt to lookup the user with a matching
 // account id and return the user if found. If a user is not found and the
-// WithAutoVivify() option is true, then a new iam User will be
-// created in the scope of the account, and associated with the
+// account's scope is not the PrimaryAuthMethod, then an error is returned.
+// If the account's scope is the PrimaryAuthMethod, then a new iam User will be
+// created (autovivified) in the scope of the account, and associated with the
 // account. If a new user is auto vivified, then the WithName and
 // WithDescription options are supported as well.
 func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, opt ...Option) (*User, error) {
 	const op = "iam.(Repository).LookupUserWithLogin"
-	opts := getOpts(opt...)
 	if accountId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
@@ -231,15 +231,20 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 	if u != nil {
 		return u, nil
 	}
-	if !opts.withAutoVivify {
-		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("user not found for account %s", accountId))
-	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
 	err = r.reader.LookupByPublicId(context.Background(), &acct)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
+	}
+
+	allowed, err := r.allowUserAutoVivify(ctx, &acct)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if !allowed {
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("user not found for account %s", accountId))
 	}
 
 	metadata := oplog.Metadata{
@@ -304,6 +309,26 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		return nil, errors.Wrap(err, op)
 	}
 	return obtainedUser, nil
+}
+
+// allowUserAutoVivify determines if a user can be autovivified based on the account's scope
+func (r *Repository) allowUserAutoVivify(ctx context.Context, acct *authAccount) (bool, error) {
+	const op = "iam.(Repository).allowUserAutoVivify"
+	if acct == nil {
+		return false, errors.New(errors.InvalidParameter, op, "missing account")
+	}
+	acctScope := allocScope()
+	acctScope.PublicId = acct.ScopeId
+	err := r.reader.LookupByPublicId(context.Background(), &acctScope)
+	if err != nil {
+		return false, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account's scope %s", acct.ScopeId)))
+	}
+	switch {
+	case acct.AuthMethodId != acctScope.PrimaryAuthMethodId:
+		return false, nil
+	default:
+		return true, nil
+	}
 }
 
 func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, _ ...Option) (*User, error) {

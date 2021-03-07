@@ -188,11 +188,8 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
 	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
-
-	iamRepo, err := iam.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
-	require.NoError(t, err)
+	iam.TestSetPrimaryAuthMethod(t, repo, org1, am.PublicId)
+	u1 := iam.TestUser(t, repo, org1.PublicId, iam.WithAccountIds(aAcct.PublicId))
 
 	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, repo, org2.GetPublicId())
@@ -280,7 +277,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at.CtToken = nil
 	at.KeyId = ""
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -370,7 +367,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
 
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -550,7 +547,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
-	badId, err := newAuthTokenId()
+	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
 
