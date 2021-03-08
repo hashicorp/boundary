@@ -130,6 +130,41 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
+			name: "null-name-description",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithName("alice's restaurant"),
+					WithDescription("the best place to eat"),
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = ""
+				am.Description = ""
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description"},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = ""
+				am.Description = ""
+				return am
+			},
+		},
+		{
 			name: "inactive-not-complete-no-with-force",
 			setup: func() *AuthMethod {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))

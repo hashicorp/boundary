@@ -154,7 +154,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			filteredDbMask = append(filteredDbMask, f)
 		}
 	}
-	for _, f := range filteredNullFields {
+	for _, f := range nullFields {
 		switch f {
 		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
 			continue
