@@ -163,6 +163,20 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 	}
 
+	// handle no changes...
+	if len(filteredDbMask) == 0 &&
+		len(filteredNullFields) == 0 &&
+		len(addAlgs) == 0 &&
+		len(deleteAlgs) == 0 &&
+		len(addCerts) == 0 &&
+		len(deleteCerts) == 0 &&
+		len(addCallbacks) == 0 &&
+		len(deleteCallbacks) == 0 &&
+		len(addAuds) == 0 &&
+		len(deleteAuds) == 0 {
+		return origAm, db.NoRowsAffected, nil
+	}
+
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
@@ -187,14 +201,29 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
-			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			switch {
+			case len(filteredDbMask) == 0 && len(filteredNullFields) == 0:
+				// the auth method's fields are not being updated, just it's value objects, so we need to just update the auth
+				// method's version.
+				updatedAm = am.Clone()
+				updatedAm.Version = uint32(version) + 1
+				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
+				}
+			default:
+				updatedAm = am.Clone()
+				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				}
 			}
 			msgs = append(msgs, &authMethodOplogMsg)
 

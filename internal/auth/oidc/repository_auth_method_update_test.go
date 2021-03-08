@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/cap/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_UpdateAuthMethod(t *testing.T) {
@@ -41,14 +42,15 @@ func Test_UpdateAuthMethod(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		setup        func() *AuthMethod
-		updateWith   func(orig *AuthMethod) *AuthMethod
-		fieldMasks   []string
-		version      uint32
-		opt          []Option
-		want         func(orig, updateWith *AuthMethod) *AuthMethod
-		wantErrMatch *errors.Template
+		name             string
+		setup            func() *AuthMethod
+		updateWith       func(orig *AuthMethod) *AuthMethod
+		fieldMasks       []string
+		version          uint32
+		opt              []Option
+		want             func(orig, updateWith *AuthMethod) *AuthMethod
+		wantErrMatch     *errors.Template
+		wantNoRowsUpdate bool
 	}{
 		{
 			name: "very-simple",
@@ -163,6 +165,67 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = ""
 				return am
 			},
+		},
+		{
+			name: "null-signing-algs",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				return &am
+			},
+			fieldMasks: []string{"SigningAlgs"},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.SigningAlgs = nil
+				return am
+			},
+		},
+		{
+			name: "no-changes",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.SigningAlgs = []string{string(tpAlg)}
+				return &am
+			},
+			fieldMasks: []string{"SigningAlgs"},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				return am
+			},
+			wantNoRowsUpdate: true,
 		},
 		{
 			name: "inactive-not-complete-no-with-force",
@@ -428,16 +491,18 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			default:
 				require.NoError(err)
 				require.NotNil(updated)
-				assert.Equal(1, rowsUpdated)
 				want := tt.want(orig, updateWith)
 				want.CreateTime = updated.CreateTime
 				want.UpdateTime = updated.UpdateTime
 				want.Version = updated.Version
 				TestSortAuthMethods(t, []*AuthMethod{want, updated})
-				assert.Equal(want, updated)
-
-				err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+				// assert.Equal(want, updated)
+				assert.True(proto.Equal(want.AuthMethod, updated.AuthMethod))
+				if !tt.wantNoRowsUpdate {
+					assert.Equal(1, rowsUpdated)
+					err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+					require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+				}
 			}
 		})
 	}
