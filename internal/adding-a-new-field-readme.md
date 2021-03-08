@@ -20,16 +20,16 @@ Once you've figured out that you need an additional field in Boundary's domain m
   
 * Check the repository's Create function for the resource, since you may need to incorporate the new field here as well.
 
-## Add new fields to the API resource protobufs
-Now that the repository supports the new field, you can move on to adding this new field to Boundary's API layer.  The first step in the process is to add it to the API protobufs.
+## Add new fields to the API/SDK resource protobufs
+Now that the repository supports the new field, you can move on to adding this new field to Boundary's API layer and the generated SDK.  The first step in the process is to add it to the API/SDK protobufs.
 
 * API protobufs are under: `internal/proto/local/controller/api/resources`
   
 * Define a `custom_options.v1.mask_mapping` tag for the field which maps the API `this` field to the storage `that` field (yes, it's the opposite of how it's defined for a storage protobuf)
 
-* Define a `custom_options.v1.generate_sdk_option` tag
+* Define a `custom_options.v1.generate_sdk_option` tag for the SDK
 
-* Run `make proto` and `make api` after modifying API protobufs 
+* Run `make proto` and `make api` after modifying the API/SDK protobufs 
 
 ## Update the API handler service 
 Now that the API protobufs have been updated, you can move on to adding this new field to the API service handler.
