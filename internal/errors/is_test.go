@@ -40,7 +40,7 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "CodeUnique",
-			in:    errors.E(errors.WithCode(errors.NotUnique)),
+			in:   errors.E(errors.WithCode(errors.NotUnique)),
 			want: true,
 		},
 		{
