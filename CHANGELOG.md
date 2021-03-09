@@ -6,9 +6,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Changes/Deprecations
 
-All of these changes are from [PR
-962](https://github.com/hashicorp/boundary/pull/962):
-
 * api: A few functions have changed places. Notably, instead of `ResponseMap()`
   and `ResponseBody()`, resources simply expose `Response()`. This higher-level
   response object contains the map and body, and also exposes `StatusCode()` in
