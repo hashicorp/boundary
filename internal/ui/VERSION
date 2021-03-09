@@ -1,4 +1,4 @@
-39932708b0d3306937e3fd8333db5934760bcd3b Merge pull request #432 from hashicorp/fix-scopes-nav
+2f5ea0fcbadedc626f43acfa8f9c2503a03da4dc Merge pull request #492 from hashicorp/remove-unused-apple-entitlement
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
