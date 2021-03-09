@@ -343,6 +343,9 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
 	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
 	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
 		return nil, err
@@ -374,7 +377,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	return outUl, nil
 }
 
-// createOidcInRepo creates an oidc auth method in a repo and returns the result.
+// createPwInRepo creates a password auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	var opts []password.Option
@@ -430,6 +433,7 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 		}
 	}
 
+	// MaxAge can be -1 or a positive integer.
 	if attrs.GetMaxAge().GetValue() != 0 {
 		opts = append(opts, oidc.WithMaxAge(int(attrs.GetMaxAge().GetValue())))
 	}
@@ -816,7 +820,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithms[oidc.Alg(sa)] {
+					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}
