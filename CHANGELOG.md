@@ -36,9 +36,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   to the user. The filtering takes place server side and uses boolean
   expressions against the JSON representation of returned items. See [the
   documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
-  for more details. ([PR](https://github.com/hashicorp/boundary/pull/952))
-  ([PR](https://github.com/hashicorp/boundary/pull/957))
-  ([PR](https://github.com/hashicorp/boundary/pull/967))
+  for more details. ([PR 1](https://github.com/hashicorp/boundary/pull/952))
+  ([PR 2](https://github.com/hashicorp/boundary/pull/957))
+  ([PR 3](https://github.com/hashicorp/boundary/pull/967))
 * server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
@@ -49,7 +49,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.1.7 (2021/02/16)
 
-*Note* This release fixes an upgrade issue affecting users on Postgres 11
+*Note:* This release fixes an upgrade issue affecting users on Postgres 11
 upgrading to 0.1.5 or 0.1.6 and makes a modification to the `boundary dev`
 environment. It is otherwise identical to 0.1.6; see the entry for that version
 for more details.
