@@ -29,7 +29,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/shared-secure-libs v0.0.3
+	github.com/hashicorp/shared-secure-libs v0.0.4
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
@@ -47,7 +47,7 @@ require (
 	github.com/oligot/go-mod-upgrade v0.4.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pires/go-proxyproto v0.4.2
+	github.com/pires/go-proxyproto v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/stretchr/testify v1.7.0
