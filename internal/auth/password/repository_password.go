@@ -184,7 +184,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
@@ -310,7 +310,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 			acct = updatedAccount
 
