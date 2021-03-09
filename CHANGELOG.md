@@ -46,6 +46,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
   re-parsed and new values used
   ([PR](https://github.com/hashicorp/boundary/pull/959))
+* server: In addition to the existing `tls_min_version` listener configuration
+  value, `tls_max_version` is now supported. This should generally be left blank
+  but can be useful for situations where e.g. a load balancer has broken TLS 1.3
+  support, or does not support TLS 1.3 and flags it as a disallowed value.
 
 ## 0.1.7 (2021/02/16)
 
