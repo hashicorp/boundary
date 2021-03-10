@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/cap/oidc"
 )
@@ -203,7 +204,7 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	if err := tokenRepo.CreatePendingAuthToken(ctx, reqState.TokenRequestId, user, acct.PublicId); err != nil {
+	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
 		return "", errors.Wrap(err, op)
 	}
 
