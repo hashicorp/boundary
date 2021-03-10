@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/fatih/structs v1.1.0
-	github.com/hashicorp/boundary/sdk v0.0.3
+	github.com/hashicorp/boundary/sdk v0.0.4
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping v0.6.1
 	github.com/hashicorp/go-retryablehttp v0.6.8

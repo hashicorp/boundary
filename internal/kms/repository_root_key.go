@@ -72,7 +72,7 @@ func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 	}
 	// no oplog entries for root key versions
 	if err := w.Create(ctx, &kv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("key versions")))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions"))
 	}
 
 	return &rk, &kv, nil

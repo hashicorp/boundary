@@ -132,7 +132,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 
 	if err := c.srv.SetupLogging(c.flagLogLevel, c.flagLogFormat, c.Config.LogLevel, c.Config.LogFormat); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandCliError
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
@@ -149,12 +149,12 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 
 	if c.Config.Controller == nil {
 		c.UI.Error(`"controller" config block not found`)
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.Config.Controller.Database == nil {
 		c.UI.Error(`"controller.database" config block not found`)
-		return 1
+		return base.CommandUserError
 	}
 
 	var migrationUrlToParse string
@@ -171,13 +171,13 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 
 	if migrationUrlToParse == "" {
 		c.UI.Error(base.WrapAtLength(`neither "url" nor "migration_url" correctly set in "database" config block nor was the "migration-url" flag used`))
-		return 1
+		return base.CommandUserError
 	}
 
 	migrationUrl, err := config.ParseAddress(migrationUrlToParse)
 	if err != nil && err != config.ErrNotAUrl {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
@@ -186,7 +186,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return errCode
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
@@ -196,14 +196,14 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	// Validation
 	switch {
 	case len(c.flagConfig) == 0:
 		c.UI.Error("Must specify a config file using -config")
-		return 1
+		return base.CommandUserError
 	}
 
 	wrapperPath := c.flagConfig
@@ -213,21 +213,21 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	wrapper, err := wrapper.GetWrapperFromPath(wrapperPath, "config")
 	if err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	if wrapper != nil {
 		c.configWrapper = wrapper
 		if err := wrapper.Init(c.Context); err != nil {
 			c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-			return 1
+			return base.CommandUserError
 		}
 	}
 
 	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
-	return 0
+	return base.CommandSuccess
 }

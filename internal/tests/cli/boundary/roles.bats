@@ -107,13 +107,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/role: can not delete already deleted $NEW_ROLE role" {
-  local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
-  run delete_role $rid 
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
 @test "boundary/roles: can not read deleted $NEW_ROLE role" {
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
 	run read_role $rid

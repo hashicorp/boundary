@@ -140,6 +140,9 @@ func TestTemplate_Error(t *testing.T) {
 func TestMatch(t *testing.T) {
 	t.Parallel()
 	stdErr := stderrors.New("test error")
+	errInvalidFieldMask := E(WithCode(InvalidFieldMask), WithMsg("test invalid field mask error"))
+	errNotUnique := E(WithCode(NotUnique), WithMsg("test not unique error"))
+
 	tests := []struct {
 		name     string
 		template *Template
@@ -165,7 +168,7 @@ func TestMatch(t *testing.T) {
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
@@ -176,7 +179,7 @@ func TestMatch(t *testing.T) {
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
@@ -187,7 +190,7 @@ func TestMatch(t *testing.T) {
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
@@ -198,7 +201,7 @@ func TestMatch(t *testing.T) {
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
@@ -209,7 +212,7 @@ func TestMatch(t *testing.T) {
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
@@ -220,7 +223,7 @@ func TestMatch(t *testing.T) {
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},
@@ -230,36 +233,36 @@ func TestMatch(t *testing.T) {
 				"this thing must be unique",
 				Integrity,
 				InvalidParameter,
-				ErrInvalidFieldMask,
+				errInvalidFieldMask,
 				Op("alice.Bob"),
 			),
 			err: E(
 				WithCode(InvalidParameter),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "match on Wrapped only",
-			template: T(ErrInvalidFieldMask),
+			template: T(errInvalidFieldMask),
 			err: E(
 				WithCode(NotUnique),
 				WithMsg("this thing must be unique"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: true,
 		},
 		{
 			name:     "no match on Wrapped only",
-			template: T(ErrNotUnique),
+			template: T(errNotUnique),
 			err: E(
 				WithCode(RecordNotFound),
 				WithMsg("this thing is missing"),
 				WithOp("alice.Bob"),
-				WithWrap(ErrInvalidFieldMask),
+				WithWrap(errInvalidFieldMask),
 			),
 			want: false,
 		},

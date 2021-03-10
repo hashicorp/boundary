@@ -104,6 +104,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	opts := getOpts(opt...)
 	if opts.withDryRun {
 		updated := applyUpdate(am, origAm, fieldMaskPaths)
+		if err := am.isComplete(); err != nil {
+			return updated, db.NoRowsAffected, err
+		}
 		err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updated))
 		return updated, db.NoRowsAffected, err
 	}
@@ -151,6 +154,28 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			filteredDbMask = append(filteredDbMask, f)
 		}
 	}
+	for _, f := range nullFields {
+		switch f {
+		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
+			continue
+		default:
+			filteredNullFields = append(filteredNullFields, f)
+		}
+	}
+
+	// handle no changes...
+	if len(filteredDbMask) == 0 &&
+		len(filteredNullFields) == 0 &&
+		len(addAlgs) == 0 &&
+		len(deleteAlgs) == 0 &&
+		len(addCerts) == 0 &&
+		len(deleteCerts) == 0 &&
+		len(addCallbacks) == 0 &&
+		len(deleteCallbacks) == 0 &&
+		len(addAuds) == 0 &&
+		len(deleteAuds) == 0 {
+		return origAm, db.NoRowsAffected, nil
+	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -176,14 +201,29 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
-			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			switch {
+			case len(filteredDbMask) == 0 && len(filteredNullFields) == 0:
+				// the auth method's fields are not being updated, just it's value objects, so we need to just update the auth
+				// method's version.
+				updatedAm = am.Clone()
+				updatedAm.Version = uint32(version) + 1
+				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
+				}
+			default:
+				updatedAm = am.Clone()
+				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				}
 			}
 			msgs = append(msgs, &authMethodOplogMsg)
 
@@ -513,7 +553,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 //
 // Options supported are: WithPublicId, WithAuthMethod
 func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) error {
-	const op = "oidc.(Repository).ValidateAuthMethod"
+	const op = "oidc.(Repository).ValidateDiscoveryInfo"
 	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
@@ -532,12 +572,11 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		return errors.New(errors.InvalidParameter, op, "neither WithPublicId(...) nor WithAuthMethod(...) options were provided")
 	}
 
-	if err := am.isComplete(); err != nil {
-		return errors.Wrap(err, op)
-	}
-
 	// FYI: once converted to an oidc.Provider, any certs configured will be used as trust anchors for all HTTP requests
 	provider, err := convertToProvider(ctx, am)
+	if err != nil && am.OperationalState == string(InactiveState) {
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, op)
 	}

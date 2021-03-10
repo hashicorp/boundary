@@ -348,6 +348,9 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
 	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
 	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
 		return nil, err
@@ -379,7 +382,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	return outUl, nil
 }
 
-// createOidcInRepo creates an oidc auth method in a repo and returns the result.
+// createPwInRepo creates a password auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	u, err := toStoragePwAuthMethod(scopeId, item)
@@ -867,13 +870,11 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				badFields["attributes.discovery_url"] = "Field required for creating an OIDC auth method."
 			} else {
 				du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
-				if err != nil || (du.Scheme != "http" && du.Scheme != "https") || du.Host == "" {
-					badFields["attributes.discovery_url"] = "Cannot be parsed as a url."
+				if err != nil {
+					badFields["attributes.discovery_url"] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 				}
-				if strings.Index("/.well-known/openid-configuration/", du.Path) != 0 {
-					// We trim off the path with the expectation that the path is either empty
-					// or '/.well-known/openid-configuration' with a potential trailing '/'.
-					badFields["attributes.discovery_url"] = "URL path should be empty"
+				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+					badFields["attributes.discovery_url"] = "The path should be empty or `/.well-known/openid-configuration`"
 				}
 			}
 			if attrs.GetClientId().GetValue() == "" {
@@ -897,7 +898,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithms[oidc.Alg(sa)] {
+					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}

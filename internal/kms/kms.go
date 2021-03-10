@@ -142,10 +142,6 @@ func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	return ret
 }
 
-func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
-	return fmt.Sprintf("%s_%s_%d", scopeId, purpose, version)
-}
-
 // GetWrapper returns a wrapper for the given scope and purpose. When a keyId is
 // passed, it will ensure that the returning wrapper has that key ID in the
 // multiwrapper. This is not necesary for encryption but should be supplied for
@@ -171,8 +167,11 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	val, ok := k.scopePurposeCache.Load(scopeId + purpose.String())
 	if ok {
 		wrapper := val.(*multiwrapper.MultiWrapper)
-		if opts.withKeyId == "" || wrapper.WrapperForKeyID(opts.withKeyId) != nil {
+		if opts.withKeyId == "" {
 			return wrapper, nil
+		}
+		if keyIdWrapper := wrapper.WrapperForKeyID(opts.withKeyId); keyIdWrapper != nil {
+			return keyIdWrapper, nil
 		}
 		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 	}
@@ -194,6 +193,13 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error loading %s for scope %s", purpose.String(), scopeId)))
 	}
 	k.scopePurposeCache.Store(scopeId+purpose.String(), wrapper)
+
+	if opts.withKeyId != "" {
+		if keyIdWrapper := wrapper.WrapperForKeyID(opts.withKeyId); keyIdWrapper != nil {
+			return keyIdWrapper, nil
+		}
+		return nil, errors.New(errors.KeyNotFound, op, "unable to find specified key ID")
+	}
 
 	return wrapper, nil
 }
@@ -302,6 +308,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListTokenKeys(ctx)
 	case KeyPurposeSessions:
 		keys, err = repo.ListSessionKeys(ctx)
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("error listing root keys"))
@@ -327,6 +335,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
 	case KeyPurposeSessions:
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up %s key versions for scope %s with key ID %s", purpose.String(), scopeId, rootWrapper.KeyID())))
