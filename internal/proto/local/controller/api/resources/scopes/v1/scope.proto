@@ -24,11 +24,6 @@ message ScopeInfo {
 
   // Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
   string parent_scope_id = 5 [json_name = "parent_scope_id"];
-
-  // Output only. The ID of the primary auth method for this scope. A primary auth method
-  // is allowed to vivify users when new accounts are created and is the source for
-  // the users account info
-  string primary_auth_method_id = 6;
 }
 
 // Scope contains all fields related to a Scope resource
@@ -64,7 +59,7 @@ message Scope {
   // The ID of the primary auth method for this scope.  A primary auth method
   // is allowed to vivify users when new accounts are created and is the source for the users account info
   google.protobuf.StringValue primary_auth_method_id = 100
-      [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "primary_auth_method_id" that: "PrimaryAuthMethodId" }];
+      [json_name = "primary_auth_method_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "primary_auth_method_id" that: "PrimaryAuthMethodId" }];
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"];

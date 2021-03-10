@@ -318,6 +318,11 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	// TODO (jimlambrt 3/2021) uncomment this ValidId(...) check once https://github.com/hashicorp/boundary/pull/977
+	// has been merged.
+	// if item.GetPrimaryAuthMethodId() != nil && !handlers.ValidId(item.GetPrimaryAuthMethodId().GetValue(), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+	// 	badFields["primary_auth_method_id"] = "Improperly formatted identifier"
+	// }
 	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
 		opts = append(opts, iam.WithPrimaryAuthMethodId(primaryAuthMethodId.GetValue()))
 	}

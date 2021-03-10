@@ -3211,11 +3211,6 @@
           "type": "string",
           "description": "Output only. The ID of the parent Scope, if any. This field will be empty if this is the \"global\" scope.",
           "readOnly": true
-        },
-        "primary_auth_method_id": {
-          "type": "string",
-          "title": "Output only. The ID of the primary auth method for this scope. A primary auth method\nis allowed to vivify users when new accounts are created and is the source for\nthe users account info",
-          "readOnly": true
         }
       }
     },
