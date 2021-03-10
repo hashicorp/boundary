@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -49,22 +51,25 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	wantU := &pb.AuthMethod{
+	wantPw := &pb.AuthMethod{
 		Id:          am.GetPublicId(),
 		ScopeId:     am.GetScopeId(),
 		CreatedTime: am.CreateTime.GetTimestamp(),
@@ -83,6 +88,31 @@ func TestGet(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+
+	wantOidc := &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     oidcam.GetScopeId(),
+		CreatedTime: oidcam.CreateTime.GetTimestamp(),
+		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
+		Type:        auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"discovery_url":      structpb.NewStringValue("https://alice.com"),
+			"client_id":          structpb.NewStringValue("alice_rp"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+		}},
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
+			Id:   o.GetPublicId(),
+			Type: o.GetType(),
+		},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
 	cases := []struct {
 		name    string
 		scopeId string
@@ -91,10 +121,16 @@ func TestGet(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "Get an Existing AuthMethod",
+			name:    "Get an Existing PW AuthMethod",
 			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: am.GetPublicId()},
-			res:     &pbs.GetAuthMethodResponse{Item: wantU},
+			res:     &pbs.GetAuthMethodResponse{Item: wantPw},
+		},
+		{
+			name:    "Get an Existing OIDC AuthMethod",
+			scopeId: o.GetPublicId(),
+			req:     &pbs.GetAuthMethodRequest{Id: oidcam.GetPublicId()},
+			res:     &pbs.GetAuthMethodResponse{Item: wantOidc},
 		},
 		{
 			name:    "Get a non existant AuthMethod",
@@ -122,13 +158,19 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+				assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
+				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -139,15 +181,18 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -156,6 +201,28 @@ func TestList(t *testing.T) {
 	oWithOtherAuthMethods, _ := iam.TestScopes(t, iamRepo)
 
 	var wantSomeAuthMethods []*pb.AuthMethod
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     oWithAuthMethods.GetPublicId(),
+		CreatedTime: oidcam.GetCreateTime().GetTimestamp(),
+		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+		Version:     1,
+		Type:        auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"discovery_url":      structpb.NewStringValue("https://alice.com"),
+			"client_id":          structpb.NewStringValue("alice_rp"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+		}},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
+
 	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
 		wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 			Id:          am.GetPublicId(),
@@ -248,15 +315,22 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
-			} else {
-				require.NoError(gErr)
+				return
+			}
+			require.NoError(gErr)
+			for i, g := range got.Items {
+				if _, ok := g.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", g.Attributes.Fields["client_secret_hmac"])
+					delete(g.Attributes.Fields, "client_secret_hmac")
+					delete(tc.res.Items[i].Attributes.Fields, "client_secret_hmac")
+				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 		})
@@ -267,22 +341,28 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	pwam := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -292,9 +372,16 @@ func TestDelete(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Delete an Existing AuthMethod",
+			name: "Delete an Existing PW AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
-				Id: am.GetPublicId(),
+				Id: pwam.GetPublicId(),
+			},
+			res: &pbs.DeleteAuthMethodResponse{},
+		},
+		{
+			name: "Delete an Existing OIDC AuthMethod",
+			req: &pbs.DeleteAuthMethodRequest{
+				Id: oidcam.GetPublicId(),
 			},
 			res: &pbs.DeleteAuthMethodResponse{},
 		},
@@ -335,6 +422,9 @@ func TestDelete_twice(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -346,7 +436,7 @@ func TestDelete_twice(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -370,6 +460,9 @@ func TestCreate(t *testing.T) {
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
@@ -381,19 +474,21 @@ func TestCreate(t *testing.T) {
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
 	cases := []struct {
-		name string
-		req  *pbs.CreateAuthMethodRequest
-		res  *pbs.CreateAuthMethodResponse
-		err  error
+		name     string
+		req      *pbs.CreateAuthMethodRequest
+		res      *pbs.CreateAuthMethodResponse
+		idPrefix string
+		err      error
 	}{
 		{
-			name: "Create a valid AuthMethod",
+			name: "Create a valid Password AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
+			idPrefix: password.AuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
 				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
@@ -416,13 +511,70 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
-			name: "Create a global AuthMethod",
+			name: "Create a valid OIDC AuthMethod",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"audiences": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+						return structpb.NewListValue(lv)
+					}(),
+					"callback_url_prefixes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			idPrefix: oidc.AuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     o.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()},
+					Version:     1,
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"discovery_url":      structpb.NewStringValue("https://example.discovery.url:4821"),
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+						"audiences": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+							return structpb.NewListValue(lv)
+						}(),
+						"callback_url_prefixes": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
+							return structpb.NewListValue(lv)
+						}(),
+						"callback_urls": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{
+								fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
+								fmt.Sprintf("http://another.url.com:82471/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
+							})
+							return structpb.NewListValue(lv)
+						}(),
+					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Create a global Password AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     scope.Global.String(),
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
+			idPrefix: password.AuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
 				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
@@ -438,6 +590,39 @@ func TestCreate(t *testing.T) {
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Create a global OIDC AuthMethod",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: scope.Global.String(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example.discovery.url"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+				}},
+			}},
+			idPrefix: oidc.AuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     scope.Global.String(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Version:     1,
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"discovery_url":      structpb.NewStringValue("https://example.discovery.url"),
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 					}},
 					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -494,12 +679,12 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Attributes must be valid for type",
+			name: "Attributes must be valid for password type",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
-				Type:        "password",
+				Type:        auth.PasswordSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"invalid_field":         structpb.NewStringValue("invalid_value"),
 					"min_login_name_length": structpb.NewNumberValue(3),
@@ -508,25 +693,174 @@ func TestCreate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Attributes must be valid for oidc type",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Type:        auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"login-name": structpb.NewStringValue("invalid_value"),
+					"password":   structpb.NewNumberValue(3),
+				}},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Requires Discovery URL",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Requires Client Id",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_secret": structpb.NewStringValue("secret"),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Requires Client Secret",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod cant specify client secret hmac",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url":      structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":          structpb.NewStringValue("someclientid"),
+					"client_secret":      structpb.NewStringValue("secret"),
+					"client_secret_hmac": structpb.NewStringValue("hmac"),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod cant specify state",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"state":         structpb.NewStringValue(string(oidc.InactiveState)),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Must Match Standard Alg Names",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"signing_algorithms": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{string(oidc.ES256), strings.ToLower(string(oidc.EdDSA))})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Callback Urls Prefix Format",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"callback_url_prefixes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod Callback Urls Read Only",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"callback_urls": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod unparseable certificates",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"certificates": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"unparseable"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			if tc.res == nil {
 				require.Nil(got)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AuthMethodPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), tc.idPrefix))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
@@ -539,6 +873,20 @@ func TestCreate(t *testing.T) {
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+				if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual(tc.req.Item.Attributes.Fields["client_secret"], got.Item.Attributes.Fields["client_secret_hmac"])
+					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
+					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
+						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
+						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
+						require.NoError(err)
+						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
+					}
+					delete(got.Item.Attributes.Fields, "callback_urls")
+					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -553,6 +901,9 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -562,7 +913,7 @@ func TestUpdate(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
@@ -960,6 +1311,9 @@ func TestAuthenticate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -1089,7 +1443,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
@@ -1124,6 +1478,9 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -1146,7 +1503,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId(), iam.WithAutoVivify(true))
 	require.NoError(err)
 
-	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),

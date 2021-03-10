@@ -68,6 +68,12 @@ func NewSigningAlg(authMethodId string, alg Alg) (*SigningAlg, error) {
 	return s, nil
 }
 
+// SupportedAlgorithm returns true iff the provided algorithm is supported
+// by boundary.
+func SupportedAlgorithm(a Alg) bool {
+	return supportedAlgorithms[a]
+}
+
 // validate the SigningAlg.  On success, it will return nil.
 func (s *SigningAlg) validate(caller errors.Op) error {
 	if s.OidcMethodId == "" {

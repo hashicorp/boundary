@@ -34,7 +34,7 @@ func EncodeCertificates(certs ...*x509.Certificate) ([]string, error) {
 
 // ParseCertificates will parse a number of certificates PEMs to x509s.
 func ParseCertificates(pems ...string) ([]*x509.Certificate, error) {
-	const op = "oidc.DecodeCertificates"
+	const op = "oidc.ParseCertificates"
 	if len(pems) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no PEMs provided")
 	}

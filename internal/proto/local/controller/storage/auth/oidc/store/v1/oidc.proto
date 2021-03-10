@@ -78,7 +78,7 @@ message AuthMethod {
 
   // signing_algs are the signing algorithms allowed for an oidc auth method.
   // These are Value Objects that will be stored as SigningAlg messages, and are
-  // operatated on as a complete set.
+  // operated on as a complete set.
   // @inject_tag: `gorm:"-"`
   repeated string signing_algs = 160;
 
