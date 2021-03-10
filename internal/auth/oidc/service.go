@@ -131,7 +131,7 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	return decryptedMsg, nil
 }
 
-// unwrapMessage does just that, it unwrappes the encoded reqquest.Wrapper proto message
+// unwrapMessage does just that, it unwraps the encoded request.Wrapper proto message
 func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
 	const op = ""
 	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
