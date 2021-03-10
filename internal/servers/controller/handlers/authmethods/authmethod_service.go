@@ -969,7 +969,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithms[oidc.Alg(sa)] {
+					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}
