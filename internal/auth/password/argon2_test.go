@@ -161,19 +161,25 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 
 func TestArgon2Configuration_Validate(t *testing.T) {
 	tests := []struct {
-		name string
-		in   *Argon2Configuration
-		want error
+		name       string
+		in         *Argon2Configuration
+		wantErr    bool
+		wantErrIs  errors.Code
+		wantErrMsg string
 	}{
 		{
-			name: "nil-configuration",
-			in:   nil,
-			want: ErrInvalidConfiguration,
+			name:       "nil-configuration",
+			in:         nil,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing config: password violation: error #202",
 		},
 		{
-			name: "nil-embedded-config",
-			in:   &Argon2Configuration{},
-			want: ErrInvalidConfiguration,
+			name:       "nil-embedded-config",
+			in:         &Argon2Configuration{},
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing embedded config: password violation: error #202",
 		},
 		{
 			name: "valid-default",
@@ -202,7 +208,9 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			want: ErrInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing iterations: password violation: error #202",
 		},
 		{
 			name: "invalid-memory",
@@ -215,7 +223,9 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			want: ErrInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing memory: password violation: error #202",
 		},
 		{
 			name: "invalid-threads",
@@ -228,7 +238,9 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			want: ErrInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing threads: password violation: error #202",
 		},
 		{
 			name: "invalid-salt-length",
@@ -241,7 +253,9 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  1,
 				},
 			},
-			want: ErrInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing salt length: password violation: error #202",
 		},
 		{
 			name: "invalid-key-length",
@@ -254,7 +268,9 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 					KeyLength:  0,
 				},
 			},
-			want: ErrInvalidConfiguration,
+			wantErr:    true,
+			wantErrIs:  errors.PasswordInvalidConfiguration,
+			wantErrMsg: "password.(Argon2Configuration).validate: missing key length: password violation: error #202",
 		},
 	}
 	for _, tt := range tests {
@@ -262,12 +278,13 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got := tt.in.validate()
-			if tt.want == nil {
-				assert.NoErrorf(got, "valid argon2 configuration: %+v", tt.in)
+			if tt.wantErr {
+				require.Error(got)
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), got), "want err code: %q got err: %q", tt.wantErrIs, got)
+				assert.Equal(tt.wantErrMsg, got.Error())
 				return
 			}
-			require.Error(got)
-			assert.Truef(errors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
+			assert.NoErrorf(got, "valid argon2 configuration: %+v", tt.in)
 		})
 	}
 }

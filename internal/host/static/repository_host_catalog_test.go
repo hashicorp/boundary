@@ -127,7 +127,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateCatalog(context.Background(), in)
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
@@ -496,7 +496,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c2 := cats[1]
 		c2.Name = name
 		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, 1, []string{"name"})
-		assert.Truef(errors.Is(err, errors.ErrNotUnique), "want err: %v got: %v", errors.ErrNotUnique, err)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})

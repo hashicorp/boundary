@@ -30,9 +30,11 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withErrWrapped = nil
 		assert.Equal(opts, testOpts)
 
+		testErr := E(WithCode(InvalidParameter), WithMsg("test error"))
+
 		// try setting it
-		opts = GetOpts(WithWrap(ErrInvalidParameter))
-		testOpts.withErrWrapped = ErrInvalidParameter
+		opts = GetOpts(WithWrap(testErr))
+		testOpts.withErrWrapped = testErr
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithOp", func(t *testing.T) {

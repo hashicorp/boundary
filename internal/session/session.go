@@ -160,6 +160,7 @@ func (s *Session) Clone() interface{} {
 		Endpoint:          s.Endpoint,
 		ConnectionLimit:   s.ConnectionLimit,
 		WorkerFilter:      s.WorkerFilter,
+		KeyId:             s.KeyId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
