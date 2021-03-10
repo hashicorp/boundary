@@ -30,6 +30,7 @@ type options struct {
 	withTokenTimeToStaleDuration time.Duration
 	withLimit                    int
 	withStatus                   Status
+	withPublicId                 string
 }
 
 func getDefaultOptions() options {
@@ -81,5 +82,12 @@ func WithLimit(limit int) Option {
 func WithStatus(status Status) Option {
 	return func(o *options) {
 		o.withStatus = status
+	}
+}
+
+// WithPublicId allows the setting of the auth token's public id
+func WithPublicId(id string) Option {
+	return func(o *options) {
+		o.withPublicId = id
 	}
 }

@@ -194,10 +194,14 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	org2, _ := iam.TestScopes(t, repo)
 	u2 := iam.TestUser(t, repo, org2.GetPublicId())
 
+	testId, err := NewAuthTokenId()
+	require.NoError(t, err)
+
 	tests := []struct {
 		name       string
 		iamUser    *iam.User
 		authAcctId string
+		opt        []Option
 		want       *AuthToken
 		wantErr    bool
 	}{
@@ -208,6 +212,19 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
 					AuthAccountId: aAcct.GetPublicId(),
+				},
+			},
+		},
+		{
+			name:       "WithPublicId-WithStatus",
+			iamUser:    u1,
+			authAcctId: aAcct.GetPublicId(),
+			opt:        []Option{WithPublicId(testId), WithStatus(PendingStatus)},
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
+					AuthAccountId: aAcct.GetPublicId(),
+					PublicId:      testId,
+					Status:        string(PendingStatus),
 				},
 			},
 		},
@@ -247,7 +264,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId, tt.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -259,6 +276,15 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
+
+			opts := getOpts(tt.opt...)
+			if opts.withPublicId != "" {
+				assert.Equal(opts.withPublicId, got.PublicId)
+			}
+			if opts.withStatus != "" {
+				assert.Equal(string(opts.withStatus), got.Status)
+			}
+
 			// We should find no oplog since tokens are not replicated, so they don't need oplog entries.
 			assert.Error(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
