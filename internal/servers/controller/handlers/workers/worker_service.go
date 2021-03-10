@@ -219,7 +219,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions)
+	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}

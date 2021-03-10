@@ -59,7 +59,7 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) bool {
 	if c.flagSkipAdminRoleCreation {
 		*opts = append(*opts, scopes.WithSkipAdminRoleCreation(c.flagSkipAdminRoleCreation))
 	}
@@ -70,7 +70,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]scopes.Option) int {
 		*opts = append(*opts, scopes.WithPrimaryAuthMethodId(c.flagPrimaryAuthMethodId))
 	}
 
-	return 0
+	return true
 }
 
 func (c *Command) printListTable(items []*scopes.Scope) string {

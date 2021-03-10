@@ -43,14 +43,29 @@ func NewArgon2Configuration() *Argon2Configuration {
 }
 
 func (c *Argon2Configuration) validate() error {
-	switch {
-	case c == nil, c.Argon2Configuration == nil:
-		return ErrInvalidConfiguration
-	case c.Iterations == 0, c.Memory == 0, c.Threads == 0, c.SaltLength == 0, c.KeyLength == 0:
-		return ErrInvalidConfiguration
-	default:
-		return nil
+	const op = "password.(Argon2Configuration).validate"
+	if c == nil {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing config")
 	}
+	if c.Argon2Configuration == nil {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing embedded config")
+	}
+	if c.Iterations == 0 {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing iterations")
+	}
+	if c.Memory == 0 {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing memory")
+	}
+	if c.Threads == 0 {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing threads")
+	}
+	if c.SaltLength == 0 {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing salt length")
+	}
+	if c.KeyLength == 0 {
+		return errors.New(errors.PasswordInvalidConfiguration, op, "missing key length")
+	}
+	return nil
 }
 
 // AuthMethodId returns the Id of the AuthMethod which owns c.

@@ -47,13 +47,6 @@ export NEW_HOST_CATALOG='test'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-catalogs: can not delete already deleted $NEW_HOST_CATALOG host in default project scope" {
-  local hid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-  run delete_host_catalog $hid 
-  echo "$output"
-  [ "$status" -eq 1 ]
-}
-
 @test "boundary/host-catalogs: can not read deleted $NEW_HOST_CATALOG host in default project scope" {
   local hid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
 	run read_host_catalog $hid

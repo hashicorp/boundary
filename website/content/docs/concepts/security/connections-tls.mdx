@@ -84,11 +84,11 @@ TLS establishment is performed as follows:
 
 1. When the session is authorized, the Controller generates a TLS certificate
    acting as a self-contained chain. This is similar to the Worker-to-Controller
-   flow above, but in this case the key is an Ed25519 key generated via derivation
-   from a base key within the Controller, which itself is protected at rest via the
-   controller's "root" KMS. The derivation uses HKDF-SHA256 with the user ID and
-   the session ID as inputs. The lifetime of the certificate is tied to the
-   lifetime of the session.
+   flow above, but in this case the key is an Ed25519 key generated via
+   derivation from a base key within the Controller, which itself is protected
+   at rest via the "root" KMS for the scope that contains the target. The
+   derivation uses HKDF-SHA256 with the user ID and the session ID as inputs.
+   The lifetime of the certificate is tied to the lifetime of the session.
 
 2. The certificate and private key (along with other session authorization data,
    notably the session ID) are returned to the client as part of the output of an

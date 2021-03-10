@@ -116,12 +116,12 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 
 	if strutil.StrListContains(flagsPasswordMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 1
+		return base.CommandUserError
 	}
 
 	var opts []authmethods.Option
@@ -131,7 +131,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		case "create":
 			if c.FlagScopeId == "" {
 				c.PrintCliError(errors.New("Scope ID must be passed in via -scope-id or BOUNDARY_SCOPE_ID"))
-				return 1
+				return base.CommandUserError
 			}
 		}
 	}
@@ -139,7 +139,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	authmethodsClient := authmethods.NewClient(client)
 
@@ -180,8 +180,8 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := extraPasswordFlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extraPasswordFlagsHandlingFunc(c, &opts); !ok {
+		return base.CommandUserError
 	}
 
 	var result api.GenericResult
@@ -201,19 +201,19 @@ func (c *PasswordCommand) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustomPasswordActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -225,17 +225,19 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return base.CommandCliError
+		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (
 	extraPasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraPasswordSynopsisFunc        = func(*PasswordCommand) string { return "" }
 	extraPasswordFlagsFunc           = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]authmethods.Option) int { return 0 }
+	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]authmethods.Option) bool { return true }
 	executeExtraPasswordActions      = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

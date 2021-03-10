@@ -79,10 +79,13 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		func(_ db.Reader, w db.Writer) error {
 			newArgon2Conf = c.clone()
 			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-				return err
+				return errors.Wrap(err, op, errors.WithMsg("unable to create argon conf"))
 			}
 			newAuthMethod = m.clone()
-			return w.Create(ctx, newAuthMethod, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if err := w.Create(ctx, newAuthMethod, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to create auth method"))
+			}
+			return nil
 		},
 	)
 
@@ -97,7 +100,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 // LookupAuthMethod will look up an auth method in the repository.  If the auth method is not
 // found, it will return nil, nil.  All options are ignored.
-func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
+func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, error) {
 	const op = "password.(Repository).LookupAuthMethod"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
@@ -158,10 +161,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 			metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dAc := am.clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 
@@ -245,10 +251,13 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				nullFields,
 				dbOpts...,
 			)
-			if err == nil && rowsUpdated > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsUpdated > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
 		},
 	)
 	if err != nil {
@@ -257,5 +266,5 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(authMethod.PublicId))
 	}
-	return upAuthMethod, rowsUpdated, err
+	return upAuthMethod, rowsUpdated, nil
 }

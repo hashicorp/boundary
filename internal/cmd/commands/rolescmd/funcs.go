@@ -167,7 +167,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) bool {
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
@@ -180,20 +180,20 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
 	case "add-principals", "remove-principals":
 		if len(c.flagPrincipals) == 0 {
 			c.UI.Error("No principals supplied via -principal")
-			return 1
+			return false
 		}
 
 	case "add-grants", "remove-grants":
 		if len(c.flagGrants) == 0 {
 			c.UI.Error("No grants supplied via -grant")
-			return 1
+			return false
 		}
 
 	case "set-principals":
 		switch len(c.flagPrincipals) {
 		case 0:
 			c.UI.Error("No principals supplied via -principal")
-			return 1
+			return false
 		case 1:
 			if c.flagPrincipals[0] == "null" {
 				c.flagPrincipals = nil
@@ -204,7 +204,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
 		switch len(c.flagGrants) {
 		case 0:
 			c.UI.Error("No grants supplied via -grant")
-			return 1
+			return false
 		case 1:
 			if c.flagGrants[0] == "null" {
 				c.flagGrants = nil
@@ -217,12 +217,12 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) int {
 			_, err := perms.Parse("global", grant)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
-				return 1
+				return false
 			}
 		}
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (api.GenericResult, error) {

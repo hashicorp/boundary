@@ -75,7 +75,7 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 	}
 }
 
-func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.Option) int {
+func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.Option) bool {
 	var attributes map[string]interface{}
 	addAttribute := func(name string, value interface{}) {
 		if attributes == nil {
@@ -91,7 +91,7 @@ func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.O
 		length, err := strconv.ParseUint(c.flagMinLoginNameLength, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagMinLoginNameLength, err))
-			return 1
+			return false
 		}
 		addAttribute("min_login_name_length", uint32(length))
 	}
@@ -104,7 +104,7 @@ func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.O
 		length, err := strconv.ParseUint(c.flagMinPasswordLength, 10, 32)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagMinPasswordLength, err))
-			return 1
+			return false
 		}
 		addAttribute("min_password_length", uint32(length))
 	}
@@ -113,5 +113,5 @@ func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.O
 		*opts = append(*opts, authmethods.WithAttributes(attributes))
 	}
 
-	return 0
+	return true
 }

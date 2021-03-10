@@ -137,19 +137,19 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) bool {
 	switch c.Func {
 	case "add-hosts", "remove-hosts":
 		if len(c.flagHosts) == 0 {
 			c.UI.Error("No hosts supplied via -host")
-			return 1
+			return false
 		}
 
 	case "set-hosts":
 		switch len(c.flagHosts) {
 		case 0:
 			c.UI.Error("No hosts supplied via -host")
-			return 1
+			return false
 		case 1:
 			if c.flagHosts[0] == "null" {
 				c.flagHosts = nil
@@ -157,7 +157,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) int {
 		}
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, hostsetClient *hostsets.Client, version uint32, opts []hostsets.Option) (api.GenericResult, error) {
