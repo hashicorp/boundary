@@ -33,7 +33,7 @@ const (
 	// TokenEndpoint is the endpoint the client will poll to see if their
 	// authentication attempt has completed and if successful, they'll
 	// retrieve their Boundary token.
-	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token?token_id=%s" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
 )
 
 type (
