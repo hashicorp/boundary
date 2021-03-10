@@ -203,7 +203,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) bool {
 	// This is custom logic because of the authorized-session handling. If we
 	// support all resources to be looked up by name + scope info we can
 	// eventually graduate this out to the main template.
@@ -214,17 +214,17 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
 				(c.FlagName == "" ||
 					(c.FlagScopeId == "" && c.FlagScopeName == "")) {
 				c.UI.Error("ID was not passed in, but no combination of name and scope ID/name was passed in either")
-				return 1
+				return false
 			}
 			if c.FlagId != "" &&
 				(c.FlagName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
 				c.UI.Error("Cannot specify a target ID and also other lookup parameters")
-				return 1
+				return false
 			}
 		default:
 			if c.FlagId == "" {
 				c.UI.Error("ID is required but not passed in via -id")
-				return 1
+				return false
 			}
 		}
 	}
@@ -237,14 +237,14 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
 	case "add-host-sets", "remove-host-sets":
 		if len(c.flagHostSets) == 0 {
 			c.UI.Error("No host-sets supplied via -host-set")
-			return 1
+			return false
 		}
 
 	case "set-host-sets":
 		switch len(c.flagHostSets) {
 		case 0:
 			c.UI.Error("No host-sets supplied via -host-set")
-			return 1
+			return false
 		case 1:
 			if c.flagHostSets[0] == "null" {
 				c.flagHostSets = nil
@@ -257,7 +257,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) int {
 		}
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {

@@ -17,9 +17,18 @@ import (
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
-// update it based on the field masks provided, and then validate it using
-// Repository.ValidateAuthMethod(...).  If the test succeeds, the auth method
-// is persisted in the repository and the written auth method is returned.
+// and update it based on the field masks provided.
+//
+// The auth method will not be persisted in the repository if the auth
+// method's OperationalStatus is currently ActivePublic or ActivePrivate
+// and the update would have resulted in an incomplete/non-operational
+// auth method.
+//
+// During update, the auth method will be tested/validated against its
+// provider's published OIDC discovery document. If this validation
+// succeeds, the auth method is persisted in the repository, and the
+// written auth method is returned.
+//
 // fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a
 // zero value and included in fieldMask. Name, Description, DiscoveryUrl,
@@ -31,33 +40,20 @@ import (
 // Options supported:
 //
 // * WithDryRun: when this option is provided, the auth method is retrieved from
-// the repo, updated based on the fieldMask, tested via Repository.ValidateAuthMethod,
+// the repo, updated based on the fieldMask, tested via Repository.ValidateDiscoveryInfo,
 // the results of the update are returned, and and any errors reported.  The
 // updates are not peristed to the repository.
 //
-// * WithForce: when this option is provided, the auth method is persistented in
-// the repository without testing it fo validity with Repository.ValidateAuthMethod.
+// * WithForce: when this option is provided, the auth method is persisted in
+// the repository without testing it's validity against its provider's published
+// OIDC discovery document. Even if this option is provided, the auth method will
+//  not be persisted in the repository when the update would have resulted in
+// an incomplete/non-operational auth method and it's OperationalStatus is
+// currently ActivePublic or ActivePrivate.
 //
-// Successful updates must invalidate (delete) the Repository's cache of the
-// oidc.Provider for the AuthMethod.
+// Also, a successful update will invalidate (delete) the Repository's
+// cache of the oidc.Provider for the AuthMethod.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
-
-	// ************************************************************************
-	// ************************************************************************
-	// TODO(jimlambrt) 3/2021: after some discussion, we've aligned on a need to
-	// disambiguate an error raised because the auth method is not "complete" vs
-	// "warnings" raised from Repository.ValidateAuthMethod(...). when an auth
-	// method and the discovery info published by the OIDC provider seem to
-	// indicate that there's a possible configuration issue.  A future PR, will
-	// distinguish between these two different auth method concerns (one an error
-	// and the other being a warning about a possible error/concern).  In that
-	// future PR, callers will not be allowed to "force" and update to an auth
-	// method which is active (private or public), if that updated would result
-	// in an incomplete auth method which would be unusable by users of the
-	// system.
-	// ************************************************************************
-	// ************************************************************************
-
 	const op = "oidc.(Repository).UpdateAuthMethod"
 	if am == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
@@ -108,12 +104,23 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	opts := getOpts(opt...)
 	if opts.withDryRun {
 		updated := applyUpdate(am, origAm, fieldMaskPaths)
-		err := r.ValidateAuthMethod(ctx, WithAuthMethod(updated))
+		if err := am.isComplete(); err != nil {
+			return updated, db.NoRowsAffected, err
+		}
+		err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updated))
 		return updated, db.NoRowsAffected, err
 	}
 
+	// prevent an "active" auth method from being updated in a manner that would create
+	// an incomplete and unusable auth method.
+	if origAm.OperationalState != string(InactiveState) {
+		if err := applyUpdate(am, origAm, fieldMaskPaths).isComplete(); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("update would result in an incomplete auth method"))
+		}
+	}
+
 	if !opts.withForce {
-		if err := r.ValidateAuthMethod(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
+		if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
 	}
@@ -147,6 +154,28 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			filteredDbMask = append(filteredDbMask, f)
 		}
 	}
+	for _, f := range nullFields {
+		switch f {
+		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
+			continue
+		default:
+			filteredNullFields = append(filteredNullFields, f)
+		}
+	}
+
+	// handle no changes...
+	if len(filteredDbMask) == 0 &&
+		len(filteredNullFields) == 0 &&
+		len(addAlgs) == 0 &&
+		len(deleteAlgs) == 0 &&
+		len(addCerts) == 0 &&
+		len(deleteCerts) == 0 &&
+		len(addCallbacks) == 0 &&
+		len(deleteCallbacks) == 0 &&
+		len(addAuds) == 0 &&
+		len(deleteAuds) == 0 {
+		return origAm, db.NoRowsAffected, nil
+	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -172,14 +201,29 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedAm = am.Clone()
 			var authMethodOplogMsg oplog.Message
-			rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			switch {
+			case len(filteredDbMask) == 0 && len(filteredNullFields) == 0:
+				// the auth method's fields are not being updated, just it's value objects, so we need to just update the auth
+				// method's version.
+				updatedAm = am.Clone()
+				updatedAm.Version = uint32(version) + 1
+				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
+				}
+			default:
+				updatedAm = am.Clone()
+				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				}
 			}
 			msgs = append(msgs, &authMethodOplogMsg)
 
@@ -494,21 +538,22 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 	return cp
 }
 
-// ValidateAuthMethod will test/validate the provided AuthMethod.
+// ValidateDiscoveryInfo will test/validate the provided AuthMethod against
+// the info from it's discovery URL.
 //
 // It will verify that all required fields for a working AuthMethod have values.
 //
-// If the AuthMethod contains a DiscoveryUrl for an OIDC provider, ValidateAuthMethod
-// retrieves the OpenID Configuration document. The values in the AuthMethod
+// If the AuthMethod is complete, ValidateDiscoveryInfo retrieves the auth
+// method's OpenID Configuration document. The values in the AuthMethod
 // (and associated data) are validated with the retrieved document. The issuer and
 // id token signing algorithm in the configuration are validated with the
-// retrieved document. ValidateAuthMethod also verifies the authorization, token,
+// retrieved document. ValidateDiscoveryInfo also verifies the authorization, token,
 // and user_info endpoints by connecting to each and uses any certificates in the
 // configuration as trust anchors to confirm connectivity.
 //
 // Options supported are: WithPublicId, WithAuthMethod
-func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) error {
-	const op = "oidc.(Repository).ValidateAuthMethod"
+func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) error {
+	const op = "oidc.(Repository).ValidateDiscoveryInfo"
 	opts := getOpts(opt...)
 	var am *AuthMethod
 	switch {
@@ -527,12 +572,11 @@ func (r *Repository) ValidateAuthMethod(ctx context.Context, opt ...Option) erro
 		return errors.New(errors.InvalidParameter, op, "neither WithPublicId(...) nor WithAuthMethod(...) options were provided")
 	}
 
-	if err := am.isComplete(); err != nil {
-		return errors.Wrap(err, op)
-	}
-
 	// FYI: once converted to an oidc.Provider, any certs configured will be used as trust anchors for all HTTP requests
 	provider, err := convertToProvider(ctx, am)
+	if err != nil && am.OperationalState == string(InactiveState) {
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, op)
 	}

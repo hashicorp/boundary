@@ -89,16 +89,16 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.clone()
 			if err := w.Create(ctx, newAccount, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
 
 			if cred != nil {
 				newCred = cred.clone()
 				if err := newCred.encrypt(ctx, databaseWrapper); err != nil {
-					return err
+					return errors.Wrap(err, op)
 				}
 				if err := w.Create(ctx, newCred, db.WithOplog(oplogWrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-					return err
+					return errors.Wrap(err, op)
 				}
 			}
 			return nil
@@ -180,10 +180,13 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dAc := ac.clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
 		},
 	)
 
@@ -291,10 +294,13 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			returnedAccount = a.clone()
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
-				return errors.ErrMultipleRecords
+			if err != nil {
+				return errors.Wrap(err, op)
 			}
-			return err
+			if rowsUpdated > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
 		},
 	)
 

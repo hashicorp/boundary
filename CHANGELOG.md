@@ -2,25 +2,33 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next (Unreleased)
+## 0.1.8 (2021/03/09)
 
 ### Changes/Deprecations
-
-All of these changes are from [PR
-962](https://github.com/hashicorp/boundary/pull/962):
 
 * api: A few functions have changed places. Notably, instead of `ResponseMap()`
   and `ResponseBody()`, resources simply expose `Response()`. This higher-level
   response object contains the map and body, and also exposes `StatusCode()` in
   place of indivdidual resources.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
+* cli: Error return codes have been standardized across CLI commands. An error
+  code of `1` indicates an error generated from the actual controller API; an
+  error code of `2` is an error encountered due to the CLI command's logic; and
+  an error code of `3` indicates an error that was caused due to user input to
+  the command. (There is some nuance sometimes whether an error is really due to
+  user input or not, but we attempt to be consistent.)
+  [PR](https://github.com/hashicorp/boundary/pull/976)
 
 ### New and Improved
 
@@ -28,9 +36,9 @@ All of these changes are from [PR
   to the user. The filtering takes place server side and uses boolean
   expressions against the JSON representation of returned items. See [the
   documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
-  for more details. ([PR](https://github.com/hashicorp/boundary/pull/952))
-  ([PR](https://github.com/hashicorp/boundary/pull/957))
-  ([PR](https://github.com/hashicorp/boundary/pull/967))
+  for more details. ([PR 1](https://github.com/hashicorp/boundary/pull/952))
+  ([PR 2](https://github.com/hashicorp/boundary/pull/957))
+  ([PR 3](https://github.com/hashicorp/boundary/pull/967))
 * server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
@@ -38,10 +46,14 @@ All of these changes are from [PR
   tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
   re-parsed and new values used
   ([PR](https://github.com/hashicorp/boundary/pull/959))
+* server: In addition to the existing `tls_min_version` listener configuration
+  value, `tls_max_version` is now supported. This should generally be left blank
+  but can be useful for situations where e.g. a load balancer has broken TLS 1.3
+  support, or does not support TLS 1.3 and flags it as a disallowed value.
 
 ## 0.1.7 (2021/02/16)
 
-*Note* This release fixes an upgrade issue affecting users on Postgres 11
+*Note:* This release fixes an upgrade issue affecting users on Postgres 11
 upgrading to 0.1.5 or 0.1.6 and makes a modification to the `boundary dev`
 environment. It is otherwise identical to 0.1.6; see the entry for that version
 for more details.
