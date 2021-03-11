@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -108,12 +109,16 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 	for _, a := range am.SigningAlgs {
 		algs = append(algs, oidc.Alg(a))
 	}
+	cbs := make([]string, 0, len(am.CallbackUrls))
+	for _, c := range am.CallbackUrls {
+		cbs = append(cbs, fmt.Sprintf(CallbackEndpoint, c, am.PublicId))
+	}
 	c, err := oidc.NewConfig(
 		am.DiscoveryUrl,
 		am.ClientId,
 		oidc.ClientSecret(am.ClientSecret),
 		algs,
-		am.CallbackUrls,
+		cbs,
 		oidc.WithAudiences(am.AudClaims...),
 		oidc.WithProviderCA(strings.Join(am.Certificates, "\n")),
 	)
