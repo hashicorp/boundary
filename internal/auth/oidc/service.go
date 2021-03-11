@@ -129,7 +129,7 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	}
 	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, nil)
 	if err != nil {
-		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
+		return nil, errors.New(errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
 	return decryptedMsg, nil
 }
