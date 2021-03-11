@@ -943,17 +943,27 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
 			}
 
-			if attrs.GetDiscoveryUrl() != nil {
-				du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
-				if err != nil || (du.Scheme != "http" && du.Scheme != "https") || du.Host == "" {
-					badFields["attributes.discovery_url"] = "Cannot be parsed as a url."
-				}
-				if strings.Index("/.well-known/openid-configuration/", du.Path) != 0 {
-					// We trim off the path with the expectation that the path is either empty
-					// or '/.well-known/openid-configuration' with a potential trailing '/'.
-					badFields["attributes.discovery_url"] = "URL path should be empty"
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.discovery_url") {
+				if attrs.GetDiscoveryUrl().GetValue() == "" {
+					badFields["attributes.discovery_url"] = "Field required and cannot be set to empty."
+				} else {
+					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
+					if err != nil {
+						badFields["attributes.discovery_url"] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+					}
+					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+						badFields["attributes.discovery_url"] = "The path should be empty or `/.well-known/openid-configuration`"
+					}
 				}
 			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.client_secret") && attrs.GetClientSecret().GetValue() == "" {
+				badFields["attributes.client_secret"] = "Cannot set the client secret to empty."
+			}
+
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.client_id") && attrs.GetClientId().GetValue() == "" {
+				badFields["attributes.client_id"] = "Can change but cannot unset this field."
+			}
+
 			if attrs.GetClientSecretHmac() != "" {
 				badFields["attributes.client_secret_hmac"] = "Field is read only."
 			}
