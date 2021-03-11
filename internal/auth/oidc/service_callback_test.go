@@ -78,8 +78,28 @@ func Test_Callback(t *testing.T) {
 	testNonce := "nonce"
 	tp.SetExpectedAuthNonce(testNonce)
 
+	org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper2, err := kmsCache.GetWrapper(ctx, org2.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	testAuthMethod2 := TestAuthMethod(t, conn, databaseWrapper2, org2.PublicId, InactiveState,
+		TestConvertToUrls(t, tp.Addr())[0],
+		"alice-rp", "fido",
+		WithCertificates(tpCert...),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
+	testProvider2, err := convertToProvider(ctx, testAuthMethod2)
+	require.NoError(t, err)
+	testConfigHash2, err := testProvider2.ConfigHash()
+	require.NoError(t, err)
+
+	setupFn := func() {
+		acct := TestAccount(t, conn, testAuthMethod2.PublicId, TestConvertToUrls(t, tp.Addr())[0], "alice@example.com")
+		_ = iam.TestUser(t, iamRepo, org2.PublicId, iam.WithAccountIds(acct.PublicId))
+	}
+
 	tests := []struct {
 		name              string
+		setup             func()
 		oidcRepoFn        OidcRepoFactory
 		iamRepoFn         IamRepoFactory
 		atRepoFn          AuthTokenRepoFactory
@@ -122,6 +142,148 @@ func Test_Callback(t *testing.T) {
 			wantInfoName:      "alice doe-eve",
 			wantInfoEmail:     "alice@example.com",
 		},
+		{
+			name:              "inactive-valid",
+			setup:             setupFn,
+			oidcRepoFn:        repoFn,
+			iamRepoFn:         iamRepoFn,
+			atRepoFn:          atRepoFn,
+			am:                testAuthMethod2,
+			apiAddrs:          testController.URL,
+			state:             testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash2, testNonce),
+			code:              "simple",
+			wantFinalRedirect: "https://testcontroler.com/hi-alice",
+			wantSubject:       "alice@example.com",
+			wantInfoName:      "alice doe-eve",
+			wantInfoEmail:     "alice@example.com",
+		},
+		{
+			name:            "missing-oidc-repo-fn",
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing oidc repository",
+		},
+		{
+			name:            "missing-iam-repo-fn",
+			oidcRepoFn:      repoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing iam repository",
+		},
+		{
+			name:            "missing-at-repo-fn",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth token repository",
+		},
+		{
+			name:            "missing-state",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing state",
+		},
+		{
+			name:            "missing-code",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing code",
+		},
+		{
+			name:            "missing-auth-method-id",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              func() *AuthMethod { am := AllocAuthMethod(); return &am }(),
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth method",
+		},
+		{
+			name:            "bad-auth-method-id",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              func() *AuthMethod { am := AllocAuthMethod(); am.PublicId = "not-valid"; return &am }(),
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "auth method not-valid not found",
+		},
+		{
+			name:            "bad-state-encoding",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           "unable to decode message",
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "unable to decode message",
+		},
+		{
+			name:            "unable-to-decrypt",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.Decrypt),
+			wantErrContains: "unable to decrypt message",
+		},
+		{
+			name:            "inactive-with-config-change",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod2,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", 1, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.AuthMethodInactive),
+			wantErrContains: "configuration changed during in-flight authentication attempt",
+		},
+		{
+			name:            "expired-attempt",
+			oidcRepoFn:      repoFn,
+			iamRepoFn:       iamRepoFn,
+			atRepoFn:        atRepoFn,
+			am:              testAuthMethod,
+			apiAddrs:        testController.URL,
+			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, -20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:            "simple",
+			wantErrMatch:    errors.T(errors.AuthAttemptExpired),
+			wantErrContains: "request state has expired",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -134,6 +296,10 @@ func Test_Callback(t *testing.T) {
 			excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
 			_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
 
 			tp.SetExpectedAuthNonce("nonce")
 			if tt.am != nil {
@@ -162,7 +328,6 @@ func Test_Callback(t *testing.T) {
 				tp.SetUserInfoReply(info)
 			}
 
-			conn.LogMode(true)
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
