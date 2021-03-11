@@ -16,6 +16,6 @@ import (
 // * Use the authtoken.(Repository).IssueAuthToken to issue the request id's
 // token and mark it as issued in the repo.  If the token is already issue, an
 // error is returned.
-func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepFactory, tokenRequestId string) (string, error) {
+func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFactory, tokenRequestId string) (string, error) {
 	panic("to-do")
 }

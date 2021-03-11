@@ -47,8 +47,8 @@ type (
 	// IamRepoFactory is used by "service functions" to create a new iam repo
 	IamRepoFactory func() (*iam.Repository, error)
 
-	// AuthTokenRepFactory is used by "service functions" to create a new auth token repo
-	AuthTokenRepFactory func() (*authtoken.Repository, error)
+	// AuthTokenRepoFactory is used by "service functions" to create a new auth token repo
+	AuthTokenRepoFactory func() (*authtoken.Repository, error)
 )
 
 // validator defines an optional interface that proto messages can implement
