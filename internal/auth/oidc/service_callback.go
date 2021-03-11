@@ -41,7 +41,7 @@ func Callback(
 	ctx context.Context,
 	oidcRepoFn OidcRepoFactory,
 	iamRepoFn IamRepoFactory,
-	atRepoFn AuthTokenRepFactory,
+	atRepoFn AuthTokenRepoFactory,
 	apiAddr,
 	authMethodId,
 	state, code string) (finalRedirect string, e error) {
@@ -124,7 +124,7 @@ func Callback(
 	}
 
 	// before proceeding, make sure the request hasn't timed out
-	if time.Now().After(reqState.CreateTime.Timestamp.AsTime()) {
+	if time.Now().After(reqState.ExpirationTime.Timestamp.AsTime()) {
 		return "", errors.New(errors.AuthAttemptExpired, op, "request state has expired")
 	}
 
@@ -159,7 +159,7 @@ func Callback(
 	var idTkClaims map[string]interface{}
 	var userInfoClaims map[string]interface{}
 
-	if err := tk.IDToken().Claims(idTkClaims); err != nil {
+	if err := tk.IDToken().Claims(&idTkClaims); err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
 	}
 
@@ -169,7 +169,7 @@ func Callback(
 		if !ok {
 			return "", errors.New(errors.Unknown, op, "subject is not present in return, which should not be possible")
 		}
-		if err := provider.UserInfo(ctx, userInfoTokenSource, sub, userInfoClaims); err != nil {
+		if err := provider.UserInfo(ctx, userInfoTokenSource, sub, &userInfoClaims); err != nil {
 			return "", errors.New(errors.Unknown, op, "unable to get user info from provider", errors.WithWrap(err))
 		}
 	}
@@ -207,7 +207,6 @@ func Callback(
 	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
 		return "", errors.Wrap(err, op)
 	}
-
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil
 }
