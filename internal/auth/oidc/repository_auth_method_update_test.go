@@ -496,7 +496,6 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				want.UpdateTime = updated.UpdateTime
 				want.Version = updated.Version
 				TestSortAuthMethods(t, []*AuthMethod{want, updated})
-				// assert.Equal(want, updated)
 				assert.True(proto.Equal(want.AuthMethod, updated.AuthMethod))
 				if !tt.wantNoRowsUpdate {
 					assert.Equal(1, rowsUpdated)
