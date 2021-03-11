@@ -120,7 +120,7 @@ func Callback(
 		return "", errors.New(errors.Unknown, op, "unable to get provider config hash", errors.WithWrap(err))
 	}
 	if reqState.ProviderConfigHash != hash && am.OperationalState == string(InactiveState) {
-		return fmt.Sprintf(FinalRedirectEndpoint, apiAddr), nil
+		return "", errors.New(errors.AuthMethodInactive, op, "auth method configuration changed during in-flight authentication attempt")
 	}
 
 	// before proceeding, make sure the request hasn't timed out
