@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,7 +25,7 @@ func (r *Repository) upsertAccount(ctx context.Context, authMethodId string, IdT
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	var iss, sub, full_name, email string
+	var iss, sub string
 	var ok bool
 	if iss, ok = IdTokenClaims["iss"].(string); !ok {
 		return nil, errors.New(errors.Unknown, op, "issuer is not present in return, which should not be possible")
@@ -32,37 +33,66 @@ func (r *Repository) upsertAccount(ctx context.Context, authMethodId string, IdT
 	if sub, ok = IdTokenClaims["sub"].(string); !ok {
 		return nil, errors.New(errors.Unknown, op, "subject is not present in return, which should not be possible")
 	}
-	// intentionally ignore "name" and "email" claims are not present and allowing them to be set to empty strings
-	full_name, _ = AccessTokenClaims["name"].(string)
-	email, _ = AccessTokenClaims["email"].(string)
+
+	columns := []string{"public_id", "auth_method_id", "issuer_id", "subject_id"}
+	values := []interface{}{pubId, authMethodId, iss, sub}
+	conflictClauses := []string{}
+
+	var foundEmail, foundName interface{}
+	switch {
+	case AccessTokenClaims["name"] != nil:
+		foundName = AccessTokenClaims["name"]
+		columns, values = append(columns, "full_name"), append(values, foundName)
+	case IdTokenClaims["name"] != nil:
+		foundName = IdTokenClaims["name"]
+		columns, values = append(columns, "full_name"), append(values, foundName)
+	default:
+		conflictClauses = append(conflictClauses, "full_name = NULL")
+	}
+	switch {
+	case AccessTokenClaims["email"] != nil:
+		foundEmail = AccessTokenClaims["email"]
+		columns, values = append(columns, "email"), append(values, foundEmail)
+	case IdTokenClaims["email"] != nil:
+		foundEmail = IdTokenClaims["email"]
+		columns, values = append(columns, "email"), append(values, foundEmail)
+	default:
+		conflictClauses = append(conflictClauses, "email = NULL")
+	}
+
+	if foundName != nil {
+		values = append(values, foundName)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = $%d", len(values)))
+	}
+	if foundEmail != nil {
+		values = append(values, foundEmail)
+		conflictClauses = append(conflictClauses, fmt.Sprintf("email = $%d", len(values)))
+	}
+
+	placeHolders := make([]string, 0, len(columns))
+	for colNum := range columns {
+		placeHolders = append(placeHolders, fmt.Sprintf("$%d", colNum+1))
+	}
+
+	query := fmt.Sprintf(acctUpsertQuery, strings.Join(columns, ", "), strings.Join(placeHolders, ", "), strings.Join(conflictClauses, ", "))
 
 	var rowsUpdated int
 	updatedAcct := AllocAccount()
-	updatedAcct.PublicId = pubId
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Exec(ctx,
-				acctUpsertQuery,
-				[]interface{}{
-					pubId,
-					authMethodId,
-					iss,
-					sub,
-					full_name,
-					email,
-				})
+			rowsUpdated, err = w.Exec(ctx, query, values)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to insert/update auth oidc account"))
 			}
 			if rowsUpdated > 1 {
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row to be updated but got: %d", rowsUpdated))
 			}
-			if err := reader.LookupByPublicId(ctx, &updatedAcct); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account %s", pubId)))
+			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer_id = ? and subject_id = ?", authMethodId, iss, sub); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", authMethodId, iss, sub)))
 			}
 			return nil
 		},
