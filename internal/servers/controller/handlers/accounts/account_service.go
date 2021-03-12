@@ -455,7 +455,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	return handlers.ValidateGetRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -484,7 +484,7 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
@@ -497,16 +497,16 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, password.AccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	return handlers.ValidateDeleteRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+	if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
@@ -520,7 +520,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
+	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -540,7 +540,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
+	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

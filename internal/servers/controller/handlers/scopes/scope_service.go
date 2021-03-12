@@ -463,11 +463,11 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -493,7 +493,7 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 			badFields["type"] = "Org scopes can only be created under the global scope."
 		}
 	case scope.Project.String():
-		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) {
+		if !handlers.ValidId(item.GetScopeId(), scope.Org.Prefix()) {
 			badFields["type"] = "Project scopes can only be created under an org scope."
 		}
 	}
@@ -521,14 +521,14 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Org.String(), req.GetItem().GetType()) {
 			badFields["type"] = "Cannot modify the resource type."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Project.String(), req.GetItem().GetType()) {
@@ -576,11 +576,11 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	case id == "global":
 		badFields["id"] = "Invalid to delete the global scope."
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(id, scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -594,7 +594,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 
 func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
-	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

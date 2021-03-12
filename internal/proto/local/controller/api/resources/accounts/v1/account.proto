@@ -54,3 +54,17 @@ message PasswordAccountAttributes {
 	// The password for this Account.
 	google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true];
 }
+
+message OidcAccountAttributes {
+	// Output only. issuer_id is a case sensitive URL that maps to the OIDC iss claim
+	string issuer_id = 80;
+
+	// Output only. subject_id is a case sensitive string that maps to the OIDC sub claim.
+	string subject_id = 90;
+
+	// full_name is a string that maps to the OIDC name claim
+	string full_name = 100;
+
+	// Output only. email is a string that maps to the OIDC email claim.
+	string email = 110;
+}
