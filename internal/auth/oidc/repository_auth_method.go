@@ -111,7 +111,6 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var rowsUpdated int
 	updatedAcct := AllocAccount()
 	_, err = r.writer.DoTx(
 		ctx,
@@ -119,22 +118,35 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Exec(ctx, query, values)
+			rows, err := w.Query(ctx, query, values)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to insert/update auth oidc account"))
 			}
-			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row to be updated but got: %d", rowsUpdated))
+			defer rows.Close()
+			result := struct {
+				PublicId string
+				Version  int
+			}{}
+			var rowCnt int
+			for rows.Next() {
+				rowCnt += 1
+				err = r.reader.ScanRows(rows, &result)
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for account"))
+				}
+			}
+			if rowCnt > 1 {
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
 			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer_id = ? and subject_id = ?", am.PublicId, iss, sub); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
 			}
-			switch {
-			case updatedAcct.PublicId == pubId:
+			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
+			if result.Version == 1 && updatedAcct.PublicId == pubId {
 				if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, am.ScopeId, &updatedAcct, nil, nil); err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to write create oplog for account"))
 				}
-			default:
+			} else {
 				if len(fieldMasks) > 0 || len(nullMasks) > 0 {
 					acctForOplog := AllocAccount()
 					acctForOplog.PublicId = updatedAcct.PublicId

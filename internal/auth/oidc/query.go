@@ -10,5 +10,6 @@ const (
 			auth_method_id_issuer_id_subject_id_unique
 		do update set
 			%s
+		returning public_id, version
 	`
 )
