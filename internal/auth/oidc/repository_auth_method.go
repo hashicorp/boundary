@@ -158,8 +158,8 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	return &updatedAcct, nil
 }
 
-// upsertOplog will write oplog msgs for account upserts.  Both fieldMasks and nullMasks
-// are allowed to be nil for update operations.
+// upsertOplog will write oplog msgs for account upserts. The db.Writer needs to be the writer for the current
+// transaction that's executing the upsert. Both fieldMasks and nullMasks are allowed to be nil for update operations.
 func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper, operation oplog.OpType, scopeId string, acct *Account, fieldMasks, nullMasks []string) error {
 	const op = "oidc.upsertOplog"
 	if w == nil {
