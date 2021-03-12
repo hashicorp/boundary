@@ -12,12 +12,17 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
+	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	iamStore "github.com/hashicorp/boundary/internal/iam/store"
+
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,7 +124,7 @@ func Test_Callback(t *testing.T) {
 		wantErrContains   string
 	}{
 		{
-			name:              "valid",
+			name:              "simple", // must remain the first test
 			oidcRepoFn:        repoFn,
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
@@ -133,7 +138,7 @@ func Test_Callback(t *testing.T) {
 			wantInfoEmail:     "alice@example.com",
 		},
 		{
-			name:              "dup",
+			name:              "dup", // must follow "simple" unit test
 			oidcRepoFn:        repoFn,
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
@@ -300,6 +305,9 @@ func Test_Callback(t *testing.T) {
 			excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
 			_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
+			// start with no oplog entries
+			_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
+			require.NoError(err)
 
 			if tt.setup != nil {
 				tt.setup()
@@ -331,7 +339,6 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
-
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
@@ -352,6 +359,11 @@ func Test_Callback(t *testing.T) {
 				err := rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
 				require.NoError(err)
 				assert.Equal(0, len(tokens))
+
+				var entries []oplog.Entry
+				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+				require.NoError(err)
+				require.Equalf(0, len(entries), "should not have found oplog entry for %s", tt.am.PublicId)
 				return
 			}
 			require.NoError(err)
@@ -376,6 +388,36 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 			require.Equal(1, len(users))
 			assert.Equal(tk.IamUserId, users[0].PublicId)
+
+			var entries []oplog.Entry
+			err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+			require.NoError(err)
+			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
+			require.NoError(err)
+			types, err := oplog.NewTypeCatalog(
+				oplog.Type{Interface: new(store.Account), Name: "auth_oidc_account"},
+				oplog.Type{Interface: new(iamStore.User), Name: "iam_user"},
+				oplog.Type{Interface: new(authStore.Account), Name: "auth_account"},
+			)
+			require.NoError(err)
+
+			cnt := 0
+			for _, e := range entries {
+				cnt += 1
+				e.Cipherer = oplogWrapper
+				err := e.DecryptData(ctx)
+				require.NoError(err)
+				msgs, err := e.UnmarshalData(types)
+				require.NoError(err)
+				for _, m := range msgs {
+					switch m.TypeName {
+					case "auth_oidc_account":
+					case "iam_user":
+					case "auth_account":
+					}
+					fmt.Println("msg: ", m)
+				}
+			}
 		})
 	}
 }
