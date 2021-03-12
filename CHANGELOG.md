@@ -4,6 +4,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.1.8 (2021/03/10)
 
+### Known Issues
+
+These are specific known issues in the release that we feel are impactful enough
+to call out in this changelog. The full set of open issues is on GitHub.
+
+* cli: When authenticating, changing a password, or a couple of other specific
+  actions on the CLI, if the output format is specified as `json`, the command
+  will panic (after the API call executes). This is due to a preexisting bug
+  that was exposed by the JSON changes described in the changes section below.
+  Although most of our CLI-level tests operate on `json`-format output, because
+  our CLI-level tests use the token helper during execution, the authentication
+  test was using the normal table output since the output was ignored anyways.
+  As a result, our CLI tests did not catch this panic. Our apologies, and we
+  will fix this in the next release.
+
 ### Changes/Deprecations
 
 * api: A few functions have changed places. Notably, instead of `ResponseMap()`
