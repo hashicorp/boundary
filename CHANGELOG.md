@@ -18,6 +18,37 @@ to call out in this changelog. The full set of open issues is on GitHub.
   test was using the normal table output since the output was ignored anyways.
   As a result, our CLI tests did not catch this panic. Our apologies, and we
   will fix this in the next release.
+* Initially Created Scopes: Starting in 0.1.6, When initial scopes are created
+  during `boundary database init`, the associated admin roles aren't created.
+  The intended behavior is to have a role which granted the initially created
+  admin the grant `"id=*;type=*;actions=*"`.  If you want to create these
+  roles now you can run the following commands in the cli:
+```zsh
+  $ boundary scopes list -recursive
+  # Results includes 2 "Generated (org|project) scope" items.
+  # ID: $ORG_SCOPE_ID
+  # ID: $PROJ_SCOPE_ID
+  $ boundary users list -filter "'/item/name' == 'admin'"
+  # Result includes
+  # ID: $ADMIN_USER_ID
+  $ boundary roles create -grant-scope-id $ORG_SCOPE_ID
+  # Result includes
+  # ID: $TMP_ROLE_ID
+  $ boundary roles set-principals -id $TMP_ROLE_ID -principal $ADMIN_USER_ID
+  $ boundary roles set-grants -id $TMP_ROLE_ID -grant "id=*;type=role;actions=create,set-grants,set-principals"
+  $ boundary roles create -scope-id $ORG_SCOPE_ID -name "Admin" -description "Role created for administration of scope $ORG_SCOPE_ID by user $ADMIN_USER_ID at its creation time"
+  # Result includes
+  # ID: $ORG_ADMIN_ROLE_ID
+  $ boundary roles set-grants -id $ORG_ADMIN_ROLE_ID -grant "id=*;type=*;actions=*"
+  $ boundary roles set-principals -id $ORG_ADMIN_ROLE_ID -principal $ADMIN_USER_ID
+  $ boundary roles update -id $TMP_ROLE_ID -grant-scope-id $PROJ_SCOPE_ID
+  $ boundary roles create -scope-id $PROJ_SCOPE_ID -name "Admin" -description "Role created for administration of scope $PROJ_SCOPE_ID by user $ADMIN_USER_ID at its creation time"
+  # Result includes
+  # ID: $PROJ_ADMIN_ROLE_ID
+  $ boundary roles set-grants -id $PROJ_ADMIN_ROLE_ID -grant "id=*;type=*;actions=*"
+  $ boundary roles set-principals -id $PROJ_ADMIN_ROLE_ID -principal $ADMIN_USER_ID
+  $ boundary roles delete -id $TMP_ROLE_ID
+```
 
 ### Changes/Deprecations
 
