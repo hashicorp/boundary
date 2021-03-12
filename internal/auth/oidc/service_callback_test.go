@@ -78,12 +78,16 @@ func Test_Callback(t *testing.T) {
 	testNonce := "nonce"
 	tp.SetExpectedAuthNonce(testNonce)
 
+	tp.SetCustomAudience("foo", "alice-rp")
+
 	org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper2, err := kmsCache.GetWrapper(ctx, org2.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	testAuthMethod2 := TestAuthMethod(t, conn, databaseWrapper2, org2.PublicId, InactiveState,
 		TestConvertToUrls(t, tp.Addr())[0],
 		"alice-rp", "fido",
+		WithAudClaims("foo"),
+		WithMaxAge(-1), // oidc library has a 1 min leeway
 		WithCertificates(tpCert...),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
