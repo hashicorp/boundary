@@ -28,7 +28,7 @@
         margin-bottom: 32px;
 
         & :global(.progress-bar) {
-          background-color: var(--gray-6);
+          background-color: var(--gray-5);
 
           & > span {
             background: var(--boundary);
