@@ -174,7 +174,7 @@ func Callback(
 		}
 	}
 
-	acct, err := r.upsertAccount(ctx, am.PublicId, idTkClaims, userInfoClaims)
+	acct, err := r.upsertAccount(ctx, am, idTkClaims, userInfoClaims)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
