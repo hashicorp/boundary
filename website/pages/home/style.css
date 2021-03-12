@@ -1,8 +1,8 @@
 .p-home {
   & .break-section {
     background: linear-gradient(
-      var(--gray-7) 0%,
-      var(--gray-7) 50%,
+      var(--gray-6) 0%,
+      var(--gray-6) 50%,
       var(--white) 50%,
       var(--white) 100%
     );
@@ -24,7 +24,7 @@
   & .use-cases-section {
     padding-top: 128px;
     padding-bottom: 128px;
-    background-color: var(--gray-7);
+    background-color: var(--gray-6);
 
     @media (max-width: 800px) {
       padding-top: 88px;
