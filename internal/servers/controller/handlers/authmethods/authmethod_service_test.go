@@ -1814,9 +1814,10 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.callback_url_prefixes"},
 				},
 				Item: &pb.AuthMethod{
+					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{"http://example.com"})
+							lv, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
 							f := map[string]*structpb.Value{
 								"callback_url_prefixes": structpb.NewListValue(lv),
 							}
@@ -1834,7 +1835,49 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
-							f["callback_url_prefixes"] = structpb.NewStringValue("new id")
+							cup, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
+							f["callback_url_prefixes"] = structpb.NewListValue(cup)
+							cu, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://somethingnew.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
+							f["callback_urls"] = structpb.NewListValue(cu)
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Change Signing Algos",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{
+					Version: 1,
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+							f := map[string]*structpb.Value{
+								"signing_algorithms": structpb.NewListValue(lv),
+							}
+							return f
+						}(),
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							cup, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+							f["signing_algorithms"] = structpb.NewListValue(cup)
 							return f
 						}(),
 					},
