@@ -35,6 +35,7 @@ const (
 	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
 	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
 	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
+	InternalError         Code = 114 // InternalError represents the system encountered an unexpected condition.
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

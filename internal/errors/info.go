@@ -72,6 +72,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	InternalError: {
+		Message: "internal error",
+		Kind:    Other,
+	},
 	AuthMethodInactive: {
 		Message: "authentication method is inactive",
 		Kind:    State,

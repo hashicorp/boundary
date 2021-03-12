@@ -98,6 +98,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: TooShort,
 		},
 		{
+			name: "InternalError",
+			c:    InternalError,
+			want: InternalError,
+		},
+		{
 			name: "AuthMethodInactive",
 			c:    AuthMethodInactive,
 			want: AuthMethodInactive,
