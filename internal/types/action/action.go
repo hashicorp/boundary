@@ -39,6 +39,7 @@ const (
 	RemoveAccounts   Type = 30
 	ReadSelf         Type = 31
 	CancelSelf       Type = 32
+	ChangeState      Type = 33
 )
 
 var Map = map[string]Type{

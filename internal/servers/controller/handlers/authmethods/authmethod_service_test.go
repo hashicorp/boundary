@@ -26,6 +26,7 @@ import (
 	capoidc "github.com/hashicorp/cap/oidc"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -1537,9 +1538,9 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Name: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
+					ScopeId: o.GetPublicId(),
+					Name:    &wrapperspb.StringValue{Value: "default"},
+					Type:    auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{
 						Fields: defaultReadAttributeFields(),
 					},
@@ -1786,7 +1787,8 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: map[string]*structpb.Value{
 							"client_id": structpb.NewStringValue("new id"),
 						},
-					},},
+					},
+				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
@@ -1823,8 +1825,8 @@ func TestUpdate_OIDC(t *testing.T) {
 							}
 							return f
 						}(),
-						},
 					},
+				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
@@ -1839,45 +1841,6 @@ func TestUpdate_OIDC(t *testing.T) {
 							f["callback_url_prefixes"] = structpb.NewListValue(cup)
 							cu, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://somethingnew.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
 							f["callback_urls"] = structpb.NewListValue(cu)
-							return f
-						}(),
-					},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
-					AuthorizedCollectionActions: authorizedCollectionActions,
-				},
-			},
-		},
-		{
-			name: "Change Signing Algos",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.signing_algorithms"},
-				},
-				Item: &pb.AuthMethod{
-					Version: 1,
-					Attributes: &structpb.Struct{
-						Fields: func() map[string]*structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
-							f := map[string]*structpb.Value{
-								"signing_algorithms": structpb.NewListValue(lv),
-							}
-							return f
-						}(),
-					},
-				},
-			},
-			res: &pbs.UpdateAuthMethodResponse{
-				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
-					Attributes: &structpb.Struct{
-						Fields: func() map[string]*structpb.Value {
-							f := defaultReadAttributeFields()
-							cup, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
-							f["signing_algorithms"] = structpb.NewListValue(cup)
 							return f
 						}(),
 					},
@@ -1949,6 +1912,180 @@ func TestUpdate_OIDC(t *testing.T) {
 				tc.res.Item.Version = 2
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestChangeState(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	pwam := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	tp := capoidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]))
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	signingAlg := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{string(tpAlg)})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+	callbackUrl := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{"https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+	callbackUrlPrefix := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{"https://example.callback:58"})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+
+	wantTemplate := &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     oidcam.GetScopeId(),
+		CreatedTime: oidcam.CreateTime.GetTimestamp(),
+		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
+		Type:        auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"discovery_url":         structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"client_id":             structpb.NewStringValue(tpClientId),
+			"client_secret_hmac":    structpb.NewStringValue("<hmac>"),
+			"state":                 structpb.NewStringValue(string(oidc.InactiveState)),
+			"callback_urls":         callbackUrl,
+			"callback_url_prefixes": callbackUrlPrefix,
+			"signing_algorithms":    signingAlg,
+		}},
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
+			Id:   o.GetPublicId(),
+			Type: o.GetType(),
+		},
+		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
+	// These test cases must be run in this order since these tests rely on the correct versions being provided
+	cases := []struct {
+		name string
+		req  *pbs.ChangeStateRequest
+		res  *pbs.ChangeStateResponse
+		err  bool
+	}{
+		{
+			name: "Password Auth Method",
+			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), State: "inactive"},
+			err:  true,
+		},
+		{
+			name: "No Version Specified",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), State: "inactive"},
+			err:  true,
+		},
+		{
+			name: "Keep Inactive",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "inactive"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				return am
+			}()},
+		},
+		{
+			name: "Make Incomplete Private",
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			err:  true,
+		},
+		{
+			name: "Make Incomplete Public",
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-public"},
+			err:  true,
+		},
+		{
+			name: "Make Complete Private",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-private")
+				am.Version = 2
+				return am
+			}()},
+		},
+		{
+			name: "Make Complete Public",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, State: "active-public"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
+				am.Version = 3
+				return am
+			}()},
+		},
+		{
+			name: "Make Complete Inactive",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, State: "inactive"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("inactive")
+				am.Version = 4
+				return am
+			}()},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, gErr := s.ChangeState(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			if tc.err {
+				require.Error(gErr)
+				return
+			}
+			require.NoError(gErr)
+			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+			}
+			if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
+				for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
+					gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
+					matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
+				}
+				delete(got.Item.Attributes.Fields, "callback_urls")
+				delete(tc.res.Item.Attributes.Fields, "callback_urls")
+			}
+			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ChangeState() got response %q, wanted %q", got, tc.res)
 		})
 	}
 }

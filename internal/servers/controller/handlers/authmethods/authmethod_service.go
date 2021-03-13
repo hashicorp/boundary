@@ -38,6 +38,10 @@ import (
 const (
 	loginNameKey = "login_name"
 	pwKey        = "password"
+
+	stateInactive = "inactive"
+	statePrivate  = "active-private"
+	statePublic   = "active-public"
 )
 
 var (
@@ -241,6 +245,27 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
+}
+
+// ChangeState implements the interface pbs.AuthMethodServiceServer.
+func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (*pbs.ChangeStateResponse, error) {
+	if err := validateChangeStateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.ChangeState)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	am, err := s.changeStateInRepo(ctx, req.GetId(), req.GetState(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	am.Scope = authResults.Scope
+	am.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.Id, IdActions).Strings()
+	if err := populateCollectionAuthorizedActions(ctx, authResults, am); err != nil {
+		return nil, err
+	}
+	return &pbs.ChangeStateResponse{Item: am}, nil
 }
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -547,6 +572,27 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		return false, fmt.Errorf("unable to delete auth method: %w", dErr)
 	}
 	return rows > 0, nil
+}
+
+func (s Service) changeStateInRepo(ctx context.Context, id, state string, version uint32) (*pb.AuthMethod, error) {
+	repo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	var am *oidc.AuthMethod
+	switch state {
+	case stateInactive:
+		am, err = repo.MakeInactive(ctx, id, version)
+	case statePrivate:
+		am, err = repo.MakePrivate(ctx, id, version)
+	case statePublic:
+		am, err = repo.MakePublic(ctx, id, version)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return toAuthMethodProto(am)
 }
 
 func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
@@ -1019,6 +1065,25 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
+	if st := auth.SubtypeFromId(req.GetId()); st != auth.OidcSubtype {
+		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", auth.OidcSubtype.String())
+	}
+	badFields := make(map[string]string)
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Resource version is required."
+	}
+	switch req.GetState() {
+	case stateInactive, statePrivate, statePublic:
+	default:
+		badFields["state"] = fmt.Sprintf("Only supported values are %q, %q, or %q.", stateInactive, statePrivate, statePublic)
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 	return nil
 }
