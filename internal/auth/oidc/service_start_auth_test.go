@@ -159,7 +159,7 @@ func Test_StartAuth(t *testing.T) {
 			}
 
 			now := time.Now()
-			authUrl, tokenUrl, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
+			authUrl, tokenUrl, tokenId, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(authUrl)
@@ -181,10 +181,6 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(authParams["client_id"], []string{tt.authMethod.ClientId})
 			require.Equal(1, len(authParams["nonce"]))
 			require.Equal(1, len(authParams["state"]))
-
-			tokenParams, err := url.ParseQuery(tokenUrl.RawQuery)
-			require.NoError(err)
-			require.Equal(1, len(tokenParams["token_id"]))
 
 			// verify the state in the authUrl can be decrypted and it's correct
 			state := authParams["state"][0]
@@ -220,7 +216,6 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(configHash, reqState.ProviderConfigHash)
 
 			// verify the token_id in the tokenUrl can be decrypted and it's correct
-			tokenId := tokenParams["token_id"][0]
 			wrappedTkReq, err := unwrapMessage(ctx, tokenId)
 			require.NoError(err)
 			wrappingWrapper, err = requestWrappingWrapper(ctx, repo.kms, wrappedTkReq.ScopeId, wrappedTkReq.AuthMethodId)

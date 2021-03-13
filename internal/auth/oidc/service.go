@@ -37,7 +37,7 @@ const (
 	// TokenEndpoint is the endpoint the client will poll to see if their
 	// authentication attempt has completed and if successful, they'll
 	// retrieve their Boundary token.
-	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token?token_id=%s" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
 )
 
 type (
@@ -88,7 +88,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	if err != nil {
 		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
 	}
-	blobInfo, err := wrapper.Encrypt(ctx, marshaled, nil)
+	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
 	if err != nil {
 		return "", errors.New(errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
 	}
@@ -127,14 +127,15 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
 		return nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
 	}
-	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, nil)
+
+	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
 	if err != nil {
-		return nil, errors.New(errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
+		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
 	return decryptedMsg, nil
 }
 
-// unwrapMessage does just that, it unwrappes the encoded reqquest.Wrapper proto message
+// unwrapMessage does just that, it unwraps the encoded request.Wrapper proto message
 func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
 	const op = ""
 	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
@@ -214,7 +215,7 @@ func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) 
 
 // derivedKeyPurpose represents the purpose of the derived key.
 //
-// TODO (jimlambrt 3/2021) ask @jefferai if this should be moved to the kms package
+// In the future, this could be moved to the kms package
 // and exported for others to use.
 type derivedKeyPurpose uint
 

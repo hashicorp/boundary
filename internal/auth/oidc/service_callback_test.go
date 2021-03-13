@@ -351,7 +351,7 @@ func Test_Callback(t *testing.T) {
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Empty(gotRedirect)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
 				assert.Contains(err.Error(), tt.wantErrContains)
 
 				// make sure there are no tokens in the db..
