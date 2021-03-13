@@ -317,7 +317,7 @@ func (r *Repository) allowUserAutoVivify(ctx context.Context, acct *authAccount)
 	if acct == nil {
 		return false, errors.New(errors.InvalidParameter, op, "missing account")
 	}
-	acctScope := allocScope()
+	acctScope := AllocScope()
 	acctScope.PublicId = acct.ScopeId
 	err := r.reader.LookupByPublicId(context.Background(), &acctScope)
 	if err != nil {

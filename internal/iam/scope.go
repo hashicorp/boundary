@@ -35,14 +35,14 @@ var (
 )
 
 func NewOrg(opt ...Option) (*Scope, error) {
-	global := allocScope()
+	global := AllocScope()
 	global.PublicId = "global"
 	return newScope(&global, opt...)
 }
 
 func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	const op = "iam.NewProject"
-	org := allocScope()
+	org := AllocScope()
 	org.PublicId = orgPublicId
 	p, err := newScope(&org, opt...)
 	if err != nil {
@@ -86,7 +86,7 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	return s, nil
 }
 
-func allocScope() Scope {
+func AllocScope() Scope {
 	return Scope{
 		Scope: &store.Scope{},
 	}
@@ -133,7 +133,7 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 				return errors.New(errors.InvalidParameter, op, `org's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
-			parentScope := allocScope()
+			parentScope := AllocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to verify project's org scope"))
