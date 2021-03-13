@@ -314,26 +314,39 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 
 func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
+	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, iam.WithDescription(desc.GetValue()))
+		scopeDesc = desc.GetValue()
+		opts = append(opts, iam.WithDescription(scopeDesc))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, iam.WithName(name.GetValue()))
+		scopeName = name.GetValue()
+		opts = append(opts, iam.WithName(scopeName))
 	}
 	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
 		if !handlers.ValidId(primaryAuthMethodId.GetValue(), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"primary_auth_method_id": "Improperly formatted identifier"})
 		}
-		opts = append(opts, iam.WithPrimaryAuthMethodId(primaryAuthMethodId.GetValue()))
+		scopePrimaryAuthMethodId = primaryAuthMethodId.GetValue()
+		opts = append(opts, iam.WithPrimaryAuthMethodId(scopePrimaryAuthMethodId))
 	}
 	version := item.GetVersion()
 
 	var iamScope *iam.Scope
 	var err error
-	switch parentScope.GetType() {
-	case scope.Global.String():
+	switch {
+	case scopeId == scope.Global.String():
+		// boundary does not allow you to create a new global scope, so
+		// we'll build the required scope by hand for the update.
+		s := iam.AllocScope()
+		s.PublicId = scopeId
+		iamScope = &s
+		iamScope.Description = scopeDesc
+		iamScope.Name = scopeName
+		iamScope.PrimaryAuthMethodId = scopePrimaryAuthMethodId
+	case parentScope.GetType() == scope.Global.String():
 		iamScope, err = iam.NewOrg(opts...)
-	case scope.Org.String():
+	case parentScope.GetType() == scope.Org.String():
 		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
 	if err != nil {
