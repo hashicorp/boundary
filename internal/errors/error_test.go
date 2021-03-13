@@ -15,6 +15,7 @@ import (
 
 func Test_ErrorE(t *testing.T) {
 	t.Parallel()
+	errRecordNotFound := errors.E(errors.WithCode(errors.RecordNotFound))
 	tests := []struct {
 		name string
 		opt  []errors.Option
@@ -25,12 +26,12 @@ func Test_ErrorE(t *testing.T) {
 			opt: []errors.Option{
 				errors.WithCode(errors.InvalidParameter),
 				errors.WithOp("alice.Bob"),
-				errors.WithWrap(errors.ErrRecordNotFound),
+				errors.WithWrap(errRecordNotFound),
 				errors.WithMsg("test msg"),
 			},
 			want: &errors.Err{
 				Op:      "alice.Bob",
-				Wrapped: errors.ErrRecordNotFound,
+				Wrapped: errRecordNotFound,
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
 			},
@@ -54,22 +55,22 @@ func Test_ErrorE(t *testing.T) {
 		{
 			name: "uses-wrapped-code",
 			opt: []errors.Option{
-				errors.WithWrap(errors.ErrRecordNotFound),
+				errors.WithWrap(errRecordNotFound),
 			},
 			want: &errors.Err{
 				Code:    errors.RecordNotFound,
-				Wrapped: errors.ErrRecordNotFound,
+				Wrapped: errRecordNotFound,
 			},
 		},
 		{
 			name: "conflicting-withCode-withWrap",
 			opt: []errors.Option{
 				errors.WithCode(errors.InvalidFieldMask),
-				errors.WithWrap(errors.ErrRecordNotFound),
+				errors.WithWrap(errRecordNotFound),
 			},
 			want: &errors.Err{
 				Code:    errors.InvalidFieldMask,
-				Wrapped: errors.ErrRecordNotFound,
+				Wrapped: errRecordNotFound,
 			},
 		},
 	}
@@ -99,11 +100,11 @@ func Test_NewError(t *testing.T) {
 			op:   "alice.Bob",
 			msg:  "test msg",
 			opt: []errors.Option{
-				errors.WithWrap(errors.ErrRecordNotFound),
+				errors.WithWrap(errors.E(errors.WithCode(errors.RecordNotFound))),
 			},
 			want: &errors.Err{
 				Op:      "alice.Bob",
-				Wrapped: errors.ErrRecordNotFound,
+				Wrapped: errors.E(errors.WithCode(errors.RecordNotFound)),
 				Msg:     "test msg",
 				Code:    errors.InvalidParameter,
 			},
@@ -338,6 +339,7 @@ func TestError_Error(t *testing.T) {
 func TestError_Unwrap(t *testing.T) {
 	t.Parallel()
 	testErr := errors.E(errors.WithMsg("test error"))
+	errInvalidParameter := errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("test error"))
 
 	tests := []struct {
 		name      string
@@ -347,9 +349,9 @@ func TestError_Unwrap(t *testing.T) {
 	}{
 		{
 			name:      "ErrInvalidParameter",
-			err:       errors.E(errors.WithWrap(errors.ErrInvalidParameter)),
-			want:      errors.ErrInvalidParameter,
-			wantIsErr: errors.ErrInvalidParameter,
+			err:       errors.E(errors.WithWrap(errInvalidParameter)),
+			want:      errInvalidParameter,
+			wantIsErr: errInvalidParameter,
 		},
 		{
 			name:      "testErr",
@@ -450,7 +452,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(errors.Is(e, errors.ErrNotUnique))
+		assert.True(errors.Match(errors.T(errors.NotUnique), e))
 		assert.Equal("db.Exec: duplicate key value violates unique constraint \"test_table_name_key\": unique constraint violation: integrity violation: error #1002", e.Error())
 	})
 	t.Run("ErrCodeNotNull", func(t *testing.T) {
@@ -462,7 +464,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(errors.Is(e, errors.ErrNotNull))
+		assert.True(errors.Match(errors.T(errors.NotNull), e))
 		assert.Equal("db.Exec: description must not be empty: not null constraint violated: integrity violation: error #1001", e.Error())
 	})
 	t.Run("ErrCodeCheckConstraint", func(t *testing.T) {
@@ -474,7 +476,7 @@ func TestConvertError(t *testing.T) {
 
 		e := errors.Convert(err)
 		require.NotNil(e)
-		assert.True(errors.Is(e, errors.ErrCheckConstraint))
+		assert.True(errors.Match(errors.T(errors.CheckConstraint), err))
 		assert.Equal("db.Exec: test_table_five_check constraint failed: check constraint violated: integrity violation: error #1000", e.Error())
 	})
 	t.Run("MissingTable", func(t *testing.T) {

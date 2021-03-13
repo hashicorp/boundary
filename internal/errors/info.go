@@ -72,6 +72,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	AuthMethodInactive: {
+		Message: "authentication method is inactive",
+		Kind:    State,
+	},
+	AuthAttemptExpired: {
+		Message: "authentication attempt has expired",
+		Kind:    State,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,

@@ -104,19 +104,19 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) int {
+func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) bool {
 	switch c.Func {
 	case "add-accounts", "remove-accounts":
 		if len(c.flagAccounts) == 0 {
 			c.UI.Error("No accounts supplied via -account")
-			return 1
+			return false
 		}
 
 	case "set-accounts":
 		switch len(c.flagAccounts) {
 		case 0:
 			c.UI.Error("No accounts supplied via -account")
-			return 1
+			return false
 		case 1:
 			if c.flagAccounts[0] == "null" {
 				c.flagAccounts = nil
@@ -124,7 +124,7 @@ func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) int {
 		}
 	}
 
-	return 0
+	return true
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, userClient *users.Client, version uint32, opts []users.Option) (api.GenericResult, error) {

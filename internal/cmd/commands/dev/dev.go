@@ -259,7 +259,7 @@ func (c *Command) Run(args []string) int {
 
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	// childShutdownCh := make(chan struct{})
@@ -267,16 +267,16 @@ func (c *Command) Run(args []string) int {
 	c.Config, err = config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
-			return 1
+			return base.CommandUserError
 		}
 		if !handlers.ValidId("abc", "abc_"+c.flagIdSuffix) {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
-			return 1
+			return base.CommandUserError
 		}
 		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
@@ -305,17 +305,17 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		if !strings.Contains(err.Error(), "missing port") {
 			c.UI.Error(fmt.Errorf("Invalid host address specified: %w", err).Error())
-			return 1
+			return base.CommandUserError
 		}
 		host = c.flagHostAddress
 	}
 	if port != "" {
 		c.UI.Error(`Port must not be specified as part of the dev host address`)
-		return 1
+		return base.CommandUserError
 	}
 	if c.flagTargetSessionMaxSeconds < 0 {
 		c.UI.Error(`Specified target session max sessions cannot be negative`)
-		return 1
+		return base.CommandUserError
 	}
 	c.DevTargetSessionMaxSeconds = c.flagTargetSessionMaxSeconds
 	c.DevTargetSessionConnectionLimit = c.flagTargetSessionConnectionLimit
@@ -326,7 +326,7 @@ func (c *Command) Run(args []string) int {
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
 			c.UI.Error("Only one purpose supported for each listener")
-			return 1
+			return base.CommandUserError
 		}
 		switch l.Purpose[0] {
 		case "api":
@@ -359,28 +359,28 @@ func (c *Command) Run(args []string) int {
 
 	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	c.InfoKeys = append(c.InfoKeys, "controller public cluster addr")
 	c.Info["controller public cluster addr"] = c.Config.Controller.PublicClusterAddr
 
 	if err := c.SetupWorkerPublicAddress(c.Config, c.flagWorkerPublicAddr); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
 	c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	base.StartMemProfiler(c.Logger)
 
 	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.flagRecoveryKey != "" {
@@ -388,15 +388,15 @@ func (c *Command) Run(args []string) int {
 	}
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 	if c.RootKms == nil {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
-		return 1
+		return base.CommandUserError
 	}
 	if c.WorkerAuthKms == nil {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return 1
+		return base.CommandUserError
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
@@ -408,13 +408,13 @@ func (c *Command) Run(args []string) int {
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy"}); err != nil {
 		c.UI.Error(err.Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
-		return 1
+		return base.CommandUserError
 	}
 
 	defer func() {
@@ -432,10 +432,10 @@ func (c *Command) Run(args []string) int {
 		if err := c.CreateDevDatabase(c.Context, "postgres", opts...); err != nil {
 			if err == docker.ErrDockerUnsupported {
 				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
-				return 1
+				return base.CommandCliError
 			}
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
-			return 1
+			return base.CommandCliError
 		}
 		if !c.flagDisableDatabaseDestruction {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
@@ -444,11 +444,11 @@ func (c *Command) Run(args []string) int {
 		c.DatabaseUrl, err = config.ParseAddress(c.flagDatabaseUrl)
 		if err != nil && err != config.ErrNotAUrl {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
-			return 1
+			return base.CommandUserError
 		}
 		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
-			return 1
+			return base.CommandCliError
 		}
 	}
 
@@ -465,7 +465,7 @@ func (c *Command) Run(args []string) int {
 		c.controller, err = controller.New(conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
-			return 1
+			return base.CommandCliError
 		}
 
 		if err := c.controller.Start(); err != nil {
@@ -475,7 +475,7 @@ func (c *Command) Run(args []string) int {
 				retErr = fmt.Errorf("Error shutting down controller: %w", err)
 			}
 			c.UI.Error(retErr.Error())
-			return 1
+			return base.CommandCliError
 		}
 	}
 	{
@@ -488,7 +488,7 @@ func (c *Command) Run(args []string) int {
 		c.worker, err = worker.New(conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
-			return 1
+			return base.CommandCliError
 		}
 
 		if err := c.worker.Start(); err != nil {
@@ -501,7 +501,7 @@ func (c *Command) Run(args []string) int {
 			if err := c.controller.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
-			return 1
+			return base.CommandCliError
 		}
 	}
 
@@ -530,5 +530,5 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }

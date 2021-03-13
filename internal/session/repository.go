@@ -117,7 +117,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				workingSession.KeyId = ""        // KeyId should not be returned in lists
 			} else {
 				if len(workingSession.CtTofuToken) > 0 {
-					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(workingSession.KeyId))
+					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase)
 					if err != nil {
 						return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 					}

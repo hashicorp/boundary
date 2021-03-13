@@ -120,7 +120,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				WithConfiguration(&Argon2Configuration{}),
 			},
 			wantIsErr:  errors.PasswordInvalidConfiguration,
-			wantErrMsg: "password.(Repository).CreateAuthMethod: invalid parameters in password configuration, password violation: error #202",
+			wantErrMsg: "password.(Repository).CreateAuthMethod: password.(Argon2Configuration).validate: missing embedded config: password violation: error #202",
 		},
 		{
 			name: "invalid-with-config-unknown-config-type",

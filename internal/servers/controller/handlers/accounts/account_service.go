@@ -294,7 +294,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
 		switch {
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
@@ -351,10 +351,10 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 		switch {
 		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "Password is too short."})
-		case errors.Is(err, password.ErrPasswordsEqual):
+		case errors.Match(errors.T(errors.PasswordsEqual), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
@@ -376,7 +376,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 		switch {
 		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}
@@ -455,7 +455,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	return handlers.ValidateGetRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -484,7 +484,7 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	return handlers.ValidateUpdateRequest(password.AccountPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
@@ -497,16 +497,16 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, password.AccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	return handlers.ValidateDeleteRequest(password.AccountPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AuthMethodPrefix, req.GetAuthMethodId()) {
+	if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
@@ -520,7 +520,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
+	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -540,7 +540,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(password.AccountPrefix, req.GetId()) {
+	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

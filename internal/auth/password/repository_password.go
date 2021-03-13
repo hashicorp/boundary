@@ -86,10 +86,13 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
 				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(oplogWrapper, metadata))
-				if err == nil && rowsUpdated > 1 {
-					return errors.ErrMultipleRecords
+				if err != nil {
+					return errors.Wrap(err, op)
 				}
-				return err
+				if rowsUpdated > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				}
+				return nil
 			},
 		)
 		if err != nil {
@@ -105,7 +108,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 //
 // Returns nil, db.ErrorRecordNotFound if the account doesn't exist.
 // Returns nil, nil if old does not match the stored password for accountId.
-// Returns nil, ErrPasswordsEqual if old and new are equal.
+// Returns nil, error with code PasswordsEqual if old and new are equal.
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
 	const op = "password.(Repository).ChangePassword"
 	if accountId == "" {
@@ -181,17 +184,20 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
-				return errors.ErrMultipleRecords
-			}
 			if err != nil {
-				return err
+				return errors.Wrap(err, op)
 			}
-			return w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			if rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			if err = w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to create new credential"))
+			}
+			return nil
 		},
 	)
 	if err != nil {
@@ -209,13 +215,13 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 
 	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{authMethodId, loginName})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var aa authAccount
 		if err := r.reader.ScanRows(rows, &aa); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		accts = append(accts, aa)
 	}
@@ -304,24 +310,24 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(db.NoRowsAffected, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 			acct = updatedAccount
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
 				if !errors.IsNotFoundError(err) {
-					return err
+					return errors.Wrap(err, op)
 				}
 			}
 			if oldCred.PrivateId != "" {
 				dCred := oldCred.clone()
 				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
-				if err == nil && rowsDeleted > 1 {
-					return errors.ErrMultipleRecords
-				}
 				if err != nil {
-					return err
+					return errors.Wrap(err, op)
+				}
+				if rowsDeleted > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 				}
 			}
 			if newCred != nil {

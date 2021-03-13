@@ -17,7 +17,7 @@ func newAuthMethodId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }
 
 func newAccountId() (string, error) {
@@ -26,5 +26,5 @@ func newAccountId() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	return id, err
+	return id, nil
 }

@@ -84,7 +84,7 @@ type AuthMethod struct {
 	MaxAge int32 `protobuf:"varint,150,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty" gorm:"default:null"`
 	// signing_algs are the signing algorithms allowed for an oidc auth method.
 	// These are Value Objects that will be stored as SigningAlg messages, and are
-	// operatated on as a complete set.
+	// operated on as a complete set.
 	// @inject_tag: `gorm:"-"`
 	SigningAlgs []string `protobuf:"bytes,160,rep,name=signing_algs,json=signingAlgs,proto3" json:"signing_algs,omitempty" gorm:"-"`
 	// callback_urls are the callback URLs allowed for a specific oidc auth

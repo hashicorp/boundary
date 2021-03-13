@@ -100,8 +100,7 @@ func Test_convertToProvider(t *testing.T) {
 	testAm.CallbackUrls = []string{allowedRedirect}
 	testAm.Certificates = []string{tp.CACert()}
 
-	type args struct {
-	}
+	type args struct{}
 	tests := []struct {
 		name        string
 		am          *AuthMethod
