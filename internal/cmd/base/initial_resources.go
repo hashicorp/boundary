@@ -125,6 +125,24 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
 	b.Info["generated auth method id"] = b.DevAuthMethodId
 
+	// we'll designate the initial password auth method as the primary auth
+	// method id for the global scope, which means the auth method will create
+	// users on first login.  Otherwise, the operator would have to create both
+	// a password account and a user associated with the new account, before
+	// users could successfully login.
+	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create iam repo: %w", err)
+	}
+	globalScope, err := iamRepo.LookupScope(ctx, scope.Global.String())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to lookup global scope: %w", err)
+	}
+	globalScope.PrimaryAuthMethodId = am.PublicId
+	if _, _, err := iamRepo.UpdateScope(ctx, globalScope, globalScope.Version, []string{"PrimaryAuthMethodId"}); err != nil {
+		return nil, nil, fmt.Errorf("unable to set primary auth method for global scope: %w", err)
+	}
+
 	createUser := func(loginName, loginPassword, userId string, admin bool) (*iam.User, error) {
 		// Create the dev admin user
 		if loginName == "" {
