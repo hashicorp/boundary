@@ -53,7 +53,7 @@ func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
 			f.StringVar(&base.StringVar{
 				Name:   flagPrimaryAuthMethodIdName,
 				Target: &c.flagPrimaryAuthMethodId,
-				Usage:  "If set, the primary auth method id for the scope.  A primary auth method is allowed to autovivify users and is used as a source for account full name and email for a scope's users",
+				Usage:  "If set, the primary auth method id for the scope.  A primary auth method is allowed to create users on first login and is also used as a source for account full name and email for a scope's users",
 			})
 		}
 	}
