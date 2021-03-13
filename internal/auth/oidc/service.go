@@ -2,88 +2,230 @@ package oidc
 
 import (
 	"context"
-	"net/url"
+	"crypto/ed25519"
+	"fmt"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+
+	"github.com/mr-tron/base58"
+	"google.golang.org/protobuf/proto"
+)
+
+const (
+	// AttemptExpiration defines the TTL for an authentication attempt
+	AttemptExpiration = 5 * 60 * time.Second
+
+	// FinalRedirectEndpoint is the endpoint that the oidc callback redirect
+	// client to after the callback is complete.
+	FinalRedirectEndpoint = "%s/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
+
+	// CallbackEndpoint is the endpoint for the oidc callback which will be
+	// included in the auth URL returned when an authen attempted is kicked off.
+	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+
+	// TokenEndpoint is the endpoint the client will poll to see if their
+	// authentication attempt has completed and if successful, they'll
+	// retrieve their Boundary token.
+	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
 )
 
 type (
-	// OidcRepoFactory creates a new oidc repo
+	// OidcRepoFactory is used by "service functions" to create a new oidc repo
 	OidcRepoFactory func() (*Repository, error)
 
-	// IamRepoFactory creates a new iam repo
+	// IamRepoFactory is used by "service functions" to create a new iam repo
 	IamRepoFactory func() (*iam.Repository, error)
 
-	// AuthTokenRepFactory creates a new auth token repo
+	// AuthTokenRepFactory is used by "service functions" to create a new auth token repo
 	AuthTokenRepFactory func() (*authtoken.Repository, error)
 )
 
-// ClientInfo contains client info provide during oidc operations.
-type ClientInfo struct {
-	Type         string
-	Version      string
-	RoundTripKVs map[string]string
+// validator defines an optional interface that proto messages can implement
+// which will allow encryptMessage to validate them before encryption.
+type validator interface {
+	Validate() error
 }
 
-// StartAuth accepts a request to start an OIDC authentication/authorization
-// attempt.  It returns two URLs.  authUrl is an OIDC authorization request URL.
-// The authUrl includes a "state" parameter which is encrypted and has a payload
-// which includes (among other things) the final redirect (calculated from the
-// clientInfo), a token_request_id,  and nonce. The tokenUrl is the URL the
-// client can use to retrieve the results of the user's OIDC authentication
-// attempt. The tokenUrl contains a token_request_id, which is encrypted. No
-// options are currently supported.
-func StartAuth(ctx context.Context, kms *kms.Kms, authMethodId string, clientInfo ClientInfo) (authUrl *url.URL, tokenUrl *url.URL, e error) {
-	panic("to-do")
+// encryptMessage will encrypt the message.  The encrypted message will be wrapped in a
+// request.Wrapper and then encoded into the returned string. This function
+// supports encrypting: request.State and request.Token messages.  proto Messages should
+// implement the validator interface, so they can be validated before encryption.
+func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMethod, m proto.Message) (encodedEncryptedState string, e error) {
+	const op = "oidc.encryptMessage"
+	if wrapper == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
+	}
+	if am == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
+	}
+	if m == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing message to encrypt")
+	}
+	switch v := m.(type) {
+	case *request.State, *request.Token:
+	default:
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported message type %v for encryption", v))
+	}
+
+	v, ok := m.(validator)
+	if ok {
+		if err := v.Validate(); err != nil {
+			return "", errors.Wrap(err, op)
+		}
+	}
+	marshaled, err := proto.Marshal(m)
+	if err != nil {
+		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
+	}
+	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
+	if err != nil {
+		return "", errors.New(errors.Encrypt, op, "unable to encrypt message", errors.WithWrap(err))
+	}
+	marshaledBlob, err := proto.Marshal(blobInfo)
+	if err != nil {
+		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal blob"), errors.WithCode(errors.Encode))
+	}
+	wrapped := &request.Wrapper{
+		AuthMethodId: am.PublicId,
+		ScopeId:      am.ScopeId,
+		WrapperKeyId: wrapper.KeyID(),
+		Ct:           marshaledBlob,
+	}
+	if err := wrapped.Validate(); err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	marshaledEncryptedSt, err := proto.Marshal(wrapped)
+	if err != nil {
+		return "", errors.New(errors.Unknown, op, "unable to marshal encrypted message", errors.WithWrap(err))
+	}
+
+	return base58.FastBase58Encoding(marshaledEncryptedSt), nil
 }
 
-// Callback is an oidc domain service function for processing a successful OIDC
-// Authentication Response from an IdP oidc callback. On success, it returns a
-// final redirect URL for the response to the IdP.
-//
-// For more info on a successful OIDC Authentication Response see:
-// https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
-//
-// The service operation includes:
-//
-// * Decrypt the state which has been encrypted with the OIDC DEK. If decryption
-// fails, and error is returned. Decrypted state payload includes the
-// token_request_id, nonce and final_redirect_url.
-//
-// * Exchange the callbackCodeParameter for provider tokens and validate the
-// tokens.  Call UserInfo endpoint using access token.
-//
-// * Use oidc.(Repository).upsertAccount to create/update account using ID
-// Tokens claims. The "sub" claim as external ID and setting email and full name
-// for the account.
-//
-// * Use iam.(Repository).LookupUserWithLogin(...) look up the iam.User matching
-// the Account.
-//
-// * Use the authtoken.(Repository).CreateAuthToken(...) to create a pending
-// auth token for the authenticated user.
-func Callback(
-	ctx context.Context,
-	kms *kms.Kms,
-	oidcRepoFn OidcRepoFactory,
-	iamRepoFn IamRepoFactory,
-	atRepoFn AuthTokenRepFactory,
-	authMethodId, state, code string) (finalRedirect string, e error) {
-	panic("to-do")
+// decryptMessage will decrypt messages that were previously encrypted with oidc.encryptMessage(...)
+// The returned messageBytes can be marshaled via proto.Marshal into the appropriate message.
+func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrappedRequest *request.Wrapper) (messageBytes []byte, e error) {
+	const op = "oidc.decryptMessage"
+	if wrappedRequest == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapped request")
+	}
+	if wrappingWrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapping wrapper")
+	}
+	var blobInfo wrapping.EncryptedBlobInfo
+	if err := proto.Unmarshal(wrappedRequest.Ct, &blobInfo); err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to marshal blob info", errors.WithWrap(err))
+	}
+
+	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
+	if err != nil {
+		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
+	}
+	return decryptedMsg, nil
 }
 
-// TokenRequest is an oidc domain service function for processing a token
-// request from a Boundary client.  Token requests are the result of a Boundary
-// client polling the tokenUrl they received via StartAuth.  On success, it
-// returns Boundary token.
+// unwrapMessage does just that, it unwraps the encoded request.Wrapper proto message
+func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
+	const op = ""
+	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
+	if err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to decode message", errors.WithWrap(err))
+	}
+	var wrapper request.Wrapper
+	if err := proto.Unmarshal(decoded, &wrapper); err != nil {
+		return nil, errors.New(errors.Unknown, op, "unable to marshal encoded/encrypted message", errors.WithWrap(err))
+	}
+	return &wrapper, nil
+}
+
+// requestWrappingWrapper finds the wrapping wrapper to use when encrypting/decrypting
+// both a Request.State and Request.Token.
 //
-// * Decrypt the tokenRequestId.  If encryption fails, it returns an error.
+// It first checks the cache of derived wrappers. If it's not found in the cache, it
+// generates a key based on the scope's oidc DEK, using the scopeId and authMethodId
+// as salt and info for derivation, creates a wrapper for the new key, adds that wrapper
+// to the cache and the returns the wrapper for the new key.
 //
-// * Use the authtoken.(Repository).IssueAuthToken to issue the request id's
-// token and mark it as issued in the repo.  If the token is already issue, an
-// error is returned.
-func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepFactory, tokenRequestId string) (string, error) {
-	panic("to-do")
+// It supports the WithKeyId(...) option which allows you to specify which oidc DEK
+// to use vs the default of just using the latest version of the DEK.
+func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethodId string, opt ...Option) (wrapping.Wrapper, error) {
+	const op = "oidc.(Repository).oidcWrapper"
+	if k == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+	}
+	if scopeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
+	if authMethodId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+	}
+	opts := getOpts(opt...)
+	// get a specific oidcWrapper using the WithKeyId(...) option
+	oidcWrapper, err := k.GetWrapper(ctx, scopeId, kms.KeyPurposeOidc, kms.WithKeyId(opts.withKeyId))
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oidc wrapper"))
+	}
+
+	// What derived key are we looking for?
+	keyId := derivedKeyId(derivedKeyPurposeState, oidcWrapper.KeyID(), authMethodId)
+	derivedWrapper, ok := k.GetDerivedPurposeCache().Load(keyId)
+	if ok {
+		return derivedWrapper.(*aead.Wrapper), nil
+	}
+
+	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethodId
+	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	privKey, _, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return nil, errors.New(errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
+	}
+	wrapper := aead.NewWrapper(nil)
+	if _, err := wrapper.SetConfig(map[string]string{
+		"key_id": keyId,
+	}); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
+	}
+	if err := wrapper.SetAESGCMKeyBytes(privKey); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
+	}
+	// store the derived key in our cache
+	k.GetDerivedPurposeCache().Store(keyId, wrapper)
+
+	return wrapper, nil
+}
+
+// derivedKeyId returns a key that represents the derived key
+func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) string {
+	return fmt.Sprintf("%s.%s.%s", purpose.String(), wrapperKeyId, authMethodId)
+}
+
+// derivedKeyPurpose represents the purpose of the derived key.
+//
+// In the future, this could be moved to the kms package
+// and exported for others to use.
+type derivedKeyPurpose uint
+
+const (
+	derivedKeyPurposeUnknown = iota
+	derivedKeyPurposeState
+)
+
+// String returns a representative string for the key's purpose
+func (k derivedKeyPurpose) String() string {
+	switch k {
+	case derivedKeyPurposeState:
+		return "oidc_state"
+	default:
+		return "oidc_unknown"
+	}
 }

@@ -35,6 +35,8 @@ type options struct {
 	withDryRun              bool
 	withAuthMethod          *AuthMethod
 	withPublicId            string
+	withRoundtripPayload    string
+	withKeyId               string
 }
 
 func getDefaultOptions() options {
@@ -165,5 +167,20 @@ func WithAuthMethod(am *AuthMethod) Option {
 func WithPublicId(publicId string) Option {
 	return func(o *options) {
 		o.withPublicId = publicId
+	}
+}
+
+// WithRoundTripPayload provides an option for passing an payload to be
+// roundtripped during an authentication process.
+func WithRoundtripPayload(payload string) Option {
+	return func(o *options) {
+		o.withRoundtripPayload = payload
+	}
+}
+
+// WithKeyId provides an option for specifying a key id.
+func WithKeyId(id string) Option {
+	return func(o *options) {
+		o.withKeyId = id
 	}
 }

@@ -59,6 +59,8 @@ type Kms struct {
 	externalScopeCache      map[string]*ExternalWrappers
 	externalScopeCacheMutex sync.RWMutex
 
+	derivedPurposeCache sync.Map
+
 	repo *Repository
 }
 
@@ -83,6 +85,10 @@ func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
 // is exported.
 func (k *Kms) GetScopePurposeCache() *sync.Map {
 	return &k.scopePurposeCache
+}
+
+func (k *Kms) GetDerivedPurposeCache() *sync.Map {
+	return &k.derivedPurposeCache
 }
 
 // AddExternalWrappers allows setting the external keys.
@@ -153,7 +159,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
+	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc:
 	case KeyPurposeUnknown:
 		return nil, errors.New(errors.InvalidParameter, op, "missing key purpose")
 	default:
@@ -308,6 +314,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListTokenKeys(ctx)
 	case KeyPurposeSessions:
 		keys, err = repo.ListSessionKeys(ctx)
+	case KeyPurposeOidc:
+		keys, err = repo.ListOidcKeys(ctx)
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -335,6 +343,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
 	case KeyPurposeSessions:
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+	case KeyPurposeOidc:
+		keyVersions, err = repo.ListOidcKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
