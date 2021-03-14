@@ -16,6 +16,9 @@ import (
 // Authentication Response from an IdP oidc callback. On success, it returns a
 // final redirect URL for the response to the IdP.
 //
+// Callback can return several errors including errors.Forbidden for requests
+// with non-unique states (which are replays)
+//
 // For more info on a successful OIDC Authentication Response see:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
 //
@@ -205,6 +208,9 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
+		if errors.Match(errors.T(errors.NotUnique), err) {
+			return "", errors.New(errors.Forbidden, op, "not a unique request", errors.WithWrap(err))
+		}
 		return "", errors.Wrap(err, op)
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.

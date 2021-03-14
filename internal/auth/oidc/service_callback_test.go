@@ -420,6 +420,51 @@ func Test_Callback(t *testing.T) {
 			}
 		})
 	}
+	t.Run("replay-attack-with-dup-state", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		// start with no tokens in the db
+		_, err := rw.Exec(ctx, "delete from auth_token", nil)
+		require.NoError(err)
+		// start with no users in the db
+		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
+		require.NoError(err)
+		// start with no oplog entries
+		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
+		require.NoError(err)
+		tp.SetClientCreds(testAuthMethod.ClientId, testAuthMethod.ClientSecret)
+		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testController.URL, testAuthMethod.PublicId)
+		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
+		state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
+		tp.SetExpectedAuthCode("simple")
+		tp.SetExpectedState(state)
+		gotRedirect, err := Callback(ctx,
+			repoFn,
+			iamRepoFn,
+			atRepoFn,
+			testController.URL,
+			testAuthMethod.PublicId,
+			state,
+			"simple",
+		)
+		require.NoError(err)
+		require.NotNil(gotRedirect)
+
+		gotRedirect2, err := Callback(ctx,
+			repoFn,
+			iamRepoFn,
+			atRepoFn,
+			testController.URL,
+			testAuthMethod.PublicId,
+			state,
+			"simple",
+		)
+		require.Error(err)
+		require.Empty(gotRedirect2)
+		assert.Truef(errors.Match(errors.T(errors.Forbidden), err), "want err code: %q got: %q", errors.InvalidParameter, err)
+		assert.Contains(err.Error(), "not a unique request")
+	})
 }
 
 // testState will make a request.State and encrypt/encode within a request.Wrapper.
