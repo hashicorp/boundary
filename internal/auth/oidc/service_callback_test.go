@@ -402,6 +402,7 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 
 			cnt := 0
+			foundAcct, foundOidcAcct := false, false
 			for _, e := range entries {
 				cnt += 1
 				e.Cipherer = oplogWrapper
@@ -412,12 +413,18 @@ func Test_Callback(t *testing.T) {
 				for _, m := range msgs {
 					switch m.TypeName {
 					case "auth_oidc_account":
+						foundOidcAcct = true
+						t.Log("test: ", tt.name, "found oidc: ", m)
 					case "iam_user":
+						t.Log("test: ", tt.name, "found iam user: ", m)
 					case "auth_account":
+						foundAcct = true
+						t.Log("test: ", tt.name, "found acct", m)
 					}
-					fmt.Println("msg: ", m)
 				}
 			}
+			assert.Truef(foundAcct, "expected to find auth account oplog entry")
+			assert.Truef(foundOidcAcct, "expected to find auth oidc account oplog entry")
 		})
 	}
 	t.Run("replay-attack-with-dup-state", func(t *testing.T) {
