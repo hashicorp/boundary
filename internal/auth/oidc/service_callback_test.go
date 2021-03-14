@@ -523,6 +523,9 @@ func Test_Callback(t *testing.T) {
 		// * 5) callback will send 302 back to client with final redirect
 		// * 6) 302 redirected to testControllerSrv's final redirect handler.
 		// * 7) final redirect handler sends "Congratulations" msg back to client.
+		//
+		// If this succeeds, then the service functions of StartAuth(...) and
+		// Callback(...) are successfully working together.
 		resp, err := client.Get(authUrl.String())
 		require.NoError(err)
 		defer resp.Body.Close()
