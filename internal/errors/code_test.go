@@ -99,8 +99,8 @@ func TestCode_Both_String_Info(t *testing.T) {
 		},
 		{
 			name: "InternalError",
-			c:    InternalError,
-			want: InternalError,
+			c:    Internal,
+			want: Internal,
 		},
 		{
 			name: "AuthMethodInactive",

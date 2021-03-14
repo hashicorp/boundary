@@ -72,10 +72,6 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
-	InternalError: {
-		Message: "internal error",
-		Kind:    Other,
-	},
 	AuthMethodInactive: {
 		Message: "authentication method is inactive",
 		Kind:    State,
@@ -123,6 +119,14 @@ var errorCodeInfo = map[Code]Info{
 	GenCert: {
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
+	},
+	Internal: {
+		Message: "internal error",
+		Kind:    Other,
+	},
+	Forbidden: {
+		Message: "forbidden",
+		Kind:    Other,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",

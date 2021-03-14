@@ -35,7 +35,6 @@ const (
 	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
 	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
 	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
-	InternalError         Code = 114 // InternalError represents the system encountered an unexpected condition.
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
@@ -61,6 +60,10 @@ const (
 	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
 	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
 	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
+
+	// General system errors are reserved Codes 400-599 and align with http client and server error codes
+	Forbidden Code = 403 // Forbidden represents the operation is forbidden
+	Internal  Code = 500 // InternalError represents the system encountered an unexpected condition.
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
