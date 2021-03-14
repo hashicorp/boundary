@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,7 +45,9 @@ const defaultSigningAlgTableName = "auth_oidc_signing_alg"
 
 // SigningAlg defines an signing algorithm supported by an OIDC auth method.
 // It is assigned to an OIDC AuthMethod and updates/deletes to that AuthMethod
-// are cascaded to its SigningAlgs.
+// are cascaded to its SigningAlgs. SigningAlgs are value objects of an AuthMethod,
+// therefore there's no need for oplog metadata, since only the AuthMethod will have
+// metadata because it's the root aggregate.
 type SigningAlg struct {
 	*store.SigningAlg
 	tableName string
@@ -111,17 +112,4 @@ func (s *SigningAlg) TableName() string {
 // SetTableName sets the table name.
 func (s *SigningAlg) SetTableName(n string) {
 	s.tableName = n
-}
-
-// oplog will create oplog metadata for the SigningAlg.
-func (s *SigningAlg) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{s.OidcMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth signing alg"},
-		"op-type":            []string{op.String()},
-	}
-	if authMethodScopeId != "" {
-		metadata["scope-id"] = []string{authMethodScopeId}
-	}
-	return metadata
 }
