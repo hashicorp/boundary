@@ -4,21 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
@@ -478,7 +473,6 @@ func Test_Callback(t *testing.T) {
 	})
 	t.Run("startAuth-to-Callback", func(t *testing.T) {
 		// let's see if we can successfully test StartAuth(...) through Callback(...)
-
 		assert, require := assert.New(t), require.New(t)
 
 		// start with no tokens in the db
@@ -500,7 +494,7 @@ func Test_Callback(t *testing.T) {
 			WithCertificates(tpCert...),
 			WithSigningAlgs(Alg(tpAlg)),
 			WithCallbackUrls(TestConvertToUrls(t, controller.Addr())[0]))
-		org, _ = iamRepo.LookupScope(ctx, org.PublicId) // need the updated org version, so we can set the primaray auth method id
+		org, _ = iamRepo.LookupScope(ctx, org.PublicId) // need the updated org version, so we can set the primary auth method id
 		require.NoError(err)
 		iam.TestSetPrimaryAuthMethod(t, iamRepo, org, endToEndAuthMethod.PublicId)
 
@@ -521,192 +515,19 @@ func Test_Callback(t *testing.T) {
 		tp.SetExpectedAuthCode("simple")
 
 		client := tp.HTTPClient()
+		// this http request will:
+		// * 1) go to the TestProvider, where auth/authz will be faked.
+		// * 2) TestProvider will send 302 back to the client for callback
+		// * 3) 302 redirected to testControllerSrv's callback handler
+		// * 4) callback handler will exchange the token with the TestProvider
+		// * 5) callback will send 302 back to client with final redirect
+		// * 6) 302 redirected to testControllerSrv's final redirect handler.
+		// * 7) final redirect handler sends "Congratulations" msg back to client.
 		resp, err := client.Get(authUrl.String())
 		require.NoError(err)
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		require.NoError(err)
-		assert.Containsf(string(contents), "Congratulations", "expected contains Congratulations and got: %s", string(contents))
+		assert.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
 	})
-}
-
-// testState will make a request.State and encrypt/encode within a request.Wrapper.
-// the returned string can be used as a parameter for functions like: oidc.Callback
-func testState(
-	t *testing.T,
-	am *AuthMethod,
-	kms *kms.Kms,
-	tokenRequestId string,
-	expIn time.Duration,
-	finalRedirect string,
-	providerHash uint64,
-	nonce string,
-) string {
-	t.Helper()
-	ctx := context.Background()
-	require := require.New(t)
-	require.NotNil(am)
-	require.NotNil(kms)
-
-	now := time.Now()
-	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
-	require.NoError(err)
-	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
-	require.NoError(err)
-
-	st := &request.State{
-		TokenRequestId:     tokenRequestId,
-		CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
-		ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
-		FinalRedirectUrl:   finalRedirect,
-		Nonce:              nonce,
-		ProviderConfigHash: providerHash,
-	}
-	requestWrapper, err := requestWrappingWrapper(ctx, kms, am.ScopeId, am.PublicId)
-	require.NoError(err)
-	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
-	require.NoError(err)
-	return encodedEncryptedSt
-}
-
-// testControllerSrv is a test http server that supports the following
-// endpoints:
-//
-// * /v1/auth-methods/<auth_method_id>:authenticate:callback
-//
-// * /authentication-complete
-//
-// * /authentication-error"
-type testControllerSrv struct {
-	mu sync.RWMutex
-
-	authMethodId string
-	oidcRepoFn   OidcRepoFactory
-	iamRepoFn    IamRepoFactory
-	atRepoFn     AuthTokenRepoFactory
-	httpServer   *httptest.Server
-	t            *testing.T
-}
-
-// startControllerSrv returns a running testControllerSrv
-func startControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
-	require := require.New(t)
-	require.NotNil(t)
-	t.Helper()
-	// the repo functions are allowed to be nil
-	s := &testControllerSrv{
-		t:          t,
-		oidcRepoFn: oidcRepoFn,
-		iamRepoFn:  iamRepoFn,
-		atRepoFn:   atRepoFn,
-	}
-	s.httpServer = httptest.NewServer(s)
-	s.httpServer.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
-	s.t.Cleanup(s.Stop)
-	return s
-}
-
-// SetAuthMethodId will set the auth method id used for various
-// operations
-func (s *testControllerSrv) SetAuthMethodId(authMethodId string) {
-	s.t.Helper()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.authMethodId = authMethodId
-}
-
-// AuthMethodId returns the auth method id currently being used
-// for various operations
-func (s *testControllerSrv) AuthMethodId() string {
-	s.t.Helper()
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.authMethodId
-}
-
-// Addr returns the scheme.host.port of the running srv.
-func (s *testControllerSrv) Addr() string {
-	s.t.Helper()
-	return s.httpServer.URL
-}
-
-// FinalRedirectUrl returns the final redirect url for the srv,
-// including scheme.host.port and path
-func (s *testControllerSrv) FinalRedirectUrl() string {
-	s.t.Helper()
-	return fmt.Sprintf(FinalRedirectEndpoint, s.Addr())
-}
-
-// CallbackUrl returns the final callback url for the srv,
-// including scheme.host.port and path
-func (s *testControllerSrv) CallbackUrl() string {
-	s.t.Helper()
-	require := require.New(s.t)
-	require.NotEmptyf(s.authMethodId, "auth method id was missing")
-	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethodId)
-}
-
-// ServeHTTP satisfies the http.Handler interface
-func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	s.t.Helper()
-	require := require.New(s.t)
-	switch req.URL.Path {
-	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethodId):
-		err := req.ParseForm()
-		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
-		state := req.FormValue("state")
-		code := req.FormValue("code")
-		error := req.FormValue("error")
-
-		switch {
-		case error != "":
-			errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, error)
-			s.t.Log("auth error: ", errorRedirectTo)
-			http.RedirectHandler(errorRedirectTo, 301)
-		default:
-			redirectTo, err := Callback(context.Background(),
-				s.oidcRepoFn,
-				s.iamRepoFn,
-				s.atRepoFn,
-				s.Addr(),
-				s.authMethodId,
-				state,
-				code,
-			)
-			if err != nil {
-				errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, url.QueryEscape(err.Error()))
-				s.t.Log("callback error: ", errorRedirectTo)
-				http.RedirectHandler(errorRedirectTo, 302)
-				return
-			}
-			s.t.Log("callback success: ", redirectTo)
-			http.Redirect(w, req, redirectTo, http.StatusFound)
-			// http.RedirectHandler(redirectTo, 302)
-		}
-		return
-	case "/authentication-complete":
-		s.t.Log("authentication-complete")
-		_, err := w.Write([]byte("Successful authentication. Congratulations!"))
-		require.NoErrorf(err, "%s: internal error: %w", req.URL.Path, err)
-		return
-	case "/authentication-error":
-		s.t.Log("authentication-error")
-		err := req.ParseForm()
-		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
-		error := req.FormValue("error")
-		_, err = w.Write([]byte(fmt.Sprintf("authentication error: %s", error)))
-		require.NoErrorf(err, "%s: internal error: %w", req.URL.Path, err)
-	default:
-		s.t.Log("path not found: ", req.URL.Path)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-}
-
-// Stop stops the running testControllerSrv.  This is called as a test clean up function
-// which is initialized when starting the srv
-func (s *testControllerSrv) Stop() {
-	s.t.Helper()
-	s.httpServer.Close()
 }
