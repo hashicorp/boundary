@@ -181,7 +181,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 		return errors.New(errors.InvalidParameter, op, "missing oplog wrapper")
 	}
 	if operation != oplog.OpType_OP_TYPE_CREATE && operation != oplog.OpType_OP_TYPE_UPDATE {
-		return errors.New(errors.InternalError, op, fmt.Sprintf("not a supported operation: %s", operation))
+		return errors.New(errors.Internal, op, fmt.Sprintf("not a supported operation: %s", operation))
 	}
 	if scopeId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing scope id")
@@ -199,11 +199,11 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	metadata := acct.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId)
 	acctAsReplayable, ok := interface{}(acct).(oplog.ReplayableMessage)
 	if !ok {
-		return errors.New(errors.InternalError, op, "account is not replayable")
+		return errors.New(errors.Internal, op, "account is not replayable")
 	}
 	acctAsProto, ok := interface{}(acct).(proto.Message)
 	if !ok {
-		return errors.New(errors.InternalError, op, "account is not a proto message")
+		return errors.New(errors.Internal, op, "account is not a proto message")
 	}
 	msg := oplog.Message{
 		Message:        acctAsProto,
