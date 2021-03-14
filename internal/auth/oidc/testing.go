@@ -324,8 +324,8 @@ type testControllerSrv struct {
 	t            *testing.T
 }
 
-// startControllerSrv returns a running testControllerSrv
-func startControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
+// startTestControllerSrv returns a running testControllerSrv
+func startTestControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
 	require := require.New(t)
 	require.NotNil(t)
 	t.Helper()

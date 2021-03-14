@@ -486,7 +486,7 @@ func Test_Callback(t *testing.T) {
 		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
 		require.NoError(err)
 
-		controller := startControllerSrv(t, repoFn, iamRepoFn, atRepoFn)
+		controller := startTestControllerSrv(t, repoFn, iamRepoFn, atRepoFn)
 
 		endToEndAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
 			TestConvertToUrls(t, tp.Addr())[0],
