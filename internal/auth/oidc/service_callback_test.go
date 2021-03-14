@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,6 +31,8 @@ import (
 )
 
 func Test_Callback(t *testing.T) {
+	// DO NOT run these tests under t.Parallel(), there be dragons because of dependencies on the
+	// Database and TestProvider state
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -472,6 +476,58 @@ func Test_Callback(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.Forbidden), err), "want err code: %q got: %q", errors.InvalidParameter, err)
 		assert.Contains(err.Error(), "not a unique request")
 	})
+	t.Run("startAuth-to-Callback", func(t *testing.T) {
+		// let's see if we can successfully test StartAuth(...) through Callback(...)
+
+		assert, require := assert.New(t), require.New(t)
+
+		// start with no tokens in the db
+		_, err := rw.Exec(ctx, "delete from auth_token", nil)
+		require.NoError(err)
+		// start with no users in the db
+		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
+		require.NoError(err)
+		// start with no oplog entries
+		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
+		require.NoError(err)
+
+		controller := startTestCallbackSrv(t, repoFn, iamRepoFn, atRepoFn)
+
+		endToEndAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+			TestConvertToUrls(t, tp.Addr())[0],
+			"end-to-end-rp", "fido",
+			WithCertificates(tpCert...),
+			WithSigningAlgs(Alg(tpAlg)),
+			WithCallbackUrls(TestConvertToUrls(t, controller.Addr())[0]))
+		org, _ = iamRepo.LookupScope(ctx, org.PublicId) // need the updated org version, so we can set the primaray auth method id
+		require.NoError(err)
+		iam.TestSetPrimaryAuthMethod(t, iamRepo, org, endToEndAuthMethod.PublicId)
+
+		controller.SetAuthMethodId(endToEndAuthMethod.PublicId)
+
+		tp.SetClientCreds(endToEndAuthMethod.ClientId, endToEndAuthMethod.ClientSecret)
+		tpAllowedRedirect := controller.CallbackUrl()
+		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
+		authUrl, _, _, err := StartAuth(ctx, repoFn, controller.Addr(), endToEndAuthMethod.PublicId)
+		require.NoError(err)
+
+		authParams, err := url.ParseQuery(authUrl.RawQuery)
+		require.NoError(err)
+		require.Equal(1, len(authParams["nonce"]))
+		require.Equal(1, len(authParams["state"]))
+		tp.SetExpectedState(authParams["state"][0])
+		tp.SetExpectedAuthNonce(authParams["nonce"][0])
+		tp.SetExpectedAuthCode("simple")
+
+		client := tp.HTTPClient()
+		resp, err := client.Get(authUrl.String())
+		require.NoError(err)
+		defer resp.Body.Close()
+		contents, err := ioutil.ReadAll(resp.Body)
+		require.NoError(err)
+		assert.Containsf(string(contents), "Congratulations", "expected contains Congratulations and got: %s", string(contents))
+	})
 }
 
 // testState will make a request.State and encrypt/encode within a request.Wrapper.
@@ -514,11 +570,14 @@ func testState(
 }
 
 type testCallbackSrv struct {
-	oidcRepoFn OidcRepoFactory
-	iamRepoFn  IamRepoFactory
-	atRepoFn   AuthTokenRepoFactory
-	httpServer *httptest.Server
-	t          *testing.T
+	mu sync.RWMutex
+
+	authMethodId string
+	oidcRepoFn   OidcRepoFactory
+	iamRepoFn    IamRepoFactory
+	atRepoFn     AuthTokenRepoFactory
+	httpServer   *httptest.Server
+	t            *testing.T
 }
 
 func startTestCallbackSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testCallbackSrv {
@@ -534,14 +593,100 @@ func startTestCallbackSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn Ia
 	}
 	s.httpServer = httptest.NewServer(s)
 	s.httpServer.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
-	s.httpServer.Start()
 	s.t.Cleanup(s.Stop)
 	return s
 }
+
+func (s *testCallbackSrv) SetAuthMethodId(authMethodId string) {
+	s.t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authMethodId = authMethodId
+}
+
+func (s *testCallbackSrv) AuthMethodId() string {
+	s.t.Helper()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.authMethodId
+}
+
+func (s *testCallbackSrv) Addr() string {
+	s.t.Helper()
+	return s.httpServer.URL
+}
+
+func (s *testCallbackSrv) FinalRedirectUrl() string {
+	s.t.Helper()
+	return fmt.Sprintf(FinalRedirectEndpoint, s.Addr())
+}
+
+func (s *testCallbackSrv) CallbackUrl() string {
+	s.t.Helper()
+	require := require.New(s.t)
+	require.NotEmptyf(s.authMethodId, "auth method id was missing")
+	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethodId)
+}
+
 func (s *testCallbackSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	s.t.Helper()
+	require := require.New(s.t)
+	switch req.URL.Path {
+	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethodId):
+		err := req.ParseForm()
+		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
+		state := req.FormValue("state")
+		code := req.FormValue("code")
+		error := req.FormValue("error")
+
+		switch {
+		case error != "":
+			errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, error)
+			s.t.Log("auth error: ", errorRedirectTo)
+			http.RedirectHandler(errorRedirectTo, 301)
+		default:
+			redirectTo, err := Callback(context.Background(),
+				s.oidcRepoFn,
+				s.iamRepoFn,
+				s.atRepoFn,
+				s.Addr(),
+				s.authMethodId,
+				state,
+				code,
+			)
+			if err != nil {
+				errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, url.QueryEscape(err.Error()))
+				s.t.Log("callback error: ", errorRedirectTo)
+				http.RedirectHandler(errorRedirectTo, 302)
+				return
+			}
+			s.t.Log("callback success: ", redirectTo)
+			http.Redirect(w, req, redirectTo, http.StatusFound)
+			// http.RedirectHandler(redirectTo, 302)
+		}
+		return
+	case "/authentication-complete":
+		s.t.Log("authentication-complete")
+		_, err := w.Write([]byte("Successful authentication. Congratulations!"))
+		require.NoErrorf(err, "%s: internal error: %w", req.URL.Path, err)
+		return
+	case "/authentication-error":
+		s.t.Log("authentication-error")
+		err := req.ParseForm()
+		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
+		error := req.FormValue("error")
+		_, err = w.Write([]byte(fmt.Sprintf("authentication error: %s", error)))
+		require.NoErrorf(err, "%s: internal error: %w", req.URL.Path, err)
+	default:
+		s.t.Log("path not found: ", req.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 }
 
 // Stop stops the running testCallbackSrv.
 func (s *testCallbackSrv) Stop() {
+	s.t.Helper()
 	s.httpServer.Close()
 }
