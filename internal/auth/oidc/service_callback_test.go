@@ -492,7 +492,7 @@ func Test_Callback(t *testing.T) {
 		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
 		require.NoError(err)
 
-		controller := startTestCallbackSrv(t, repoFn, iamRepoFn, atRepoFn)
+		controller := startControllerSrv(t, repoFn, iamRepoFn, atRepoFn)
 
 		endToEndAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
 			TestConvertToUrls(t, tp.Addr())[0],
@@ -569,7 +569,15 @@ func testState(
 	return encodedEncryptedSt
 }
 
-type testCallbackSrv struct {
+// testControllerSrv is a test http server that supports the following
+// endpoints:
+//
+// * /v1/auth-methods/<auth_method_id>:authenticate:callback
+//
+// * /authentication-complete
+//
+// * /authentication-error"
+type testControllerSrv struct {
 	mu sync.RWMutex
 
 	authMethodId string
@@ -580,12 +588,13 @@ type testCallbackSrv struct {
 	t            *testing.T
 }
 
-func startTestCallbackSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testCallbackSrv {
+// startControllerSrv returns a running testControllerSrv
+func startControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
 	require := require.New(t)
 	require.NotNil(t)
 	t.Helper()
 	// the repo functions are allowed to be nil
-	s := &testCallbackSrv{
+	s := &testControllerSrv{
 		t:          t,
 		oidcRepoFn: oidcRepoFn,
 		iamRepoFn:  iamRepoFn,
@@ -597,38 +606,48 @@ func startTestCallbackSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn Ia
 	return s
 }
 
-func (s *testCallbackSrv) SetAuthMethodId(authMethodId string) {
+// SetAuthMethodId will set the auth method id used for various
+// operations
+func (s *testControllerSrv) SetAuthMethodId(authMethodId string) {
 	s.t.Helper()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.authMethodId = authMethodId
 }
 
-func (s *testCallbackSrv) AuthMethodId() string {
+// AuthMethodId returns the auth method id currently being used
+// for various operations
+func (s *testControllerSrv) AuthMethodId() string {
 	s.t.Helper()
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.authMethodId
 }
 
-func (s *testCallbackSrv) Addr() string {
+// Addr returns the scheme.host.port of the running srv.
+func (s *testControllerSrv) Addr() string {
 	s.t.Helper()
 	return s.httpServer.URL
 }
 
-func (s *testCallbackSrv) FinalRedirectUrl() string {
+// FinalRedirectUrl returns the final redirect url for the srv,
+// including scheme.host.port and path
+func (s *testControllerSrv) FinalRedirectUrl() string {
 	s.t.Helper()
 	return fmt.Sprintf(FinalRedirectEndpoint, s.Addr())
 }
 
-func (s *testCallbackSrv) CallbackUrl() string {
+// CallbackUrl returns the final callback url for the srv,
+// including scheme.host.port and path
+func (s *testControllerSrv) CallbackUrl() string {
 	s.t.Helper()
 	require := require.New(s.t)
 	require.NotEmptyf(s.authMethodId, "auth method id was missing")
 	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethodId)
 }
 
-func (s *testCallbackSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+// ServeHTTP satisfies the http.Handler interface
+func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.t.Helper()
 	require := require.New(s.t)
 	switch req.URL.Path {
@@ -685,8 +704,9 @@ func (s *testCallbackSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 }
 
-// Stop stops the running testCallbackSrv.
-func (s *testCallbackSrv) Stop() {
+// Stop stops the running testControllerSrv.  This is called as a test clean up function
+// which is initialized when starting the srv
+func (s *testControllerSrv) Stop() {
 	s.t.Helper()
 	s.httpServer.Close()
 }
