@@ -471,10 +471,17 @@ func Test_Callback(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.Forbidden), err), "want err code: %q got: %q", errors.InvalidParameter, err)
 		assert.Contains(err.Error(), "not a unique request")
 	})
-	t.Run("startAuth-to-Callback", func(t *testing.T) {
-		// let's see if we can successfully test StartAuth(...) through Callback(...)
-		assert, require := assert.New(t), require.New(t)
+}
 
+// Test_StartAuth_to_Callback will test if we can successfully
+// test StartAuth(...) through Callback(...)
+func Test_StartAuth_to_Callback(t *testing.T) {
+	t.Run("startAuth-to-Callback", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
 		// start with no tokens in the db
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
@@ -486,7 +493,35 @@ func Test_Callback(t *testing.T) {
 		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
 		require.NoError(err)
 
+		rootWrapper := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+		// func pointers for the test controller.
+		iamRepoFn := func() (*iam.Repository, error) {
+			return iam.NewRepository(rw, rw, kmsCache)
+		}
+		repoFn := func() (*Repository, error) {
+			return NewRepository(rw, rw, kmsCache)
+		}
+		atRepoFn := func() (*authtoken.Repository, error) {
+			return authtoken.NewRepository(rw, rw, kmsCache)
+		}
+		atRepo, err := atRepoFn()
+		require.NoError(err)
+
 		controller := startTestControllerSrv(t, repoFn, iamRepoFn, atRepoFn)
+
+		iamRepo := iam.TestRepo(t, conn, rootWrapper)
+		org, _ := iam.TestScopes(t, iamRepo)
+
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(err)
+
+		// the testing OIDC provider (it's a functional fake, see the package docs)
+		tp := oidc.StartTestProvider(t)
+		tpCert, err := ParseCertificates(tp.CACert())
+		require.NoError(err)
+		_, _, tpAlg, _ := tp.SigningKeys()
 
 		endToEndAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
 			TestConvertToUrls(t, tp.Addr())[0],
@@ -494,15 +529,16 @@ func Test_Callback(t *testing.T) {
 			WithCertificates(tpCert...),
 			WithSigningAlgs(Alg(tpAlg)),
 			WithCallbackUrls(TestConvertToUrls(t, controller.Addr())[0]))
-		org, _ = iamRepo.LookupScope(ctx, org.PublicId) // need the updated org version, so we can set the primary auth method id
+
+		// need the updated org version, so we can set the primary auth method id
+		org, _ = iamRepo.LookupScope(ctx, org.PublicId)
 		require.NoError(err)
 		iam.TestSetPrimaryAuthMethod(t, iamRepo, org, endToEndAuthMethod.PublicId)
 
+		// the test controller is stateful and needs to know what auth method id
+		// it's suppose to operate on
 		controller.SetAuthMethodId(endToEndAuthMethod.PublicId)
 
-		tp.SetClientCreds(endToEndAuthMethod.ClientId, endToEndAuthMethod.ClientSecret)
-		tpAllowedRedirect := controller.CallbackUrl()
-		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 		authUrl, _, _, err := StartAuth(ctx, repoFn, controller.Addr(), endToEndAuthMethod.PublicId)
 		require.NoError(err)
 
@@ -510,9 +546,14 @@ func Test_Callback(t *testing.T) {
 		require.NoError(err)
 		require.Equal(1, len(authParams["nonce"]))
 		require.Equal(1, len(authParams["state"]))
+
+		// the TestProvider is stateful and needs to be configured for the upcoming requests.
 		tp.SetExpectedState(authParams["state"][0])
 		tp.SetExpectedAuthNonce(authParams["nonce"][0])
 		tp.SetExpectedAuthCode("simple")
+		tp.SetClientCreds(endToEndAuthMethod.ClientId, endToEndAuthMethod.ClientSecret)
+		tpAllowedRedirect := controller.CallbackUrl()
+		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 
 		client := tp.HTTPClient()
 		// this http request will:
@@ -531,6 +572,15 @@ func Test_Callback(t *testing.T) {
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		require.NoError(err)
-		assert.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
+		require.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
+
+		// check to make sure there's a pending token, after the successful callback
+		var tokens []authtoken.AuthToken
+		err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+		require.NoError(err)
+		require.Equal(1, len(tokens))
+		tk, err := atRepo.LookupAuthToken(ctx, tokens[0].PublicId)
+		require.NoError(err)
+		assert.Equal(tk.Status, string(authtoken.PendingStatus))
 	})
 }
