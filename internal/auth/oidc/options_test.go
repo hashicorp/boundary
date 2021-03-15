@@ -142,4 +142,18 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withPublicId = id
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithRoundtripPayload", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRoundtripPayload("payload"))
+		testOpts := getDefaultOptions()
+		testOpts.withRoundtripPayload = "payload"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithKeyId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithKeyId("specific_id"))
+		testOpts := getDefaultOptions()
+		testOpts.withKeyId = "specific_id"
+		assert.Equal(opts, testOpts)
+	})
 }
