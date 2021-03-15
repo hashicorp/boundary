@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -312,20 +314,39 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 
 func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
+	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, iam.WithDescription(desc.GetValue()))
+		scopeDesc = desc.GetValue()
+		opts = append(opts, iam.WithDescription(scopeDesc))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, iam.WithName(name.GetValue()))
+		scopeName = name.GetValue()
+		opts = append(opts, iam.WithName(scopeName))
+	}
+	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
+		if !handlers.ValidId(handlers.Id(primaryAuthMethodId.GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"primary_auth_method_id": "Improperly formatted identifier"})
+		}
+		scopePrimaryAuthMethodId = primaryAuthMethodId.GetValue()
+		opts = append(opts, iam.WithPrimaryAuthMethodId(scopePrimaryAuthMethodId))
 	}
 	version := item.GetVersion()
 
 	var iamScope *iam.Scope
 	var err error
-	switch parentScope.GetType() {
-	case scope.Global.String():
+	switch {
+	case scopeId == scope.Global.String():
+		// boundary does not allow you to create a new global scope, so
+		// we'll build the required scope by hand for the update.
+		s := iam.AllocScope()
+		s.PublicId = scopeId
+		iamScope = &s
+		iamScope.Description = scopeDesc
+		iamScope.Name = scopeName
+		iamScope.PrimaryAuthMethodId = scopePrimaryAuthMethodId
+	case parentScope.GetType() == scope.Global.String():
 		iamScope, err = iam.NewOrg(opts...)
-	case scope.Org.String():
+	case parentScope.GetType() == scope.Org.String():
 		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
 	if err != nil {
@@ -442,6 +463,10 @@ func ToProto(in *iam.Scope) *pb.Scope {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if in.GetPrimaryAuthMethodId() != "" {
+		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+
 	return &out
 }
 
@@ -554,6 +579,9 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(handlers.Id(item.GetPrimaryAuthMethodId().GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+		badFields["primary_auth_method_id"] = "Improperly formatted identifier."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)

@@ -35,14 +35,14 @@ var (
 )
 
 func NewOrg(opt ...Option) (*Scope, error) {
-	global := allocScope()
+	global := AllocScope()
 	global.PublicId = "global"
 	return newScope(&global, opt...)
 }
 
 func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	const op = "iam.NewProject"
-	org := allocScope()
+	org := AllocScope()
 	org.PublicId = orgPublicId
 	p, err := newScope(&org, opt...)
 	if err != nil {
@@ -54,7 +54,8 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 // newScope creates a new Scope with options: WithName specifies the Scope's
 // friendly name. WithDescription specifies the scope's description. WithScope
 // specifies the Scope's parent and must be filled in. The type of the parent is
-// used to determine the type of the child.
+// used to determine the type of the child. WithPrimaryAuthMethodId specifies
+// the primary auth method for the scope
 func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	const op = "iam.newScope"
 	if parent == nil || parent.PublicId == "" {
@@ -74,17 +75,18 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	s := &Scope{
 		Scope: &store.Scope{
-			Type:        typ.String(),
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			ParentId:    parent.PublicId,
+			Type:                typ.String(),
+			Name:                opts.withName,
+			Description:         opts.withDescription,
+			ParentId:            parent.PublicId,
+			PrimaryAuthMethodId: opts.withPrimaryAuthMethodId,
 		},
 	}
 
 	return s, nil
 }
 
-func allocScope() Scope {
+func AllocScope() Scope {
 	return Scope{
 		Scope: &store.Scope{},
 	}
@@ -131,7 +133,7 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 				return errors.New(errors.InvalidParameter, op, `org's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
-			parentScope := allocScope()
+			parentScope := AllocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to verify project's org scope"))

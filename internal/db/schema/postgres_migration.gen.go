@@ -5069,9 +5069,10 @@ create table auth_oidc_method (
   update_time wt_timestamp,
   version wt_version,
   state text not null
-    references auth_oidc_method_state_enm(name)
-    on delete restrict
-    on update cascade,
+    constraint state_fkey
+      references auth_oidc_method_state_enm(name)
+      on delete restrict
+      on update cascade,
   discovery_url wt_url, -- oidc discovery URL without any .well-known component
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -5081,21 +5082,26 @@ create table auth_oidc_method (
     constraint client_secret_hmac_not_empty
     check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    references kms_database_key_version(private_id) 
-    on delete restrict
-    on update cascade, 
+    constraint key_id_fkey
+      references kms_database_key_version(private_id) 
+      on delete restrict
+      on update cascade, 
   max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
     constraint max_age_not_equal_zero
       check(max_age != 0)
     constraint max_age_not_less_then_negative_one
       check(max_age >= -1), 
-  foreign key (scope_id, public_id)
-      references auth_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-  unique(scope_id, name),
-  unique(scope_id, public_id),
-  unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
+  constraint scope_id_public_id_fkey
+    foreign key (scope_id, public_id)
+        references auth_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+  constraint scope_id_name_unique
+    unique(scope_id, name),
+  constraint scope_id_public_id_unique
+    unique(scope_id, public_id),
+  constraint scope_id_discover_url_client_id_unique
+    unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
 'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
@@ -5105,10 +5111,12 @@ comment on table auth_oidc_method is
 create table auth_oidc_signing_alg (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
   signing_alg_name text 
+    constraint signing_alg_name_fkey
     references auth_oidc_signing_alg_enm(name)
     on delete restrict
     on update cascade,
@@ -5123,6 +5131,7 @@ comment on table auth_oidc_signing_alg is
 create table auth_oidc_callback_url (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5138,6 +5147,7 @@ comment on table auth_oidc_callback_url is
 create table auth_oidc_aud_claim (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5160,6 +5170,7 @@ comment on table auth_oidc_aud_claim is
 create table auth_oidc_certificate (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
+    constraint oidc_method_id_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -5198,16 +5209,20 @@ create table auth_oidc_account (
       ),
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
-    foreign key (scope_id, auth_method_id)
-      references auth_oidc_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    foreign key (scope_id, auth_method_id, public_id)
-      references auth_account (scope_id, auth_method_id, public_id)
-      on delete cascade
-      on update cascade,
-    unique(auth_method_id, name),
-    unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
+    constraint scope_id_auth_method_id_fkey
+      foreign key (scope_id, auth_method_id)
+        references auth_oidc_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint scope_id_auth_method_id_public_id_fkey
+      foreign key (scope_id, auth_method_id, public_id)
+        references auth_account (scope_id, auth_method_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint auth_method_id_name_unique
+      unique(auth_method_id, name),
+    constraint auth_method_id_issuer_id_subject_id_unique
+      unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
 comment on table auth_oidc_method is
@@ -5242,6 +5257,63 @@ create trigger
 after update on auth_oidc_method
   for each row execute procedure update_version_column();
 
+-- active_auth_oidc_method_must_be_complete() defines a function to be used in 
+-- a "before update" trigger for auth_oidc_method entries.  Its intent: prevent
+-- incomplete oidc methods from transitioning out of the "inactive" state.
+create or replace function
+  active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+  begin
+    if new.state != 'inactive' then
+      perform 
+      from 
+        auth_oidc_method am
+       join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
+       join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+      where
+        new.public_id = am.public_id;
+      if not found then 
+        raise exception 'an incomplete oidc auth method must remain inactive';
+      end if;
+    end if;
+    return new;
+  end;
+$$ language plpgsql;
+comment on function active_auth_oidc_method_must_be_complete() is
+'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
+
+create trigger 
+  update_active_auth_oidc_method_must_be_complete
+before
+update on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
+-- new_auth_oidc_method_must_be_inactive() defines a function to be used in 
+-- a "before insert" trigger for auth_oidc_method entries.  Its intent: 
+-- only allow "inactive" auth methods to be inserted.  Why? there's no way
+-- you can insert an entry that's anything but incomplete, since we have a 
+-- chicken/egg problem: you need the auth method id to create the required
+-- signing algs and callback URL value objects.
+create or replace function
+  new_auth_oidc_method_must_be_inactive()
+  returns trigger 
+as $$
+  begin
+    if new.state != 'inactive' then
+      raise exception 'an incomplete oidc method must be inactive';
+    end if;
+  end;
+$$ language plpgsql;
+comment on function new_auth_oidc_method_must_be_inactive() is
+'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
+
+create trigger 
+  new_auth_oidc_method_must_be_inactive
+before
+insert on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
 -- auth_oidc_account column triggers
 create trigger
   update_time_column
@@ -5272,8 +5344,53 @@ before insert on auth_oidc_account
   for each row execute procedure insert_auth_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
--- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg,
--- auth_oidc_requested_scope 
+-- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg
+
+
+-- on_delete_active_auth_oidc_method_must_be_complete() defines a function
+-- to be used in an "after delete" trigger for auth_oidc_callback_url and
+-- auth_oidc_signing_alg Its intent: prevent deletes that would result in
+-- an "active" oidc auth method which is incomplete.
+create or replace function
+  on_delete_active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+declare am_state text;
+declare alg_cnt int;
+declare cb_cnt int;
+  begin
+    select 
+      am.state,
+      count(alg.oidc_method_id) as alg_cnt,
+      count(cb.oidc_method_id) as cb_cnt
+    from 
+      auth_oidc_method am
+      left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+      left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
+    where
+      new.oidc_method_id = am.public_id
+    group by am.public_id
+    into am_state, alg_cnt, cb_cnt;
+    
+    if not found then 
+      return new; -- auth method was deleted, so we're done
+    end if;
+
+    if am_state != inactive then
+      case 
+        when alg_cnt = 0 then
+          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no signing algorithms'; 
+        when cb_cnt = 0 then
+          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no callback URLs';
+      end case;
+    end if; 
+  
+    return new;
+  end;
+$$ language plpgsql;
+comment on function on_delete_active_auth_oidc_method_must_be_complete() is
+'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs or callbacks';
+
 create trigger
   default_create_time_column
 before
@@ -5285,6 +5402,12 @@ create trigger
 before
 insert on auth_oidc_callback_url
   for each row execute procedure default_create_time();
+
+create trigger 
+  on_delete_active_auth_oidc_method_must_be_complete
+after
+delete on auth_oidc_callback_url
+  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
 
 create trigger
   default_create_time_column
@@ -5298,6 +5421,11 @@ before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
 
+create trigger 
+  on_delete_active_auth_oidc_method_must_be_complete
+after
+delete on auth_oidc_signing_alg
+  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
     
 insert into oplog_ticket (name, version)
 values
@@ -5390,23 +5518,34 @@ create or replace view auth_token_account as
           on at.auth_account_id = aa.public_id;
 `),
 			2086: []byte(`
--- add the account_info_auth_method_id which determines which auth_method is
--- designated as for "account info" in the user's scope.  
+-- add the primary_auth_method_id which determines which auth_method is
+-- designated as for "account info" in the user's scope. It also determines
+-- which auth method is allowed to auto viviify users.  
 alter table iam_scope
-add column account_info_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
+add column primary_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
 references auth_method(public_id)
     on update cascade
     on delete set null;
 
 -- establish a compond fk, but there's no cascading of deletes or updates, since
--- we only want to cascade changes to the account_info_auth_method_id portion of
+-- we only want to cascade changes to the primary_auth_method_id portion of
 -- the compond fk and that is handled in a separate fk declaration.
 alter table iam_scope
-add foreign key (public_id, account_info_auth_method_id) references auth_method(scope_id, public_id); 
+add foreign key (public_id, primary_auth_method_id) references auth_method(scope_id, public_id); 
+
+-- for backward compatibility, set any existing auth password method as the 
+-- primary auth method, so they will continue to autovivify
+update 
+    iam_scope
+set 
+    primary_auth_method_id = p.scope_id
+from
+    (select scope_id from auth_password_method) as p 
+where p.scope_id = iam_scope.public_id;
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
--- scope's account_info_auth_method_id.  Every sub-type of auth_account must be
+-- scope's primary_auth_method_id.  Every sub-type of auth_account must be
 -- added to this view's union.
 create view iam_acct_info as
 select 
@@ -5420,7 +5559,7 @@ from
     auth_oidc_account oa
 where
     aa.public_id = oa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id 
+    aa.auth_method_id = s.primary_auth_method_id 
 union 
 select 
     aa.iam_user_id,
@@ -5433,7 +5572,7 @@ from
     auth_password_account pa
 where
     aa.public_id = pa.public_id and 
-    aa.auth_method_id = s.account_info_auth_method_id;
+    aa.auth_method_id = s.primary_auth_method_id;
 
 -- iam_user_acct_info provides a simple way to retrieve entries that include
 -- both the iam_user fields with an outer join to the user's account info.

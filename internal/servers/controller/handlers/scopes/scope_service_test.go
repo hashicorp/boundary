@@ -56,6 +56,49 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	return oRes, pRes, repoFn
 }
 
+var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"auth-methods": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"auth-tokens": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"roles": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"scopes": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"sessions": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"users": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+}
+
 var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	"auth-methods": {
 		Values: []*structpb.Value{
@@ -776,8 +819,14 @@ func TestUpdate(t *testing.T) {
 	tested, err := scopes.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new project service.")
 
+	iamRepo, err := repoFn()
+	require.NoError(t, err)
+	global, err := iamRepo.LookupScope(context.Background(), "global")
+	require.NoError(t, err)
+
 	var orgVersion uint32 = 2
 	var projVersion uint32 = 2
+	var globalVersion uint32 = global.Version
 
 	resetOrg := func() {
 		orgVersion++
@@ -797,6 +846,16 @@ func TestUpdate(t *testing.T) {
 		projVersion++
 	}
 
+	resetGlobal := func() {
+		repo, err := repoFn()
+		require.NoError(t, err, "Couldn't get a new repo")
+		globalScope := iam.AllocScope()
+		globalScope.PublicId = "global"
+		global, _, err = repo.UpdateScope(context.Background(), &globalScope, globalVersion, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset the global scope")
+		globalVersion = global.Version
+	}
+
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp")
 	projToMerge := &pbs.UpdateScopeRequest{
@@ -805,6 +864,10 @@ func TestUpdate(t *testing.T) {
 
 	orgToMerge := &pbs.UpdateScopeRequest{
 		Id: org.GetPublicId(),
+	}
+
+	globalToMerge := &pbs.UpdateScopeRequest{
+		Id: "global",
 	}
 
 	cases := []struct {
@@ -865,6 +928,32 @@ func TestUpdate(t *testing.T) {
 					Type:                        scope.Org.String(),
 					AuthorizedActions:           []string{"read", "update", "delete"},
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name:    "Update global",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Global.String(),
+				},
+			},
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
+					Id:                          scope.Global.String(),
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:                        &wrapperspb.StringValue{Value: "new"},
+					Description:                 &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
+					Type:                        scope.Global.String(),
+					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
 		},
@@ -1115,8 +1204,15 @@ func TestUpdate(t *testing.T) {
 
 			assert, require := assert.New(t), require.New(t)
 			var req *pbs.UpdateScopeRequest
-			switch tc.scopeId {
-			case scope.Global.String():
+			switch {
+			case tc.scopeId == scope.Global.String() && tc.req.Item.GetType() == scope.Global.String():
+				tc.req.Item.Version = globalVersion
+				ver = globalVersion
+				req = proto.Clone(globalToMerge).(*pbs.UpdateScopeRequest)
+				if tc.err == nil {
+					defer resetGlobal()
+				}
+			case tc.scopeId == scope.Global.String():
 				req = proto.Clone(orgToMerge).(*pbs.UpdateScopeRequest)
 				if tc.err == nil {
 					defer resetOrg()

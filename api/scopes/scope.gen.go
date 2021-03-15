@@ -21,6 +21,7 @@ type Scope struct {
 	UpdatedTime                 time.Time           `json:"updated_time,omitempty"`
 	Version                     uint32              `json:"version,omitempty"`
 	Type                        string              `json:"type,omitempty"`
+	PrimaryAuthMethodId         string              `json:"primary_auth_method_id,omitempty"`
 	AuthorizedActions           []string            `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string `json:"authorized_collection_actions,omitempty"`
 
