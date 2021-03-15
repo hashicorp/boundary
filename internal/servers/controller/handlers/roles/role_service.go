@@ -636,12 +636,12 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		item := req.GetItem()
-		if !handlers.ValidId(item.GetScopeId(), scope.Org.Prefix()) &&
-			!handlers.ValidId(item.GetScopeId(), scope.Project.Prefix()) &&
+		if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Org.Prefix()) &&
+			!handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) &&
 			scope.Global.String() != item.GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
-		if item.GetGrantScopeId() != nil && handlers.ValidId(item.GetScopeId(), scope.Project.Prefix()) {
+		if item.GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) {
 			if item.GetGrantScopeId().GetValue() != item.GetScopeId() {
 				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID."
 			}
@@ -671,7 +671,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		if req.GetItem().GetGrantStrings() != nil {
 			badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 		}
-		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(req.GetItem().GetScopeId(), scope.Project.Prefix()) {
+		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			if req.GetItem().GetGrantScopeId().GetValue() != req.GetItem().GetScopeId() {
 				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID"
 			}
@@ -688,8 +688,8 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
-		!handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
+		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
@@ -704,7 +704,7 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 
 func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -714,7 +714,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(id, iam.GroupPrefix) && !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -731,14 +731,14 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 
 func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(id, iam.GroupPrefix) && !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -755,7 +755,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 
 func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -765,7 +765,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(id, iam.GroupPrefix) && !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -778,7 +778,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 
 func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -805,7 +805,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 
 func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -829,7 +829,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 
 func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

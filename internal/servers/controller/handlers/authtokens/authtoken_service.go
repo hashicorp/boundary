@@ -254,7 +254,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
