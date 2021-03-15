@@ -773,7 +773,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Org.Prefix()) &&
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 		}
@@ -871,7 +871,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
@@ -892,7 +892,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
+	} else if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	// TODO: Update this when we enable different auth method types.
@@ -923,7 +923,7 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
+	} else if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if req.GetCredentials() == nil {

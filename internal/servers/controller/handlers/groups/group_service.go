@@ -476,8 +476,8 @@ func validateGetRequest(req *pbs.GetGroupRequest) error {
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Org.Prefix()) &&
-			!handlers.ValidId(req.GetItem().GetScopeId(), scope.Project.Prefix()) &&
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
+			!handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
@@ -495,8 +495,8 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
-		!handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
+		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
@@ -511,7 +511,7 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 
 func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -521,7 +521,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
@@ -538,14 +538,14 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 
 func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
@@ -562,7 +562,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 
 func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -572,7 +572,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(id, iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}

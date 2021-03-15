@@ -13,6 +13,9 @@ import (
 
 type CustomValidatorFunc func() map[string]string
 
+// A boundary resource identifier
+type Id string
+
 var NoopValidatorFn CustomValidatorFunc = func() map[string]string { return nil }
 
 type ApiResource interface {
@@ -77,7 +80,7 @@ type UpdateRequest interface {
 
 func ValidateUpdateRequest(r UpdateRequest, i ApiResource, fn CustomValidatorFunc, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(r.GetId(), prefix...) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Improperly formatted path identifier."
 	}
 	if r.GetUpdateMask() == nil {
@@ -140,7 +143,7 @@ type GetRequest interface {
 
 func ValidateGetRequest(fn CustomValidatorFunc, r GetRequest, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(r.GetId(), prefix...) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Invalid formatted identifier."
 	}
 	for k, v := range fn() {
@@ -158,7 +161,7 @@ type DeleteRequest interface {
 
 func ValidateDeleteRequest(fn CustomValidatorFunc, r DeleteRequest, prefix ...string) error {
 	badFields := map[string]string{}
-	if !ValidId(r.GetId(), prefix...) {
+	if !ValidId(Id(r.GetId()), prefix...) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	for k, v := range fn() {
@@ -172,7 +175,8 @@ func ValidateDeleteRequest(fn CustomValidatorFunc, r DeleteRequest, prefix ...st
 
 var reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
-func ValidId(id string, prefixes ...string) bool {
+func ValidId(i Id, prefixes ...string) bool {
+	id := string(i)
 	for _, prefix := range prefixes {
 		prefix = prefix + "_"
 		if !strings.HasPrefix(id, prefix) {
