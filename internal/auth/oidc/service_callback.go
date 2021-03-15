@@ -68,7 +68,7 @@ func Callback(
 		return "", errors.New(errors.InvalidParameter, op, "missing code")
 	}
 
-	// One comment before we begin, Callback orchestrates repository which
+	// One comment before we begin, Callback orchestrates repositories which
 	// execute order dependent database transactions: create an account,
 	// perhaps create an iam.User, and if everything is successful it will
 	// create a pending token.  Any of these independent transactions could
