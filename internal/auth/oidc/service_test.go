@@ -176,7 +176,6 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			})
 		}
 	})
-
 }
 
 func Test_requestWrappingWrapper(t *testing.T) {
@@ -260,7 +259,6 @@ func Test_requestWrappingWrapper(t *testing.T) {
 }
 
 func Test_derivedKeyPurpose_String(t *testing.T) {
-
 	tests := []struct {
 		purpose derivedKeyPurpose
 		want    string
@@ -274,5 +272,4 @@ func Test_derivedKeyPurpose_String(t *testing.T) {
 			assert.Equalf(t, tt.want, tt.purpose.String(), "wanted %s and got: %s", tt.want, tt.purpose.String())
 		})
 	}
-
 }

@@ -437,7 +437,6 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 }
 
 // Stop stops the running testControllerSrv.  This is called as a test clean up function

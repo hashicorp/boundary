@@ -71,7 +71,6 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithAccountIds("account-1", "account-2"))
 		testOpts.withAccountIds = []string{"account-1", "account-2"}
 		assert.Equal(opts, testOpts)
-
 	})
 	t.Run("WithPrimaryAuthMethodId", func(t *testing.T) {
 		assert := assert.New(t)

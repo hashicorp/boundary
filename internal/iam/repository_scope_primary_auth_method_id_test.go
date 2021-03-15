@@ -52,6 +52,5 @@ func Test_Repository_UpdateScope_AccountInfoAuthMethodId(t *testing.T) {
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
-
 	})
 }
