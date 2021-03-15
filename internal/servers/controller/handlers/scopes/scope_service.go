@@ -580,6 +580,9 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
+	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(item.GetPrimaryAuthMethodId().GetValue(), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+		badFields["primary_auth_method_id"] = "Improperly formatted identifier."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
