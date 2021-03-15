@@ -414,7 +414,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 	if withPublicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-	scope := allocScope()
+	scope := AllocScope()
 	scope.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -434,7 +434,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	if withPublicId == scope.Global.String() {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "invalid to delete global scope")
 	}
-	scope := allocScope()
+	scope := AllocScope()
 	scope.PublicId = withPublicId
 	rowsDeleted, err := r.delete(ctx, &scope)
 	if err != nil {

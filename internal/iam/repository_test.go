@@ -307,7 +307,7 @@ func TestRepository_update(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, org.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			require.NoError(err)
 
-			foundResource := allocScope()
+			foundResource := AllocScope()
 			foundResource.PublicId = updatedResource.GetPublicId()
 			where := "public_id = ?"
 			for _, f := range tt.args.setToNullPaths {

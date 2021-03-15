@@ -46,11 +46,8 @@ func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMeth
 	require.NotEmpty(s)
 	require.NotEmpty(authMethodId)
 	s.PrimaryAuthMethodId = authMethodId
-	updated, _, err := repo.UpdateScope(context.Background(), s, s.Version, []string{"PrimaryAuthMethodId"})
-
+	_, _, err := repo.UpdateScope(context.Background(), s, s.Version, []string{"PrimaryAuthMethodId"})
 	require.NoError(err)
-	require.NotEmpty(updated)
-	require.Equal(authMethodId, updated.PrimaryAuthMethodId)
 }
 
 // TestScopes creates an org and project suitable for testing.

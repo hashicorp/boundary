@@ -317,18 +317,13 @@ func (r *Repository) allowUserAutoVivify(ctx context.Context, acct *authAccount)
 	if acct == nil {
 		return false, errors.New(errors.InvalidParameter, op, "missing account")
 	}
-	acctScope := allocScope()
+	acctScope := AllocScope()
 	acctScope.PublicId = acct.ScopeId
 	err := r.reader.LookupByPublicId(context.Background(), &acctScope)
 	if err != nil {
 		return false, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account's scope %s", acct.ScopeId)))
 	}
-	switch {
-	case acct.AuthMethodId != acctScope.PrimaryAuthMethodId:
-		return false, nil
-	default:
-		return true, nil
-	}
+	return acct.AuthMethodId == acctScope.PrimaryAuthMethodId, nil
 }
 
 func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId string, _ ...Option) (*User, error) {
