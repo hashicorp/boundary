@@ -506,7 +506,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetAuthMethodId(), password.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
@@ -520,7 +520,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -540,7 +540,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), password.AccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

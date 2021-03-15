@@ -28,17 +28,17 @@ func errorIncludesFields(t *testing.T, err error, wantFields []string) {
 // message.  User was picked arbitrarily.
 
 func TestValidId(t *testing.T) {
-	assert.True(t, ValidId("prefix_somerandomid", "prefix"))
-	assert.True(t, ValidId("prefix_somerandomid", "notprefix", "prefix"))
-	assert.True(t, ValidId("prefix_short", "prefix"))
-	assert.True(t, ValidId("prefix_thisisalongidentifierwhichstillworks", "prefix"))
+	assert.True(t, ValidId(Id("prefix_somerandomid"), "prefix"))
+	assert.True(t, ValidId(Id("prefix_somerandomid"), "notprefix", "prefix"))
+	assert.True(t, ValidId(Id("prefix_short"), "prefix"))
+	assert.True(t, ValidId(Id("prefix_thisisalongidentifierwhichstillworks"), "prefix"))
 
-	assert.False(t, ValidId("prefixsomerandomid", "prefix"))
-	assert.False(t, ValidId("prefixsomerandomid", "prefix", "alsobadprefix"))
-	assert.False(t, ValidId("prefix_this has spaces", "prefix"))
-	assert.False(t, ValidId("prefix_includes-dash", "prefix"))
-	assert.False(t, ValidId("prefix_other@strange!characters", "prefix"))
-	assert.False(t, ValidId("prefix_short", "short"))
+	assert.False(t, ValidId(Id("prefixsomerandomid"), "prefix"))
+	assert.False(t, ValidId(Id("prefixsomerandomid"), "prefix", "alsobadprefix"))
+	assert.False(t, ValidId(Id("prefix_this has spaces"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_includes-dash"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_other@strange!characters"), "prefix"))
+	assert.False(t, ValidId(Id("prefix_short"), "short"))
 }
 
 func TestValidNameDescription(t *testing.T) {
