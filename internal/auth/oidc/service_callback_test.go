@@ -34,6 +34,8 @@ func Test_Callback(t *testing.T) {
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
+	// some standard factories for unit tests which
+	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
@@ -52,16 +54,21 @@ func Test_Callback(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
+	// a very simple test mock controller, that simply responds with a 200 OK to every
+	// request.
 	testController := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(200)
 	}))
 	defer testController.Close()
 
+	// test provider for the tests (see the oidc package docs for more info)
+	// it will provide discovery, JWKs, a token endpoint, etc for these tests.
 	tp := oidc.StartTestProvider(t)
 	tpCert, err := ParseCertificates(tp.CACert())
 	require.NoError(t, err)
 	_, _, tpAlg, _ := tp.SigningKeys()
 
+	// a reusable test authmethod for the unit tests
 	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
 		TestConvertToUrls(t, tp.Addr())[0],
 		"alice-rp", "fido",
@@ -69,21 +76,26 @@ func Test_Callback(t *testing.T) {
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
 
+	// set this as the primary so users will be created on first login
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, testAuthMethod.PublicId)
 
+	// a reusable oidc.Provider for the tests
 	testProvider, err := convertToProvider(ctx, testAuthMethod)
 	require.NoError(t, err)
 	testConfigHash, err := testProvider.ConfigHash()
 	require.NoError(t, err)
 
+	// a reusable token request id for the tests.
 	testTokenRequestId, err := authtoken.NewAuthTokenId()
 	require.NoError(t, err)
 
+	// usuable nonce for the unit tests
 	testNonce := "nonce"
-	tp.SetExpectedAuthNonce(testNonce)
 
+	// define the audiences the test provider will accept for the unit tests.
 	tp.SetCustomAudience("foo", "alice-rp")
 
+	// define a second test auth method, which is in an InactiveState for the unit tests.
 	org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper2, err := kmsCache.GetWrapper(ctx, org2.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -95,32 +107,28 @@ func Test_Callback(t *testing.T) {
 		WithCertificates(tpCert...),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
+	// define a second test provider based on the inactive test auth method
 	testProvider2, err := convertToProvider(ctx, testAuthMethod2)
 	require.NoError(t, err)
 	testConfigHash2, err := testProvider2.ConfigHash()
 	require.NoError(t, err)
 
-	setupFn := func() {
-		acct := TestAccount(t, conn, testAuthMethod2.PublicId, TestConvertToUrls(t, tp.Addr())[0], "alice@example.com")
-		_ = iam.TestUser(t, iamRepo, org2.PublicId, iam.WithAccountIds(acct.PublicId))
-	}
-
 	tests := []struct {
 		name              string
-		setup             func()
-		oidcRepoFn        OidcRepoFactory
-		iamRepoFn         IamRepoFactory
-		atRepoFn          AuthTokenRepoFactory
-		am                *AuthMethod
-		apiAddrs          string
-		state             string
-		code              string
-		wantSubject       string
-		wantInfoName      string
-		wantInfoEmail     string
-		wantFinalRedirect string
-		wantErrMatch      *errors.Template
-		wantErrContains   string
+		setup             func()               // provide a simple way to do some prework before the test.
+		oidcRepoFn        OidcRepoFactory      // returns a new oidc repo
+		iamRepoFn         IamRepoFactory       // returns a new iam repo
+		atRepoFn          AuthTokenRepoFactory // returns a new auth token repo
+		am                *AuthMethod          // the authmethod for the test
+		apiAddrs          string               // the scheme.host.port of the controller/api service
+		state             string               // state parameter for test provider and Callback(...)
+		code              string               // code parameter for test provider and Callback(...)
+		wantSubject       string               // sub claim from id token
+		wantInfoName      string               // name claim from userinfo
+		wantInfoEmail     string               // email claim from userinfo
+		wantFinalRedirect string               // final redirect from Callback(...)
+		wantErrMatch      *errors.Template     // error template to match
+		wantErrContains   string               // error string should contain
 	}{
 		{
 			name:              "simple", // must remain the first test
@@ -151,8 +159,11 @@ func Test_Callback(t *testing.T) {
 			wantInfoEmail:     "alice@example.com",
 		},
 		{
-			name:              "inactive-valid",
-			setup:             setupFn,
+			name: "inactive-valid",
+			setup: func() {
+				acct := TestAccount(t, conn, testAuthMethod2.PublicId, TestConvertToUrls(t, tp.Addr())[0], "alice@example.com")
+				_ = iam.TestUser(t, iamRepo, org2.PublicId, iam.WithAccountIds(acct.PublicId))
+			},
 			oidcRepoFn:        repoFn,
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
@@ -312,13 +323,14 @@ func Test_Callback(t *testing.T) {
 				tt.setup()
 			}
 
-			tp.SetExpectedAuthNonce("nonce")
+			// the test provider is stateful, so we need to configure
+			// it for this unit test.
+			tp.SetExpectedAuthNonce(testNonce)
 			if tt.am != nil {
 				tp.SetClientCreds(tt.am.ClientId, tt.am.ClientSecret)
 				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.apiAddrs, tt.am.PublicId)
 				tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 			}
-
 			if tt.code != "" {
 				tp.SetExpectedAuthCode(tt.code)
 			}
@@ -338,6 +350,7 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
+
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
@@ -359,6 +372,7 @@ func Test_Callback(t *testing.T) {
 				require.NoError(err)
 				assert.Equal(0, len(tokens))
 
+				// make sure there weren't any oplog entries written.
 				var entries []oplog.Entry
 				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
 				require.NoError(err)
@@ -367,6 +381,8 @@ func Test_Callback(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantFinalRedirect, gotRedirect)
+
+			// make sure a pending token was created.
 			var tokens []authtoken.AuthToken
 			err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
 			require.NoError(err)
@@ -375,6 +391,7 @@ func Test_Callback(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tk.Status, string(authtoken.PendingStatus))
 
+			// make sure the account was updated properly
 			var acct Account
 			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject_id = ?", tt.am.PublicId, tt.wantSubject)
 			require.NoError(err)
@@ -382,12 +399,15 @@ func Test_Callback(t *testing.T) {
 			assert.Equal(tt.wantInfoName, acct.FullName)
 			assert.Equal(tk.AuthAccountId, acct.PublicId)
 
+			// make sure the token is properly assoc with the
+			// logged in user
 			var users []iam.User
 			err = rw.SearchWhere(ctx, &users, "public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
 			require.Equal(1, len(users))
 			assert.Equal(tk.IamUserId, users[0].PublicId)
 
+			// check the oplog entries.
 			var entries []oplog.Entry
 			err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
 			require.NoError(err)
@@ -427,6 +447,9 @@ func Test_Callback(t *testing.T) {
 		})
 	}
 	t.Run("replay-attack-with-dup-state", func(t *testing.T) {
+		// a test to ensure that replays of duplicate states
+		// are rejected and produce an appropriate error.
+
 		assert, require := assert.New(t), require.New(t)
 
 		// start with no tokens in the db
@@ -439,12 +462,16 @@ func Test_Callback(t *testing.T) {
 		// start with no oplog entries
 		_, err = rw.Exec(ctx, "delete from oplog_entry", nil)
 		require.NoError(err)
+
+		// prime the test provider's state for the test
 		tp.SetClientCreds(testAuthMethod.ClientId, testAuthMethod.ClientSecret)
 		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testController.URL, testAuthMethod.PublicId)
 		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 		state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
 		tp.SetExpectedAuthCode("simple")
 		tp.SetExpectedState(state)
+
+		// the first request should succeed.
 		gotRedirect, err := Callback(ctx,
 			repoFn,
 			iamRepoFn,
@@ -457,6 +484,7 @@ func Test_Callback(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(gotRedirect)
 
+		// the replay should raise an error.
 		gotRedirect2, err := Callback(ctx,
 			repoFn,
 			iamRepoFn,
