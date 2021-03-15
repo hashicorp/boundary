@@ -429,7 +429,7 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Project.Prefix()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
@@ -460,7 +460,7 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}

@@ -475,7 +475,7 @@ func validateGetRequest(req *pbs.GetUserRequest) error {
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(req.GetItem().GetScopeId(), scope.Org.Prefix()) &&
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "Must be 'global' or a valid org scope id."
 		}
@@ -493,7 +493,7 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Org.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
@@ -508,7 +508,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -519,7 +519,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(a, password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -532,7 +532,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -540,7 +540,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(a, password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -553,7 +553,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -564,7 +564,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(a, password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}

@@ -274,7 +274,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
 			return base.CommandUserError
 		}
-		if !handlers.ValidId("abc_"+c.flagIdSuffix, "abc") {
+		if !handlers.ValidId(handlers.Id("abc_"+c.flagIdSuffix), "abc") {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}

@@ -399,7 +399,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(req.GetItem().GetHostCatalogId(), static.HostCatalogPrefix) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
@@ -464,7 +464,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetHostCatalogId(), static.HostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

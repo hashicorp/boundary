@@ -328,7 +328,7 @@ func validateGetRequest(req *pbs.GetSessionRequest) error {
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetScopeId(), scope.Project.Prefix()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
@@ -343,7 +343,7 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 
 func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(req.GetId(), session.SessionPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), session.SessionPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
