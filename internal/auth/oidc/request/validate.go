@@ -16,7 +16,6 @@ func (s *State) Validate() error {
 	}
 	if s.ExpirationTime == nil {
 		return errors.New(errors.InvalidParameter, op, "missing expiration time")
-
 	}
 	if s.FinalRedirectUrl == "" {
 		return errors.New(errors.InvalidParameter, op, "missing final redirect URL")

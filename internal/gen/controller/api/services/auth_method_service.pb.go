@@ -537,7 +537,7 @@ type ChangeStateRequest struct {
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	// state must be `inactive`, `private`, or `public`
+	// state must be `inactive`, `active-private`, or `active-public`
 	State string `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
 }
 
