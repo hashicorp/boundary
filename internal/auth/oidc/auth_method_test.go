@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -349,4 +351,85 @@ func TestAuthMethod_SetTableName(t *testing.T) {
 			assert.Equal(tt.want, m.TableName())
 		})
 	}
+}
+
+func Test_encrypt_decrypt(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	projDatabaseWrapper, err := kmsCache.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	require.NotEmpty(t, projDatabaseWrapper)
+	m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+
+	tests := []struct {
+		name                string
+		am                  *AuthMethod
+		encryptWrapper      wrapping.Wrapper
+		wantEncryptErrMatch *errors.Template
+		decryptWrapper      wrapping.Wrapper
+		wantDecryptErrMatch *errors.Template
+	}{
+		{
+			name:           "success",
+			am:             m,
+			encryptWrapper: databaseWrapper,
+			decryptWrapper: databaseWrapper,
+		},
+		{
+			name:                "encrypt-missing-wrapper",
+			am:                  m,
+			wantEncryptErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:                "encrypt-bad-wrapper",
+			am:                  m,
+			encryptWrapper:      &aead.Wrapper{},
+			wantEncryptErrMatch: errors.T(errors.Encrypt),
+		},
+		{
+			name:                "encrypt-missing-wrapper",
+			am:                  m,
+			encryptWrapper:      databaseWrapper,
+			wantDecryptErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:                "encrypt-bad-wrapper",
+			am:                  m,
+			encryptWrapper:      databaseWrapper,
+			decryptWrapper:      &aead.Wrapper{},
+			wantDecryptErrMatch: errors.T(errors.Decrypt),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			encryptedAuthMethod := tt.am.Clone()
+			err := encryptedAuthMethod.encrypt(ctx, tt.encryptWrapper)
+			if tt.wantEncryptErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantEncryptErrMatch, err), "expected %q and got err: %+v", tt.wantEncryptErrMatch.Code, err)
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(encryptedAuthMethod.CtClientSecret)
+			assert.NotEmpty(encryptedAuthMethod.ClientSecretHmac)
+
+			decryptedAuthMethod := encryptedAuthMethod.Clone()
+			decryptedAuthMethod.ClientSecret = ""
+			err = decryptedAuthMethod.decrypt(ctx, tt.decryptWrapper)
+			if tt.wantDecryptErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantDecryptErrMatch, err), "expected %q and got err: %+v", tt.wantDecryptErrMatch.Code, err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.am.ClientSecret, decryptedAuthMethod.ClientSecret)
+		})
+	}
+
 }
