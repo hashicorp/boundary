@@ -93,3 +93,53 @@ func TestNewPrivateId(t *testing.T) {
 		})
 	}
 }
+
+func TestPseudoRandomId(t *testing.T) {
+	type args struct {
+		prngValues []string
+	}
+	tests := []struct {
+		name       string
+		args       args
+		sameAsPrev bool
+	}{
+		{
+			name: "valid first",
+			args: args{},
+		},
+		{
+			name: "valid second",
+			args: args{},
+		},
+		{
+			name: "first prng",
+			args: args{prngValues: []string{"foo", "bar"}},
+		},
+		{
+			name:       "first prng verify",
+			args:       args{prngValues: []string{"foo", "bar"}},
+			sameAsPrev: true,
+		},
+		{
+			name: "second prng",
+			args: args{prngValues: []string{"bar", "foo"}},
+		},
+		{
+			name:       "second prng verify",
+			args:       args{prngValues: []string{"bar", "foo"}},
+			sameAsPrev: true,
+		},
+	}
+	var prevTestValue string
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := NewPublicId("id", WithPrngValues(tt.args.prngValues))
+			require.NoError(err)
+			if tt.sameAsPrev {
+				assert.Equal(prevTestValue, got)
+			}
+			prevTestValue = got
+		})
+	}
+}
