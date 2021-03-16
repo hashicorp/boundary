@@ -353,7 +353,7 @@ func TestAuthMethod_SetTableName(t *testing.T) {
 	}
 }
 
-func Test_encrypt_decrypt(t *testing.T) {
+func Test_encrypt_decrypt_hmac(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
@@ -363,12 +363,13 @@ func Test_encrypt_decrypt(t *testing.T) {
 	require.NoError(t, err)
 	projDatabaseWrapper, err := kmsCache.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	require.NotEmpty(t, projDatabaseWrapper)
 	m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
 
 	tests := []struct {
 		name                string
 		am                  *AuthMethod
+		hmacWrapper         wrapping.Wrapper
+		wantHmacErrMatch    *errors.Template
 		encryptWrapper      wrapping.Wrapper
 		wantEncryptErrMatch *errors.Template
 		decryptWrapper      wrapping.Wrapper
@@ -377,39 +378,76 @@ func Test_encrypt_decrypt(t *testing.T) {
 		{
 			name:           "success",
 			am:             m,
+			hmacWrapper:    databaseWrapper,
 			encryptWrapper: databaseWrapper,
 			decryptWrapper: databaseWrapper,
 		},
 		{
 			name:                "encrypt-missing-wrapper",
 			am:                  m,
+			hmacWrapper:         databaseWrapper,
 			wantEncryptErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name:                "encrypt-bad-wrapper",
 			am:                  m,
+			hmacWrapper:         databaseWrapper,
 			encryptWrapper:      &aead.Wrapper{},
 			wantEncryptErrMatch: errors.T(errors.Encrypt),
 		},
 		{
 			name:                "encrypt-missing-wrapper",
 			am:                  m,
+			hmacWrapper:         databaseWrapper,
 			encryptWrapper:      databaseWrapper,
 			wantDecryptErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
-			name:                "encrypt-bad-wrapper",
+			name:                "decrypt-bad-wrapper",
 			am:                  m,
+			hmacWrapper:         databaseWrapper,
 			encryptWrapper:      databaseWrapper,
 			decryptWrapper:      &aead.Wrapper{},
 			wantDecryptErrMatch: errors.T(errors.Decrypt),
+		},
+		{
+			name:                "decrypt-wrong-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			encryptWrapper:      databaseWrapper,
+			decryptWrapper:      projDatabaseWrapper,
+			wantDecryptErrMatch: errors.T(errors.Decrypt),
+		},
+		{
+			name:             "hmac-missing-wrapper",
+			am:               m,
+			encryptWrapper:   databaseWrapper,
+			decryptWrapper:   databaseWrapper,
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:             "hmac-bad-wrapper",
+			am:               m,
+			hmacWrapper:      &aead.Wrapper{},
+			encryptWrapper:   databaseWrapper,
+			decryptWrapper:   databaseWrapper,
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			hmacAuthMethod := tt.am.Clone()
+			err = hmacAuthMethod.hmacClientSecret(ctx, tt.hmacWrapper)
+			if tt.wantHmacErrMatch != nil {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+			}
+
 			encryptedAuthMethod := tt.am.Clone()
-			err := encryptedAuthMethod.encrypt(ctx, tt.encryptWrapper)
+			err = encryptedAuthMethod.encrypt(ctx, tt.encryptWrapper)
 			if tt.wantEncryptErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantEncryptErrMatch, err), "expected %q and got err: %+v", tt.wantEncryptErrMatch.Code, err)
