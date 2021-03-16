@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -470,4 +471,128 @@ func Test_encrypt_decrypt_hmac(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_convertValueObjects(t *testing.T) {
+	testPublicId := "test-id"
+
+	testAlgs := []string{string(RS256), string(RS384)}
+	var testSigningAlgs []interface{}
+	for _, a := range []Alg{RS256, RS384} {
+		obj, err := NewSigningAlg(testPublicId, Alg(a))
+		require.NoError(t, err)
+		testSigningAlgs = append(testSigningAlgs, obj)
+	}
+
+	testAuds := []string{"alice", "eve"}
+	var testAudiences []interface{}
+	for _, a := range testAuds {
+		obj, err := NewAudClaim(testPublicId, a)
+		require.NoError(t, err)
+		testAudiences = append(testAudiences, obj)
+	}
+
+	testCbs := []string{"https://alice.com/callback", "https://localhost/callback"}
+	var testCallbacks []interface{}
+	for _, cb := range testCbs {
+		obj, err := NewCallbackUrl(testPublicId, TestConvertToUrls(t, cb)[0])
+		require.NoError(t, err)
+		testCallbacks = append(testCallbacks, obj)
+	}
+
+	_, pem := testGenerateCA(t, "localhost")
+	testCerts := []string{pem}
+	c, err := NewCertificate(testPublicId, pem)
+	require.NoError(t, err)
+	testCertificates := []interface{}{c}
+
+	tests := []struct {
+		name            string
+		authMethodId    string
+		algs            []string
+		auds            []string
+		callbacks       []string
+		certs           []string
+		wantValues      *convertedValues
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:         "success",
+			authMethodId: testPublicId,
+			algs:         testAlgs,
+			auds:         testAuds,
+			callbacks:    testCbs,
+			certs:        testCerts,
+			wantValues: &convertedValues{
+				Algs:      testSigningAlgs,
+				Callbacks: testCallbacks,
+				Auds:      testAudiences,
+				Certs:     testCertificates,
+			},
+		},
+		{
+			name:         "missing-public-id",
+			algs:         testAlgs,
+			wantErrMatch: errors.T(errors.InvalidPublicId),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			am := &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:     tt.authMethodId,
+					SigningAlgs:  tt.algs,
+					AudClaims:    tt.auds,
+					CallbackUrls: tt.callbacks,
+					Certificates: tt.certs,
+				},
+			}
+
+			convertedAlgs, err := am.convertSigningAlgs()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Algs, convertedAlgs)
+			}
+
+			convertedAuds, err := am.convertAudClaims()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Auds, convertedAuds)
+			}
+
+			convertedCallbacks, err := am.convertCallbacks()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Callbacks, convertedCallbacks)
+			}
+
+			convertedCerts, err := am.convertCertificates()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Certs, convertedCerts)
+			}
+
+			values, err := am.convertValueObjects()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantValues, values)
+		})
+	}
 }
