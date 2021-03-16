@@ -103,6 +103,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Internal,
 		},
 		{
+			name: "Forbidden",
+			c:    Forbidden,
+			want: Forbidden,
+		},
+		{
 			name: "AuthMethodInactive",
 			c:    AuthMethodInactive,
 			want: AuthMethodInactive,
