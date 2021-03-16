@@ -253,19 +253,6 @@ func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL strin
 	return p1
 }
 
-// testFreePort just returns an available free localhost port
-func testFreePort(t *testing.T) int {
-	t.Helper()
-	require := require.New(t)
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	require.NoError(err)
-
-	l, err := net.ListenTCP("tcp", addr)
-	require.NoError(err)
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port
-}
-
 // testState will make a request.State and encrypt/encode within a request.Wrapper.
 // the returned string can be used as a parameter for functions like: oidc.Callback
 func testState(
