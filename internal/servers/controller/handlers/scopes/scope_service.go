@@ -330,9 +330,6 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 		scopePrimaryAuthMethodId = primaryAuthMethodId.GetValue()
 		opts = append(opts, iam.WithPrimaryAuthMethodId(scopePrimaryAuthMethodId))
 	}
-	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
-		opts = append(opts, iam.WithPrimaryAuthMethodId(primaryAuthMethodId.GetValue()))
-	}
 	version := item.GetVersion()
 
 	var iamScope *iam.Scope
