@@ -18,7 +18,6 @@ import (
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -617,7 +616,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
 	}
 
-	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
+	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId())
 	if err != nil {
 		return nil, err
 	}

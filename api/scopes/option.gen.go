@@ -110,6 +110,18 @@ func DefaultName() Option {
 	}
 }
 
+func WithPrimaryAuthMethodId(inPrimaryAuthMethodId string) Option {
+	return func(o *options) {
+		o.postMap["primary_auth_method_id"] = inPrimaryAuthMethodId
+	}
+}
+
+func DefaultPrimaryAuthMethodId() Option {
+	return func(o *options) {
+		o.postMap["primary_auth_method_id"] = nil
+	}
+}
+
 func WithSkipAdminRoleCreation(inSkipAdminRoleCreation bool) Option {
 	return func(o *options) {
 		o.queryMap["skip_admin_role_creation"] = fmt.Sprintf("%v", inSkipAdminRoleCreation)

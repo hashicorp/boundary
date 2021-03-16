@@ -21,7 +21,6 @@ type options struct {
 	withDescription             string
 	withGroupGrants             bool
 	withLimit                   int
-	withAutoVivify              bool
 	withGrantScopeId            string
 	withSkipVetForWrite         bool
 	withDisassociate            bool
@@ -29,6 +28,8 @@ type options struct {
 	withSkipDefaultRoleCreation bool
 	withUserId                  string
 	withRandomReader            io.Reader
+	withAccountIds              []string
+	withPrimaryAuthMethodId     string
 }
 
 func getDefaultOptions() options {
@@ -38,7 +39,6 @@ func getDefaultOptions() options {
 		withDescription:     "",
 		withGroupGrants:     false,
 		withLimit:           0,
-		withAutoVivify:      false,
 		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
 	}
@@ -78,14 +78,6 @@ func WithName(name string) Option {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// WithAutoVivify provides an option to enable user auto vivification when
-// calling repo.LookupUserWithLogin().
-func WithAutoVivify(enable bool) Option {
-	return func(o *options) {
-		o.withAutoVivify = enable
 	}
 }
 
@@ -136,9 +128,25 @@ func WithUserId(id string) Option {
 	}
 }
 
-// WithRandomReader provides and option to specify a random reader.
+// WithRandomReader provides an option to specify a random reader.
 func WithRandomReader(reader io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = reader
+	}
+}
+
+// WithAccountIds provides an option for specifying account ids to
+// add to a user.
+func WithAccountIds(id ...string) Option {
+	return func(o *options) {
+		o.withAccountIds = id
+	}
+}
+
+// WithPrimaryAuthMethodId provides an option to specify the
+// primary auth method for the scope.
+func WithPrimaryAuthMethodId(id string) Option {
+	return func(o *options) {
+		o.withPrimaryAuthMethodId = id
 	}
 }

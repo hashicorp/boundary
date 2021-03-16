@@ -28,7 +28,12 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://www.alice.com")[0], "alice-rp", "fido")
+	testAuthMethod := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithSigningAlgs(RS256))
 
 	now := time.Now()
 	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
@@ -186,7 +191,12 @@ func Test_requestWrappingWrapper(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido")
+	testAuthMethod := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		TestConvertToUrls(t, "https://alice.com")[0],
+		"alice-rp", "fido",
+		WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback")[0]),
+		WithSigningAlgs(RS256))
 
 	oidcWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeOidc)
 	require.NoError(t, err)

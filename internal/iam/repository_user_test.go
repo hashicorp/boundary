@@ -571,12 +571,17 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	id := testId(t)
 	org, _ := TestScopes(t, repo)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	TestSetPrimaryAuthMethod(t, repo, org, authMethodId)
 	newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, "")
-	newAuthAcctWithoutVivify := testAccount(t, conn, org.PublicId, authMethodId, "")
+
+	authMethodId2 := testAuthMethod(t, conn, org.PublicId)
+	newAuthAcctWithoutVivify := testAccount(t, conn, org.PublicId, authMethodId2, "")
 
 	user := TestUser(t, repo, org.PublicId, WithName("existing-"+id))
-	existingAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
+	existingUserWithAcctWithVivify := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+	require.Equal(t, user.PublicId, existingUserWithAcctWithVivify.IamUserId)
+
+	existingUserWithAcctNoVivify := testAccount(t, conn, org.PublicId, authMethodId2, user.PublicId)
 
 	type args struct {
 		withAccountId string
@@ -596,7 +601,6 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			args: args{
 				withAccountId: newAuthAcct.PublicId,
 				opt: []Option{
-					WithAutoVivify(true),
 					WithName("valid-" + id),
 					WithDescription("valid-" + id),
 				},
@@ -622,21 +626,19 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			wantErrIs: errors.InvalidParameter,
 		},
 		{
-			name: "existing-auth-account",
+			name: "existing-user-with-account-with-vivify",
 			args: args{
-				withAccountId: existingAuthAcct.PublicId,
+				withAccountId: existingUserWithAcctWithVivify.PublicId,
 			},
 			wantErr:  false,
 			wantName: "existing-" + id,
 			wantUser: user,
 		},
 		{
-			name: "existing-auth-account-with-vivify",
+			name: "existing-user-with-account-no-vivify",
 			args: args{
-				withAccountId: existingAuthAcct.PublicId,
-				opt: []Option{
-					WithAutoVivify(true),
-				},
+				withAccountId: existingUserWithAcctNoVivify.PublicId,
+				opt:           []Option{},
 			},
 			wantErr:  false,
 			wantName: "existing-" + id,
@@ -654,9 +656,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			name: "bad-auth-account-id-with-vivify",
 			args: args{
 				withAccountId: id,
-				opt: []Option{
-					WithAutoVivify(true),
-				},
+				opt:           []Option{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.RecordNotFound,

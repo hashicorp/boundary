@@ -64,7 +64,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version: 1,
+			version: 2,
 		},
 		{
 			name:    "ActivePublic-to-InActive",
@@ -84,7 +84,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version: 1,
+			version: 2,
 		},
 		{
 			name:    "Inactive-to-Inactive",
@@ -146,7 +146,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version: 1,
+			version: 2,
 		},
 		{
 			name:    "ActivePrivate-to-ActivePrivate",
@@ -166,7 +166,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:           1,
+			version:           2,
 			wantNoRowsUpdated: true,
 			wantNoOplog:       true,
 		},
@@ -208,7 +208,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version: 1,
+			version: 2,
 		},
 		{
 			name:    "ActivePublic-to-ActivePublic",
@@ -228,7 +228,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:           1,
+			version:           2,
 			wantNoRowsUpdated: true,
 			wantNoOplog:       true,
 		},

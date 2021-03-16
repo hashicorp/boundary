@@ -23,8 +23,20 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	amInactive := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-inactive.com")[0], "alice_rp", "alices-dogs-name")
-	amActivePriv := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice-active-priv.com")[0], "alice_rp", "alices-dogs-name")
-	amActivePub := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState, TestConvertToUrls(t, "https://alice-active-pub.com")[0], "alice_rp", "alices-dogs-name")
+	amActivePriv := TestAuthMethod(
+		t,
+		conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		TestConvertToUrls(t, "https://alice-active-priv.com")[0],
+		"alice_rp", "alices-dogs-name",
+		WithCallbackUrls(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+		WithSigningAlgs(RS256))
+	amActivePub := TestAuthMethod(
+		t,
+		conn, databaseWrapper, org.PublicId, ActivePublicState,
+		TestConvertToUrls(t, "https://alice-active-pub.com")[0],
+		"alice_rp", "alices-dogs-name",
+		WithCallbackUrls(TestConvertToUrls(t, "https://alice-active-pub.com/callback")[0]),
+		WithSigningAlgs(RS256))
 
 	amId, err := newAuthMethodId()
 	require.NoError(t, err)
@@ -242,8 +254,18 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
 				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice-inactive.com")[0], "alice_rp", "alices-dogs-name")
-				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, TestConvertToUrls(t, "https://alice-active-priv.com")[0], "alice_rp", "alices-dogs-name")
-				amActivePub := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState, TestConvertToUrls(t, "https://alice-active-pub.com")[0], "alice_rp", "alices-dogs-name")
+				_ = TestAuthMethod(
+					t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+					TestConvertToUrls(t, "https://alice-active-priv.com")[0],
+					"alice_rp", "alices-dogs-name",
+					WithCallbackUrls(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+					WithSigningAlgs(RS256))
+				amActivePub := TestAuthMethod(
+					t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+					TestConvertToUrls(t, "https://alice-active-pub.com")[0],
+					"alice_rp", "alices-dogs-name",
+					WithCallbackUrls(TestConvertToUrls(t, "https://alice-active-pub.com")[0]),
+					WithSigningAlgs(RS256))
 				return "", []string{amActivePub.ScopeId}, []*AuthMethod{amActivePub}
 			},
 			opt: []Option{WithUnauthenticatedUser(true)},

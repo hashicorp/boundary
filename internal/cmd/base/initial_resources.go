@@ -125,6 +125,24 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
 	b.Info["generated auth method id"] = b.DevAuthMethodId
 
+	// we'll designate the initial password auth method as the primary auth
+	// method id for the global scope, which means the auth method will create
+	// users on first login.  Otherwise, the operator would have to create both
+	// a password account and a user associated with the new account, before
+	// users could successfully login.
+	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create iam repo: %w", err)
+	}
+	globalScope, err := iamRepo.LookupScope(ctx, scope.Global.String())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to lookup global scope: %w", err)
+	}
+	globalScope.PrimaryAuthMethodId = am.PublicId
+	if _, _, err := iamRepo.UpdateScope(ctx, globalScope, globalScope.Version, []string{"PrimaryAuthMethodId"}); err != nil {
+		return nil, nil, fmt.Errorf("unable to set primary auth method for global scope: %w", err)
+	}
+
 	createUser := func(loginName, loginPassword, userId string, admin bool) (*iam.User, error) {
 		// Create the dev admin user
 		if loginName == "" {
@@ -134,7 +152,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 			}
 			loginName = strings.ToLower(b.DevLoginName)
 		}
-		if b.DevPassword == "" {
+		if loginPassword == "" {
 			b.DevPassword, err = base62.Random(20)
 			if err != nil {
 				return nil, fmt.Errorf("unable to generate password: %w", err)
@@ -166,10 +184,11 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 
 		// Create a new user and associate it with the account
 		if userId == "" {
-			userId, err = db.NewPublicId(iam.UserPrefix)
+			b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
 			if err != nil {
 				return nil, fmt.Errorf("error generating initial user id: %w", err)
 			}
+			userId = b.DevUserId
 		}
 		opts := []iam.Option{
 			iam.WithPublicId(userId),
@@ -245,9 +264,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
-	if err := kmsCache.AddExternalWrappers(
-		kms.WithRootWrapper(b.RootKms),
-	); err != nil {
+	if err := kmsCache.AddExternalWrappers(kms.WithRootWrapper(b.RootKms)); err != nil {
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 

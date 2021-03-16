@@ -478,7 +478,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				return &am
 			},
 			fieldMasks:   []string{"SigningAlgs"},
-			version:      1,
+			version:      2, // since TestAuthMethod(...) did an update to get it to ActivePublicState
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 	}

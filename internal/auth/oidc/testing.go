@@ -42,7 +42,6 @@ func TestAuthMethod(
 	ctx := context.Background()
 
 	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
-	authMethod.OperationalState = string(state)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -98,6 +97,12 @@ func TestAuthMethod(
 		require.NoError(err)
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
+
+	authMethod.OperationalState = string(state)
+	rowsUpdated, err := rw.Update(ctx, authMethod, []string{"OperationalState"}, nil)
+	require.NoError(err)
+	require.True(rowsUpdated == 0 || rowsUpdated == 1)
+
 	return authMethod
 }
 

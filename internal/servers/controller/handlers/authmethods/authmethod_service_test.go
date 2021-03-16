@@ -2111,6 +2111,8 @@ func TestAuthenticateLogin(t *testing.T) {
 	}
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
+	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, am.PublicId)
+
 	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(t, err)
 
@@ -2289,7 +2291,8 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	// connected to an account.
 	iamRepo, err := iamRepoFn()
 	require.NoError(err)
-	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId(), iam.WithAutoVivify(true))
+	iam.TestUser(t, iamRepo, am.ScopeId, iam.WithAccountIds(acct.PublicId))
+	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId())
 	require.NoError(err)
 
 	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)

@@ -2,6 +2,13 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Pending
+
+### Bug Fixes
+
+* server: Roles for auto generated scopes are now generated at database init.
+  [PR](https://github.com/hashicorp/boundary/pull/996)
+
 ## 0.1.8 (2021/03/10)
 
 ### Known Issues
@@ -18,6 +25,15 @@ to call out in this changelog. The full set of open issues is on GitHub.
   test was using the normal table output since the output was ignored anyways.
   As a result, our CLI tests did not catch this panic. Our apologies, and we
   will fix this in the next release.
+* Initially Created Scopes: Starting in 0.1.6, When initial scopes are created
+  when executing `boundary database init`, the associated admin roles aren't
+  created. The intended behavior is to have a role which granted the auto
+  created admin the grant `"id=*;type=*;actions=*"` for each auto generated
+  scope.  To set your data to the intended state you can add a role for the
+  admin user in the generated scopes.  An outline of the steps to do this can
+  be found in this
+  [gist](https://gist.github.com/talanknight/98492dc68d894f67742086eb41fdb506).
+  This will be fixed in the next release.
 
 ### Changes/Deprecations
 
