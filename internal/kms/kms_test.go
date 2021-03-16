@@ -84,11 +84,12 @@ func TestNewDerivedReader(t *testing.T) {
 		info     []byte
 	}
 	tests := []struct {
-		name        string
-		args        args
-		want        *io.LimitedReader
-		wantErr     bool
-		wantErrCode errors.Code
+		name            string
+		args            args
+		want            *io.LimitedReader
+		wantErr         bool
+		wantErrCode     errors.Code
+		wantErrContains string
 	}{
 		{
 			name: "valid-with-salt",
@@ -124,8 +125,9 @@ func TestNewDerivedReader(t *testing.T) {
 				info:     []byte("info"),
 				salt:     []byte("salt"),
 			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
+			wantErr:         true,
+			wantErrCode:     errors.InvalidParameter,
+			wantErrContains: "missing wrapper",
 		},
 		{
 			name: "too-short",
@@ -135,8 +137,21 @@ func TestNewDerivedReader(t *testing.T) {
 				info:     []byte("info"),
 				salt:     []byte("salt"),
 			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
+			wantErr:         true,
+			wantErrCode:     errors.InvalidParameter,
+			wantErrContains: "lenLimit must be >= 20",
+		},
+		{
+			name: "wrapper-with-no-bytes",
+			args: args{
+				wrapper:  &aead.Wrapper{},
+				lenLimit: 32,
+				info:     nil,
+				salt:     []byte("salt"),
+			},
+			wantErr:         true,
+			wantErrCode:     errors.InvalidParameter,
+			wantErrContains: "missing bytes",
 		},
 	}
 	for _, tt := range tests {
@@ -146,6 +161,9 @@ func TestNewDerivedReader(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error: %s", err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
 				return
 			}
 			require.NoError(err)

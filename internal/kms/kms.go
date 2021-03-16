@@ -400,6 +400,9 @@ func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byt
 			return nil, errors.New(errors.InvalidParameter, op, "unexpected wrapper type from multiwrapper base")
 		}
 	case *aead.Wrapper:
+		if w.GetKeyBytes() == nil {
+			return nil, errors.New(errors.InvalidParameter, op, "aead wrapper missing bytes")
+		}
 		aeadWrapper = w
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown wrapper type")
