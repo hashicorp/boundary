@@ -192,6 +192,9 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 // encrypt the auth method before writing it to the db
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
@@ -205,6 +208,9 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 // decrypt the auth method after reading it from the db
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).decrypt"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
@@ -214,6 +220,9 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 // hmacClientSecret before writing it to the db
 func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
 	if err != nil {
 		return errors.Wrap(err, op)
