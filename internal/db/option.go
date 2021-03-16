@@ -40,6 +40,9 @@ type Options struct {
 	withWhereClause     string
 	withWhereClauseArgs []interface{}
 	withOrder           string
+
+	// withPrngValues is used to switch the ID generation to a pseudo-random mode
+	withPrngValues []string
 }
 
 type oplogOpts struct {
@@ -153,5 +156,12 @@ func WithWhere(whereClause string, args ...interface{}) Option {
 func WithOrder(withOrder string) Option {
 	return func(o *Options) {
 		o.withOrder = withOrder
+	}
+}
+
+// WithPrngValues provides an option to provide values to seed an PRNG when generating IDs
+func WithPrngValues(withPrngValues []string) Option {
+	return func(o *Options) {
+		o.withPrngValues = withPrngValues
 	}
 }
