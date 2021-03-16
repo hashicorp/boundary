@@ -6,7 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* server: Roles for auto generated scopes are appropriately at database init.
+* server: Roles for auto generated scopes are now generated at database init.
   [PR](https://github.com/hashicorp/boundary/pull/996)
 
 ## 0.1.8 (2021/03/10)
