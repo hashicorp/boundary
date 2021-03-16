@@ -2,18 +2,18 @@ begin;
 
   -- credential_store
   create table credential_store (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null
-      references iam_scope (public_id)
-      on delete cascade
-      on update cascade,
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
+      constraint iam_scope_fk
+        references iam_scope (public_id)
+        on delete cascade
+        on update cascade,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
     -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
-    unique(scope_id, public_id)
+    constraint credential_store_scope_id_public_id_uq
+      unique(scope_id, public_id)
   );
 
   create trigger immutable_columns before update on credential_store
@@ -50,10 +50,12 @@ begin;
   create table credential_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
-      references credential_store (public_id)
-      on delete cascade
-      on update cascade,
-    unique(store_id, public_id)
+      constraint credential_store_fk
+        references credential_store (public_id)
+        on delete cascade
+        on update cascade,
+    constraint credential_library_store_id_public_id_uq
+      unique(store_id, public_id)
   );
 
   create trigger immutable_columns before update on credential_library
