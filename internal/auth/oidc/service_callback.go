@@ -159,8 +159,8 @@ func Callback(
 
 	// okay, now we need some claims from both the ID Token and userinfo, so we can
 	// upsert an auth account
-	var idTkClaims map[string]interface{}
-	var userInfoClaims map[string]interface{}
+	idTkClaims := map[string]interface{}{}     // intentionally, NOT nil for call to upsertAccount(...)
+	userInfoClaims := map[string]interface{}{} // intentionally, NOT nil for call to upsertAccount(...)
 
 	if err := tk.IDToken().Claims(&idTkClaims); err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
@@ -170,7 +170,7 @@ func Callback(
 	if userInfoTokenSource != nil {
 		sub, ok := idTkClaims["sub"].(string)
 		if !ok {
-			return "", errors.New(errors.Unknown, op, "subject is not present in return, which should not be possible")
+			return "", errors.New(errors.Unknown, op, "subject is not present in ID Token, which should not be possible")
 		}
 		if err := provider.UserInfo(ctx, userInfoTokenSource, sub, &userInfoClaims); err != nil {
 			return "", errors.New(errors.Unknown, op, "unable to get user info from provider", errors.WithWrap(err))
