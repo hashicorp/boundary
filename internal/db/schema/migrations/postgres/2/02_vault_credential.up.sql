@@ -24,6 +24,9 @@ begin;
     constraint vault_credential_store_scope_id_name_uq
       unique(scope_id, name)
   );
+  comment on table vault_credential_store is
+    'vault_credential_store is a table where each row is a resource that represents a vault credential store. '
+    'It is a credential_store subtype.';
 
   create trigger update_version_column after update on vault_credential_store
     for each row execute procedure update_version_column();
@@ -68,6 +71,9 @@ begin;
     constraint vault_credential_library_store_id_public_id_uq
       unique(store_id, public_id)
   );
+  comment on table vault_credential_library is
+    'vault_credential_library is a table where each row is a resource that represents a vault credential library. '
+    'It is a credential_library subtype and a child table of vault_credential_store.';
 
   create trigger update_version_column after update on vault_credential_library
     for each row execute procedure update_version_column();
@@ -109,6 +115,8 @@ begin;
         check(lease_duration >= 0),
     last_renewal_time wt_timestamp not null
   );
+  comment on table vault_credential_token is
+    'vault_credential_token is a table where each row contains a Vault token for one Vault credential store.';
 
   create trigger update_version_column after update on vault_credential_token
     for each row execute procedure update_version_column();
@@ -145,6 +153,8 @@ begin;
     last_renewal_time wt_timestamp not null,
     is_renewable boolean not null
   );
+  comment on table vault_credential_lease is
+    'vault_credential_lease is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
 
   create trigger update_version_column after update on vault_credential_lease
     for each row execute procedure update_version_column();

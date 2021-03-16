@@ -15,6 +15,9 @@ begin;
     constraint credential_store_scope_id_public_id_uq
       unique(scope_id, public_id)
   );
+  comment on table credential_store is
+    'credential_store is a base table for the credential store type. '
+    'Each row is owned by a single scope and maps 1-to-1 to a row in one of the credential store subtype tables.';
 
   create trigger immutable_columns before update on credential_store
     for each row execute procedure immutable_columns('public_id', 'scope_id');
@@ -57,6 +60,9 @@ begin;
     constraint credential_library_store_id_public_id_uq
       unique(store_id, public_id)
   );
+  comment on table credential_library is
+    'credential_library is a base table for the credential library type and a child table of credential_store. '
+    'Each row maps 1-to-1 to a row in one of the credential library subtype tables.';
 
   create trigger immutable_columns before update on credential_library
     for each row execute procedure immutable_columns('public_id', 'store_id');

@@ -11,6 +11,9 @@ begin;
         )
       )
   );
+  comment on table target_credential_type_enm is
+    'target_credential_type_enm is an enumeration table for credential types. '
+    'It contains rows for representing the application, egress, and ingress credential types.';
 
   insert into target_credential_type_enm (name)
   values
@@ -37,6 +40,9 @@ begin;
     create_time wt_timestamp,
     primary key(target_id, credential_library_id, target_credential_type)
   );
+  comment on table target_credential_library is
+    'target_credential_library is a join table between the target and credential_library tables. '
+    'It also contains the credential type the relationship represents.';
 
   create trigger default_create_time_column before insert on target_credential_library
     for each row execute procedure default_create_time();

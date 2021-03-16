@@ -19,6 +19,9 @@ begin;
     create_time wt_timestamp,
     primary key(session_id, credential_library_id, target_credential_type)
   );
+  comment on table session_credential_library is
+    'session_credential_library is a join table between the session and credential_library tables. '
+    'It also contains the credential type the relationship represents.';
 
   create trigger default_create_time_column before insert on session_credential_library
     for each row execute procedure default_create_time();
