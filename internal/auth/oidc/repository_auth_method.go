@@ -39,10 +39,10 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	var iss, sub string
 	var ok bool
 	if iss, ok = IdTokenClaims["iss"].(string); !ok {
-		return nil, errors.New(errors.Unknown, op, "issuer is not present in return, which should not be possible")
+		return nil, errors.New(errors.Unknown, op, "issuer is not present in ID Token, which should not be possible")
 	}
 	if sub, ok = IdTokenClaims["sub"].(string); !ok {
-		return nil, errors.New(errors.Unknown, op, "subject is not present in return, which should not be possible")
+		return nil, errors.New(errors.Unknown, op, "subject is not present in Access Token, which should not be possible")
 	}
 
 	columns := []string{"public_id", "auth_method_id", "issuer_id", "subject_id"}
@@ -196,7 +196,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 	}
-	metadata := acct.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId)
+	metadata := acct.oplog(operation, scopeId)
 	acctAsReplayable, ok := interface{}(acct).(oplog.ReplayableMessage)
 	if !ok {
 		return errors.New(errors.Internal, op, "account is not replayable")
