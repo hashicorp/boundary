@@ -2,6 +2,13 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Pending
+
+### Bug Fixes
+
+* server: Roles for auto generated scopes are appropriately at database init.
+  [PR](https://github.com/hashicorp/boundary/pull/996)
+
 ## 0.1.8 (2021/03/10)
 
 ### Known Issues
@@ -26,6 +33,7 @@ to call out in this changelog. The full set of open issues is on GitHub.
   admin user in the generated scopes.  An outline of the steps to do this can
   be found in this
   [gist](https://gist.github.com/talanknight/98492dc68d894f67742086eb41fdb506).
+  This will be fixed in the next release.
 
 ### Changes/Deprecations
 
