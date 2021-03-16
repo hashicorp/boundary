@@ -364,7 +364,7 @@ func (am *AuthMethod) convertCallbacks() ([]interface{}, error) {
 // to []interface{} where each slice element is a *Certificate. It will return an
 // error if the AuthMethod's public id is not set.
 func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
-	const op = "oidc.(AuthMethod).convertAudClaims"
+	const op = "oidc.(AuthMethod).convertCertificates"
 	if am.PublicId == "" {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
