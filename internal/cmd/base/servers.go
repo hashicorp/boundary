@@ -87,8 +87,9 @@ type Server struct {
 	DevTargetSessionMaxSeconds      int
 	DevTargetSessionConnectionLimit int
 
-	DatabaseUrl            string
-	DevDatabaseCleanupFunc func() error
+	DatabaseUrl                string
+	DatabaseMaxOpenConnections int
+	DevDatabaseCleanupFunc     func() error
 
 	Database *gorm.DB
 }
@@ -452,7 +453,11 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-
+	if b.DatabaseMaxOpenConnections == 1 {
+		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
+	} else {
+		dbase.DB().SetMaxOpenConns(b.DatabaseMaxOpenConnections)
+	}
 	b.Database = dbase
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)

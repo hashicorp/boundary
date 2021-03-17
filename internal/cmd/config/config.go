@@ -131,8 +131,9 @@ type Worker struct {
 }
 
 type Database struct {
-	Url          string `hcl:"url"`
-	MigrationUrl string `hcl:"migration_url"`
+	Url                string `hcl:"url"`
+	MigrationUrl       string `hcl:"migration_url"`
+	MaxOpenConnections int    `hcl:"max_open_connections"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
