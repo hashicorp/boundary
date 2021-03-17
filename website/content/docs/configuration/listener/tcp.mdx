@@ -61,6 +61,16 @@ allowed.
   request duration allowed before Boundary cancels the request. This overrides
   `default_max_request_duration` for this listener.
 
+- `cors_enabled` `(boolean: true)` - Specifies if CORS should be enabled, which
+  allows Boundary to support external browser-based clients (not including
+  admin UI), such as Boundary Desktop.
+
+- `cors_allowed_origins` `(array(string): ['serve://boundary'])` - an array of
+  allowed CORS origins. Origins must include protocol, host, and port (if port
+  is different than the default for the specified protocol).
+  To allow all origins, set to `['*']`. By default, Boundary Desktop's origin
+  `serve://boundary` is allowed.
+
 ### TLS
 
 ~> All `tls` parameters are valid only for the `api` listener. `cluster` and
