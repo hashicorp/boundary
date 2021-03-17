@@ -75,6 +75,7 @@ var Map = map[string]Type{
 	RemoveAccounts.String():   RemoveAccounts,
 	ReadSelf.String():         ReadSelf,
 	CancelSelf.String():       CancelSelf,
+	ChangeState.String():	   ChangeState,
 }
 
 func (a Type) String() string {
@@ -112,6 +113,7 @@ func (a Type) String() string {
 		"remove-accounts",
 		"read:self",
 		"cancel:self",
+		"change-state",
 	}[a]
 }
 
