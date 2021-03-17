@@ -44,7 +44,9 @@ create table job_run_interrupt (
        constraint new_job_run_fk
            references job_run(id)
            on delete cascade
-           on update cascade
+           on update cascade,
+
+    primary key(old_run_id, new_run_id)
 );
 
 comment on table job_run_interrupt is
