@@ -15,7 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
@@ -241,6 +245,45 @@ func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL strin
 	p1, err := oidc.NewProvider(c1)
 	require.NoError(err)
 	return p1
+}
+
+// testState will make a request.State and encrypt/encode within a request.Wrapper.
+// the returned string can be used as a parameter for functions like: oidc.Callback
+func testState(
+	t *testing.T,
+	am *AuthMethod,
+	kms *kms.Kms,
+	tokenRequestId string,
+	expIn time.Duration,
+	finalRedirect string,
+	providerHash uint64,
+	nonce string,
+) string {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	require.NotNil(am)
+	require.NotNil(kms)
+
+	now := time.Now()
+	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
+	require.NoError(err)
+	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
+	require.NoError(err)
+
+	st := &request.State{
+		TokenRequestId:     tokenRequestId,
+		CreateTime:         &timestamp.Timestamp{Timestamp: createTime},
+		ExpirationTime:     &timestamp.Timestamp{Timestamp: exp},
+		FinalRedirectUrl:   finalRedirect,
+		Nonce:              nonce,
+		ProviderConfigHash: providerHash,
+	}
+	requestWrapper, err := requestWrappingWrapper(ctx, kms, am.ScopeId, am.PublicId)
+	require.NoError(err)
+	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
+	require.NoError(err)
+	return encodedEncryptedSt
 }
 
 // testFreePort just returns an available free localhost port

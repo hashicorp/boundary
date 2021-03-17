@@ -230,5 +230,4 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(reqState.ExpirationTime, reqToken.ExpirationTime)
 		})
 	}
-
 }

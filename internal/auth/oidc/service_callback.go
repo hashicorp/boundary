@@ -36,7 +36,7 @@ func Callback(
 	kms *kms.Kms,
 	oidcRepoFn OidcRepoFactory,
 	iamRepoFn IamRepoFactory,
-	atRepoFn AuthTokenRepFactory,
+	atRepoFn AuthTokenRepoFactory,
 	authMethodId, state, code string) (finalRedirect string, e error) {
 	panic("to-do")
 }
