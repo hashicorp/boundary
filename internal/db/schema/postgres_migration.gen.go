@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 1003,
+		binarySchemaVersion: 2005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4892,7 +4892,7 @@ comment on domain wt_full_name is
 'standard column for the full name of a person';
 
 -- wt_url defines a type for URLs which must be longer that 3 chars and
--- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- less than 4k chars.  It's defined to allow nulls, which can be overridden as
 -- needed when used in tables.
 create domain wt_url as text
     constraint wt_url_too_short
@@ -4914,7 +4914,7 @@ create domain wt_name as text
 comment on domain wt_name is
 'standard column for resource names';
 
--- wt_description defines a type for resource descriptionss that must be less
+-- wt_description defines a type for resource descriptions that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
     constraint wt_description_too_short
@@ -4986,6 +4986,57 @@ create trigger
 	kms_version_column
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
+`),
+			2005: []byte(`
+create table job (
+    id text primary key,
+    name wt_name not null,
+    description wt_description not null
+);
+comment on table job is
+    'job is a base table where each row represents a unique job that can only have one running instance at any specific time.';
+
+create table job_run (
+     id serial primary key,
+     job_id text not null
+         constraint job_fk
+             references job(id)
+             on delete cascade
+             on update cascade,
+     server_id wt_private_id not null
+         constraint server_fk
+             references server(private_id)
+             on delete cascade
+             on update cascade,
+     scheduled_start_time timestamp not null,
+     start_time timestamp,
+     end_time timestamp,
+     last_heartbeat timestamp,
+     completed_count int,
+     total_count int,
+
+     constraint job_run_job_id_end_time_uq
+         unique(job_id, end_time)
+);
+
+comment on table job_run is
+    'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
+
+create table job_run_interrupt (
+    old_run_id integer not null
+       constraint old_job_run_fk
+           references job_run(id)
+           on delete cascade
+           on update cascade,
+    new_run_id integer not null
+       constraint new_job_run_fk
+           references job_run(id)
+           on delete cascade
+           on update cascade
+);
+
+comment on table job_run_interrupt is
+    'job_run_interrupt is a table where each row represents a request to kill a running job and the job run that was created to replace it.';
 `),
 		},
 	}
