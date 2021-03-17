@@ -37,8 +37,10 @@ type AuthMethod interface {
 	GetVersion() uint32
 }
 
-var _ AuthMethod = (*oidc.AuthMethod)(nil)
-var _ AuthMethod = (*password.AuthMethod)(nil)
+var (
+	_ AuthMethod = (*oidc.AuthMethod)(nil)
+	_ AuthMethod = (*password.AuthMethod)(nil)
+)
 
 // SubtypeFromType converts a string to a SubType.
 // returns UnknownSubtype if no SubType with that name is found.

@@ -375,5 +375,4 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			}
 		})
 	}
-
 }
