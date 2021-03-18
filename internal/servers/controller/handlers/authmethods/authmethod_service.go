@@ -35,9 +35,30 @@ import (
 )
 
 const (
-	loginNameKey = "login_name"
-	pwKey        = "password"
+	// general auth method field names
+	versionField = "version"
+	scopeIdField = "scope_id"
+	typeField = "type"
+	attributesField = "attributes"
 
+	// password field names
+	loginNameField = "login_name"
+	pwKeyField     = "password"
+
+	// oidc field names
+	discoveryUrlField = "attributes.discovery_url"
+	clientSecretField = "attributes.client_secret"
+	clientIdField = "attributes.client_id"
+	clientSecretHmacField = "attributes.client_secret_hmac"
+	stateField = "attributes.state"
+	callbackUrlField = "attributes.callback_urls"
+	callbackUrlPrefixeField = "attributes.callback_url_prefixes"
+	certificateField = "attributes.certificates"
+	maxAgeField = "attributes.max_age"
+	signingAlgorithmField = "attributes.signing_algorithms"
+)
+
+const (
 	stateInactive = "inactive"
 	statePrivate  = "active-private"
 	statePublic   = "active-public"
@@ -295,7 +316,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, authResults.Error
 	}
 	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameField].GetStringValue(), creds[pwKeyField].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +338,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 		return nil, authResults.Error
 	}
 	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameField].GetStringValue(), creds[pwKeyField].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -802,7 +823,7 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 	pwAttrs := &pb.PasswordAuthMethodAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
 	if pwAttrs.GetMinLoginNameLength() != 0 {
 		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
@@ -817,7 +838,7 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 	attrs := &pb.OidcAuthMethodAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
 	clientId := attrs.GetClientId().GetValue()
 	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
@@ -861,7 +882,7 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 		cbu, err := url.Parse(cbUrl)
 		if err != nil {
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{"attributes.callback_url_prefixes": "Unparseable url"})
+				map[string]string{callbackUrlPrefixeField: "Unparseable url"})
 		}
 		cbs = append(cbs, cbu)
 	}
@@ -898,70 +919,70 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 		badFields := map[string]string{}
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
-			badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
+			badFields[scopeIdField] = "This field must be 'global' or a valid org scope id."
 		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 		case auth.OidcSubtype:
 			attrs := &pb.OidcAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if attrs.GetDiscoveryUrl().GetValue() == "" {
-				badFields["attributes.discovery_url"] = "Field required for creating an OIDC auth method."
+				badFields[discoveryUrlField] = "Field required for creating an OIDC auth method."
 			} else {
 				du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
 				if err != nil {
-					badFields["attributes.discovery_url"] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+					badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 				}
 				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-					badFields["attributes.discovery_url"] = "The path should be empty or `/.well-known/openid-configuration`"
+					badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
 				}
 			}
 			if attrs.GetClientId().GetValue() == "" {
-				badFields["attributes.client_id"] = "Field required for creating an OIDC auth method."
+				badFields[clientIdField] = "Field required for creating an OIDC auth method."
 			}
 			if attrs.GetClientSecret().GetValue() == "" {
-				badFields["attributes.client_secret"] = "Field required for creating an OIDC auth method."
+				badFields[clientSecretField] = "Field required for creating an OIDC auth method."
 			}
 			if attrs.GetClientSecretHmac() != "" {
-				badFields["attributes.client_secret_hmac"] = "Field is read only."
+				badFields[clientSecretHmacField] = "Field is read only."
 			}
 			if attrs.GetState() != "" {
-				badFields["attributes.state"] = "Field is read only."
+				badFields[stateField] = "Field is read only."
 			}
 			if len(attrs.GetCallbackUrls()) > 0 {
-				badFields["attributes.callback_urls"] = "Field is read only."
+				badFields[callbackUrlField] = "Field is read only."
 			}
 
 			if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
-				badFields["attributes.max_age"] = "If defined, must not be `0`."
+				badFields[maxAgeField] = "If defined, must not be `0`."
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
 					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
-						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}
 				}
 			}
 			for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
 				if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields["attributes.callback_url_prefixes"] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
+					badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
 					break
 				}
 			}
 			if len(attrs.GetCertificates()) > 0 {
 				if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
-					badFields["attributes.certificates"] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+					badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
 				}
 			}
 		default:
-			badFields["type"] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
+			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
 		}
 		return badFields
 	})
@@ -973,72 +994,72 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
-				badFields["type"] = "Cannot modify the resource type."
+				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 		case auth.OidcSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.OidcSubtype {
-				badFields["type"] = "Cannot modify the resource type."
+				badFields[typeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.OidcAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.discovery_url") {
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), discoveryUrlField) {
 				if attrs.GetDiscoveryUrl().GetValue() == "" {
-					badFields["attributes.discovery_url"] = "Field required and cannot be set to empty."
+					badFields[discoveryUrlField] = "Field required and cannot be set to empty."
 				} else {
 					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
 					if err != nil {
-						badFields["attributes.discovery_url"] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
 					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields["attributes.discovery_url"] = "The path should be empty or `/.well-known/openid-configuration`"
+						badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
 					}
 				}
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.client_secret") && attrs.GetClientSecret().GetValue() == "" {
-				badFields["attributes.client_secret"] = "Cannot set the client secret to empty."
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
+				badFields[clientSecretField] = "Cannot set the client secret to empty."
 			}
 
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.client_id") && attrs.GetClientId().GetValue() == "" {
-				badFields["attributes.client_id"] = "Can change but cannot unset this field."
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
+				badFields[clientIdField] = "Can change but cannot unset this field."
 			}
 
 			if attrs.GetClientSecretHmac() != "" {
-				badFields["attributes.client_secret_hmac"] = "Field is read only."
+				badFields[clientSecretHmacField] = "Field is read only."
 			}
 			if attrs.GetState() != "" {
-				badFields["attributes.state"] = "Field is read only."
+				badFields[stateField] = "Field is read only."
 			}
 			if len(attrs.GetCallbackUrls()) > 0 {
-				badFields["attributes.callback_urls"] = "Field is read only."
+				badFields[callbackUrlField] = "Field is read only."
 			}
 
 			if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
-				badFields["attributes.max_age"] = "Must not be `0`."
+				badFields[maxAgeField] = "Must not be `0`."
 			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
 					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
-						badFields["attributes.signing_algorithms"] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}
 				}
 			}
 			for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
 				if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields["attributes.callback_url_prefixes"] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
+					badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
 					break
 				}
 			}
 			if len(attrs.GetCertificates()) > 0 {
 				if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
-					badFields["attributes.certificates"] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+					badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
 				}
 			}
 
@@ -1057,7 +1078,7 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
-		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
+		badFields[scopeIdField] = "This field must be 'global' or a valid org scope id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
@@ -1074,12 +1095,12 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	}
 	badFields := make(map[string]string)
 	if req.GetVersion() == 0 {
-		badFields["version"] = "Resource version is required."
+		badFields[versionField] = "Resource version is required."
 	}
 	switch req.GetState() {
 	case stateInactive, statePrivate, statePublic:
 	default:
-		badFields["state"] = fmt.Sprintf("Only supported values are %q, %q, or %q.", stateInactive, statePrivate, statePublic)
+		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", stateInactive, statePrivate, statePublic)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
@@ -1103,10 +1124,10 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		badFields["credentials"] = "This is a required field."
 	}
 	creds := req.GetCredentials().GetFields()
-	if _, ok := creds[loginNameKey]; !ok {
+	if _, ok := creds[loginNameField]; !ok {
 		badFields["credentials.login_name"] = "This is a required field."
 	}
-	if _, ok := creds[pwKey]; !ok {
+	if _, ok := creds[pwKeyField]; !ok {
 		badFields["credentials.password"] = "This is a required field."
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
@@ -1133,10 +1154,10 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 		badFields["credentials"] = "This is a required field."
 	}
 	creds := req.GetCredentials().GetFields()
-	if _, ok := creds[loginNameKey]; !ok {
+	if _, ok := creds[loginNameField]; !ok {
 		badFields["credentials.login_name"] = "This is a required field."
 	}
-	if _, ok := creds[pwKey]; !ok {
+	if _, ok := creds[pwKeyField]; !ok {
 		badFields["credentials.password"] = "This is a required field."
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
