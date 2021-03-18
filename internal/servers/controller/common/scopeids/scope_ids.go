@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -29,8 +30,14 @@ func GetScopeIds(
 	// The scope ID to use, or to use as the starting point for a recursive
 	// search
 	rootScopeId string,
+	// The type of resource we are listing
+	typ resource.Type,
 	// Whether or not the search should be recursive
 	recursive bool) ([]string, map[string]*scopes.ScopeInfo, error) {
+	const op = "GetScopeIds"
+	if typ == resource.Unknown {
+		return nil, nil, errors.New(errors.InvalidParameter, op, "unknown resource")
+	}
 	// Get the list of scope IDs. If it's recursive, check ACLs.
 	var scopeIds []string
 	// This will be used to memoize scope info so we can put the right scope
@@ -51,19 +58,15 @@ func GetScopeIds(
 		}
 		scopeIds = make([]string, 0, len(scps))
 		res := perms.Resource{
-			Type: resource.Role,
+			Type: typ,
 		}
 		// For each scope, see if we have permission to list on that scope
 		for _, scp := range scps {
 			scpId := scp.GetPublicId()
-			// We already checked the incoming ID so we can definitely add it
-			if scpId == authResults.Scope.Id {
-				scopeIds = append(scopeIds, scp.GetPublicId())
-				continue
-			}
 			res.ScopeId = scpId
 			aSet := authResults.FetchActionSetForType(ctx,
-				resource.Role,
+				// This is overridden by WithResource
+				resource.Unknown,
 				action.ActionSet{action.List},
 				auth.WithResource(&res),
 			)

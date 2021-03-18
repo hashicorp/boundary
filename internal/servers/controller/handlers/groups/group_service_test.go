@@ -10,11 +10,14 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -1355,4 +1358,73 @@ func TestRemoveMember(t *testing.T) {
 			}
 		})
 	}
+}
+
+// This test validates that we can perform recursive listing when there are no
+// permissions on the parent scope against which the query is being run, but
+// there are on child scopes. The choice of putting the test in this package is
+// because groups are (one type of resource) valid in projects and we want to
+// validate that the initial bugged behavior that used role permissions instead
+// of the resource type under test is fixed.
+func TestRecursiveNoParentPerms(t *testing.T) {
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+	s, err := groups.NewService(iamRepoFn)
+	require.NoError(err)
+
+	o, p := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	ctx := auth.NewVerifierContext(context.Background(),
+		nil,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		kms,
+		auth.RequestInfo{
+			Token:       at.GetToken(),
+			TokenFormat: auth.AuthTokenTypeBearer,
+			PublicId:    at.GetPublicId(),
+		})
+	// Create a group so that there is at least one value that will come back on
+	// success
+	g := iam.TestGroup(t, conn, p.GetPublicId())
+
+	// Attempt a recursive list at the org level with the given user. It has no
+	// permissions so there should overall be a Forbidden.
+	out, err := s.ListGroups(ctx, &pbs.ListGroupsRequest{
+		Recursive: true,
+		ScopeId:   o.GetPublicId(),
+	})
+	require.Error(err)
+	require.Nil(out)
+	require.Equal(err.Error(), handlers.ForbiddenError().Error())
+
+	// Add list on the project
+	r := iam.TestRole(t, conn, p.GetPublicId())
+	iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=group;actions=list,read")
+	iam.TestUserRole(t, conn, r.GetPublicId(), "u_auth")
+
+	// Attempt a recursive list at the org level with the given user. It should
+	// now find the group created above.
+	out, err = s.ListGroups(ctx, &pbs.ListGroupsRequest{
+		Recursive: true,
+		ScopeId:   o.GetPublicId(),
+	})
+	require.NoError(err)
+	require.NotNil(out)
+	require.Len(out.Items, 1)
+	require.Equal(out.Items[0].Id, g.GetPublicId())
 }

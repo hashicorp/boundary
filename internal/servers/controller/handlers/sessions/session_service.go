@@ -102,9 +102,26 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	if authResults.Error != nil {
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.Authenticated {
+		} else {
+			return nil, authResults.Error
+		}
+	}
+
+	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx,
+		s.iamRepoFn, authResults, req.GetScopeId(), resource.Session, req.GetRecursive())
 	if err != nil {
 		return nil, err
+	}
+	// If we aren't authorized for any scopes, return unauthorized
+	if len(scopeIds) == 0 {
+		return nil, handlers.ForbiddenError()
 	}
 
 	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
