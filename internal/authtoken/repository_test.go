@@ -740,8 +740,8 @@ func Test_IssuePendingToken(t *testing.T) {
 				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithPublicId(tokenPublicId))
 				return tk.PublicId
 			}(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing token request id",
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "pending auth token",
 		},
 		{
 			name: "success",
