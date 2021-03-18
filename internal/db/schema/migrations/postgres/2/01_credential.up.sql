@@ -93,9 +93,148 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- credential
+  create table credential (
+    public_id wt_public_id primary key
+  );
+  comment on table credential is
+    'credential is a base table for the credential type. ';
+
+  create trigger immutable_columns before update on credential
+    for each row execute procedure immutable_columns('public_id');
+
+  -- insert_credential_subtype() is a before insert trigger
+  -- function for subtypes of credential
+  create or replace function insert_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into credential
+      (public_id)
+    values
+      (new.public_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_credential_subtype() is an after delete trigger
+  -- function for subtypes of credential
+  create or replace function delete_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from credential
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- credential_static
+  create table credential_static (
+    public_id wt_public_id primary key,
+    store_id wt_public_id not null
+      constraint credential_store_fk
+        references credential_store (public_id)
+        on delete cascade
+        on update cascade,
+    constraint credential_static_store_id_public_id_uq
+      unique(store_id, public_id)
+  );
+  comment on table credential_static is
+    'credential_static is a base table for the credential static type. '
+    'It is a credential subtype and a child table of credential_store. ';
+
+  create trigger immutable_columns before update on credential_static
+    for each row execute procedure immutable_columns('public_id', 'store_id');
+
+  create trigger insert_credential_subtype before insert on credential_static
+    for each row execute procedure insert_credential_subtype();
+
+  create trigger delete_credential_subtype after delete on credential_static
+    for each row execute procedure delete_credential_subtype();
+
+  -- insert_credential_static_subtype() is a before insert trigger
+  -- function for subtypes of credential_static
+  create or replace function insert_credential_static_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into credential_static
+      (public_id, store_id)
+    values
+      (new.public_id, new.store_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_credential_static_subtype() is an after delete trigger
+  -- function for subtypes of credential_static
+  create or replace function delete_credential_static_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from credential_static
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- credential_dynamic
+  create table credential_dynamic (
+    public_id wt_public_id primary key,
+    library_id wt_public_id not null
+      constraint credential_library_fk
+        references credential_library (public_id)
+        on delete cascade
+        on update cascade,
+    constraint credential_dynamic_library_id_public_id_uq
+      unique(library_id, public_id)
+  );
+  comment on table credential_dynamic is
+    'credential_dynamic is a base table for the credential dynamic type. '
+    'It is a credential subtype and a child table of credential_library. ';
+
+  create trigger immutable_columns before update on credential_dynamic
+    for each row execute procedure immutable_columns('public_id', 'library_id');
+
+  create trigger insert_credential_subtype before insert on credential_dynamic
+    for each row execute procedure insert_credential_subtype();
+
+  create trigger delete_credential_subtype after delete on credential_dynamic
+    for each row execute procedure delete_credential_subtype();
+
+  -- insert_credential_dynamic_subtype() is a before insert trigger
+  -- function for subtypes of credential_dynamic
+  create or replace function insert_credential_dynamic_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into credential_dynamic
+      (public_id, library_id)
+    values
+      (new.public_id, new.library_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_credential_dynamic_subtype() is an after delete trigger
+  -- function for subtypes of credential_dynamic
+  create or replace function delete_credential_dynamic_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from credential_dynamic
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
   insert into oplog_ticket (name, version)
   values
     ('credential_store', 1),
-    ('credential_library', 1);
+    ('credential_library', 1),
+    ('credential', 1),
+    ('credential_static', 1),
+    ('credential_dynamic', 1);
 
 commit;

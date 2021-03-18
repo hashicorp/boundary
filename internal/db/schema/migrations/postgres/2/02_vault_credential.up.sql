@@ -7,15 +7,26 @@ begin;
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
-    name text,
-    description text,
+    name wt_name,
+    description wt_description,
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    token_role_path text not null
-      constraint token_role_path_must_not_be_empty
-        check(length(trim(token_role_path)) > 0),
-    namespace text,
+    vault_address text not null
+      constraint vault_address_must_not_be_empty
+        check(length(trim(vault_address)) > 0),
+    -- the remaining text columns can be null but if they are not null, they
+    -- cannot contain an empty string
+    namespace text
+      constraint namespace_must_not_be_empty
+        check(length(trim(namespace)) > 0),
+    ca_cert text -- PEM encoded certificate bundle
+      constraint ca_cert_must_not_be_empty
+        check(length(trim(ca_cert)) > 0),
+    tls_server_name text
+      constraint tls_server_name_must_not_be_empty
+        check(length(trim(tls_server_name)) > 0),
+    tls_skip_verify boolean not null,
     constraint credential_store_fk
       foreign key (scope_id, public_id)
       references credential_store (scope_id, public_id)
@@ -46,6 +57,26 @@ begin;
   create trigger delete_credential_store_subtype after delete on vault_credential_store
     for each row execute procedure delete_credential_store_subtype();
 
+  create table vault_client_certificate (
+    store_id wt_public_id primary key
+      constraint vault_credential_store_fk
+        references vault_credential_store (public_id)
+        on delete cascade
+        on update cascade,
+    certificate text not null -- PEM encoded certificate
+      constraint certificate_must_not_be_empty
+        check(length(trim(certificate)) > 0),
+    certificate_key text not null -- PEM encoded private key for certificate
+      constraint certificate_key_must_not_be_empty
+        check(length(trim(certificate_key)) > 0)
+  );
+  comment on table vault_client_certificate is
+    'vault_client_certificate is a table where each row contains a client certificate that a vault_credential_store uses for connecting to Vault. '
+    'A vault_credential_store can have 0 or 1 client certificates.';
+
+  create trigger immutable_columns before update on vault_client_certificate
+    for each row execute procedure immutable_columns('scope_id', 'certificate', 'certificate_key');
+
   create table vault_credential_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
@@ -53,8 +84,8 @@ begin;
         references vault_credential_store (public_id)
         on delete cascade
         on update cascade,
-    name text,
-    description text,
+    name wt_name,
+    description wt_description,
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
@@ -110,7 +141,7 @@ begin;
         unique
       constraint accessor_must_not_be_empty
         check(length(trim(accessor)) > 0),
-    lease_duration int not null
+    lease_duration bigint not null
       constraint lease_duration_must_not_be_negative
         check(lease_duration >= 0),
     last_renewal_time wt_timestamp not null
@@ -147,7 +178,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    lease_duration int not null
+    lease_duration bigint not null
       constraint lease_duration_must_not_be_negative
         check(lease_duration >= 0),
     last_renewal_time wt_timestamp not null,
@@ -168,9 +199,16 @@ begin;
   create trigger immutable_columns before update on vault_credential_lease
     for each row execute procedure immutable_columns('lease_id', 'library_id','session_id', 'create_time');
 
+  create trigger insert_credential_dynamic_subtype before insert on vault_credential_lease
+    for each row execute procedure insert_credential_dynamic_subtype();
+
+  create trigger delete_credential_dynamic_subtype after delete on vault_credential_lease
+    for each row execute procedure delete_credential_dynamic_subtype();
+
   insert into oplog_ticket (name, version)
   values
     ('vault_credential_store', 1),
-    ('vault_credential_library', 1);
+    ('vault_credential_library', 1),
+    ('vault_credential_lease', 1) ;
 
 commit;
