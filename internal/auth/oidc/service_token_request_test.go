@@ -2,14 +2,20 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,13 +50,218 @@ func Test_TokenRequest(t *testing.T) {
 	testAcct := TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "alice")
 	testUser := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(testAcct.PublicId))
 
+	testRequestWrapper, err := requestWrappingWrapper(ctx, kmsCache, testAuthMethod.ScopeId, testAuthMethod.PublicId)
+	require.NoError(t, err)
+
 	tests := []struct {
-		name         string
-		kms          *kms.Kms
-		atRepoFn     AuthTokenRepoFactory
-		tokenRequest string
-		wantErrMatch *errors.Template
+		name            string
+		kms             *kms.Kms
+		atRepoFn        AuthTokenRepoFactory
+		tokenRequest    string
+		wantErrMatch    *errors.Template
+		wantErrContains string
 	}{
+		{
+			name:            "missing-kms",
+			atRepoFn:        atRepoFn,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing kms",
+		},
+		{
+			name:            "missing-repoFn",
+			kms:             kmsCache,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth token repo function",
+		},
+		{
+			name:            "bad-wrapper",
+			kms:             kmsCache,
+			atRepoFn:        atRepoFn,
+			tokenRequest:    "bad-wrapper",
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "unable to decode message",
+		},
+		{
+			name:     "missing-wrapper-scope-id",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				w := request.Wrapper{
+					AuthMethodId: testAuthMethod.PublicId,
+				}
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "missing scope id",
+		},
+		{
+			name:     "missing-wrapper-auth-method-id",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				w := request.Wrapper{
+					ScopeId: testAuthMethod.ScopeId,
+				}
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "missing auth method id",
+		},
+		{
+			name:     "dek-not-found",
+			kms:      kms.TestKms(t, conn, db.TestWrapper(t)),
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				tokenPublicId, err := authtoken.NewAuthTokenId()
+				require.NoError(t, err)
+				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return testTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "unable to get oidc wrapper",
+		},
+		{
+			name:     "expired",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				tokenPublicId, err := authtoken.NewAuthTokenId()
+				require.NoError(t, err)
+				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return testTokenRequestId(t, testAuthMethod, kmsCache, 0, tokenPublicId)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "request token id has expired",
+		},
+		{
+			name: "atRepoFn-error",
+			kms:  kmsCache,
+			atRepoFn: func() (*authtoken.Repository, error) {
+				return nil, errors.New(errors.Unknown, "test op", "atRepoFn-error")
+			},
+			tokenRequest: func() string {
+				tokenPublicId, err := authtoken.NewAuthTokenId()
+				require.NoError(t, err)
+				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return testTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "atRepoFn-error",
+		},
+		{
+			name:     "error-unmarshal",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				require.NoError(t, err)
+				marshaledBlob, err := proto.Marshal(blobInfo)
+				w := request.Wrapper{
+					ScopeId:      testAuthMethod.ScopeId,
+					AuthMethodId: testAuthMethod.PublicId,
+					WrapperKeyId: testRequestWrapper.KeyID(),
+					Ct:           marshaledBlob,
+				}
+				require.NoError(t, err)
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "unable to unmarshal request token",
+		},
+		{
+			name:     "error-missing-exp",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				tokenPublicId, err := authtoken.NewAuthTokenId()
+				require.NoError(t, err)
+				reqTk := request.Token{
+					RequestId: tokenPublicId,
+				}
+				marshaledReqTk, err := proto.Marshal(&reqTk)
+				require.NoError(t, err)
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				require.NoError(t, err)
+				marshaledBlob, err := proto.Marshal(blobInfo)
+				w := request.Wrapper{
+					ScopeId:      testAuthMethod.ScopeId,
+					AuthMethodId: testAuthMethod.PublicId,
+					WrapperKeyId: testRequestWrapper.KeyID(),
+					Ct:           marshaledBlob,
+				}
+				require.NoError(t, err)
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "missing request token id expiration",
+		},
+		{
+			name:     "error-missing-request-id",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				exp, err := ptypes.TimestampProto(time.Now().Add(AttemptExpiration).Truncate(time.Second))
+				require.NoError(t, err)
+				reqTk := request.Token{
+					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
+				}
+				marshaledReqTk, err := proto.Marshal(&reqTk)
+				require.NoError(t, err)
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				require.NoError(t, err)
+				marshaledBlob, err := proto.Marshal(blobInfo)
+				w := request.Wrapper{
+					ScopeId:      testAuthMethod.ScopeId,
+					AuthMethodId: testAuthMethod.PublicId,
+					WrapperKeyId: testRequestWrapper.KeyID(),
+					Ct:           marshaledBlob,
+				}
+				require.NoError(t, err)
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing token request id",
+		},
+		{
+			name:     "error-issuing-token-forbidden-code",
+			kms:      kmsCache,
+			atRepoFn: atRepoFn,
+			tokenRequest: func() string {
+				exp, err := ptypes.TimestampProto(time.Now().Add(AttemptExpiration).Truncate(time.Second))
+				require.NoError(t, err)
+				reqTk := request.Token{
+					RequestId:      "not-a-valid-id",
+					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
+				}
+				marshaledReqTk, err := proto.Marshal(&reqTk)
+				require.NoError(t, err)
+				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, []byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId)))
+				require.NoError(t, err)
+				marshaledBlob, err := proto.Marshal(blobInfo)
+				w := request.Wrapper{
+					ScopeId:      testAuthMethod.ScopeId,
+					AuthMethodId: testAuthMethod.PublicId,
+					WrapperKeyId: testRequestWrapper.KeyID(),
+					Ct:           marshaledBlob,
+				}
+				require.NoError(t, err)
+				b, err := proto.Marshal(&w)
+				require.NoError(t, err)
+				return base58.Encode(b)
+			}(),
+			wantErrMatch:    errors.T(errors.Forbidden),
+			wantErrContains: "token not found",
+		},
 		{
 			name:     "success",
 			kms:      kmsCache,
@@ -66,11 +277,13 @@ func Test_TokenRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			conn.LogMode(true)
 			gotTk, err := TokenRequest(ctx, tt.kms, tt.atRepoFn, tt.tokenRequest)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
 				return
 			}
 			require.NoError(err)
