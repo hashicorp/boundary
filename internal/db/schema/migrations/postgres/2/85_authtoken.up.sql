@@ -4,7 +4,7 @@ begin;
 -- states. 
 create table auth_token_status_enm (
   name text primary key
-    constraint only_predefined_auth_token_states_allowed
+    constraint name_only_predefined_auth_token_states_allowed
     check (
         name in ('auth token pending','token issued', 'authentication failed', 'system error')
     )
