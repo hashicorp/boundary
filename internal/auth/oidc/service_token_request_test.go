@@ -21,6 +21,7 @@ import (
 )
 
 func Test_TokenRequest(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
