@@ -756,7 +756,6 @@ func Test_IssuePendingToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			conn.LogMode(true)
 			tk, err := repo.IssueAuthToken(ctx, tt.tokenRequestId)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
