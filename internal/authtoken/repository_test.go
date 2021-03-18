@@ -708,3 +708,14 @@ func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
+
+func Test_IssuePendingToken(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+	}{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {})
+	}
+}
