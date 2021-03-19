@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -101,6 +102,39 @@ func TestAccount_Create(t *testing.T) {
 				authMethodId: testAuthMethod.PublicId,
 				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "",
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "email-too-long",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
+				subjectId:    "alice",
+				opts:         []Option{WithEmail(strings.Repeat("a", 500) + "@alice.com")},
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "name-too-long",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
+				subjectId:    "alice",
+				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
+			},
+			wantErr:   true,
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "empty-issuer-url",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				issuerId:     &url.URL{},
+				subjectId:    "alice",
+				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,

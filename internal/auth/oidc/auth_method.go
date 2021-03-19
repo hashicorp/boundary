@@ -192,11 +192,14 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 // encrypt the auth method before writing it to the db
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
 	a.KeyId = cipher.KeyID()
-	if err := a.hmacClientSecret(cipher); err != nil {
+	if err := a.hmacClientSecret(ctx, cipher); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -205,6 +208,9 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 // decrypt the auth method after reading it from the db
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).decrypt"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
@@ -212,8 +218,11 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 }
 
 // hmacClientSecret before writing it to the db
-func (a *AuthMethod) hmacClientSecret(cipher wrapping.Wrapper) error {
+func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
 	if err != nil {
 		return errors.Wrap(err, op)
@@ -355,7 +364,7 @@ func (am *AuthMethod) convertCallbacks() ([]interface{}, error) {
 // to []interface{} where each slice element is a *Certificate. It will return an
 // error if the AuthMethod's public id is not set.
 func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
-	const op = "oidc.(AuthMethod).convertAudClaims"
+	const op = "oidc.(AuthMethod).convertCertificates"
 	if am.PublicId == "" {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}

@@ -26,6 +26,10 @@ const (
 	// client to after the callback is complete.
 	FinalRedirectEndpoint = "%s/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
 
+	// AuthenticationErrorsEndpoint is the endpoint that will returned as the final redirect
+	// from the callback when there are auth errors
+	AuthenticationErrorsEndpoint = "%s/authentication-error" // TODO jimlambrt 3/2021 get endpoint from FE before PR
+
 	// CallbackEndpoint is the endpoint for the oidc callback which will be
 	// included in the auth URL returned when an authen attempted is kicked off.
 	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
@@ -43,8 +47,8 @@ type (
 	// IamRepoFactory is used by "service functions" to create a new iam repo
 	IamRepoFactory func() (*iam.Repository, error)
 
-	// AuthTokenRepFactory is used by "service functions" to create a new auth token repo
-	AuthTokenRepFactory func() (*authtoken.Repository, error)
+	// AuthTokenRepoFactory is used by "service functions" to create a new auth token repo
+	AuthTokenRepoFactory func() (*authtoken.Repository, error)
 )
 
 // validator defines an optional interface that proto messages can implement
@@ -126,7 +130,7 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 
 	decryptedMsg, err := wrappingWrapper.Decrypt(ctx, &blobInfo, []byte(fmt.Sprintf("%s%s", wrappedRequest.AuthMethodId, wrappedRequest.ScopeId)))
 	if err != nil {
-		return nil, errors.New(errors.Encrypt, op, "unable to decrypt message", errors.WithWrap(err))
+		return nil, errors.New(errors.Decrypt, op, "unable to decrypt message", errors.WithWrap(err))
 	}
 	return decryptedMsg, nil
 }

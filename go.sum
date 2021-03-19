@@ -575,6 +575,8 @@ github.com/hashicorp/boundary/sdk v0.0.4 h1:l3uuXOL5ZQwYc63Bm8sLY36XGUlIN/4Q2r2S
 github.com/hashicorp/boundary/sdk v0.0.4/go.mod h1:MQ8FJhseJrKpwvFDTn+AUAcJ1vdk1NKUxk7DxQgH7oQ=
 github.com/hashicorp/cap v0.0.0-20210223021404-4b74380f71bd h1:lwDAbAYe0uEWotHOVMwNY+RVK5aQWOlQ1zAWoiRp99U=
 github.com/hashicorp/cap v0.0.0-20210223021404-4b74380f71bd/go.mod h1:tIk5rB1nihW5+9bZjI7xlc8LGw8FYfiFMKOpHPbWgug=
+github.com/hashicorp/cap v0.0.0-20210311224030-6e67247f829f h1:nCC5V45SUKGAVyPQ0N6Uf2ngzZTH7fz7d11mimVW7Sg=
+github.com/hashicorp/cap v0.0.0-20210311224030-6e67247f829f/go.mod h1:tIk5rB1nihW5+9bZjI7xlc8LGw8FYfiFMKOpHPbWgug=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=

@@ -77,6 +77,28 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			}(),
 		},
 		{
+			name: "bad-state",
+			am: func() *AuthMethod {
+				am, err := NewAuthMethod(
+					org.PublicId,
+					TestConvertToUrls(t, "https://www.alice.com")[0],
+					"bad-state-rp",
+					"alice-secret", WithAudClaims("alice-rp"),
+				)
+				require.NoError(t, err)
+				am.OperationalState = "not-a-valid-state"
+				return am
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "missing-auth-method",
+			am: func() *AuthMethod {
+				return nil
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
 			name: "bad-public-id",
 			am: func() *AuthMethod {
 				id, err := newAuthMethodId()
@@ -109,8 +131,10 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Nil(got)
 
-				err := db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-				require.Errorf(err, "should not have found oplog entry for %s", tt.am.PublicId)
+				if tt.am != nil {
+					err := db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+					require.Errorf(err, "should not have found oplog entry for %s", tt.am.PublicId)
+				}
 				return
 			}
 			require.NoError(err)

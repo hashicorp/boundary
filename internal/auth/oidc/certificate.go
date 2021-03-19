@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,7 +16,9 @@ const defaultCertificateTableName = "auth_oidc_certificate"
 // Certificate defines a certificate to use as part of a trust root when
 // connecting to the auth method's OIDC Provider.  It is assigned to an OIDC
 // AuthMethod and updates/deletes to that AuthMethod are cascaded to its
-// Certificates.
+// Certificates. Certificates are value objects of an AuthMethod, therefore
+// there's no need for oplog metadata, since only the AuthMethod will have
+// metadata because it's the root aggregate.
 type Certificate struct {
 	*store.Certificate
 	tableName string
@@ -85,17 +86,4 @@ func (c *Certificate) TableName() string {
 // SetTableName sets the table name.
 func (c *Certificate) SetTableName(n string) {
 	c.tableName = n
-}
-
-// oplog will create oplog metadata for the Certificate.
-func (c *Certificate) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.OidcMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth certificate"},
-		"op-type":            []string{op.String()},
-	}
-	if authMethodScopeId != "" {
-		metadata["scope-id"] = []string{authMethodScopeId}
-	}
-	return metadata
 }

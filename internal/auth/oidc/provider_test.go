@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"testing"
 
@@ -24,7 +25,7 @@ func Test_ProviderCaching(t *testing.T) {
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
-	p1 := testProvider(t, id, secret, allowedRedirect, tp)
+	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider needs the complete callback URL
 
 	testAm, err := NewAuthMethod("fake-org", discoveryURL, id, ClientSecret(secret))
 	require.NoError(t, err)
@@ -87,11 +88,12 @@ func Test_convertToProvider(t *testing.T) {
 
 	_, _, signingAlg, _ := tp.SigningKeys()
 	allowedRedirect := "https://alice.com/callback"
+
 	authMethodId, err := newAuthMethodId()
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
-	p := testProvider(t, id, secret, allowedRedirect, tp)
+	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider callback needs the complete URL
 	testAm, err := NewAuthMethod("fake-org", discoveryURL, id, ClientSecret(secret))
 	require.NoError(t, err)
 
