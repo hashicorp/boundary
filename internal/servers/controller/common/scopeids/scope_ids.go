@@ -35,8 +35,15 @@ func GetScopeIds(
 	// Whether or not the search should be recursive
 	recursive bool) ([]string, map[string]*scopes.ScopeInfo, error) {
 	const op = "GetScopeIds"
-	if typ == resource.Unknown {
+	switch {
+	case typ == resource.Unknown:
 		return nil, nil, errors.New(errors.InvalidParameter, op, "unknown resource")
+	case repoFn == nil:
+		return nil, nil, errors.New(errors.InvalidParameter, op, "nil iam repo")
+	case rootScopeId == "":
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing root scope id")
+	case authResults.Scope == nil:
+		return nil, nil, errors.New(errors.InvalidParameter, op, "nil scope in auth results")
 	}
 	// Get the list of scope IDs. If it's recursive, check ACLs.
 	var scopeIds []string
