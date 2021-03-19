@@ -72,7 +72,7 @@ func Callback(
 	// execute order dependent database transactions: create an account,
 	// perhaps create an iam.User, and if everything is successful it will
 	// create a pending token.  Any of these independent transactions could
-	// fail, but we don't need to undo an previous successful transactions
+	// fail, but we don't need to undo a previous successful transactions
 	// in the Callback.  The sequentially order transactions all leave the
 	// database is a consistent state, even if subsequent transactions fail.
 	// Future requests will not be hampered by previous unsuccessful Callback
