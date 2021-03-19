@@ -45,7 +45,6 @@ func Callback(
 	oidcRepoFn OidcRepoFactory,
 	iamRepoFn IamRepoFactory,
 	atRepoFn AuthTokenRepoFactory,
-	apiAddr,
 	authMethodId,
 	state, code string) (finalRedirect string, e error) {
 	const op = "oidc.Callback"
@@ -148,7 +147,10 @@ func Callback(
 	if len(am.AudClaims) > 0 {
 		opts = append(opts, oidc.WithAudiences(am.AudClaims...))
 	}
-	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, apiAddr, am.PublicId), opts...)
+	if len(am.CallbackUrls) != 1 {
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("expected 1 callback URL and got: %d", len(am.CallbackUrls)))
+	}
+	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, am.CallbackUrls[0], am.PublicId), opts...)
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to create oidc request for token exchange", errors.WithWrap(err))
 	}

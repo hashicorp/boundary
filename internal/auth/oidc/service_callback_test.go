@@ -120,7 +120,6 @@ func Test_Callback(t *testing.T) {
 		iamRepoFn         IamRepoFactory       // returns a new iam repo
 		atRepoFn          AuthTokenRepoFactory // returns a new auth token repo
 		am                *AuthMethod          // the authmethod for the test
-		apiAddrs          string               // the scheme.host.port of the controller/api service
 		state             string               // state parameter for test provider and Callback(...)
 		code              string               // code parameter for test provider and Callback(...)
 		wantSubject       string               // sub claim from id token
@@ -136,7 +135,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
 			am:                testAuthMethod,
-			apiAddrs:          testController.URL,
 			state:             testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
@@ -150,7 +148,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
 			am:                testAuthMethod,
-			apiAddrs:          testController.URL,
 			state:             testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
@@ -168,7 +165,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:         iamRepoFn,
 			atRepoFn:          atRepoFn,
 			am:                testAuthMethod2,
-			apiAddrs:          testController.URL,
 			state:             testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash2, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
@@ -181,7 +177,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -192,7 +187,6 @@ func Test_Callback(t *testing.T) {
 			oidcRepoFn:      repoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -203,7 +197,6 @@ func Test_Callback(t *testing.T) {
 			oidcRepoFn:      repoFn,
 			iamRepoFn:       iamRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -215,7 +208,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing state",
@@ -226,7 +218,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing code",
@@ -237,7 +228,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              func() *AuthMethod { am := AllocAuthMethod(); return &am }(),
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -249,7 +239,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              func() *AuthMethod { am := AllocAuthMethod(); am.PublicId = "not-valid"; return &am }(),
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.RecordNotFound),
@@ -261,7 +250,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           "unable to decode message",
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.Unknown),
@@ -273,7 +261,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.Decrypt),
@@ -285,7 +272,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod2,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", 1, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.AuthMethodInactive),
@@ -297,7 +283,6 @@ func Test_Callback(t *testing.T) {
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
 			am:              testAuthMethod,
-			apiAddrs:        testController.URL,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, -20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.AuthAttemptExpired),
@@ -328,7 +313,13 @@ func Test_Callback(t *testing.T) {
 			tp.SetExpectedAuthNonce(testNonce)
 			if tt.am != nil {
 				tp.SetClientCreds(tt.am.ClientId, tt.am.ClientSecret)
-				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.apiAddrs, tt.am.PublicId)
+				var callbackUrl string
+				if len(tt.am.CallbackUrls) > 0 {
+					callbackUrl = tt.am.CallbackUrls[0]
+				} else {
+					callbackUrl = ""
+				}
+				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, callbackUrl, tt.am.PublicId)
 				tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 			}
 			if tt.code != "" {
@@ -355,7 +346,6 @@ func Test_Callback(t *testing.T) {
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
 				tt.atRepoFn,
-				tt.apiAddrs,
 				tt.am.PublicId,
 				tt.state,
 				tt.code,
@@ -476,7 +466,6 @@ func Test_Callback(t *testing.T) {
 			repoFn,
 			iamRepoFn,
 			atRepoFn,
-			testController.URL,
 			testAuthMethod.PublicId,
 			state,
 			"simple",
@@ -489,7 +478,6 @@ func Test_Callback(t *testing.T) {
 			repoFn,
 			iamRepoFn,
 			atRepoFn,
-			testController.URL,
 			testAuthMethod.PublicId,
 			state,
 			"simple",
