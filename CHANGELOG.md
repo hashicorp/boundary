@@ -37,10 +37,10 @@ to call out in this changelog. The full set of open issues is on GitHub.
 
 ### Changes/Deprecations
 
-* api: A few functions have changed places. Notably, instead of `ResponseMap()`
-  and `ResponseBody()`, resources simply expose `Response()`. This higher-level
-  response object contains the map and body, and also exposes `StatusCode()` in
-  place of indivdidual resources.
+* sdk (Go API library): A few functions have changed places. Notably, instead of
+  `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
+  This higher-level response object contains the map and body, and also exposes
+  `StatusCode()` in place of indivdidual resources.
   [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
