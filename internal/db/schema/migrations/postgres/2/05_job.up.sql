@@ -60,6 +60,7 @@ create table job_run (
      end_time timestamp with time zone,
      last_heartbeat wt_timestamp,
      completed_count int not null
+        default 0
         constraint job_run_completed_count_can_not_be_negative
             check(completed_count >= 0),
      total_count int not null
@@ -67,6 +68,7 @@ create table job_run (
          constraint job_run_total_count_greater_than_zero
             check(total_count > 0),
      status text not null
+         default 'running'
          constraint job_run_status_enm_fkey
              references job_run_status_enm (name)
              on delete restrict
