@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -38,6 +39,24 @@ import (
 const (
 	testPassword  = "thetestpassword"
 	testLoginName = "default"
+)
+
+var (
+	pwAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.ChangePassword.String(),
+		action.SetPassword.String(),
+		action.Authenticate.String(),
+	}
+	oidcAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.ChangeState.String(),
+		action.Authenticate.String(),
+	}
 )
 
 var authorizedCollectionActions = map[string]*structpb.ListValue{
@@ -86,7 +105,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions: pwAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -111,7 +130,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions: oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -220,7 +239,7 @@ func TestList(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 		}},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions: oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
 
@@ -237,7 +256,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedActions: pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -256,7 +275,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedActions: pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -506,7 +525,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -562,7 +581,7 @@ func TestCreate(t *testing.T) {
 							return structpb.NewListValue(lv)
 						}(),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions: oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -592,7 +611,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -625,7 +644,7 @@ func TestCreate(t *testing.T) {
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions: oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -966,8 +985,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					Scope: defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -994,8 +1013,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					Scope: defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1062,8 +1081,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					Scope: defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1089,8 +1108,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					Scope: defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1116,8 +1135,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					Scope: defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1216,7 +1235,7 @@ func TestUpdate_Password(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(42),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1247,7 +1266,7 @@ func TestUpdate_Password(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1427,7 +1446,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1454,7 +1473,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1521,7 +1540,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1545,7 +1564,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1571,7 +1590,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1597,7 +1616,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: defaultReadAttributeFields(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1722,7 +1741,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						}(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1771,7 +1790,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						}(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1804,7 +1823,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						}(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1845,7 +1864,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						}(),
 					},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1990,7 +2009,7 @@ func TestChangeState(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
