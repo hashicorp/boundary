@@ -60,7 +60,7 @@ comment on table job_run is
 
 create unique index job_run_status_constraint
     on job_run (job_id)
-    where status = 'Running' OR status = 'Scheduled';
+    where status = 'running';
 
 create table job_run_status_enm (
     name text not null primary key
