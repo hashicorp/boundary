@@ -5,10 +5,13 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -347,6 +350,249 @@ func TestAuthMethod_SetTableName(t *testing.T) {
 			m := AllocAuthMethod()
 			m.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, m.TableName())
+		})
+	}
+}
+
+func Test_encrypt_decrypt_hmac(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	projDatabaseWrapper, err := kmsCache.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+
+	tests := []struct {
+		name                string
+		am                  *AuthMethod
+		hmacWrapper         wrapping.Wrapper
+		wantHmacErrMatch    *errors.Template
+		encryptWrapper      wrapping.Wrapper
+		wantEncryptErrMatch *errors.Template
+		decryptWrapper      wrapping.Wrapper
+		wantDecryptErrMatch *errors.Template
+	}{
+		{
+			name:           "success",
+			am:             m,
+			hmacWrapper:    databaseWrapper,
+			encryptWrapper: databaseWrapper,
+			decryptWrapper: databaseWrapper,
+		},
+		{
+			name:                "encrypt-missing-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			wantEncryptErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:                "encrypt-bad-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			encryptWrapper:      &aead.Wrapper{},
+			wantEncryptErrMatch: errors.T(errors.Encrypt),
+		},
+		{
+			name:                "encrypt-missing-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			encryptWrapper:      databaseWrapper,
+			wantDecryptErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:                "decrypt-bad-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			encryptWrapper:      databaseWrapper,
+			decryptWrapper:      &aead.Wrapper{},
+			wantDecryptErrMatch: errors.T(errors.Decrypt),
+		},
+		{
+			name:                "decrypt-wrong-wrapper",
+			am:                  m,
+			hmacWrapper:         databaseWrapper,
+			encryptWrapper:      databaseWrapper,
+			decryptWrapper:      projDatabaseWrapper,
+			wantDecryptErrMatch: errors.T(errors.Decrypt),
+		},
+		{
+			name:             "hmac-missing-wrapper",
+			am:               m,
+			encryptWrapper:   databaseWrapper,
+			decryptWrapper:   databaseWrapper,
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:             "hmac-bad-wrapper",
+			am:               m,
+			hmacWrapper:      &aead.Wrapper{},
+			encryptWrapper:   databaseWrapper,
+			decryptWrapper:   databaseWrapper,
+			wantHmacErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			hmacAuthMethod := tt.am.Clone()
+			err = hmacAuthMethod.hmacClientSecret(ctx, tt.hmacWrapper)
+			if tt.wantHmacErrMatch != nil {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+			}
+
+			encryptedAuthMethod := tt.am.Clone()
+			err = encryptedAuthMethod.encrypt(ctx, tt.encryptWrapper)
+			if tt.wantEncryptErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantEncryptErrMatch, err), "expected %q and got err: %+v", tt.wantEncryptErrMatch.Code, err)
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(encryptedAuthMethod.CtClientSecret)
+			assert.NotEmpty(encryptedAuthMethod.ClientSecretHmac)
+
+			decryptedAuthMethod := encryptedAuthMethod.Clone()
+			decryptedAuthMethod.ClientSecret = ""
+			err = decryptedAuthMethod.decrypt(ctx, tt.decryptWrapper)
+			if tt.wantDecryptErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantDecryptErrMatch, err), "expected %q and got err: %+v", tt.wantDecryptErrMatch.Code, err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.am.ClientSecret, decryptedAuthMethod.ClientSecret)
+		})
+	}
+
+}
+
+func Test_convertValueObjects(t *testing.T) {
+	testPublicId := "test-id"
+
+	testAlgs := []string{string(RS256), string(RS384)}
+	var testSigningAlgs []interface{}
+	for _, a := range []Alg{RS256, RS384} {
+		obj, err := NewSigningAlg(testPublicId, Alg(a))
+		require.NoError(t, err)
+		testSigningAlgs = append(testSigningAlgs, obj)
+	}
+
+	testAuds := []string{"alice", "eve"}
+	var testAudiences []interface{}
+	for _, a := range testAuds {
+		obj, err := NewAudClaim(testPublicId, a)
+		require.NoError(t, err)
+		testAudiences = append(testAudiences, obj)
+	}
+
+	testCbs := []string{"https://alice.com/callback", "https://localhost/callback"}
+	var testCallbacks []interface{}
+	for _, cb := range testCbs {
+		obj, err := NewCallbackUrl(testPublicId, TestConvertToUrls(t, cb)[0])
+		require.NoError(t, err)
+		testCallbacks = append(testCallbacks, obj)
+	}
+
+	_, pem := testGenerateCA(t, "localhost")
+	testCerts := []string{pem}
+	c, err := NewCertificate(testPublicId, pem)
+	require.NoError(t, err)
+	testCertificates := []interface{}{c}
+
+	tests := []struct {
+		name            string
+		authMethodId    string
+		algs            []string
+		auds            []string
+		callbacks       []string
+		certs           []string
+		wantValues      *convertedValues
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:         "success",
+			authMethodId: testPublicId,
+			algs:         testAlgs,
+			auds:         testAuds,
+			callbacks:    testCbs,
+			certs:        testCerts,
+			wantValues: &convertedValues{
+				Algs:      testSigningAlgs,
+				Callbacks: testCallbacks,
+				Auds:      testAudiences,
+				Certs:     testCertificates,
+			},
+		},
+		{
+			name:         "missing-public-id",
+			algs:         testAlgs,
+			wantErrMatch: errors.T(errors.InvalidPublicId),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			am := &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:     tt.authMethodId,
+					SigningAlgs:  tt.algs,
+					AudClaims:    tt.auds,
+					CallbackUrls: tt.callbacks,
+					Certificates: tt.certs,
+				},
+			}
+
+			convertedAlgs, err := am.convertSigningAlgs()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Algs, convertedAlgs)
+			}
+
+			convertedAuds, err := am.convertAudClaims()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Auds, convertedAuds)
+			}
+
+			convertedCallbacks, err := am.convertCallbacks()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Callbacks, convertedCallbacks)
+			}
+
+			convertedCerts, err := am.convertCertificates()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.Certs, convertedCerts)
+			}
+
+			values, err := am.convertValueObjects()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantValues, values)
 		})
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -562,7 +563,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	port := testFreePort(t)
+	port := testutil.TestFreePort(t)
 	testAuthMethodCallback, err := url.Parse(fmt.Sprintf("http://localhost:%d/callback", port))
 	require.NoError(t, err)
 	testAuthMethod := TestAuthMethod(t,
@@ -611,7 +612,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 			name: "no-discovery",
 			authMethod: func() *AuthMethod {
 				cp := testAuthMethod.Clone()
-				port := testFreePort(t)
+				port := testutil.TestFreePort(t)
 				cp.DiscoveryUrl = fmt.Sprintf("http://localhost:%d", port)
 				return cp
 			}(),

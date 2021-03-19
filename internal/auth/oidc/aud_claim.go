@@ -3,7 +3,6 @@ package oidc
 import (
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -12,7 +11,9 @@ const defaultAudClaimTableName = "auth_oidc_aud_claim"
 
 // AudClaim defines an audience claim for an OIDC auth method.  It is assigned
 // to an OIDC AuthMethod and updates/deletes to that AuthMethod are cascaded to
-// its AudClaims.
+// its AudClaims.  AudClaims are value objects of an AuthMethod, therefore
+// there's no need for oplog metadata, since only the AuthMethod will have
+// metadata because it's the root aggregate.
 //
 // see aud claim in the oidc spec:
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
@@ -80,17 +81,4 @@ func (c *AudClaim) TableName() string {
 // SetTableName sets the table name.
 func (c *AudClaim) SetTableName(n string) {
 	c.tableName = n
-}
-
-// oplog will create oplog metadata for the AudClaim.
-func (c *AudClaim) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.OidcMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth aud claim"},
-		"op-type":            []string{op.String()},
-	}
-	if authMethodScopeId != "" {
-		metadata["scope-id"] = []string{authMethodScopeId}
-	}
-	return metadata
 }

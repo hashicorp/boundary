@@ -61,6 +61,10 @@ const (
 	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
 	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
 
+	// General system errors are reserved Codes 400-599 and align with http client and server error codes
+	Forbidden Code = 403 // Forbidden represents the operation is forbidden
+	Internal  Code = 500 // InternalError represents the system encountered an unexpected condition.
+
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error
 	NotNull              Code = 1001 // NotNull represents a value must not be null error

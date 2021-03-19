@@ -105,6 +105,13 @@ type Writer interface {
 	// supported.
 	Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error)
 
+	// Query will run the raw query and return the *sql.Rows results. Query will
+	// operate within the context of any ongoing transaction for the db.Writer.  The
+	// caller must close the returned *sql.Rows. Query can/should be used in
+	// combination with ScanRows.  Query is included in the Writer interface
+	// so callers can execute updates and inserts with returning values.
+	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
 	GetTicket(i interface{}) (*store.Ticket, error)
