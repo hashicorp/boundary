@@ -2,7 +2,11 @@ begin;
 
 create table job (
     id text primary key,
-    name wt_name not null,
+    name wt_name not null
+        constraint job_name_enm_fkey
+            references job_name_enm (name)
+            on delete restrict
+            on update cascade,
     description wt_description not null,
     code text not null
         constraint job_code_must_be_not_empty
@@ -27,12 +31,12 @@ comment on table job_name_enm is
 create table job_run (
      id serial primary key,
      job_id text not null
-         constraint job_fk
+         constraint job_fkey
              references job(id)
              on delete cascade
              on update cascade,
      server_id text
-         constraint server_fk
+         constraint server_fkey
              references server(private_id)
              on delete set null
              on update cascade,
@@ -46,7 +50,7 @@ create table job_run (
          constraint job_run_total_count_greater_than_zero
             check(total_count > 0),
      status text not null
-         constraint job_status_fk
+         constraint job_run_status_enm_fkey
              references job_run_status_enm (name)
              on delete restrict
              on update cascade,
