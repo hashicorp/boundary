@@ -3,10 +3,26 @@ begin;
 create table job (
     id text primary key,
     name wt_name not null,
-    description wt_description not null
+    description wt_description not null,
+    code text not null
+        constraint job_code_must_be_not_empty
+            check(length(trim(code)) > 0),
+    next_scheduled_run timestamp with time zone not null
+        default current_timestamp,
+
+    constraint job_name_code_uq
+        unique(name, code)
 );
+
 comment on table job is
     'job is a base table where each row represents a unique job that can only have one running instance at any specific time.';
+
+create table job_name_enm (
+    name text not null primary key
+);
+
+comment on table job_name_enm is
+    'job_name_enm is an enumeration table where each row contains the name of a valid job.';
 
 create table job_run (
      id serial primary key,
@@ -15,41 +31,49 @@ create table job_run (
              references job(id)
              on delete cascade
              on update cascade,
-     server_id wt_private_id not null
+     server_id text
          constraint server_fk
              references server(private_id)
-             on delete cascade
+             on delete set null
              on update cascade,
-     scheduled_start_time timestamp not null,
-     start_time timestamp,
-     end_time timestamp,
-     last_heartbeat timestamp,
-     completed_count int,
-     total_count int,
+     start_time timestamp with time zone not null
+         default current_timestamp,
+     end_time timestamp with time zone,
+     last_heartbeat timestamp with time zone not null
+         default current_timestamp,
+     completed_count int not null,
+     total_count int not null
+         constraint job_run_total_count_greater_than_zero
+            check(total_count > 0),
+     status text not null
+         constraint job_status_fk
+             references job_run_status_enm (name)
+             on delete restrict
+             on update cascade,
 
-     constraint job_run_job_id_end_time_uq
-         unique(job_id, end_time)
+     constraint job_run_completed_count_less_than_equal_to_total_count
+         check(completed_count <= total_count)
 );
 
 comment on table job_run is
     'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
 
-create table job_run_interrupt (
-    old_run_id integer not null
-       constraint old_job_run_fk
-           references job_run(id)
-           on delete cascade
-           on update cascade,
-    new_run_id integer not null
-       constraint new_job_run_fk
-           references job_run(id)
-           on delete cascade
-           on update cascade,
+create unique index job_run_status_constraint
+    on job_run (job_id)
+    where status = 'Running' OR status = 'Scheduled';
 
-    primary key(old_run_id, new_run_id)
+create table job_run_status_enm (
+    name text not null primary key
+        constraint only_predefined_job_status_allowed
+            check(name in ('running', 'complete', 'failed', 'interrupted'))
 );
 
-comment on table job_run_interrupt is
-    'job_run_interrupt is a table where each row represents a request to kill a running job and the job run that was created to replace it.';
+comment on table job_run_status_enm is
+    'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
 
-commit;
+insert into job_run_status_enm (name)
+    values
+    ('running'),
+    ('complete'),
+    ('failed'),
+    ('interrupted');
