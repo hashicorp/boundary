@@ -1,6 +1,6 @@
 begin;
 
   drop table target_credential_library;
-  drop table target_credential_type_enm;
+  drop table target_credential_purpose_enm;
 
 commit;
