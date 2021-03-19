@@ -36,9 +36,9 @@ import (
 
 const (
 	// general auth method field names
-	versionField = "version"
-	scopeIdField = "scope_id"
-	typeField = "type"
+	versionField    = "version"
+	scopeIdField    = "scope_id"
+	typeField       = "type"
 	attributesField = "attributes"
 
 	// password field names
@@ -46,22 +46,16 @@ const (
 	pwKeyField     = "password"
 
 	// oidc field names
-	discoveryUrlField = "attributes.discovery_url"
-	clientSecretField = "attributes.client_secret"
-	clientIdField = "attributes.client_id"
-	clientSecretHmacField = "attributes.client_secret_hmac"
-	stateField = "attributes.state"
-	callbackUrlField = "attributes.callback_urls"
+	discoveryUrlField       = "attributes.discovery_url"
+	clientSecretField       = "attributes.client_secret"
+	clientIdField           = "attributes.client_id"
+	clientSecretHmacField   = "attributes.client_secret_hmac"
+	stateField              = "attributes.state"
+	callbackUrlField        = "attributes.callback_urls"
 	callbackUrlPrefixeField = "attributes.callback_url_prefixes"
-	certificateField = "attributes.certificates"
-	maxAgeField = "attributes.max_age"
-	signingAlgorithmField = "attributes.signing_algorithms"
-)
-
-const (
-	stateInactive = "inactive"
-	statePrivate  = "active-private"
-	statePublic   = "active-public"
+	certificateField        = "attributes.certificates"
+	maxAgeField             = "attributes.max_age"
+	signingAlgorithmField   = "attributes.signing_algorithms"
 )
 
 var (
@@ -70,21 +64,22 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	PasswordIdActions = action.ActionSet{
-		action.Read,
-		action.Update,
-		action.Delete,
-		action.ChangePassword,
-		action.SetPassword,
-		action.Authenticate,
-	}
-
-	OidcIdActions = action.ActionSet{
-		action.Read,
-		action.Update,
-		action.Delete,
-		action.ChangeState,
-		action.Authenticate,
+	IdActions = map[auth.SubType]action.ActionSet{
+		auth.PasswordSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+			action.ChangePassword,
+			action.SetPassword,
+			action.Authenticate,
+		},
+		auth.OidcSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+			action.ChangeState,
+			action.Authenticate,
+		},
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -200,14 +195,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	for _, item := range ul {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
-		var idActions action.ActionSet
-		switch auth.SubtypeFromId(item.Id) {
-		case auth.PasswordSubtype:
-			idActions = PasswordIdActions
-		case auth.OidcSubtype:
-			idActions = OidcIdActions
-		}
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, idActions, auth.WithResource(res)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
@@ -235,14 +223,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	var idActions action.ActionSet
-	switch auth.SubtypeFromId(u.Id) {
-	case auth.PasswordSubtype:
-		idActions = PasswordIdActions
-	case auth.OidcSubtype:
-		idActions = OidcIdActions
-	}
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, idActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -263,14 +244,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	var idActions action.ActionSet
-	switch auth.SubtypeFromId(u.Id) {
-	case auth.PasswordSubtype:
-		idActions = PasswordIdActions
-	case auth.OidcSubtype:
-		idActions = OidcIdActions
-	}
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, idActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -291,14 +265,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	var idActions action.ActionSet
-	switch auth.SubtypeFromId(u.Id) {
-	case auth.PasswordSubtype:
-		idActions = PasswordIdActions
-	case auth.OidcSubtype:
-		idActions = OidcIdActions
-	}
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, idActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
 		return nil, err
 	}
@@ -319,7 +286,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		return nil, err
 	}
 	am.Scope = authResults.Scope
-	am.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.Id, OidcIdActions).Strings()
+	am.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.Id, IdActions[auth.OidcSubtype]).Strings()
 	if err := populateCollectionAuthorizedActions(ctx, authResults, am); err != nil {
 		return nil, err
 	}
@@ -639,12 +606,12 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		return nil, err
 	}
 	var am *oidc.AuthMethod
-	switch req.GetState() {
-	case stateInactive:
+	switch oidcStateMap[req.GetState()] {
+	case inactiveState:
 		am, err = repo.MakeInactive(ctx, req.GetId(), req.GetVersion())
-	case statePrivate:
+	case privateState:
 		am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion())
-	case statePublic:
+	case publicState:
 		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion())
 	default:
 		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", req.GetState()))
@@ -849,6 +816,10 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 }
 
 func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
+	const op = "authmethod_service.toStoragePwAuthMethod"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth method.")
+	}
 	var opts []password.Option
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -876,6 +847,10 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 }
 
 func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
+	const op = "authmethod_service.toStorageOidcAuthMethod"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth method.")
+	}
 	attrs := &pb.OidcAuthMethodAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -1162,10 +1137,10 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[versionField] = "Resource version is required."
 	}
-	switch req.GetState() {
-	case stateInactive, statePrivate, statePublic:
+	switch oidcStateMap[req.GetState()] {
+	case inactiveState, privateState, publicState:
 	default:
-		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", stateInactive, statePrivate, statePublic)
+		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
