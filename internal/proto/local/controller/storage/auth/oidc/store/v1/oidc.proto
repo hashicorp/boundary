@@ -92,7 +92,7 @@ message AuthMethod {
   // are Value Objects that will be stored as AudClaim messages, and are
   // operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = {this:"AudClaims" that:"attributes.audiences"}];
+  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = {this:"AudClaims" that:"attributes.allowed_audiences"}];
 
   // certificates are optional PEM encoded x509 certificates that can be
   // used as trust anchors when connecting to an OIDC provider. These are Value

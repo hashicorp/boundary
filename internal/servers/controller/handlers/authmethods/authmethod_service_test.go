@@ -105,7 +105,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions: pwAuthorizedActions,
+		AuthorizedActions:           pwAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -130,7 +130,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions: oidcAuthorizedActions,
+		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -239,7 +239,7 @@ func TestList(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 		}},
-		AuthorizedActions: oidcAuthorizedActions,
+		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
 
@@ -256,7 +256,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions: pwAuthorizedActions,
+			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -275,7 +275,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions: pwAuthorizedActions,
+			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -525,7 +525,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -539,7 +539,7 @@ func TestCreate(t *testing.T) {
 					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
-					"audiences": func() *structpb.Value {
+					"allowed_audiences": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 						return structpb.NewListValue(lv)
 					}(),
@@ -565,7 +565,7 @@ func TestCreate(t *testing.T) {
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
-						"audiences": func() *structpb.Value {
+						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 							return structpb.NewListValue(lv)
 						}(),
@@ -581,7 +581,7 @@ func TestCreate(t *testing.T) {
 							return structpb.NewListValue(lv)
 						}(),
 					}},
-					AuthorizedActions: oidcAuthorizedActions,
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -611,7 +611,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -644,7 +644,7 @@ func TestCreate(t *testing.T) {
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 					}},
-					AuthorizedActions: oidcAuthorizedActions,
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -985,8 +985,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1013,8 +1013,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1081,8 +1081,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1108,8 +1108,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1135,8 +1135,8 @@ func TestUpdate_Password(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					Scope: defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1869,6 +1869,46 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Change Allowed Audiences",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.allowed_audiences"},
+				},
+				Item: &pb.AuthMethod{
+					Version: 1,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"allowed_audiences": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["allowed_audiences"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1915,8 +1955,8 @@ func TestUpdate_OIDC(t *testing.T) {
 					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 				}
 				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
-						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
+					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues() {
+						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues()[i]
 						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
 						require.NoError(err)
 						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
@@ -1930,7 +1970,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

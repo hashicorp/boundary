@@ -781,7 +781,7 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 			Certificates:        i.GetCertificates(),
 			State:               i.GetOperationalState(),
 			SigningAlgorithms:   i.GetSigningAlgs(),
-			Audiences:           i.GetAudClaims(),
+			AllowedAudiences:    i.GetAudClaims(),
 			CallbackUrlPrefixes: i.GetCallbackUrls(),
 		}
 		if i.GetMaxAge() != 0 {
@@ -889,8 +889,8 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 	if len(signAlgs) > 0 {
 		opts = append(opts, oidc.WithSigningAlgs(signAlgs...))
 	}
-	if len(attrs.GetAudiences()) > 0 {
-		opts = append(opts, oidc.WithAudClaims(attrs.GetAudiences()...))
+	if len(attrs.GetAllowedAudiences()) > 0 {
+		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
 	}
 
 	var cbs []*url.URL
@@ -955,54 +955,55 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			attrs := &pb.OidcAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
-			if attrs.GetDiscoveryUrl().GetValue() == "" {
-				badFields[discoveryUrlField] = "Field required for creating an OIDC auth method."
 			} else {
-				du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
-				if err != nil {
-					badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				if attrs.GetDiscoveryUrl().GetValue() == "" {
+					badFields[discoveryUrlField] = "Field required for creating an OIDC auth method."
+				} else {
+					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
+					if err != nil {
+						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+					}
+					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+						badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
+					}
 				}
-				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-					badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
+				if attrs.GetClientId().GetValue() == "" {
+					badFields[clientIdField] = "Field required for creating an OIDC auth method."
 				}
-			}
-			if attrs.GetClientId().GetValue() == "" {
-				badFields[clientIdField] = "Field required for creating an OIDC auth method."
-			}
-			if attrs.GetClientSecret().GetValue() == "" {
-				badFields[clientSecretField] = "Field required for creating an OIDC auth method."
-			}
-			if attrs.GetClientSecretHmac() != "" {
-				badFields[clientSecretHmacField] = "Field is read only."
-			}
-			if attrs.GetState() != "" {
-				badFields[stateField] = "Field is read only."
-			}
-			if len(attrs.GetCallbackUrls()) > 0 {
-				badFields[callbackUrlField] = "Field is read only."
-			}
+				if attrs.GetClientSecret().GetValue() == "" {
+					badFields[clientSecretField] = "Field required for creating an OIDC auth method."
+				}
+				if attrs.GetClientSecretHmac() != "" {
+					badFields[clientSecretHmacField] = "Field is read only."
+				}
+				if attrs.GetState() != "" {
+					badFields[stateField] = "Field is read only."
+				}
+				if len(attrs.GetCallbackUrls()) > 0 {
+					badFields[callbackUrlField] = "Field is read only."
+				}
 
-			if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
-				badFields[maxAgeField] = "If defined, must not be `0`."
-			}
-			if len(attrs.GetSigningAlgorithms()) > 0 {
-				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
-						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+				if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
+					badFields[maxAgeField] = "If defined, must not be `0`."
+				}
+				if len(attrs.GetSigningAlgorithms()) > 0 {
+					for _, sa := range attrs.GetSigningAlgorithms() {
+						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
+							badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
+							break
+						}
+					}
+				}
+				for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
+					if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
+						badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
 						break
 					}
 				}
-			}
-			for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
-				if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
-					break
-				}
-			}
-			if len(attrs.GetCertificates()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
-					badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+				if len(attrs.GetCertificates()) > 0 {
+					if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
+						badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+					}
 				}
 			}
 		default:

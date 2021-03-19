@@ -11,8 +11,8 @@ const (
 
 var oidcStateMap = map[string]oidcState{
 	inactiveState.String(): inactiveState,
-	privateState.String(): privateState,
-	publicState.String(): publicState,
+	privateState.String():  privateState,
+	publicState.String():   publicState,
 }
 
 func (o oidcState) String() string {

@@ -98,5 +98,5 @@ message OidcAuthMethodAttributes {
 	repeated string certificates = 100 [json_name="certificates", (custom_options.v1.mask_mapping) = {this:"attributes.certificates" that: "Certificates"}];
 
 	// The audience claims for this oidc typed auth method.
-	repeated string audiences = 110 [json_name="audiences", (custom_options.v1.mask_mapping) = {this:"attributes.audiences" that: "AudClaims"}];
+	repeated string allowed_audiences = 110 [json_name="allowed_audiences", (custom_options.v1.mask_mapping) = {this:"attributes.allowed_audiences" that: "AudClaims"}];
 }
