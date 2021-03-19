@@ -5,6 +5,7 @@ begin;
 -- which auth method is allowed to auto viviify users.  
 alter table iam_scope
 add column primary_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
+constraint auth_method_fkey
 references auth_method(public_id)
     on update cascade
     on delete set null;
@@ -13,7 +14,9 @@ references auth_method(public_id)
 -- we only want to cascade changes to the primary_auth_method_id portion of
 -- the compond fk and that is handled in a separate fk declaration.
 alter table iam_scope
-add foreign key (public_id, primary_auth_method_id) references auth_method(scope_id, public_id); 
+add constraint auth_method
+  foreign key (public_id, primary_auth_method_id) 
+  references auth_method(scope_id, public_id); 
 
 -- for backward compatibility, set any existing auth password method as the 
 -- primary auth method, so they will continue to autovivify

@@ -13,7 +13,7 @@ create table auth_oidc_method (
   update_time wt_timestamp,
   version wt_version,
   state text not null
-    constraint state_fkey
+    constraint auth_oidc_method_state_enm_fkey
       references auth_oidc_method_state_enm(name)
       on delete restrict
       on update cascade,
@@ -26,25 +26,27 @@ create table auth_oidc_method (
     constraint client_secret_hmac_not_empty
     check(length(trim(client_secret_hmac)) > 0),
   key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
-    constraint key_id_fkey
+    constraint kms_database_key_version_fkey
       references kms_database_key_version(private_id) 
       on delete restrict
       on update cascade, 
+    constraint key_id_not_empty
+      check(length(trim(key_id)) > 0),
   max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
     constraint max_age_not_equal_zero
       check(max_age != 0)
     constraint max_age_not_less_then_negative_one
       check(max_age >= -1), 
-  constraint scope_id_public_id_fkey
+  constraint auth_method_fkey
     foreign key (scope_id, public_id)
         references auth_method (scope_id, public_id)
         on delete cascade
         on update cascade,
-  constraint scope_id_name_unique
+  constraint auth_oidc_method_scope_id_name_uq
     unique(scope_id, name),
-  constraint scope_id_public_id_unique
+  constraint auth_oidc_method_scope_id_public_id_uq
     unique(scope_id, public_id),
-  constraint scope_id_discover_url_client_id_unique
+  constraint auth_oidc_method_scope_id_discover_url_client_id_unique
     unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
@@ -55,12 +57,12 @@ comment on table auth_oidc_method is
 create table auth_oidc_signing_alg (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
-    constraint oidc_method_id_fkey
+    constraint auth_oidc_method_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
   signing_alg_name text 
-    constraint signing_alg_name_fkey
+    constraint auth_oidc_signing_alg_enm_fkey
     references auth_oidc_signing_alg_enm(name)
     on delete restrict
     on update cascade,
@@ -75,7 +77,7 @@ comment on table auth_oidc_signing_alg is
 create table auth_oidc_callback_url (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
-    constraint oidc_method_id_fkey
+    constraint auth_oidc_method_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -91,7 +93,7 @@ comment on table auth_oidc_callback_url is
 create table auth_oidc_aud_claim (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
-    constraint oidc_method_id_fkey
+    constraint auth_oidc_method_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -114,7 +116,7 @@ comment on table auth_oidc_aud_claim is
 create table auth_oidc_certificate (
   create_time wt_timestamp,
   oidc_method_id wt_public_id 
-    constraint oidc_method_id_fkey
+    constraint auth_oidc_method_fkey
     references auth_oidc_method(public_id)
     on delete cascade
     on update cascade,
@@ -153,19 +155,23 @@ create table auth_oidc_account (
       ),
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
-    constraint scope_id_auth_method_id_fkey
+    constraint auth_oidc_method_fkey
       foreign key (scope_id, auth_method_id)
         references auth_oidc_method (scope_id, public_id)
         on delete cascade
         on update cascade,
-    constraint scope_id_auth_method_id_public_id_fkey
+    constraint auth_account_fkey
       foreign key (scope_id, auth_method_id, public_id)
         references auth_account (scope_id, auth_method_id, public_id)
         on delete cascade
         on update cascade,
-    constraint auth_method_id_name_unique
+    constraint auth_oidc_account_auth_method_id_name_uq
       unique(auth_method_id, name),
-    constraint auth_method_id_issuer_id_subject_id_unique
+    -- ###############################################################
+    -- any change to this constraints name must be aligned with the 
+    -- acctUpsertQuery const in internal/auth/oidc/query.go
+    -- ###############################################################
+    constraint auth_oidc_account_auth_method_id_issuer_id_subject_id_uq
       unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
     unique(auth_method_id, public_id)
 );
@@ -209,7 +215,8 @@ create or replace function
   returns trigger
 as $$
   begin
-    if new.state != 'inactive' then
+    -- validate callback and signing alg
+    if old.state = 'inactive' and new.state != 'inactive' then
       perform 
       from 
         auth_oidc_method am
@@ -220,6 +227,44 @@ as $$
       if not found then 
         raise exception 'an incomplete oidc auth method must remain inactive';
       end if;
+      -- validate discovery_url
+      case 
+        when new.discovery_url != old.discovery_url then
+          if length(trim(new.discovery_url)) = 0 then
+            raise exception 'empty discovery_url: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.discovery_url = old.discovery_url then
+          if length(trim(old.discovery_url)) = 0 then
+            raise exception 'empty discovery_url: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+      -- validate client_id
+      case 
+        when new.client_id != old.client_id then
+          if length(trim(new.client_id)) = 0 then
+            raise exception 'empty client_id: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.client_id = old.client_id then
+          if length(trim(old.client_id)) = 0 then
+            raise exception 'empty client_id: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+      -- validate client_secret
+      case 
+        when new.client_secret != old.client_secret then
+          if length(new.client_secret) = 0 then
+            raise exception 'empty client_secret: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.client_secret = old.client_secret then
+          if length(old.client_secret) = 0 then
+            raise exception 'empty client_secret: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+
+
     end if;
     return new;
   end;

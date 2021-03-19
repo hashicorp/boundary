@@ -4,7 +4,7 @@ begin;
 -- states. 
 create table auth_oidc_method_state_enm (
   name text primary key
-    constraint only_predefined_oidc_method_states_allowed
+    constraint name_only_predefined_oidc_method_states_allowed
     check (
         name in ('inactive', 'active-private', 'active-public')
     )

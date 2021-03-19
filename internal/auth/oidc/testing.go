@@ -438,7 +438,6 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 				s.oidcRepoFn,
 				s.iamRepoFn,
 				s.atRepoFn,
-				s.Addr(),
 				s.authMethodId,
 				state,
 				code,
