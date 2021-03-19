@@ -6,7 +6,7 @@ replace github.com/hashicorp/boundary/api => ./api
 
 require (
 	github.com/armon/go-metrics v0.3.6
-	github.com/bufbuild/buf v0.37.0
+	github.com/bufbuild/buf v0.40.0
 	github.com/dhui/dktest v0.3.4
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -14,9 +14,9 @@ require (
 	github.com/go-swagger/go-swagger v0.26.1
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
-	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
+	github.com/golang/protobuf v1.5.1
+	github.com/google/go-cmp v0.5.5
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.8
 	github.com/hashicorp/boundary/sdk v0.0.4
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -54,13 +54,13 @@ require (
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
-	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
+	golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	golang.org/x/tools v0.1.0
-	google.golang.org/genproto v0.0.0-20210222152913-aa3ee6e6a81c
-	google.golang.org/grpc v1.35.0
+	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018
+	google.golang.org/grpc v1.37.0-dev.0.20210309003715-fce74a94bdff
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
-	google.golang.org/protobuf v1.25.1-0.20201208041424-160c7477e0e8
+	google.golang.org/protobuf v1.26.0
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.6
 )
