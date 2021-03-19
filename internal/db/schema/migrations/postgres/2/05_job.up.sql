@@ -64,9 +64,9 @@ create table job_run (
         constraint job_run_completed_count_can_not_be_negative
             check(completed_count >= 0),
      total_count int not null
-         default 1
-         constraint job_run_total_count_greater_than_zero
-            check(total_count > 0),
+         default 0
+         constraint job_run_total_count_can_not_be_negative
+            check(total_count >= 0),
      status text not null
          default 'running'
          constraint job_run_status_enm_fkey
