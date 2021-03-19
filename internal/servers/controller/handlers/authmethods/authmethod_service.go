@@ -633,6 +633,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 }
 
 func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (*pb.AuthMethod, error) {
+	const op = "authmethod_service.(Service).changeStateInRepo"
 	repo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
@@ -645,6 +646,8 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion())
 	case statePublic:
 		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion())
+	default:
+		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", req.GetState()))
 	}
 	if err != nil {
 		return nil, err
