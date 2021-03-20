@@ -145,15 +145,15 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 }
 
 // TestAccount creates a test oidc auth account.
-func TestAccount(t *testing.T, conn *gorm.DB, authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) *Account {
+func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, issuerId *url.URL, subjectId string, opt ...Option) *Account {
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	a, err := NewAccount(authMethodId, issuerId, subjectId, opt...)
+	a, err := NewAccount(am.PublicId, issuerId, subjectId, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId()
+	id, err := newAccountId(am, issuerId.String(), subjectId)
 	require.NoError(err)
 	a.PublicId = id
 
