@@ -6,7 +6,7 @@ replace github.com/hashicorp/boundary/api => ./api
 
 require (
 	github.com/armon/go-metrics v0.3.6
-	github.com/bufbuild/buf v0.40.0
+	github.com/bufbuild/buf v0.37.0
 	github.com/dhui/dktest v0.3.4
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -54,11 +54,11 @@ require (
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
-	golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005
+	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	golang.org/x/tools v0.1.0
-	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018
-	google.golang.org/grpc v1.37.0-dev.0.20210309003715-fce74a94bdff
+	google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6
+	google.golang.org/grpc v1.36.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.26.0
 	mvdan.cc/gofumpt v0.1.1
