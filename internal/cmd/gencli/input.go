@@ -131,7 +131,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasName:              true,
 			HasDescription:       true,
 			Container:            "Scope",
-			VersionedActions:     []string{"update"},
+			VersionedActions:     []string{"update", "change-state"},
 			NeedsSubTypeInCreate: true,
 		},
 	},

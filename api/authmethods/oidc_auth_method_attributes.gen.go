@@ -12,5 +12,5 @@ type OidcAuthMethodAttributes struct {
 	CallbackUrlPrefixes []string `json:"callback_url_prefixes,omitempty"`
 	CallbackUrls        []string `json:"callback_urls,omitempty"`
 	Certificates        []string `json:"certificates,omitempty"`
-	Audiences           []string `json:"audiences,omitempty"`
+	AllowedAudiences    []string `json:"allowed_audiences,omitempty"`
 }

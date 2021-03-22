@@ -41,7 +41,7 @@ message AuthMethod {
 	string type = 90;
 
 	// The attributes that are applicable for the specific Auth Method type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 100;
 
 	// Output only. The available actions on this resource for this user.
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];

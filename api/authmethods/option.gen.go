@@ -85,38 +85,26 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
-func WithAttributes(inAttributes map[string]interface{}) Option {
-	return func(o *options) {
-		o.postMap["attributes"] = inAttributes
-	}
-}
-
-func DefaultAttributes() Option {
-	return func(o *options) {
-		o.postMap["attributes"] = nil
-	}
-}
-
-func WithOidcAuthMethodAudiences(inAudiences []string) Option {
+func WithOidcAuthMethodAllowedAudiences(inAllowedAudiences []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["audiences"] = inAudiences
+		val["allowed_audiences"] = inAllowedAudiences
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultOidcAuthMethodAudiences() Option {
+func DefaultOidcAuthMethodAllowedAudiences() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["audiences"] = nil
+		val["allowed_audiences"] = nil
 		o.postMap["attributes"] = val
 	}
 }

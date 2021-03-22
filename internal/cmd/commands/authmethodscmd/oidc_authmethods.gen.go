@@ -171,6 +171,7 @@ func (c *OidcCommand) Run(args []string) int {
 	var version uint32
 
 	switch c.Func {
+
 	case "update":
 		switch c.FlagVersion {
 		case 0:
@@ -178,6 +179,15 @@ func (c *OidcCommand) Run(args []string) int {
 		default:
 			version = uint32(c.FlagVersion)
 		}
+
+	case "change-state":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, authmethods.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraOidcFlagsHandlingFunc(c, &opts); !ok {
