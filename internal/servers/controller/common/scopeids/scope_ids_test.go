@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ import (
 // resource) valid in projects and we want to validate that the initial bugged
 // behavior that used role permissions instead of the resource type under test
 // is fixed.
-func TestScopeIds(t *testing.T) {
+func TestListingScopeIds(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -41,15 +42,17 @@ func TestScopeIds(t *testing.T) {
 	require.NoError(t, err)
 
 	tcs := []struct {
-		name           string
-		globalGrants   []string
-		orgGrants      []string
-		projGrants     []string
-		users          []string
-		addCreatedUser bool
-		wantErr        error
-		expCount       int
-		recurseFrom    string
+		name         string
+		globalGrants []string
+		orgGrants    []string
+		projGrants   []string
+		globalGroups int
+		orgGroups    int
+		projGroups   int
+		users        []string
+		wantErr      error
+		expCount     int
+		recurseFrom  string
 	}{
 		{
 			name:        "no perms, start at global",
@@ -67,73 +70,124 @@ func TestScopeIds(t *testing.T) {
 			wantErr:     handlers.ForbiddenError(),
 		},
 		{
-			name:           "perms on global",
-			globalGrants:   []string{"id=*;type=group;actions=list"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "global",
+			name:         "perms on global, none in org",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     6,
+			recurseFrom:  "global",
 		},
 		{
-			name:           "perms on global, start at org",
-			globalGrants:   []string{"id=*;type=group;actions=list"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "org",
+			name:         "perms on global, none in org, start at org",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "org",
 		},
 		{
-			name:           "perms on global, start at project",
-			globalGrants:   []string{"id=*;type=group;actions=list"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "project",
+			name:         "perms on global, with org",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			orgGrants:    []string{"id=*;type=group;actions=read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     9,
+			recurseFrom:  "global",
 		},
 		{
-			name:           "perms on org, start at global",
-			orgGrants:      []string{"id=*;type=group;actions=list"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "global",
+			name:         "perms on global, with org, start at org",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			orgGrants:    []string{"id=*;type=group;actions=read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     8,
+			recurseFrom:  "org",
 		},
 		{
-			name:           "perms on org, start at org",
-			orgGrants:      []string{"id=*;type=group;actions=list,read"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "org",
+			name:         "perms on global, start at project",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			orgGrants:    []string{"id=*;type=group;actions=read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "project",
 		},
 		{
-			name:           "perms on org, start at project",
-			orgGrants:      []string{"id=*;type=group;actions=list,read"},
-			projGrants:     []string{"id=*;type=group;actions=read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "project",
+			name:         "perms on org, start at global, no read on org",
+			orgGrants:    []string{"id=*;type=group;actions=list"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "global",
 		},
 		{
-			name:           "perms on proj",
-			projGrants:     []string{"id=*;type=group;actions=list,read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "project",
+			name:         "perms on org, start at global, read on org",
+			orgGrants:    []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     8,
+			recurseFrom:  "global",
 		},
 		{
-			name:           "perms on proj, start at org",
-			projGrants:     []string{"id=*;type=group;actions=list,read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "org",
+			name:         "perms on org, start at org",
+			orgGrants:    []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     8,
+			recurseFrom:  "org",
 		},
 		{
-			name:           "perms on proj, start at global",
-			projGrants:     []string{"id=*;type=group;actions=list,read"},
-			addCreatedUser: true,
-			expCount:       1,
-			recurseFrom:    "global",
+			name:         "perms on org, start at project",
+			orgGrants:    []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "project",
+		},
+		{
+			name:         "perms on proj",
+			projGrants:   []string{"id=*;type=group;actions=list,read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "project",
+		},
+		{
+			name:         "perms on proj, start at org",
+			projGrants:   []string{"id=*;type=group;actions=list,read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "org",
+		},
+		{
+			name:         "perms on proj, start at global",
+			projGrants:   []string{"id=*;type=group;actions=list,read"},
+			globalGroups: 1,
+			orgGroups:    3,
+			projGroups:   5,
+			expCount:     5,
+			recurseFrom:  "global",
 		},
 	}
 	// Each test starts with a new set of scopes and new users/roles, which
@@ -157,40 +211,53 @@ func TestScopeIds(t *testing.T) {
 					PublicId:    at.GetPublicId(),
 				})
 
-			// Create a group so that there is at least one value that will come
-			// back on success and if we aren't expecting it to come back we are
-			// verifying that.
-			g := iam.TestGroup(t, conn, p.GetPublicId())
+			// Clean up scopes between tests
+			defer func() {
+				_, err := iamRepo.DeleteScope(ctx, o.GetPublicId())
+				require.NoError(err)
+			}()
 
-			// If we have users to which to add grants, loop through and create
-			// at appropriate org/proj level
-			if tc.addCreatedUser {
-				tc.users = append(tc.users, at.IamUserId)
+			for i := 0; i < tc.globalGroups; i++ {
+				g := iam.TestGroup(t, conn, scope.Global.String())
+				defer func() {
+					_, err := iamRepo.DeleteGroup(ctx, g.GetPublicId())
+					require.NoError(err)
+				}()
 			}
-			if len(tc.users) > 0 {
-				for i, grants := range [][]string{tc.globalGrants, tc.orgGrants, tc.projGrants} {
-					if len(grants) > 0 {
-						pubId := "global"
-						switch i {
-						case 1:
-							pubId = o.GetPublicId()
-						case 2:
-							pubId = p.GetPublicId()
-						}
-						role := iam.TestRole(t, conn, pubId)
-						for _, grant := range grants {
-							iam.TestRoleGrant(t, conn, role.GetPublicId(), grant)
-						}
-						for _, user := range tc.users {
-							iam.TestUserRole(t, conn, role.GetPublicId(), user)
-						}
+			for i := 0; i < tc.orgGroups; i++ {
+				iam.TestGroup(t, conn, o.GetPublicId())
+			}
+			for i := 0; i < tc.projGroups; i++ {
+				iam.TestGroup(t, conn, p.GetPublicId())
+			}
+
+			for i, grants := range [][]string{tc.globalGrants, tc.orgGrants, tc.projGrants} {
+				if len(grants) > 0 {
+					pubId := scope.Global.String()
+					switch i {
+					case 1:
+						pubId = o.GetPublicId()
+					case 2:
+						pubId = p.GetPublicId()
 					}
+					role := iam.TestRole(t, conn, pubId)
+					// Clean up global between tests
+					if pubId == scope.Global.String() {
+						defer func() {
+							_, err := iamRepo.DeleteRole(ctx, role.GetPublicId())
+							require.NoError(err)
+						}()
+					}
+					for _, grant := range grants {
+						iam.TestRoleGrant(t, conn, role.GetPublicId(), grant)
+					}
+					iam.TestUserRole(t, conn, role.GetPublicId(), at.GetIamUserId())
 				}
 			}
 			var startScope string
 			switch tc.recurseFrom {
 			case "global":
-				startScope = "global"
+				startScope = scope.Global.String()
 			case "org":
 				startScope = o.GetPublicId()
 			case "project":
@@ -210,7 +277,6 @@ func TestScopeIds(t *testing.T) {
 				require.NoError(err)
 				require.NotNil(out)
 				require.Len(out.Items, tc.expCount)
-				require.Equal(out.Items[0].Id, g.GetPublicId())
 			}
 		})
 	}
