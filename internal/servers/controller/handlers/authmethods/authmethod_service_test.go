@@ -2,7 +2,6 @@ package authmethods_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -1252,6 +1252,22 @@ func TestUpdate_Password(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Update with override oidc config",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.min_password_length"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(5555),
+						"min_password_length":   structpb.NewNumberValue(42),
+					}},
+				},
+				OverrideOidcDiscoveryUrlConfig: true,
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1354,7 +1370,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"discovery_url":      structpb.NewStringValue(tp.Addr()),
 			"client_id":          structpb.NewStringValue("someclientid"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
-			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 			"certificates": func() *structpb.Value {
@@ -1369,8 +1385,8 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 
 	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
-		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
-			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+		ctx := auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId()))
+		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				Name:        wrapperspb.String("default"),
 				Description: wrapperspb.String("default"),
@@ -1381,12 +1397,19 @@ func TestUpdate_OIDC(t *testing.T) {
 			}})
 		require.NoError(t, err)
 
+		csr, err := tested.ChangeState(ctx, &pbs.ChangeStateRequest{
+			Id:                             am.GetItem().GetId(),
+			Version: am.GetItem().GetVersion(),
+			State:                          "active-private",
+		})
+		require.NoError(t, err)
+
 		clean := func() {
 			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
 			require.NoError(t, err)
 		}
-		return am.GetItem(), clean
+		return csr.GetItem(), clean
 	}
 
 	cases := []struct {
@@ -1394,6 +1417,7 @@ func TestUpdate_OIDC(t *testing.T) {
 		req  *pbs.UpdateAuthMethodRequest
 		res  *pbs.UpdateAuthMethodResponse
 		err  error
+		wantErr bool
 	}{
 		{
 			name: "Update an Existing AuthMethod",
@@ -1698,24 +1722,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 				Item: &pb.AuthMethod{},
 			},
-			res: &pbs.UpdateAuthMethodResponse{
-				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
-					Attributes: &structpb.Struct{
-						Fields: func() map[string]*structpb.Value {
-							f := defaultReadAttributeFields()
-							delete(f, "signing_algorithms")
-							return f
-						}(),
-					},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           oidcAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
-				},
-			},
+			wantErr: true,
 		},
 		{
 			name: "Set Max Age to zero",
@@ -1806,7 +1813,6 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.api_url_prefix"},
 				},
 				Item: &pb.AuthMethod{
-					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := map[string]*structpb.Value{
@@ -1844,7 +1850,6 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.allowed_audiences"},
 				},
 				Item: &pb.AuthMethod{
-					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"allowed_audiences": func() *structpb.Value {
@@ -1877,6 +1882,69 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Unsupported Signing Algorithms",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Forced Unsupported Signing Algorithms",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+				},
+				OverrideOidcDiscoveryUrlConfig: true,
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1884,7 +1952,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			am, cleanup := freshAuthMethod(t)
 			defer cleanup()
 
-			tc.req.Item.Version = 1
+			tc.req.Item.Version = am.GetVersion()
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = am.GetId()
@@ -1896,9 +1964,12 @@ func TestUpdate_OIDC(t *testing.T) {
 			}
 
 			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			if tc.err != nil {
+			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
+			if tc.err != nil || tc.wantErr {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.err != nil {
+					assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				}
 				return
 			}
 			require.NoError(gErr)
@@ -1934,8 +2005,8 @@ func TestUpdate_OIDC(t *testing.T) {
 
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
-				assert.EqualValues(2, got.Item.Version)
-				tc.res.Item.Version = 2
+				assert.EqualValues(3, got.Item.Version)
+				tc.res.Item.Version = 3
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -1972,16 +2043,25 @@ func TestChangeState(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
+	tpCert, err := oidc.ParseCertificates(tp.CACert())
 
 	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], tpClientId, oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], "different_client_id", oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	signingAlg := func() *structpb.Value {
 		lv, err := structpb.NewList([]interface{}{string(tpAlg)})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+
+	certs := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{tp.CACert()})
 		require.NoError(t, err)
 		return structpb.NewListValue(lv)
 	}()
@@ -2000,6 +2080,7 @@ func TestChangeState(t *testing.T) {
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
+			"certificates": certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -2044,6 +2125,37 @@ func TestChangeState(t *testing.T) {
 			name: "Make Incomplete Public",
 			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-public"},
 			err:  true,
+		},
+		{
+			name: "Mismatched To Public",
+			req:  &pbs.ChangeStateRequest{
+				Id:                             mismatchedAM.GetPublicId(),
+				Version:                        mismatchedAM.GetVersion(),
+				State:                          "active-public",
+			},
+			err: true,
+		},
+		{
+			name: "Force Mismatched To Public",
+			req:  &pbs.ChangeStateRequest{
+				Id:                             mismatchedAM.GetPublicId(),
+				Version:                        mismatchedAM.GetVersion(),
+				State:                          "active-public",
+				OverrideOidcDiscoveryUrlConfig: true,
+			},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Id = mismatchedAM.PublicId
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
+				am.Attributes.Fields["client_id"] = structpb.NewStringValue(mismatchedAM.ClientId)
+				am.Attributes.Fields["signing_algorithms"] = func() *structpb.Value {
+					lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+					return structpb.NewListValue(lv)
+				}()
+				am.CreatedTime = mismatchedAM.CreateTime.GetTimestamp()
+				am.Version = 2
+				return am
+			}()},
 		},
 		{
 			name: "Make Complete Private",

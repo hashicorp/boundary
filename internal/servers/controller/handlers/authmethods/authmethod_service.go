@@ -40,6 +40,7 @@ const (
 	scopeIdField    = "scope_id"
 	typeField       = "type"
 	attributesField = "attributes"
+	overrideOidcField = "override_oidc_discovery_url_config"
 
 	// password field names
 	loginNameField = "login_name"
@@ -260,7 +261,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -493,29 +494,34 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	return toAuthMethodProto(out)
 }
 
-func (s Service) updateOidcInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
+func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, error) {
+	item := req.GetItem()
 	u, err := toStorageOidcAuthMethod(scopeId, item)
 	if err != nil {
 		return nil, err
 	}
-	u.PublicId = id
+	u.PublicId = req.GetId()
 
 	version := item.GetVersion()
-	dbMask := oidcMaskManager.Translate(mask)
+	dbMask := oidcMaskManager.Translate(req.GetUpdateMask().GetPaths())
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	var opts []oidc.Option
+	if req.GetOverrideOidcDiscoveryUrlConfig() {
+		opts = append(opts, oidc.WithForce())
 	}
 
 	repo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
+	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to update auth method: %w", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
 	}
 	return out, nil
 }
@@ -548,11 +554,11 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*pb.AuthMethod, error) {
 	var out auth.AuthMethod
-	switch auth.SubtypeFromId(id) {
+	switch auth.SubtypeFromId(req.GetId()) {
 	case auth.PasswordSubtype:
-		am, err := s.updatePwInRepo(ctx, scopeId, id, mask, item)
+		am, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, err
 		}
@@ -561,7 +567,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		}
 		out = am
 	case auth.OidcSubtype:
-		am, err := s.updateOidcInRepo(ctx, scopeId, id, mask, item)
+		am, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
 			return nil, err
 		}
@@ -605,14 +611,20 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 	if err != nil {
 		return nil, err
 	}
+
+	var opts []oidc.Option
+	if req.GetOverrideOidcDiscoveryUrlConfig() {
+		opts = append(opts, oidc.WithForce())
+	}
+
 	var am *oidc.AuthMethod
 	switch oidcStateMap[req.GetState()] {
 	case inactiveState:
 		am, err = repo.MakeInactive(ctx, req.GetId(), req.GetVersion())
 	case privateState:
-		am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion())
+		am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion(), opts...)
 	case publicState:
-		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion())
+		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
 	default:
 		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", req.GetState()))
 	}
@@ -1019,6 +1031,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
 				badFields[typeField] = "Cannot modify the resource type."
+			}
+			if req.GetOverrideOidcDiscoveryUrlConfig() {
+				badFields[overrideOidcField] = "This field is only valid for oidc typed auth methods."
 			}
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
