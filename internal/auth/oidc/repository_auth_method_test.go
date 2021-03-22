@@ -325,5 +325,4 @@ func Test_upsertOplog(t *testing.T) {
 			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 		})
 	}
-
 }

@@ -470,7 +470,6 @@ func Test_encrypt_decrypt_hmac(t *testing.T) {
 			assert.Equal(tt.am.ClientSecret, decryptedAuthMethod.ClientSecret)
 		})
 	}
-
 }
 
 func Test_convertValueObjects(t *testing.T) {

@@ -22,9 +22,12 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	capoidc "github.com/hashicorp/cap/oidc"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -36,6 +39,24 @@ import (
 const (
 	testPassword  = "thetestpassword"
 	testLoginName = "default"
+)
+
+var (
+	pwAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.ChangePassword.String(),
+		action.SetPassword.String(),
+		action.Authenticate.String(),
+	}
+	oidcAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.ChangeState.String(),
+		action.Authenticate.String(),
+	}
 )
 
 var authorizedCollectionActions = map[string]*structpb.ListValue{
@@ -84,7 +105,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions:           pwAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -109,7 +130,7 @@ func TestGet(t *testing.T) {
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -218,7 +239,7 @@ func TestList(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 		}},
-		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
 
@@ -235,7 +256,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -254,7 +275,7 @@ func TestList(t *testing.T) {
 				"min_password_length":   structpb.NewNumberValue(8),
 				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
-			AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -504,7 +525,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -518,7 +539,7 @@ func TestCreate(t *testing.T) {
 					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
-					"audiences": func() *structpb.Value {
+					"allowed_audiences": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 						return structpb.NewListValue(lv)
 					}(),
@@ -544,7 +565,7 @@ func TestCreate(t *testing.T) {
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
-						"audiences": func() *structpb.Value {
+						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 							return structpb.NewListValue(lv)
 						}(),
@@ -560,7 +581,7 @@ func TestCreate(t *testing.T) {
 							return structpb.NewListValue(lv)
 						}(),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -590,7 +611,7 @@ func TestCreate(t *testing.T) {
 						"min_password_length":   structpb.NewNumberValue(8),
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -623,7 +644,7 @@ func TestCreate(t *testing.T) {
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 					}},
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -892,7 +913,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdate_Password(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -965,7 +986,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -993,7 +1014,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1061,7 +1082,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1088,7 +1109,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1115,7 +1136,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1214,7 +1235,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(42),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1245,7 +1266,7 @@ func TestUpdate(t *testing.T) {
 						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
+					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -1300,7 +1321,835 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestAuthenticate(t *testing.T) {
+func TestUpdate_OIDC(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+
+	tp := capoidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	defaultAttributeFields := func() map[string]*structpb.Value {
+		return map[string]*structpb.Value{
+			"discovery_url": structpb.NewStringValue(tp.Addr()),
+			"client_id":     structpb.NewStringValue("someclientid"),
+			"client_secret": structpb.NewStringValue("secret"),
+			"certificates": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+			"callback_url_prefixes": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
+				return structpb.NewListValue(lv)
+			}(),
+		}
+	}
+	defaultReadAttributeFields := func() map[string]*structpb.Value {
+		return map[string]*structpb.Value{
+			"discovery_url":      structpb.NewStringValue(tp.Addr()),
+			"client_id":          structpb.NewStringValue("someclientid"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"certificates": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+			"callback_url_prefixes": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
+				return structpb.NewListValue(lv)
+			}(),
+			"callback_urls": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
+				return structpb.NewListValue(lv)
+			}(),
+		}
+	}
+	_ = defaultReadAttributeFields
+
+	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
+		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
+				Name:        wrapperspb.String("default"),
+				Description: wrapperspb.String("default"),
+				Type:        auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{
+					Fields: defaultAttributeFields(),
+				},
+			}})
+		require.NoError(t, err)
+
+		clean := func() {
+			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
+			require.NoError(t, err)
+		}
+		return am.GetItem(), clean
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.UpdateAuthMethodRequest
+		res  *pbs.UpdateAuthMethodResponse
+		err  error
+	}{
+		{
+			name: "Update an Existing AuthMethod",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        auth.OidcSubtype.String(),
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description,type"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        auth.OidcSubtype.String(),
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "No Paths in Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"name", "type"}},
+				Item: &pb.AuthMethod{
+					Name: &wrapperspb.StringValue{Value: "updated name"},
+					Type: auth.PasswordSubtype.String(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.AuthMethod{
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId: o.GetPublicId(),
+					Name:    &wrapperspb.StringValue{Value: "default"},
+					Type:    auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Update a Non Existing AuthMethod",
+			req: &pbs.UpdateAuthMethodRequest{
+				Id: password.AuthMethodPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.AuthMethod{
+					Id:          password.AuthMethodPrefix + "_somethinge",
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.AuthMethod{
+					CreatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.AuthMethod{
+					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.AuthMethod{
+					Type: auth.OidcSubtype.String(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Discovery URL",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.discovery_url"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Client Id",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.client_id"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Client Secret",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.client_secret"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Signing Algorithms",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							delete(f, "signing_algorithms")
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Set Max Age to zero",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.max_age"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"max_age": structpb.NewNumberValue(0),
+						},
+					},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Change Max Age",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.max_age"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"max_age": structpb.NewNumberValue(4),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["max_age"] = structpb.NewNumberValue(4)
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Change Client Id",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.client_id"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"client_id": structpb.NewStringValue("new id"),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["client_id"] = structpb.NewStringValue("new id")
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Change Callback Url Prefix",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.callback_url_prefixes"},
+				},
+				Item: &pb.AuthMethod{
+					Version: 1,
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
+							f := map[string]*structpb.Value{
+								"callback_url_prefixes": structpb.NewListValue(lv),
+							}
+							return f
+						}(),
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							cup, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
+							f["callback_url_prefixes"] = structpb.NewListValue(cup)
+							cu, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://somethingnew.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
+							f["callback_urls"] = structpb.NewListValue(cu)
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Change Allowed Audiences",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.allowed_audiences"},
+				},
+				Item: &pb.AuthMethod{
+					Version: 1,
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"allowed_audiences": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["allowed_audiences"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			am, cleanup := freshAuthMethod(t)
+			defer cleanup()
+
+			tc.req.Item.Version = 1
+
+			if tc.req.GetId() == "" {
+				tc.req.Id = am.GetId()
+			}
+
+			if tc.res != nil && tc.res.Item != nil {
+				tc.res.Item.Id = am.GetId()
+				tc.res.Item.CreatedTime = am.GetCreatedTime()
+			}
+
+			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			if tc.res == nil {
+				require.Nil(got)
+			}
+
+			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
+				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+
+				created, err := ptypes.Timestamp(am.GetCreatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+
+				// Verify it is a auth_method updated after it was created
+				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+				// Clear all values which are hard to compare against.
+				if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
+					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
+					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues() {
+						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues()[i]
+						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
+						require.NoError(err)
+						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
+					}
+					delete(got.Item.Attributes.Fields, "callback_urls")
+					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				}
+
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.EqualValues(2, got.Item.Version)
+				tc.res.Item.Version = 2
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestChangeState(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	pwam := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	tp := capoidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]))
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	signingAlg := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{string(tpAlg)})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+	callbackUrl := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{"https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+	callbackUrlPrefix := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{"https://example.callback:58"})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+
+	wantTemplate := &pb.AuthMethod{
+		Id:          oidcam.GetPublicId(),
+		ScopeId:     oidcam.GetScopeId(),
+		CreatedTime: oidcam.CreateTime.GetTimestamp(),
+		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
+		Type:        auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"discovery_url":         structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"client_id":             structpb.NewStringValue(tpClientId),
+			"client_secret_hmac":    structpb.NewStringValue("<hmac>"),
+			"state":                 structpb.NewStringValue(string(oidc.InactiveState)),
+			"callback_urls":         callbackUrl,
+			"callback_url_prefixes": callbackUrlPrefix,
+			"signing_algorithms":    signingAlg,
+		}},
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
+			Id:   o.GetPublicId(),
+			Type: o.GetType(),
+		},
+		AuthorizedActions:           oidcAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
+	// These test cases must be run in this order since these tests rely on the correct versions being provided
+	cases := []struct {
+		name string
+		req  *pbs.ChangeStateRequest
+		res  *pbs.ChangeStateResponse
+		err  bool
+	}{
+		{
+			name: "Password Auth Method",
+			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), State: "inactive"},
+			err:  true,
+		},
+		{
+			name: "No Version Specified",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), State: "inactive"},
+			err:  true,
+		},
+		{
+			name: "Keep Inactive",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "inactive"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				return am
+			}()},
+		},
+		{
+			name: "Make Incomplete Private",
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			err:  true,
+		},
+		{
+			name: "Make Incomplete Public",
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-public"},
+			err:  true,
+		},
+		{
+			name: "Make Complete Private",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-private")
+				am.Version = 2
+				return am
+			}()},
+		},
+		{
+			name: "Make Complete Public",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, State: "active-public"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
+				am.Version = 3
+				return am
+			}()},
+		},
+		{
+			name: "Make Complete Inactive",
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, State: "inactive"},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("inactive")
+				am.Version = 4
+				return am
+			}()},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, gErr := s.ChangeState(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			if tc.err {
+				require.Error(gErr)
+				return
+			}
+			require.NoError(gErr)
+			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+			}
+			if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
+				for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
+					gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
+					matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
+				}
+				delete(got.Item.Attributes.Fields, "callback_urls")
+				delete(tc.res.Item.Attributes.Fields, "callback_urls")
+			}
+			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ChangeState() got response %q, wanted %q", got, tc.res)
+		})
+	}
+}
+
+func TestAuthenticateLogin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1334,13 +2183,13 @@ func TestAuthenticate(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		request  *pbs.AuthenticateRequest
+		request  *pbs.AuthenticateLoginRequest
 		wantType string
 		wantErr  error
 	}{
 		{
 			name: "basic",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
@@ -1355,7 +2204,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "cookie-type",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "cookie",
 				Credentials: func() *structpb.Struct {
@@ -1370,7 +2219,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "no-token-type",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
@@ -1383,7 +2232,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "bad-token-type",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "email",
 				Credentials: func() *structpb.Struct {
@@ -1398,7 +2247,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "no-authmethod",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
 						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
@@ -1411,7 +2260,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "wrong-password",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
@@ -1426,7 +2275,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "wrong-login-name",
-			request: &pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateLoginRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
@@ -1447,7 +2296,7 @@ func TestAuthenticate(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
+			resp, err := s.AuthenticateLogin(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
@@ -1507,7 +2356,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 
 	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err)
-	resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateRequest{
+	resp, err := s.AuthenticateLogin(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateLoginRequest{
 		AuthMethodId: am.GetPublicId(),
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{

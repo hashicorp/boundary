@@ -83,6 +83,10 @@ func TestAction(t *testing.T) {
 			action: CancelSelf,
 			want:   "cancel:self",
 		},
+		{
+			action: ChangeState,
+			want:   "change-state",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
