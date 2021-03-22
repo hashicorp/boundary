@@ -475,6 +475,31 @@
         ]
       }
     },
+    "/v1/auth-methods/{id}:change-state": {
+      "post": {
+        "summary": "Changes the state of an OIDC AuthMethod",
+        "operationId": "AuthMethodService_ChangeState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ChangeStateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
     "/v1/auth-tokens": {
       "get": {
         "summary": "Lists all Auth Tokens.",
@@ -3905,6 +3930,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.ChangeStateResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },

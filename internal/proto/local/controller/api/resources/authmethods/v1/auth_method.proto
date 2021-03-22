@@ -22,10 +22,10 @@ message AuthMethod {
 	resources.scopes.v1.ScopeInfo scope = 30;
 
 	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "Name"}];
 
 	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "Description"}];
 
 	// Output only. The time this resource was created.
 	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
@@ -67,27 +67,27 @@ message OidcAuthMethodAttributes {
 	// A URL where the OIDC provider's configuration can be retrieved. Boundary
 	// expects only the schema, host, and port and will strip off
 	// "/.well-known/openid-configuration" if present
-	google.protobuf.StringValue discovery_url = 20 [json_name="discovery_url", (custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue discovery_url = 20 [json_name="discovery_url", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.discovery_url" that: "DiscoveryUrl"}];
 
 	// An OAuth 2.0 Client Identifier valid at the Authorization Server.
-	google.protobuf.StringValue client_id = 30 [json_name="client_id", (custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue client_id = 30 [json_name="client_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.client_id" that: "ClientId"}];
 
 	// Input only. The client's secret.
-	google.protobuf.StringValue client_secret = 40 [json_name="client_secret", (custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue client_secret = 40 [json_name="client_secret", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.client_secret" that: "ClientSecret"}];
 
 	// Output only. The hashed value of the clients secret to indicate whether the client secret has changed.
 	string  client_secret_hmac = 50 [json_name="client_secret_hmac"];
 
 	// The elapsed time in seconds before the end user should be forced to re-authenticate. 0 is invalid, -1 indicates
 	// an immediate need to reauthenticate.
-	google.protobuf.Int32Value max_age = 60 [json_name="max_age", (custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Int32Value max_age = 60 [json_name="max_age", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.max_age" that: "MaxAge"}];
 
 	// The signing algorithms allowed for an oidc auth method
-	repeated string signing_algorithms = 70 [json_name="signing_algorithms", (custom_options.v1.generate_sdk_option) = true];
+	repeated string signing_algorithms = 70 [json_name="signing_algorithms", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.signing_algorithms" that: "SigningAlgs"}];
 
 	// The callback url prefixes used by the OIDC provider in the authentication flow.  Changes to this list
 	// are reflected in the callback_urls read only field.
-	repeated string callback_url_prefixes = 80 [json_name="callback_url_prefixes", (custom_options.v1.generate_sdk_option) = true];
+	repeated string callback_url_prefixes = 80 [json_name="callback_url_prefixes", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.callback_url_prefixes" that: "CallbackUrls"}];
 
 	// Output only. The callback url used by the OIDC provider in the authentication flow. These values will have
 	// boundary's callback api path appended too them.
@@ -95,8 +95,8 @@ message OidcAuthMethodAttributes {
 
 	// certificates are optional PEM encoded x509 certificates that can be
 	// used as trust anchors when connecting to an OIDC provider.
-	repeated string certificates = 100 [json_name="certificates", (custom_options.v1.generate_sdk_option) = true];
+	repeated string certificates = 100 [json_name="certificates", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.certificates" that: "Certificates"}];
 
 	// The audience claims for this oidc typed auth method.
-	repeated string audiences = 110 [json_name="audiences", (custom_options.v1.generate_sdk_option) = true];
+	repeated string allowed_audiences = 110 [json_name="allowed_audiences", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.allowed_audiences" that: "AudClaims"}];
 }
