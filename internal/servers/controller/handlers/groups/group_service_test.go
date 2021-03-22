@@ -1360,12 +1360,8 @@ func TestRemoveMember(t *testing.T) {
 	}
 }
 
-// This test validates that we can perform recursive listing when there are no
-// permissions on the parent scope against which the query is being run, but
-// there are on child scopes. The choice of putting the test in this package is
-// because groups are (one type of resource) valid in projects and we want to
-// validate that the initial bugged behavior that used role permissions instead
-// of the resource type under test is fixed.
+// This is an analogue of the test in the scopeids package but pulled up to the
+// full service handler level.
 func TestRecursiveNoParentPerms(t *testing.T) {
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")

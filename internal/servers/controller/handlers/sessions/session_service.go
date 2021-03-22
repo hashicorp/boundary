@@ -114,8 +114,8 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx,
-		s.iamRepoFn, authResults, req.GetScopeId(), resource.Session, req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(ctx,
+		s.iamRepoFn, authResults, req.GetScopeId(), resource.Session, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
 	}
