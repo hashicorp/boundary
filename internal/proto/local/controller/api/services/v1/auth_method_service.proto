@@ -152,6 +152,10 @@ message UpdateAuthMethodRequest {
   string id = 1;
   resources.authmethods.v1.AuthMethod item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  // This flag is only useful for an oidc auth method.  It should not be used
+  // unless the oidc provider's config is incorrectly set and is stopping the
+  // activation of this auth method.
+  bool override_oidc_discovery_url_config = 4 [json_name="override_oidc_discovery_url_config"];
 }
 
 message UpdateAuthMethodResponse {
@@ -164,7 +168,6 @@ message DeleteAuthMethodRequest {
 
 message DeleteAuthMethodResponse {}
 
-// TODO: Figure out how to support force (through API or embedded in the item being updated).
 message ChangeStateRequest {
   string id = 1;
   // Version is used to ensure this resource has not changed.
@@ -172,6 +175,10 @@ message ChangeStateRequest {
   uint32 version = 2;
   // state must be `inactive`, `active-private`, or `active-public`
   string state = 3;
+  // This flag is only useful for an oidc auth method.  It should not be used
+  // unless the oidc provider's config is incorrectly set and is stopping the
+  // activation of this auth method.
+  bool override_oidc_discovery_url_config = 4 [json_name="override_oidc_discovery_url_config"];
 }
 
 message ChangeStateResponse {

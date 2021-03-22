@@ -46,16 +46,16 @@ const (
 	pwKeyField     = "password"
 
 	// oidc field names
-	discoveryUrlField       = "attributes.discovery_url"
-	clientSecretField       = "attributes.client_secret"
-	clientIdField           = "attributes.client_id"
-	clientSecretHmacField   = "attributes.client_secret_hmac"
-	stateField              = "attributes.state"
-	callbackUrlField        = "attributes.callback_urls"
-	callbackUrlPrefixeField = "attributes.callback_url_prefixes"
-	certificateField        = "attributes.certificates"
-	maxAgeField             = "attributes.max_age"
-	signingAlgorithmField   = "attributes.signing_algorithms"
+	discoveryUrlField     = "attributes.discovery_url"
+	clientSecretField     = "attributes.client_secret"
+	clientIdField         = "attributes.client_id"
+	clientSecretHmacField = "attributes.client_secret_hmac"
+	stateField            = "attributes.state"
+	callbackUrlField      = "attributes.callback_url"
+	apiUrlPrefixeField    = "attributes.api_url_prefixes"
+	certificateField      = "attributes.certificates"
+	maxAgeField           = "attributes.max_age"
+	signingAlgorithmField = "attributes.signing_algorithms"
 )
 
 var (
@@ -775,21 +775,20 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAuthMethodAttributes{
-			DiscoveryUrl:        wrapperspb.String(i.DiscoveryUrl),
-			ClientId:            wrapperspb.String(i.GetClientId()),
-			ClientSecretHmac:    i.ClientSecretHmac,
-			Certificates:        i.GetCertificates(),
-			State:               i.GetOperationalState(),
-			SigningAlgorithms:   i.GetSigningAlgs(),
-			AllowedAudiences:    i.GetAudClaims(),
-			CallbackUrlPrefixes: i.GetCallbackUrls(),
+			DiscoveryUrl:      wrapperspb.String(i.DiscoveryUrl),
+			ClientId:          wrapperspb.String(i.GetClientId()),
+			ClientSecretHmac:  i.ClientSecretHmac,
+			Certificates:      i.GetCertificates(),
+			State:             i.GetOperationalState(),
+			SigningAlgorithms: i.GetSigningAlgs(),
+			AllowedAudiences:  i.GetAudClaims(),
+		}
+		if len(i.GetCallbackUrls()) > 0 {
+			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
+			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetCallbackUrls()[0], i.GetPublicId())
 		}
 		if i.GetMaxAge() != 0 {
 			attrs.MaxAge = wrapperspb.Int32(i.GetMaxAge())
-		}
-		for _, f := range i.GetCallbackUrls() {
-			attrs.CallbackUrls = append(attrs.CallbackUrls,
-				fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", f, i.GetPublicId()))
 		}
 
 		st, err := handlers.ProtoToStruct(attrs)
@@ -893,17 +892,13 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
 	}
 
-	var cbs []*url.URL
-	for _, cbUrl := range attrs.GetCallbackUrlPrefixes() {
-		cbu, err := url.Parse(cbUrl)
+	if attrs.GetApiUrlPrefix().GetValue() != "" {
+		apiU, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
 		if err != nil {
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{callbackUrlPrefixeField: "Unparseable url"})
+				map[string]string{apiUrlPrefixeField: "Unparsable url"})
 		}
-		cbs = append(cbs, cbu)
-	}
-	if len(cbs) > 0 {
-		opts = append(opts, oidc.WithCallbackUrls(cbs...))
+		opts = append(opts, oidc.WithCallbackUrls(apiU))
 	}
 
 	if len(attrs.GetCertificates()) > 0 {
@@ -979,7 +974,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				if attrs.GetState() != "" {
 					badFields[stateField] = "Field is read only."
 				}
-				if len(attrs.GetCallbackUrls()) > 0 {
+				if attrs.GetCallbackUrl() != "" {
 					badFields[callbackUrlField] = "Field is read only."
 				}
 
@@ -994,9 +989,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						}
 					}
 				}
-				for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
-					if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-						badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
+				if attrs.GetApiUrlPrefix() != nil {
+					if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
+						badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 						break
 					}
 				}
@@ -1065,7 +1060,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			if attrs.GetState() != "" {
 				badFields[stateField] = "Field is read only."
 			}
-			if len(attrs.GetCallbackUrls()) > 0 {
+			if attrs.GetCallbackUrl() != "" {
 				badFields[callbackUrlField] = "Field is read only."
 			}
 
@@ -1080,9 +1075,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					}
 				}
 			}
-			for i, cbUrl := range attrs.GetCallbackUrlPrefixes() {
-				if cu, err := url.Parse(cbUrl); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[callbackUrlPrefixeField] = fmt.Sprintf("Value #%d: %q cannot be parsed as a url.", i, cbUrl)
+			if attrs.GetApiUrlPrefix() != nil {
+				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
+					badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					break
 				}
 			}

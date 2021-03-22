@@ -536,15 +536,12 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"discovery_url":  structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
 					"allowed_audiences": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
-						return structpb.NewListValue(lv)
-					}(),
-					"callback_url_prefixes": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
 						return structpb.NewListValue(lv)
 					}(),
 				}},
@@ -565,19 +562,10 @@ func TestCreate(t *testing.T) {
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+						"api_url_prefix":     structpb.NewStringValue("https://callback.prefix:9281/path"),
+						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
-							return structpb.NewListValue(lv)
-						}(),
-						"callback_url_prefixes": func() *structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
-							return structpb.NewListValue(lv)
-						}(),
-						"callback_urls": func() *structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{
-								fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
-								fmt.Sprintf("http://another.url.com:82471/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
-							})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -810,24 +798,21 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "OIDC AuthMethod Callback Urls Prefix Format",
+			name: "OIDC AuthMethod API Urls Prefix Format",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
-					"callback_url_prefixes": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
-						return structpb.NewListValue(lv)
-					}(),
+					"discovery_url":  structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("invalid path"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "OIDC AuthMethod Callback Urls Read Only",
+			name: "OIDC AuthMethod Callback Url Read Only",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
@@ -835,10 +820,7 @@ func TestCreate(t *testing.T) {
 					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
-					"callback_urls": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
-						return structpb.NewListValue(lv)
-					}(),
+					"callback_url":  structpb.NewStringValue("http://another.url.com:82471"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -897,15 +879,14 @@ func TestCreate(t *testing.T) {
 					assert.NotEqual(tc.req.Item.Attributes.Fields["client_secret"], got.Item.Attributes.Fields["client_secret_hmac"])
 					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 				}
-				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
-						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
-						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-						require.NoError(err)
-						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-					}
-					delete(got.Item.Attributes.Fields, "callback_urls")
-					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+					matches, err := regexp.MatchString(exp, gVal)
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
@@ -1354,19 +1335,16 @@ func TestUpdate_OIDC(t *testing.T) {
 
 	defaultAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url": structpb.NewStringValue(tp.Addr()),
-			"client_id":     structpb.NewStringValue("someclientid"),
-			"client_secret": structpb.NewStringValue("secret"),
+			"discovery_url":  structpb.NewStringValue(tp.Addr()),
+			"client_id":      structpb.NewStringValue("someclientid"),
+			"client_secret":  structpb.NewStringValue("secret"),
+			"api_url_prefix": structpb.NewStringValue("http://example.com"),
 			"certificates": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
 			"signing_algorithms": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
-				return structpb.NewListValue(lv)
-			}(),
-			"callback_url_prefixes": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
 				return structpb.NewListValue(lv)
 			}(),
 		}
@@ -1377,6 +1355,8 @@ func TestUpdate_OIDC(t *testing.T) {
 			"client_id":          structpb.NewStringValue("someclientid"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 			"certificates": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
@@ -1385,17 +1365,8 @@ func TestUpdate_OIDC(t *testing.T) {
 				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
 				return structpb.NewListValue(lv)
 			}(),
-			"callback_url_prefixes": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
-				return structpb.NewListValue(lv)
-			}(),
-			"callback_urls": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
-				return structpb.NewListValue(lv)
-			}(),
 		}
 	}
-	_ = defaultReadAttributeFields
 
 	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
@@ -1832,15 +1803,14 @@ func TestUpdate_OIDC(t *testing.T) {
 			name: "Change Callback Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.callback_url_prefixes"},
+					Paths: []string{"attributes.api_url_prefix"},
 				},
 				Item: &pb.AuthMethod{
 					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
 							f := map[string]*structpb.Value{
-								"callback_url_prefixes": structpb.NewListValue(lv),
+								"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
 							}
 							return f
 						}(),
@@ -1856,10 +1826,8 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
-							cup, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
-							f["callback_url_prefixes"] = structpb.NewListValue(cup)
-							cu, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://somethingnew.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
-							f["callback_urls"] = structpb.NewListValue(cu)
+							f["api_url_prefix"] = structpb.NewStringValue("https://callback.prefix:9281/path")
+							f["callback_url"] = structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix))
 							return f
 						}(),
 					},
@@ -1954,15 +1922,14 @@ func TestUpdate_OIDC(t *testing.T) {
 					assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
 					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 				}
-				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues() {
-						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues()[i]
-						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-						require.NoError(err)
-						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-					}
-					delete(got.Item.Attributes.Fields, "callback_urls")
-					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+					matches, err := regexp.MatchString(exp, gVal)
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
@@ -2018,16 +1985,6 @@ func TestChangeState(t *testing.T) {
 		require.NoError(t, err)
 		return structpb.NewListValue(lv)
 	}()
-	callbackUrl := func() *structpb.Value {
-		lv, err := structpb.NewList([]interface{}{"https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"})
-		require.NoError(t, err)
-		return structpb.NewListValue(lv)
-	}()
-	callbackUrlPrefix := func() *structpb.Value {
-		lv, err := structpb.NewList([]interface{}{"https://example.callback:58"})
-		require.NoError(t, err)
-		return structpb.NewListValue(lv)
-	}()
 
 	wantTemplate := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
@@ -2036,13 +1993,13 @@ func TestChangeState(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"discovery_url":         structpb.NewStringValue(oidcam.DiscoveryUrl),
-			"client_id":             structpb.NewStringValue(tpClientId),
-			"client_secret_hmac":    structpb.NewStringValue("<hmac>"),
-			"state":                 structpb.NewStringValue(string(oidc.InactiveState)),
-			"callback_urls":         callbackUrl,
-			"callback_url_prefixes": callbackUrlPrefix,
-			"signing_algorithms":    signingAlg,
+			"discovery_url":      structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"client_id":          structpb.NewStringValue(tpClientId),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
+			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
+			"signing_algorithms": signingAlg,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -2132,15 +2089,14 @@ func TestChangeState(t *testing.T) {
 			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
 				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 			}
-			if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-				for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
-					gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
-					matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-					require.NoError(err)
-					assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-				}
-				delete(got.Item.Attributes.Fields, "callback_urls")
-				delete(tc.res.Item.Attributes.Fields, "callback_urls")
+			if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+				exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+				gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+				matches, err := regexp.MatchString(exp, gVal)
+				require.NoError(err)
+				assert.True(matches, "%q doesn't match %q", gVal, exp)
+				delete(got.Item.Attributes.Fields, "callback_url")
+				delete(tc.res.Item.Attributes.Fields, "callback_url")
 			}
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
