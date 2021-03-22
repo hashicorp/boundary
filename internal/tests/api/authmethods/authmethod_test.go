@@ -90,7 +90,6 @@ func TestCustomMethods(t *testing.T) {
 
 	amClient := authmethods.NewClient(client)
 
-
 	u, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
 		authmethods.WithOidcAuthMethodDiscoveryUrl("https://example.com"),

@@ -145,30 +145,6 @@ func DefaultOidcAuthMethodCallbackUrlPrefixes() Option {
 	}
 }
 
-func WithOidcAuthMethodCallbackUrls(inCallbackUrls []string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["callback_urls"] = inCallbackUrls
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultOidcAuthMethodCallbackUrls() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["callback_urls"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithOidcAuthMethodCertificates(inCertificates []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -237,30 +213,6 @@ func DefaultOidcAuthMethodClientSecret() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["client_secret"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithOidcAuthMethodClientSecretHmac(inClientSecretHmac string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_secret_hmac"] = inClientSecretHmac
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultOidcAuthMethodClientSecretHmac() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_secret_hmac"] = nil
 		o.postMap["attributes"] = val
 	}
 }
