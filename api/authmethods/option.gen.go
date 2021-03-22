@@ -97,6 +97,174 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithOidcAuthMethodAudiences(inAudiences []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["audiences"] = inAudiences
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodAudiences() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["audiences"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodCallbackUrlPrefixes(inCallbackUrlPrefixes []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["callback_url_prefixes"] = inCallbackUrlPrefixes
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodCallbackUrlPrefixes() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["callback_url_prefixes"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodCallbackUrls(inCallbackUrls []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["callback_urls"] = inCallbackUrls
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodCallbackUrls() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["callback_urls"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodCertificates(inCertificates []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["certificates"] = inCertificates
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodCertificates() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["certificates"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodClientId(inClientId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_id"] = inClientId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodClientId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_id"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodClientSecret(inClientSecret string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_secret"] = inClientSecret
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodClientSecret() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_secret"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodClientSecretHmac(inClientSecretHmac string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_secret_hmac"] = inClientSecretHmac
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodClientSecretHmac() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_secret_hmac"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -106,6 +274,54 @@ func WithDescription(inDescription string) Option {
 func DefaultDescription() Option {
 	return func(o *options) {
 		o.postMap["description"] = nil
+	}
+}
+
+func WithOidcAuthMethodDiscoveryUrl(inDiscoveryUrl string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["discovery_url"] = inDiscoveryUrl
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodDiscoveryUrl() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["discovery_url"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodMaxAge(inMaxAge int32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["max_age"] = inMaxAge
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodMaxAge() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["max_age"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 
@@ -166,5 +382,29 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithOidcAuthMethodSigningAlgorithms(inSigningAlgorithms []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["signing_algorithms"] = inSigningAlgorithms
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodSigningAlgorithms() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["signing_algorithms"] = nil
+		o.postMap["attributes"] = val
 	}
 }
