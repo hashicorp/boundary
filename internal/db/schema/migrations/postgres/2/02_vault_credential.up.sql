@@ -69,7 +69,7 @@ begin;
         check(length(trim(certificate_key)) > 0)
   );
   comment on table credential_vault_client_certificate is
-    'credential_vault_client_certificate is a table where each row contains a client certificate that a credential_vault_store uses for connecting to Vault. '
+    'credential_vault_client_certificate is a table where each row contains a client certificate that a credential_vault_store uses for mTLS when connecting to Vault. '
     'A credential_vault_store can have 0 or 1 client certificates.';
 
   create trigger immutable_columns before update on credential_vault_client_certificate
