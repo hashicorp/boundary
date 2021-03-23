@@ -109,6 +109,18 @@ func DefaultOidcAuthMethodAllowedAudiences() Option {
 	}
 }
 
+func WithAttributes(inAttributes map[string]interface{}) Option {
+	return func(o *options) {
+		o.postMap["attributes"] = inAttributes
+	}
+}
+
+func DefaultAttributes() Option {
+	return func(o *options) {
+		o.postMap["attributes"] = nil
+	}
+}
+
 func WithOidcAuthMethodCallbackUrlPrefixes(inCallbackUrlPrefixes []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

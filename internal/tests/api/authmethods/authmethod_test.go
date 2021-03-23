@@ -107,7 +107,7 @@ func TestCustomMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	const newState = "active-private"
-	u, err = amClient.ChangeState(tc.Context(), u.Item.Id, newState, u.Item.Version)
+	u, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, newState)
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Equal(t, newState, u.Item.Attributes["state"])

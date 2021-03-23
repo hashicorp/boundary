@@ -3,6 +3,7 @@ package authmethodscmd
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -11,6 +12,7 @@ func init() {
 	extraOidcActionsFlagsMapFunc = extraOidcActionsFlagsMapFuncImpl
 	extraOidcFlagsFunc = extraOidcFlagsFuncImpl
 	extraOidcFlagsHandlingFunc = extraOidcFlagHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
 }
 
 type extraOidcCmdVars struct {
@@ -206,4 +208,12 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	}
 
 	return true
+}
+
+func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
+	switch c.Func {
+	case "change-state":
+		return amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
+	}
+	return origResult, origError
 }

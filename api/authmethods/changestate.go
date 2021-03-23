@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 )
 
-func (c *Client) ChangeState(ctx context.Context, authMethodId, state string, version uint32, opt ...Option) (*AuthMethodUpdateResult, error) {
+func (c *Client) ChangeState(ctx context.Context, authMethodId string, version uint32, state string, opt ...Option) (*AuthMethodUpdateResult, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("empty authMethodId value passed into ChangeState request")
 	}
