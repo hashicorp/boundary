@@ -112,6 +112,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
 	},
+	Internal: {
+		Message: "internal error",
+		Kind:    Other,
+	},
+	Forbidden: {
+		Message: "forbidden",
+		Kind:    Other,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,

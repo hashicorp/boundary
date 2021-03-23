@@ -14,9 +14,9 @@ require (
 	github.com/go-swagger/go-swagger v0.26.1
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
-	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
+	github.com/golang/protobuf v1.5.1
+	github.com/google/go-cmp v0.5.5
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.8
 	github.com/hashicorp/boundary/sdk v0.0.4
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.15.0
 	github.com/hashicorp/go-kms-wrapping v0.6.1
-	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
@@ -44,7 +44,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/pointerstructure v1.2.0
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oligot/go-mod-upgrade v0.4.0
+	github.com/oligot/go-mod-upgrade v0.5.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.5.0
@@ -57,10 +57,10 @@ require (
 	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	golang.org/x/tools v0.1.0
-	google.golang.org/genproto v0.0.0-20210222152913-aa3ee6e6a81c
-	google.golang.org/grpc v1.35.0
+	google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6
+	google.golang.org/grpc v1.36.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
-	google.golang.org/protobuf v1.25.1-0.20201208041424-160c7477e0e8
-	mvdan.cc/gofumpt v0.1.0
+	google.golang.org/protobuf v1.26.0
+	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.6
 )
