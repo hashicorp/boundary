@@ -91,9 +91,9 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	// If we aren't authorized for any scopes, return unauthorized
+	// If no scopes match, return an empty response
 	if len(scopeIds) == 0 {
-		return nil, handlers.ForbiddenError()
+		return &pbs.ListGroupsResponse{}, nil
 	}
 
 	gl, err := s.listFromRepo(ctx, scopeIds)

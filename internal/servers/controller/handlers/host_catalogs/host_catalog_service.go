@@ -127,9 +127,9 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if err != nil {
 		return nil, err
 	}
-	// If we aren't authorized for any scopes, return unauthorized
+	// If no scopes match, return an empty response
 	if len(scopeIds) == 0 {
-		return nil, handlers.ForbiddenError()
+		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)

@@ -119,9 +119,9 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err != nil {
 		return nil, err
 	}
-	// If we aren't authorized for any scopes, return unauthorized
+	// If no scopes match, return an empty response
 	if len(scopeIds) == 0 {
-		return nil, handlers.ForbiddenError()
+		return &pbs.ListSessionsResponse{}, nil
 	}
 
 	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))

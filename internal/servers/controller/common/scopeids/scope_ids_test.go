@@ -70,6 +70,23 @@ func TestListingScopeIds(t *testing.T) {
 			wantErr:     handlers.ForbiddenError(),
 		},
 		{
+			name:         "perms on global, no groups",
+			globalGrants: []string{"id=*;type=group;actions=list,read"},
+			projGrants:   []string{"id=*;type=group;actions=read"},
+			recurseFrom:  "global",
+		},
+		{
+			name:        "perms on org, no groups",
+			orgGrants:   []string{"id=*;type=group;actions=list,read"},
+			projGrants:  []string{"id=*;type=group;actions=read"},
+			recurseFrom: "org",
+		},
+		{
+			name:        "perms on project, no groups",
+			projGrants:  []string{"id=*;type=group;actions=list,read"},
+			recurseFrom: "project",
+		},
+		{
 			name:         "perms on global, none in org",
 			globalGrants: []string{"id=*;type=group;actions=list,read"},
 			projGrants:   []string{"id=*;type=group;actions=read"},

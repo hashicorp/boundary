@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -142,8 +143,14 @@ func GetListingScopeIds(
 		}
 	}
 
+	// If we have nothing in scopeInfoMap at this point, we aren't authorized
+	// anywhere so return 403.
+	if len(scopeInfoMap) == 0 {
+		return nil, nil, handlers.ForbiddenError()
+	}
+
 	// Now elide out any that aren't under the root scope ID
-	var elideScopes []string
+	elideScopes := make([]string, 0, len(scopeInfoMap))
 	for scpId, scp := range scopeInfoMap {
 		switch rootScopeId {
 		// If the root is global, it matches

@@ -138,9 +138,9 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
-	// If we aren't authorized for any scopes, return unauthorized
+	// If no scopes match, return an empty response
 	if len(scopeIds) == 0 {
-		return nil, handlers.ForbiddenError()
+		return &pbs.ListTargetsResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)
