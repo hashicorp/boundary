@@ -1,12 +1,5 @@
 begin;
 
-  delete from oplog_ticket
-   where name in ('credential_library',
-                  'credential_store',
-                  'credential',
-                  'credential_static',
-                  'credential_dynamic');
-
   drop function delete_credential_dynamic_subtype;
   drop function insert_credential_dynamic_subtype;
   drop table credential_dynamic;

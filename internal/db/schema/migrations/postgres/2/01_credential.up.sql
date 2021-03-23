@@ -229,12 +229,4 @@ begin;
   end;
   $$ language plpgsql;
 
-  insert into oplog_ticket (name, version)
-  values
-    ('credential_store', 1),
-    ('credential_library', 1),
-    ('credential', 1),
-    ('credential_static', 1),
-    ('credential_dynamic', 1);
-
 commit;
