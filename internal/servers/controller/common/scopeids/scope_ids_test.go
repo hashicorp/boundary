@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +41,12 @@ func TestListingScopeIds(t *testing.T) {
 		return servers.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(iamRepoFn)
+	require.NoError(t, err)
+
+	sessionsRepoFn := func() (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms)
+	}
+	sess, err := sessions.NewService(sessionsRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	tcs := []struct {
@@ -295,6 +303,13 @@ func TestListingScopeIds(t *testing.T) {
 				require.NotNil(out)
 				require.Len(out.Items, tc.expCount)
 			}
+
+			sessOut, err := sess.ListSessions(ctx, &pbs.ListSessionsRequest{
+				Recursive: true,
+				ScopeId:   startScope,
+			})
+			require.NoError(err)
+			require.NotNil(sessOut)
 		})
 	}
 }

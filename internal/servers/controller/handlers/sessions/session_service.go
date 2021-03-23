@@ -100,9 +100,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
 		// may have authorization on downstream scopes.
