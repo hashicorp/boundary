@@ -66,7 +66,12 @@ begin;
         check(length(trim(certificate)) > 0),
     certificate_key text not null -- PEM encoded private key for certificate
       constraint certificate_key_must_not_be_empty
-        check(length(trim(certificate_key)) > 0)
+        check(length(trim(certificate_key)) > 0),
+    kms_key_id text not null
+      constraint kms_database_key_version_fk
+        references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade
   );
   comment on table credential_vault_client_certificate is
     'credential_vault_client_certificate is a table where each row contains a client certificate that a credential_vault_store uses for mTLS when connecting to Vault. '
@@ -142,7 +147,12 @@ begin;
     lease_duration bigint not null
       constraint lease_duration_must_not_be_negative
         check(lease_duration >= 0),
-    last_renewal_time wt_timestamp not null
+    last_renewal_time wt_timestamp not null,
+    kms_key_id text not null
+      constraint kms_database_key_version_fk
+        references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade
   );
   comment on table credential_vault_token is
     'credential_vault_token is a table where each row contains a Vault token for one Vault credential store.';
