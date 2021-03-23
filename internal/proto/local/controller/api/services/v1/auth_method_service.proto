@@ -87,6 +87,8 @@ service AuthMethodService {
   rpc ChangeState(ChangeStateRequest) returns (ChangeStateResponse) {
     option (google.api.http) = {
       post: "/v1/auth-methods/{id}:change-state"
+      body: "*"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Changes the state of an OIDC AuthMethod"
