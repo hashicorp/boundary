@@ -164,14 +164,24 @@ message DeleteAuthMethodRequest {
 
 message DeleteAuthMethodResponse {}
 
-// TODO: Figure out how to support force (through API or embedded in the item being updated).
+// Attributes specific to changing the state of an oidc auth method.
+message OidcChangeStateAttributes {
+  // state must be `inactive`, `active-private`, or `active-public`
+  string state = 1;
+  // This flag is only useful for an oidc auth method.  It should not be used
+  // unless the oidc provider's config is incorrectly set and is stopping the
+  // activation of this auth method.
+  bool override_oidc_discovery_url_config = 2 [json_name="override_oidc_discovery_url_config"];
+}
+
 message ChangeStateRequest {
   string id = 1;
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-  // state must be `inactive`, `active-private`, or `active-public`
-  string state = 3;
+
+  // The attributes specific to this auth method's state.
+  google.protobuf.Struct attributes = 4;
 }
 
 message ChangeStateResponse {

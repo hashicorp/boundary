@@ -2,7 +2,6 @@ package authmethods_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -536,15 +536,12 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"discovery_url":  structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
 					"allowed_audiences": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
-						return structpb.NewListValue(lv)
-					}(),
-					"callback_url_prefixes": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
 						return structpb.NewListValue(lv)
 					}(),
 				}},
@@ -565,19 +562,10 @@ func TestCreate(t *testing.T) {
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+						"api_url_prefix":     structpb.NewStringValue("https://callback.prefix:9281/path"),
+						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
-							return structpb.NewListValue(lv)
-						}(),
-						"callback_url_prefixes": func() *structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{"https://callback.prefix:9281/path", "http://another.url.com:82471"})
-							return structpb.NewListValue(lv)
-						}(),
-						"callback_urls": func() *structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{
-								fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
-								fmt.Sprintf("http://another.url.com:82471/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix),
-							})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -810,24 +798,21 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "OIDC AuthMethod Callback Urls Prefix Format",
+			name: "OIDC AuthMethod API Urls Prefix Format",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
-					"callback_url_prefixes": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
-						return structpb.NewListValue(lv)
-					}(),
+					"discovery_url":  structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("invalid path"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "OIDC AuthMethod Callback Urls Read Only",
+			name: "OIDC AuthMethod Callback Url Read Only",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
@@ -835,10 +820,7 @@ func TestCreate(t *testing.T) {
 					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
-					"callback_urls": func() *structpb.Value {
-						lv, _ := structpb.NewList([]interface{}{"http://another.url.com:82471", "invalid path"})
-						return structpb.NewListValue(lv)
-					}(),
+					"callback_url":  structpb.NewStringValue("http://another.url.com:82471"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -897,15 +879,14 @@ func TestCreate(t *testing.T) {
 					assert.NotEqual(tc.req.Item.Attributes.Fields["client_secret"], got.Item.Attributes.Fields["client_secret_hmac"])
 					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 				}
-				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
-						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
-						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-						require.NoError(err)
-						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-					}
-					delete(got.Item.Attributes.Fields, "callback_urls")
-					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+					matches, err := regexp.MatchString(exp, gVal)
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
@@ -1354,19 +1335,16 @@ func TestUpdate_OIDC(t *testing.T) {
 
 	defaultAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url": structpb.NewStringValue(tp.Addr()),
-			"client_id":     structpb.NewStringValue("someclientid"),
-			"client_secret": structpb.NewStringValue("secret"),
+			"discovery_url":  structpb.NewStringValue(tp.Addr()),
+			"client_id":      structpb.NewStringValue("someclientid"),
+			"client_secret":  structpb.NewStringValue("secret"),
+			"api_url_prefix": structpb.NewStringValue("http://example.com"),
 			"certificates": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
 			"signing_algorithms": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
-				return structpb.NewListValue(lv)
-			}(),
-			"callback_url_prefixes": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
 				return structpb.NewListValue(lv)
 			}(),
 		}
@@ -1376,7 +1354,9 @@ func TestUpdate_OIDC(t *testing.T) {
 			"discovery_url":      structpb.NewStringValue(tp.Addr()),
 			"client_id":          structpb.NewStringValue("someclientid"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
-			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
+			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 			"certificates": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
@@ -1385,29 +1365,29 @@ func TestUpdate_OIDC(t *testing.T) {
 				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
 				return structpb.NewListValue(lv)
 			}(),
-			"callback_url_prefixes": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{"http://example.com"})
-				return structpb.NewListValue(lv)
-			}(),
-			"callback_urls": func() *structpb.Value {
-				lv, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
-				return structpb.NewListValue(lv)
-			}(),
 		}
 	}
-	_ = defaultReadAttributeFields
 
 	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
-		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
-			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				ScopeId:     o.GetPublicId(),
-				Name:        wrapperspb.String("default"),
-				Description: wrapperspb.String("default"),
-				Type:        auth.OidcSubtype.String(),
-				Attributes: &structpb.Struct{
-					Fields: defaultAttributeFields(),
-				},
-			}})
+		ctx := auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId()))
+		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+			ScopeId:     o.GetPublicId(),
+			Name:        wrapperspb.String("default"),
+			Description: wrapperspb.String("default"),
+			Type:        auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{
+				Fields: defaultAttributeFields(),
+			},
+		}})
+		require.NoError(t, err)
+
+		csr, err := tested.ChangeState(ctx, &pbs.ChangeStateRequest{
+			Id:      am.GetItem().GetId(),
+			Version: am.GetItem().GetVersion(),
+			Attributes: &structpb.Struct{
+				Fields: map[string]*structpb.Value{"state": structpb.NewStringValue("active-private")},
+			},
+		})
 		require.NoError(t, err)
 
 		clean := func() {
@@ -1415,14 +1395,15 @@ func TestUpdate_OIDC(t *testing.T) {
 				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
 			require.NoError(t, err)
 		}
-		return am.GetItem(), clean
+		return csr.GetItem(), clean
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateAuthMethodRequest
-		res  *pbs.UpdateAuthMethodResponse
-		err  error
+		name    string
+		req     *pbs.UpdateAuthMethodRequest
+		res     *pbs.UpdateAuthMethodResponse
+		err     error
+		wantErr bool
 	}{
 		{
 			name: "Update an Existing AuthMethod",
@@ -1727,24 +1708,7 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 				Item: &pb.AuthMethod{},
 			},
-			res: &pbs.UpdateAuthMethodResponse{
-				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        auth.OidcSubtype.String(),
-					Attributes: &structpb.Struct{
-						Fields: func() map[string]*structpb.Value {
-							f := defaultReadAttributeFields()
-							delete(f, "signing_algorithms")
-							return f
-						}(),
-					},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           oidcAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
-				},
-			},
+			wantErr: true,
 		},
 		{
 			name: "Set Max Age to zero",
@@ -1832,15 +1796,13 @@ func TestUpdate_OIDC(t *testing.T) {
 			name: "Change Callback Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.callback_url_prefixes"},
+					Paths: []string{"attributes.api_url_prefix"},
 				},
 				Item: &pb.AuthMethod{
-					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
-							lv, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
 							f := map[string]*structpb.Value{
-								"callback_url_prefixes": structpb.NewListValue(lv),
+								"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
 							}
 							return f
 						}(),
@@ -1856,10 +1818,8 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
-							cup, _ := structpb.NewList([]interface{}{"http://somethingnew.com"})
-							f["callback_url_prefixes"] = structpb.NewListValue(cup)
-							cu, _ := structpb.NewList([]interface{}{fmt.Sprintf("http://somethingnew.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)})
-							f["callback_urls"] = structpb.NewListValue(cu)
+							f["api_url_prefix"] = structpb.NewStringValue("https://callback.prefix:9281/path")
+							f["callback_url"] = structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix))
 							return f
 						}(),
 					},
@@ -1876,7 +1836,6 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.allowed_audiences"},
 				},
 				Item: &pb.AuthMethod{
-					Version: 1,
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"allowed_audiences": func() *structpb.Value {
@@ -1909,6 +1868,69 @@ func TestUpdate_OIDC(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Unsupported Signing Algorithms",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Forced Unsupported Signing Algorithms",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.signing_algorithms"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1916,7 +1938,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			am, cleanup := freshAuthMethod(t)
 			defer cleanup()
 
-			tc.req.Item.Version = 1
+			tc.req.Item.Version = am.GetVersion()
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = am.GetId()
@@ -1928,9 +1950,12 @@ func TestUpdate_OIDC(t *testing.T) {
 			}
 
 			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			if tc.err != nil {
+			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
+			if tc.err != nil || tc.wantErr {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.err != nil {
+					assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				}
 				return
 			}
 			require.NoError(gErr)
@@ -1954,21 +1979,20 @@ func TestUpdate_OIDC(t *testing.T) {
 					assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
 					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 				}
-				if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-					for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues() {
-						gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().GetValues()[i]
-						matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-						require.NoError(err)
-						assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-					}
-					delete(got.Item.Attributes.Fields, "callback_urls")
-					delete(tc.res.Item.Attributes.Fields, "callback_urls")
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+					matches, err := regexp.MatchString(exp, gVal)
+					require.NoError(err)
+					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
-				assert.EqualValues(2, got.Item.Version)
-				tc.res.Item.Version = 2
+				assert.EqualValues(3, got.Item.Version)
+				tc.res.Item.Version = 3
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -2005,10 +2029,13 @@ func TestChangeState(t *testing.T) {
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
+	tpCert, err := oidc.ParseCertificates(tp.CACert())
 
 	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], tpClientId, oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], "different_client_id", oidc.ClientSecret(tpClientSecret),
+		oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -2018,13 +2045,9 @@ func TestChangeState(t *testing.T) {
 		require.NoError(t, err)
 		return structpb.NewListValue(lv)
 	}()
-	callbackUrl := func() *structpb.Value {
-		lv, err := structpb.NewList([]interface{}{"https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"})
-		require.NoError(t, err)
-		return structpb.NewListValue(lv)
-	}()
-	callbackUrlPrefix := func() *structpb.Value {
-		lv, err := structpb.NewList([]interface{}{"https://example.callback:58"})
+
+	certs := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{tp.CACert()})
 		require.NoError(t, err)
 		return structpb.NewListValue(lv)
 	}()
@@ -2036,13 +2059,14 @@ func TestChangeState(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"discovery_url":         structpb.NewStringValue(oidcam.DiscoveryUrl),
-			"client_id":             structpb.NewStringValue(tpClientId),
-			"client_secret_hmac":    structpb.NewStringValue("<hmac>"),
-			"state":                 structpb.NewStringValue(string(oidc.InactiveState)),
-			"callback_urls":         callbackUrl,
-			"callback_url_prefixes": callbackUrlPrefix,
-			"signing_algorithms":    signingAlg,
+			"discovery_url":      structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"client_id":          structpb.NewStringValue(tpClientId),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
+			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
+			"signing_algorithms": signingAlg,
+			"certificates":       certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -2051,6 +2075,10 @@ func TestChangeState(t *testing.T) {
 		},
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
+	toState := func(s string) *structpb.Struct {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{"state": structpb.NewStringValue(s)}}
 	}
 
 	// These test cases must be run in this order since these tests rely on the correct versions being provided
@@ -2062,17 +2090,17 @@ func TestChangeState(t *testing.T) {
 	}{
 		{
 			name: "Password Auth Method",
-			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), Attributes: toState("inactive")},
 			err:  true,
 		},
 		{
 			name: "No Version Specified",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Attributes: toState("inactive")},
 			err:  true,
 		},
 		{
 			name: "Keep Inactive",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				return am
@@ -2080,17 +2108,51 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Incomplete Private",
-			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
 			err:  true,
 		},
 		{
 			name: "Make Incomplete Public",
-			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-public"},
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-public")},
 			err:  true,
 		},
 		{
+			name: "Mismatched To Public",
+			req: &pbs.ChangeStateRequest{
+				Id:         mismatchedAM.GetPublicId(),
+				Version:    mismatchedAM.GetVersion(),
+				Attributes: toState("active-public"),
+			},
+			err: true,
+		},
+		{
+			name: "Force Mismatched To Public",
+			req: &pbs.ChangeStateRequest{
+				Id:      mismatchedAM.GetPublicId(),
+				Version: mismatchedAM.GetVersion(),
+				Attributes: func() *structpb.Struct {
+					s := toState("active-public")
+					s.Fields["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+					return s
+				}(),
+			},
+			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
+				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
+				am.Id = mismatchedAM.PublicId
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
+				am.Attributes.Fields["client_id"] = structpb.NewStringValue(mismatchedAM.ClientId)
+				am.Attributes.Fields["signing_algorithms"] = func() *structpb.Value {
+					lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+					return structpb.NewListValue(lv)
+				}()
+				am.CreatedTime = mismatchedAM.CreateTime.GetTimestamp()
+				am.Version = 2
+				return am
+			}()},
+		},
+		{
 			name: "Make Complete Private",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("active-private")
@@ -2100,7 +2162,7 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Complete Public",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, State: "active-public"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, Attributes: toState("active-public")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
@@ -2110,7 +2172,7 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Complete Inactive",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("inactive")
@@ -2132,15 +2194,14 @@ func TestChangeState(t *testing.T) {
 			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
 				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 			}
-			if _, ok := got.Item.Attributes.Fields["callback_urls"]; ok {
-				for i, exp := range tc.res.Item.Attributes.Fields["callback_urls"].GetListValue().Values {
-					gVal := got.Item.Attributes.Fields["callback_urls"].GetListValue().Values[i]
-					matches, err := regexp.MatchString(exp.GetStringValue(), gVal.GetStringValue())
-					require.NoError(err)
-					assert.True(matches, "%q doesn't match %q", gVal.GetStringValue(), exp.GetStringValue())
-				}
-				delete(got.Item.Attributes.Fields, "callback_urls")
-				delete(tc.res.Item.Attributes.Fields, "callback_urls")
+			if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+				exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+				gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
+				matches, err := regexp.MatchString(exp, gVal)
+				require.NoError(err)
+				assert.True(matches, "%q doesn't match %q", gVal, exp)
+				delete(got.Item.Attributes.Fields, "callback_url")
+				delete(tc.res.Item.Attributes.Fields, "callback_url")
 			}
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
