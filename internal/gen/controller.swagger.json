@@ -468,13 +468,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "override_oidc_discovery_url_config",
-            "description": "This flag is only useful for an oidc auth method.  It should not be used\nunless the oidc provider's config is incorrectly set and is stopping the\nactivation of this auth method.",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [

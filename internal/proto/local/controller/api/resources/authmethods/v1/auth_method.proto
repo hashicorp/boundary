@@ -100,4 +100,9 @@ message OidcAuthMethodAttributes {
 
 	// The audience claims for this oidc typed auth method.
 	repeated string allowed_audiences = 110 [json_name="allowed_audiences", (custom_options.v1.mask_mapping) = {this:"attributes.allowed_audiences" that: "AudClaims"}];
+
+	// Input only. This is only valid in an update request and should not be used
+	// unless the oidc provider's config is incorrectly set and is stopping the
+	// activation of this auth method.
+	bool override_oidc_discovery_url_config = 120 [json_name="override_oidc_discovery_url_config"];
 }

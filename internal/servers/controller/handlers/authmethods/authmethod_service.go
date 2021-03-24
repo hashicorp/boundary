@@ -36,10 +36,10 @@ import (
 
 const (
 	// general auth method field names
-	versionField    = "version"
-	scopeIdField    = "scope_id"
-	typeField       = "type"
-	attributesField = "attributes"
+	versionField      = "version"
+	scopeIdField      = "scope_id"
+	typeField         = "type"
+	attributesField   = "attributes"
 	overrideOidcField = "override_oidc_discovery_url_config"
 
 	// password field names
@@ -57,6 +57,7 @@ const (
 	certificateField      = "attributes.certificates"
 	maxAgeField           = "attributes.max_age"
 	signingAlgorithmField = "attributes.signing_algorithms"
+	overrideDiscoveryConfigField = "attributes.override_oidc_discovery_url_config"
 )
 
 var (
@@ -454,7 +455,7 @@ func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.Au
 // createOidcInRepo creates an oidc auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
-	u, err := toStorageOidcAuthMethod(scopeId, item)
+	u, _, err := toStorageOidcAuthMethod(scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -496,20 +497,21 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, error) {
 	item := req.GetItem()
-	u, err := toStorageOidcAuthMethod(scopeId, item)
+	u, forced, err := toStorageOidcAuthMethod(scopeId, item)
 	if err != nil {
 		return nil, err
 	}
 	u.PublicId = req.GetId()
 
+	var opts []oidc.Option
+	if forced {
+		opts = append(opts, oidc.WithForce())
+	}
+
 	version := item.GetVersion()
 	dbMask := oidcMaskManager.Translate(req.GetUpdateMask().GetPaths())
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
-	}
-	var opts []oidc.Option
-	if req.GetOverrideOidcDiscoveryUrlConfig() {
-		opts = append(opts, oidc.WithForce())
 	}
 
 	repo, err := s.oidcRepoFn()
@@ -612,13 +614,18 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		return nil, err
 	}
 
+	attrs := &pbs.OidcChangeStateAttributes{}
+	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+		errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
+	}
+
 	var opts []oidc.Option
-	if req.GetOverrideOidcDiscoveryUrlConfig() {
+	if attrs.GetOverrideOidcDiscoveryUrlConfig() {
 		opts = append(opts, oidc.WithForce())
 	}
 
 	var am *oidc.AuthMethod
-	switch oidcStateMap[req.GetState()] {
+	switch oidcStateMap[attrs.GetState()] {
 	case inactiveState:
 		am, err = repo.MakeInactive(ctx, req.GetId(), req.GetVersion())
 	case privateState:
@@ -626,7 +633,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 	case publicState:
 		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
 	default:
-		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", req.GetState()))
+		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
 	}
 	if err != nil {
 		return nil, err
@@ -857,36 +864,36 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 	return u, nil
 }
 
-func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
+func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, forced bool, err error) {
 	const op = "authmethod_service.toStorageOidcAuthMethod"
-	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil auth method.")
+	if in == nil {
+		return nil, false, errors.New(errors.InvalidParameter, op, "nil auth method.")
 	}
 	attrs := &pb.OidcAuthMethodAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
+		return nil, false, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
 	clientId := attrs.GetClientId().GetValue()
 	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
 
 	var opts []oidc.Option
-	if item.GetName() != nil {
-		opts = append(opts, oidc.WithName(item.GetName().GetValue()))
+	if in.GetName() != nil {
+		opts = append(opts, oidc.WithName(in.GetName().GetValue()))
 	}
-	if item.GetDescription() != nil {
-		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
+	if in.GetDescription() != nil {
+		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
 	}
 
 	var discoveryUrl *url.URL
 	if ds := attrs.GetDiscoveryUrl().GetValue(); ds != "" {
 		var err error
 		if discoveryUrl, err = url.Parse(ds); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		// remove everything except for protocol, hostname, and port.
 		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
@@ -907,7 +914,7 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 	if attrs.GetApiUrlPrefix().GetValue() != "" {
 		apiU, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
 		if err != nil {
-			return nil, handlers.InvalidArgumentErrorf("Error in provided request",
+			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
 				map[string]string{apiUrlPrefixeField: "Unparsable url"})
 		}
 		opts = append(opts, oidc.WithCallbackUrls(apiU))
@@ -916,16 +923,16 @@ func toStorageOidcAuthMethod(scopeId string, item *pb.AuthMethod) (*oidc.AuthMet
 	if len(attrs.GetCertificates()) > 0 {
 		certs, err := oidc.ParseCertificates(attrs.GetCertificates()...)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
 	u, err := oidc.NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
+		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}
-	return u, nil
+	return u, attrs.OverrideOidcDiscoveryUrlConfig, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -973,6 +980,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
 						badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
 					}
+				}
+				if attrs.GetOverrideOidcDiscoveryUrlConfig() {
+					badFields[overrideDiscoveryConfigField] = "Field is not allowed at create time."
 				}
 				if attrs.GetClientId().GetValue() == "" {
 					badFields[clientIdField] = "Field required for creating an OIDC auth method."
@@ -1031,9 +1041,6 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
 				badFields[typeField] = "Cannot modify the resource type."
-			}
-			if req.GetOverrideOidcDiscoveryUrlConfig() {
-				badFields[overrideOidcField] = "This field is only valid for oidc typed auth methods."
 			}
 			attrs := &pb.PasswordAuthMethodAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
@@ -1148,7 +1155,12 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[versionField] = "Resource version is required."
 	}
-	switch oidcStateMap[req.GetState()] {
+
+	attrs := &pbs.OidcChangeStateAttributes{}
+	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+		badFields[attributesField] = "Attribute fields do not match the expected format."
+	}
+	switch oidcStateMap[attrs.GetState()] {
 	case inactiveState, privateState, publicState:
 	default:
 		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())

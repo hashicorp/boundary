@@ -1252,22 +1252,6 @@ func TestUpdate_Password(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "Update with override oidc config",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.min_password_length"},
-				},
-				Item: &pb.AuthMethod{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_login_name_length": structpb.NewNumberValue(5555),
-						"min_password_length":   structpb.NewNumberValue(42),
-					}},
-				},
-				OverrideOidcDiscoveryUrlConfig: true,
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1387,20 +1371,22 @@ func TestUpdate_OIDC(t *testing.T) {
 	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
 		ctx := auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId()))
 		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				ScopeId:     o.GetPublicId(),
-				Name:        wrapperspb.String("default"),
-				Description: wrapperspb.String("default"),
-				Type:        auth.OidcSubtype.String(),
-				Attributes: &structpb.Struct{
-					Fields: defaultAttributeFields(),
-				},
-			}})
+			ScopeId:     o.GetPublicId(),
+			Name:        wrapperspb.String("default"),
+			Description: wrapperspb.String("default"),
+			Type:        auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{
+				Fields: defaultAttributeFields(),
+			},
+		}})
 		require.NoError(t, err)
 
 		csr, err := tested.ChangeState(ctx, &pbs.ChangeStateRequest{
-			Id:                             am.GetItem().GetId(),
+			Id:      am.GetItem().GetId(),
 			Version: am.GetItem().GetVersion(),
-			State:                          "active-private",
+			Attributes: &structpb.Struct{
+				Fields: map[string]*structpb.Value{"state":   structpb.NewStringValue("active-private")},
+			},
 		})
 		require.NoError(t, err)
 
@@ -1413,10 +1399,10 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateAuthMethodRequest
-		res  *pbs.UpdateAuthMethodResponse
-		err  error
+		name    string
+		req     *pbs.UpdateAuthMethodRequest
+		res     *pbs.UpdateAuthMethodResponse
+		err     error
 		wantErr bool
 	}{
 		{
@@ -1913,6 +1899,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultAttributeFields()
+							f["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
 							f["signing_algorithms"] = func() *structpb.Value {
 								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
 								return structpb.NewListValue(lv)
@@ -1921,7 +1908,6 @@ func TestUpdate_OIDC(t *testing.T) {
 						}(),
 					},
 				},
-				OverrideOidcDiscoveryUrlConfig: true,
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
@@ -2080,7 +2066,7 @@ func TestChangeState(t *testing.T) {
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
-			"certificates": certs,
+			"certificates":       certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -2089,6 +2075,10 @@ func TestChangeState(t *testing.T) {
 		},
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
+	toState := func(s string) *structpb.Struct {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{"state": structpb.NewStringValue(s)}}
 	}
 
 	// These test cases must be run in this order since these tests rely on the correct versions being provided
@@ -2100,17 +2090,17 @@ func TestChangeState(t *testing.T) {
 	}{
 		{
 			name: "Password Auth Method",
-			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), Attributes: toState("inactive")},
 			err:  true,
 		},
 		{
 			name: "No Version Specified",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Attributes: toState("inactive")},
 			err:  true,
 		},
 		{
 			name: "Keep Inactive",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				return am
@@ -2118,30 +2108,33 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Incomplete Private",
-			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
 			err:  true,
 		},
 		{
 			name: "Make Incomplete Public",
-			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), State: "active-public"},
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-public")},
 			err:  true,
 		},
 		{
 			name: "Mismatched To Public",
-			req:  &pbs.ChangeStateRequest{
-				Id:                             mismatchedAM.GetPublicId(),
-				Version:                        mismatchedAM.GetVersion(),
-				State:                          "active-public",
+			req: &pbs.ChangeStateRequest{
+				Id:      mismatchedAM.GetPublicId(),
+				Version: mismatchedAM.GetVersion(),
+				Attributes: toState("active-public"),
 			},
 			err: true,
 		},
 		{
 			name: "Force Mismatched To Public",
-			req:  &pbs.ChangeStateRequest{
+			req: &pbs.ChangeStateRequest{
 				Id:                             mismatchedAM.GetPublicId(),
 				Version:                        mismatchedAM.GetVersion(),
-				State:                          "active-public",
-				OverrideOidcDiscoveryUrlConfig: true,
+				Attributes: func() *structpb.Struct {
+					s := toState("active-public")
+					s.Fields["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+					return s
+				}(),
 			},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
@@ -2159,7 +2152,7 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Complete Private",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), State: "active-private"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("active-private")
@@ -2169,7 +2162,7 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Complete Public",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, State: "active-public"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, Attributes: toState("active-public")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
@@ -2179,7 +2172,7 @@ func TestChangeState(t *testing.T) {
 		},
 		{
 			name: "Make Complete Inactive",
-			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, State: "inactive"},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("inactive")
