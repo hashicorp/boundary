@@ -4989,54 +4989,87 @@ before insert on kms_oidc_key_version
 `),
 			2005: []byte(`
 create table job (
-    id text primary key,
+    private_id wt_private_id primary key,
     name wt_name not null,
-    description wt_description not null
+    description wt_description not null,
+    code text not null,
+    next_scheduled_run timestamp not null default current_timestamp,
+
+    constraint job_name_code_uq
+        unique(name, code)
 );
+
 comment on table job is
-    'job is a base table where each row represents a unique job that can only have one running instance at any specific time.';
+    'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+create trigger immutable_columns before update on job
+    for each row execute procedure immutable_columns('private_id', 'name', 'code');
+
+create table job_run_status_enm (
+    name text not null primary key
+        constraint only_predefined_job_status_allowed
+            check(name in ('running', 'complete', 'failed', 'interrupted'))
+);
+
+comment on table job_run_status_enm is
+    'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
+
+insert into job_run_status_enm (name)
+    values
+    ('running'),
+    ('complete'),
+    ('failed'),
+    ('interrupted');
+
 
 create table job_run (
      id serial primary key,
      job_id text not null
-         constraint job_fk
-             references job(id)
+         constraint job_fkey
+             references job(private_id)
              on delete cascade
              on update cascade,
-     server_id wt_private_id not null
-         constraint server_fk
+     server_id text
+         constraint server_fkey
              references server(private_id)
-             on delete cascade
+             on delete set null
              on update cascade,
-     scheduled_start_time timestamp not null,
-     start_time timestamp,
-     end_time timestamp,
-     last_heartbeat timestamp,
-     completed_count int,
-     total_count int,
+     create_time wt_timestamp,
+     update_time wt_timestamp,
+     end_time timestamp with time zone,
+     completed_count int not null
+        default 0
+        constraint completed_count_can_not_be_negative
+            check(completed_count >= 0),
+     total_count int not null
+         default 0
+         constraint total_count_can_not_be_negative
+            check(total_count >= 0),
+     status text not null
+         constraint status_enm_fkey
+             references job_run_status_enm (name)
+             on delete restrict
+             on update cascade,
 
-     constraint job_run_job_id_end_time_uq
-         unique(job_id, end_time)
+     constraint job_run_completed_count_less_than_equal_to_total_count
+         check(completed_count <= total_count)
 );
 
 comment on table job_run is
     'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
 
-create table job_run_interrupt (
-    old_run_id integer not null
-       constraint old_job_run_fk
-           references job_run(id)
-           on delete cascade
-           on update cascade,
-    new_run_id integer not null
-       constraint new_job_run_fk
-           references job_run(id)
-           on delete cascade
-           on update cascade
-);
+create unique index job_run_status_constraint
+    on job_run (job_id)
+    where status = 'running';
 
-comment on table job_run_interrupt is
-    'job_run_interrupt is a table where each row represents a request to kill a running job and the job run that was created to replace it.';
+create trigger update_time_column before update on job_run
+    for each row execute procedure update_time_column();
+
+create trigger default_create_time_column before insert on job_run
+    for each row execute procedure default_create_time();
+
+create trigger immutable_columns before update on job_run
+    for each row execute procedure immutable_columns('id', 'job_id', 'server_id', 'create_time');
 `),
 		},
 	}

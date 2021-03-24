@@ -1,24 +1,11 @@
 begin;
 
-create table job_name_enm (
-    name wt_name not null primary key
-);
-
-comment on table job_name_enm is
-    'job_name_enm is an enumeration table where each row contains the name of a job.';
-
 create table job (
     private_id wt_private_id primary key,
-    name wt_name not null
-        constraint job_name_enm_fkey
-            references job_name_enm (name)
-            on delete restrict
-            on update cascade,
+    name wt_name not null,
     description wt_description not null,
-    code text not null
-        constraint job_code_must_be_not_empty
-            check(length(trim(code)) > 0),
-    next_scheduled_run wt_timestamp,
+    code text not null,
+    next_scheduled_run timestamp not null default current_timestamp,
 
     constraint job_name_code_uq
         unique(name, code)
@@ -26,6 +13,9 @@ create table job (
 
 comment on table job is
     'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+create trigger immutable_columns before update on job
+    for each row execute procedure immutable_columns('private_id', 'name', 'code');
 
 create table job_run_status_enm (
     name text not null primary key
@@ -48,7 +38,7 @@ create table job_run (
      id serial primary key,
      job_id text not null
          constraint job_fkey
-             references job(id)
+             references job(private_id)
              on delete cascade
              on update cascade,
      server_id text
@@ -56,20 +46,19 @@ create table job_run (
              references server(private_id)
              on delete set null
              on update cascade,
-     start_time wt_timestamp,
+     create_time wt_timestamp,
+     update_time wt_timestamp,
      end_time timestamp with time zone,
-     last_heartbeat wt_timestamp,
      completed_count int not null
         default 0
-        constraint job_run_completed_count_can_not_be_negative
+        constraint completed_count_can_not_be_negative
             check(completed_count >= 0),
      total_count int not null
          default 0
-         constraint job_run_total_count_can_not_be_negative
+         constraint total_count_can_not_be_negative
             check(total_count >= 0),
      status text not null
-         default 'running'
-         constraint job_run_status_enm_fkey
+         constraint status_enm_fkey
              references job_run_status_enm (name)
              on delete restrict
              on update cascade,
@@ -84,3 +73,12 @@ comment on table job_run is
 create unique index job_run_status_constraint
     on job_run (job_id)
     where status = 'running';
+
+create trigger update_time_column before update on job_run
+    for each row execute procedure update_time_column();
+
+create trigger default_create_time_column before insert on job_run
+    for each row execute procedure default_create_time();
+
+create trigger immutable_columns before update on job_run
+    for each row execute procedure immutable_columns('id', 'job_id', 'server_id', 'create_time');
