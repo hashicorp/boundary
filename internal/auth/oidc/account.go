@@ -90,8 +90,8 @@ func (a *Account) validate(caller errors.Op) error {
 }
 
 // AllocAccount makes an empty one in memory
-func AllocAccount() Account {
-	return Account{
+func AllocAccount() *Account {
+	return &Account{
 		Account: &store.Account{},
 	}
 }
@@ -118,14 +118,14 @@ func (a *Account) SetTableName(n string) {
 }
 
 // oplog will create oplog metadata for the Account.
-func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
+func (c *Account) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.AuthMethodId}, // the auth method is the root aggregate
-		"resource-type":      []string{"oidc auth account"},
+		"resource-public-id": []string{c.GetPublicId()},
+		"resource-type":      []string{"password account"},
 		"op-type":            []string{op.String()},
 	}
-	if authMethodScopeId != "" {
-		metadata["scope-id"] = []string{authMethodScopeId}
+	if c.AuthMethodId != "" {
+		metadata["auth-method-id"] = []string{c.AuthMethodId}
 	}
 	return metadata
 }

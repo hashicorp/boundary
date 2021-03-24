@@ -166,9 +166,9 @@ func TestAccount_Create(t *testing.T) {
 				}
 				found := AllocAccount()
 				found.PublicId = id
-				err = rw.LookupByPublicId(ctx, &found)
+				err = rw.LookupByPublicId(ctx, found)
 				require.NoError(err)
-				assert.Equal(got, &found)
+				assert.Equal(got, found)
 			}
 		})
 	}
@@ -256,7 +256,7 @@ func TestAccount_Delete(t *testing.T) {
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocAccount()
 			found.PublicId = tt.Account.PublicId
-			err = rw.LookupByPublicId(ctx, &found)
+			err = rw.LookupByPublicId(ctx, found)
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

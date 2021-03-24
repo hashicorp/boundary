@@ -144,6 +144,7 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 
 // TestAccount creates a test oidc auth account.
 func TestAccount(t *testing.T, conn *gorm.DB, authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) *Account {
+	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
