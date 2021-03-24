@@ -2,7 +2,15 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Pending
+## Next
+
+### New and Improved
+
+* server: When performing recursive listing, `list` action is not longer
+  required to be granted to the calling user. Instead, the given scope acts as
+  the root point (so only results under that scope will be shown), and `list`
+  grant is evaluated per-scope.
+  [PR](https://github.com/hashicorp/boundary/pull/1016)
 
 ### Bug Fixes
 
