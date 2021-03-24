@@ -44,10 +44,10 @@ type AuthMethodServiceClient interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(ctx context.Context, in *DeleteAuthMethodRequest, opts ...grpc.CallOption) (*DeleteAuthMethodResponse, error)
-	// Deprecated: Do not use.
 	// Authenticate validates credentials provided and returns an Auth Token.
 	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
+	// Deprecated: Do not use.
 	// AuthenticateLogin validates credentials provided for a single-step login
 	// action and returns an auth token.
 	AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error)
@@ -106,7 +106,6 @@ func (c *authMethodServiceClient) DeleteAuthMethod(ctx context.Context, in *Dele
 	return out, nil
 }
 
-// Deprecated: Do not use.
 func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error) {
 	out := new(AuthenticateResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/Authenticate", in, out, opts...)
@@ -116,6 +115,7 @@ func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *Authenti
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *authMethodServiceClient) AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error) {
 	out := new(AuthenticateLoginResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/AuthenticateLogin", in, out, opts...)
@@ -155,10 +155,10 @@ type AuthMethodServiceServer interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error)
-	// Deprecated: Do not use.
 	// Authenticate validates credentials provided and returns an Auth Token.
 	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
+	// Deprecated: Do not use.
 	// AuthenticateLogin validates credentials provided for a single-step login
 	// action and returns an auth token.
 	AuthenticateLogin(context.Context, *AuthenticateLoginRequest) (*AuthenticateLoginResponse, error)
