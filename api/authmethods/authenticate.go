@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 )
 
-func (c *Client) Authenticate(ctx context.Context, authMethodId string, credentials map[string]interface{}, opt ...Option) (*authtokens.AuthTokenReadResult, error) {
+func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]interface{}, opt ...Option) (*authtokens.AuthTokenReadResult, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
@@ -15,7 +15,8 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId string, credenti
 	_, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
-		"credentials": credentials,
+		"command":    command,
+		"attributes": attributes,
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)

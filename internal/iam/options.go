@@ -19,7 +19,6 @@ type options struct {
 	withPublicId                string
 	withName                    string
 	withDescription             string
-	withGroupGrants             bool
 	withLimit                   int
 	withGrantScopeId            string
 	withSkipVetForWrite         bool
@@ -37,17 +36,9 @@ func getDefaultOptions() options {
 		withPublicId:        "",
 		withName:            "",
 		withDescription:     "",
-		withGroupGrants:     false,
 		withLimit:           0,
 		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
-	}
-}
-
-// WithGroupGrants provides and option to include group grants
-func WithGroupGrants(enable bool) Option {
-	return func(o *options) {
-		o.withGroupGrants = enable
 	}
 }
 

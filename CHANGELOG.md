@@ -2,7 +2,30 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Pending
+## Next
+
+### New and Improved
+
+* server: When performing recursive listing, `list` action is not longer
+  required to be granted to the calling user. Instead, the given scope acts as
+  the root point (so only results under that scope will be shown), and `list`
+  grant is evaluated per-scope.
+  [PR](https://github.com/hashicorp/boundary/pull/1016)
+
+### Deprecations/Changes
+
+* authentication: The `auth-methods/<id>:authenticate:login` action is
+  deprecated and will be removed in a few releases. (Yes, this was meant to
+  deprecate the `authenticate` action; apologies for going back on this!) To
+  better support future auth methods, and especially the potential for plugins,
+  rather than defining custom actions on the URL path the `authenticate` action
+  will consume both a map of parameters but also a `command` parameter that
+  specifies the type of command. This allows workflows that require multiple
+  steps, such as OIDC, to not require custom subactions. Additionally, the
+  `credentials` map in the `authenticate` action has been renamed `attributes`
+  to better match other types of resources. `credentials` will still work for
+  now but will be removed in a few releases. Finally, in the Go SDK, the
+  `Authenticate` function now requires a `command` value to be passed in.
 
 ### Bug Fixes
 
@@ -37,10 +60,10 @@ to call out in this changelog. The full set of open issues is on GitHub.
 
 ### Changes/Deprecations
 
-* api: A few functions have changed places. Notably, instead of `ResponseMap()`
-  and `ResponseBody()`, resources simply expose `Response()`. This higher-level
-  response object contains the map and body, and also exposes `StatusCode()` in
-  place of indivdidual resources.
+* sdk (Go API library): A few functions have changed places. Notably, instead of
+  `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
+  This higher-level response object contains the map and body, and also exposes
+  `StatusCode()` in place of indivdidual resources.
   [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
