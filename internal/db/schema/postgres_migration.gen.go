@@ -5274,10 +5274,11 @@ create table credential_vault_store (
     for each row execute procedure delete_credential_store_subtype();
 
   create table credential_vault_token (
-    vault_token text primary key
-      constraint vault_token_must_not_be_empty
-        check(length(trim(vault_token)) > 0),
+    token_sha256 bytea primary key, -- sha256 hash
+    token bytea not null, -- encrypted value
     store_id wt_public_id not null
+      constraint credential_vault_token_store_id_uq
+        unique
       constraint credential_vault_store_fk
         references credential_vault_store (public_id)
         on delete cascade
@@ -5289,7 +5290,7 @@ create table credential_vault_store (
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
-    kms_key_id text not null
+    key_id text not null
       constraint kms_database_key_version_fk
         references kms_database_key_version (private_id)
         on delete restrict
@@ -5308,7 +5309,7 @@ create table credential_vault_store (
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on credential_vault_token
-    for each row execute procedure immutable_columns('vault_token', 'store_id','create_time');
+    for each row execute procedure immutable_columns('token_sha256', 'token', 'store_id','create_time');
 
   create table credential_vault_client_certificate (
     store_id wt_public_id primary key
@@ -5319,10 +5320,8 @@ create table credential_vault_store (
     certificate text not null -- PEM encoded certificate
       constraint certificate_must_not_be_empty
         check(length(trim(certificate)) > 0),
-    certificate_key text not null -- PEM encoded private key for certificate
-      constraint certificate_key_must_not_be_empty
-        check(length(trim(certificate_key)) > 0),
-    kms_key_id text not null
+    certificate_key bytea not null, -- encrypted PEM encoded private key for certificate
+    key_id text not null
       constraint kms_database_key_version_fk
         references kms_database_key_version (private_id)
         on delete restrict
