@@ -90,24 +90,28 @@ func NotFoundErrorf(msg string, a ...interface{}) error {
 	}
 }
 
+var unauthorizedError = &apiError{
+	status: http.StatusForbidden,
+	inner: &pb.Error{
+		Kind:    codes.PermissionDenied.String(),
+		Message: "Forbidden.",
+	},
+}
+
 func ForbiddenError() error {
-	return &apiError{
-		status: http.StatusForbidden,
-		inner: &pb.Error{
-			Kind:    codes.PermissionDenied.String(),
-			Message: "Forbidden.",
-		},
-	}
+	return unauthorizedError
+}
+
+var unauthenticatedError = &apiError{
+	status: http.StatusUnauthorized,
+	inner: &pb.Error{
+		Kind:    codes.Unauthenticated.String(),
+		Message: "Unauthenticated, or invalid token.",
+	},
 }
 
 func UnauthenticatedError() error {
-	return &apiError{
-		status: http.StatusUnauthorized,
-		inner: &pb.Error{
-			Kind:    codes.Unauthenticated.String(),
-			Message: "Unauthenticated, or invalid token.",
-		},
-	}
+	return unauthenticatedError
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
@@ -161,11 +165,17 @@ func backendErrorToApiError(inErr error) error {
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
 	}
 
-	// We haven't been able to identify what this backend error is, return it as an internal error
+	var statusCode int32 = http.StatusInternalServerError
+	var domainErr *errors.Err
+	if errors.As(inErr, &domainErr) && domainErr.Code >= 400 && domainErr.Code <= 599 {
+		// Domain error codes 400-599 align with http client and server error codes, use the domain error code instead of 500
+		statusCode = int32(domainErr.Code)
+	}
+
 	// TODO: Don't return potentially sensitive information (like which user id an account
 	//  is already associated with when attempting to re-associate it).
 	return &apiError{
-		status: http.StatusInternalServerError,
+		status: statusCode,
 		inner:  &pb.Error{Kind: codes.Internal.String(), Message: inErr.Error()},
 	}
 }

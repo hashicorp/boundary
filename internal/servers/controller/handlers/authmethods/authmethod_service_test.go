@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -30,6 +29,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -490,8 +490,7 @@ func TestCreate(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultCreated := defaultAm.GetCreateTime().GetTimestamp()
 
 	cases := []struct {
 		name     string
@@ -651,7 +650,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -660,7 +659,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 				Type:        "password",
 			}},
 			res: nil,
@@ -670,7 +669,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 				Type:        "password",
 			}},
 			res: nil,
@@ -863,13 +862,12 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), tc.idPrefix))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
+
 				// Verify it is a auth_method created after the test setup's default auth_method
-				assert.True(gotCreateTime.After(defaultCreated), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
-				assert.True(gotUpdateTime.After(defaultCreated), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				assert.True(gotCreateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -1158,7 +1156,7 @@ func TestUpdate_Password(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.AuthMethod{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1171,7 +1169,7 @@ func TestUpdate_Password(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.AuthMethod{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1282,12 +1280,9 @@ func TestUpdate_Password(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
 
-				created, err := ptypes.Timestamp(am.GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
-
+				created := am.GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
@@ -1638,7 +1633,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.AuthMethod{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1651,7 +1646,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.AuthMethod{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1965,11 +1960,8 @@ func TestUpdate_OIDC(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
-
-				created, err := ptypes.Timestamp(am.GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
+				created := am.GetCreatedTime().AsTime()
 
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
