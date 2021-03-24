@@ -139,15 +139,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    accessor text not null
-      constraint credential_vault_token_accessor_uq
-        unique
-      constraint accessor_must_not_be_empty
-        check(length(trim(accessor)) > 0),
-    lease_duration bigint not null
-      constraint lease_duration_must_not_be_negative
-        check(lease_duration >= 0),
-    last_renewal_time wt_timestamp not null,
+    last_renewal_time timestamp with time zone not null,
+    expiration_time timestamp with time zone not null
+      constraint last_renewal_time_must_be_before_expiration_time
+        check(last_renewal_time < expiration_time),
     kms_key_id text not null
       constraint kms_database_key_version_fk
         references kms_database_key_version (private_id)
@@ -167,7 +162,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on credential_vault_token
-    for each row execute procedure immutable_columns('vault_token', 'store_id','create_time', 'accessor');
+    for each row execute procedure immutable_columns('vault_token', 'store_id','create_time');
 
   create table credential_vault_lease (
     lease_id text primary key
@@ -186,10 +181,10 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    lease_duration bigint not null
-      constraint lease_duration_must_not_be_negative
-        check(lease_duration >= 0),
-    last_renewal_time wt_timestamp not null,
+    last_renewal_time timestamp with time zone not null,
+    expiration_time timestamp with time zone not null
+      constraint last_renewal_time_must_be_before_expiration_time
+        check(last_renewal_time < expiration_time),
     is_renewable boolean not null
   );
   comment on table credential_vault_lease is
