@@ -131,7 +131,11 @@ begin;
 
   -- credential_static
   create table credential_static (
-    public_id wt_public_id primary key,
+    public_id wt_public_id primary key
+      constraint credential_fk
+        references credential (public_id)
+        on delete cascade
+        on update cascade,
     store_id wt_public_id not null
       constraint credential_store_fk
         references credential_store (public_id)
@@ -181,7 +185,11 @@ begin;
 
   -- credential_dynamic
   create table credential_dynamic (
-    public_id wt_public_id primary key,
+    public_id wt_public_id primary key
+      constraint credential_fk
+        references credential (public_id)
+        on delete cascade
+        on update cascade,
     library_id wt_public_id not null
       constraint credential_library_fk
         references credential_library (public_id)
