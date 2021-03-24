@@ -131,6 +131,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	token, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
+		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
@@ -151,6 +152,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 	token, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
+		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevUnprivilegedLoginName,
 			"password":   tc.b.DevUnprivilegedPassword,

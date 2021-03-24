@@ -4,6 +4,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Pending
 
+### Deprecations/Changes
+
+* authentication: The `auth-methods/<id>:authenticate:login` action is
+  deprecated and will be removed in a few releases. (Yes, this was meant to
+  deprecate the `authenticate` action; apologies for going back on this!) To
+  better support future auth methods, and especially the potential for plugins,
+  rather than defining custom actions on the URL path the `authenticate` action
+  will consume both a map of parameters but also a `command` parameter that
+  specifies the type of command. This allows workflows that require multiple
+  steps, such as OIDC, to not require custom subactions. Additionally, the
+  `credentials` map in the `authenticate` action has been renamed `attributes`
+  to better match other types of resources. `credentials` will still work for
+  now but will be removed in a few releases. Finally, in the Go SDK, the
+  `Authenticate` function now requires a `command` value to be passed in.
+
 ### Bug Fixes
 
 * server: Roles for auto generated scopes are now generated at database init.
