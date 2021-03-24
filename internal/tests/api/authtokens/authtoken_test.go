@@ -66,7 +66,7 @@ func TestList(t *testing.T) {
 	var expected []*authtokens.AuthToken
 	methods := authmethods.NewClient(client)
 
-	at, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	at, err := methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	expected = append(expected, at.Item)
 
@@ -75,7 +75,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 
 	for i := 1; i < 10; i++ {
-		at, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+		at, err = methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 		require.NoError(err)
 		expected = append(expected, at.Item)
 	}
@@ -125,7 +125,7 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	want, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	want, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 
 	at, err := tokens.Read(tc.Context(), want.Item.Id)

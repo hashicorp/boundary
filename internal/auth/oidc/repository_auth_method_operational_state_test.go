@@ -330,6 +330,27 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "auth method signing alg is not in discovered",
 		},
+		{
+			name:    "bad cert InActive-to-ActivePublic",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithSigningAlgs(Alg(tpAlg)), // won't match discovery info returned
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			version:         1,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "certificate signed by unknown authority",
+		},
 	}
 
 	for _, tt := range tests {

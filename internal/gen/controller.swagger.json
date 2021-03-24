@@ -324,7 +324,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
-        "summary": "Deprecated: Use AuthenticateLogin instead",
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
         "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
@@ -358,7 +358,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate:login": {
       "post": {
-        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "summary": "Deprecated: Use Authenticate instead",
         "operationId": "AuthMethodService_AuthenticateLogin",
         "responses": {
           "200": {
@@ -467,6 +467,31 @@
             "name": "update_mask",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/auth-methods/{id}:change-state": {
+      "post": {
+        "summary": "Changes the state of an OIDC AuthMethod",
+        "operationId": "AuthMethodService_ChangeState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ChangeStateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -3813,7 +3838,15 @@
         },
         "credentials": {
           "type": "object",
-          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
+          "description": "Deprecated; use \"attributes\" instead."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to perform."
         }
       }
     },
@@ -3905,6 +3938,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.ChangeStateResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },

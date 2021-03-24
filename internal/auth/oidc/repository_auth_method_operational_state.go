@@ -73,7 +73,9 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 	opts := getOpts(opt...)
 	if am.OperationalState == string(InactiveState) {
 		if !opts.withForce {
-			if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(am)); err != nil {
+			updatedAm := am.Clone()
+			updatedAm.OperationalState = string(desiredState)
+			if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updatedAm)); err != nil {
 				return nil, errors.Wrap(err, op)
 			}
 		}

@@ -379,7 +379,9 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 			at.PublicId = tokenRequestId
 			at.Status = string(IssuedStatus)
 			// note: no oplog operations are created for auth token operations (this is intentional).
-			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, nil, db.WithWhere("status = ?", PendingStatus))
+			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
+			// trigger to set ApproximateLastAccessTime to the commit timestamp.
+			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, []string{"ApproximateLastAccessTime"}, db.WithWhere("status = ?", PendingStatus))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
