@@ -164,9 +164,7 @@ begin;
     for each row execute procedure delete_credential_library_subtype();
 
   create table credential_vault_lease (
-    lease_id text primary key
-      constraint lease_id_must_not_be_empty
-        check(length(trim(lease_id)) > 0),
+    public_id wt_public_id primary key,
     library_id wt_public_id not null
       constraint credential_vault_library_fk
         references credential_vault_library (public_id)
@@ -180,11 +178,23 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
+    lease_id text not null
+      constraint credential_vault_lease_lease_id_uq
+        unique
+      constraint lease_id_must_not_be_empty
+        check(length(trim(lease_id)) > 0),
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
-    is_renewable boolean not null
+    is_renewable boolean not null,
+    constraint credential_dynamic_fk
+      foreign key (library_id, public_id)
+      references credential_dynamic (library_id, public_id)
+      on delete cascade
+      on update cascade,
+    constraint credential_vault_lease_library_id_public_id_uq
+      unique(library_id, public_id)
   );
   comment on table credential_vault_lease is
     'credential_vault_lease is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
