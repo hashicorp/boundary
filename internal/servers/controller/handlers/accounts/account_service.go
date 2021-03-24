@@ -6,7 +6,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/auth/password/store"
+	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
+	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -20,16 +21,24 @@ import (
 )
 
 var (
-	maskManager handlers.MaskManager
+	pwMaskManager handlers.MaskManager
+	oidcMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
-		action.Read,
-		action.Update,
-		action.Delete,
-		action.SetPassword,
-		action.ChangePassword,
+	IdActions = map[auth.SubType]action.ActionSet{
+		auth.PasswordSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+			action.SetPassword,
+			action.ChangePassword,
+		},
+		auth.OidcSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+		},
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -42,7 +51,10 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(&pwstore.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
+		panic(err)
+	}
+	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.Account{}, &pb.Account{}, &pb.OidcAccountAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -51,15 +63,19 @@ func init() {
 type Service struct {
 	pbs.UnimplementedAccountServiceServer
 
-	repoFn common.PasswordAuthRepoFactory
+	pwRepoFn common.PasswordAuthRepoFactory
+	oidcRepoFn common.OidcAuthRepoFactory
 }
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo common.PasswordAuthRepoFactory) (Service, error) {
-	if repo == nil {
+func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+	if pwRepo == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	if oidcRepo == nil {
+		return Service{}, fmt.Errorf("nil oidc repository provided")
+	}
+	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
 
 var _ pbs.AccountServiceServer = Service{}
@@ -89,7 +105,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
@@ -114,7 +130,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.GetAccountResponse{Item: u}, nil
 }
 
@@ -150,7 +166,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.UpdateAccountResponse{Item: u}, nil
 }
 
@@ -184,7 +200,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.ChangePasswordResponse{Item: u}, nil
 }
 
@@ -202,7 +218,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.SetPasswordResponse{Item: u}, nil
 }
 
@@ -241,7 +257,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +299,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	}
 	version := item.GetVersion()
 
-	dbMask := maskManager.Translate(mask)
+	dbMask := pwMaskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -307,11 +323,22 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return false, err
+	var rows int
+	var err error
+	switch auth.SubtypeFromId(id) {
+	case auth.PasswordSubtype:
+		repo, iErr := s.pwRepoFn()
+		if iErr != nil {
+			return false, iErr
+		}
+		rows, err = repo.DeleteAccount(ctx, scopeId, id)
+	case auth.OidcSubtype:
+		repo, iErr := s.oidcRepoFn()
+		if iErr != nil {
+			return false, iErr
+		}
+		rows, err = repo.DeleteAccount(ctx, scopeId, id)
 	}
-	rows, err := repo.DeleteAccount(ctx, scopeId, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
@@ -322,16 +349,31 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 }
 
 func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
-	repo, err := s.repoFn()
+	pwRepo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAccounts(ctx, authMethodId)
+	pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.Account
-	for _, u := range ul {
+	for _, u := range pwl {
+		ou, err := toProto(u)
+		if err != nil {
+			return nil, err
+		}
+		outUl = append(outUl, ou)
+	}
+	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range oidcl {
 		ou, err := toProto(u)
 		if err != nil {
 			return nil, err
@@ -342,7 +384,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 }
 
 func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
