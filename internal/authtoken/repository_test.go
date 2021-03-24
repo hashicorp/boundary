@@ -767,6 +767,11 @@ func Test_IssuePendingToken(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotEmpty(tk)
+			accessTime, err := ptypes.Timestamp(tk.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
 		})
 	}
 }
