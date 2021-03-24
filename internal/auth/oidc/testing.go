@@ -23,8 +23,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/cap/oidc"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -290,6 +292,51 @@ func testState(
 	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
 	require.NoError(err)
 	return encodedEncryptedSt
+}
+
+// testTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
+// the returned string can be used as a parameter for functions like: oidc.TokenRequest
+func testTokenRequestId(
+	t *testing.T,
+	am *AuthMethod,
+	kms *kms.Kms,
+	expIn time.Duration,
+	tokenPublicId string,
+) string {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+
+	now := time.Now()
+	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
+	require.NoError(err)
+
+	reqTk := &request.Token{
+		RequestId:      tokenPublicId,
+		ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
+	}
+	requestWrapper, err := requestWrappingWrapper(ctx, kms, am.ScopeId, am.PublicId)
+	require.NoError(err)
+
+	encodedEncryptedReqTk, err := encryptMessage(ctx, requestWrapper, am, reqTk)
+	require.NoError(err)
+	return encodedEncryptedReqTk
+}
+
+// testPendingToken will create a pending auth token for the tokenRequestId (aka public id)
+func testPendingToken(
+	t *testing.T,
+	tokenRepo *authtoken.Repository,
+	user *iam.User,
+	acct *Account,
+	tokenRequestId string,
+) *authtoken.AuthToken {
+	t.Helper()
+	ctx := context.Background()
+	require := require.New(t)
+	tk, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(tokenRequestId), authtoken.WithStatus(authtoken.PendingStatus))
+	require.NoError(err)
+	return tk
 }
 
 // testControllerSrv is a test http server that supports the following
