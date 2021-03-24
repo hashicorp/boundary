@@ -1385,7 +1385,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			Id:      am.GetItem().GetId(),
 			Version: am.GetItem().GetVersion(),
 			Attributes: &structpb.Struct{
-				Fields: map[string]*structpb.Value{"state":   structpb.NewStringValue("active-private")},
+				Fields: map[string]*structpb.Value{"state": structpb.NewStringValue("active-private")},
 			},
 		})
 		require.NoError(t, err)
@@ -2119,8 +2119,8 @@ func TestChangeState(t *testing.T) {
 		{
 			name: "Mismatched To Public",
 			req: &pbs.ChangeStateRequest{
-				Id:      mismatchedAM.GetPublicId(),
-				Version: mismatchedAM.GetVersion(),
+				Id:         mismatchedAM.GetPublicId(),
+				Version:    mismatchedAM.GetVersion(),
 				Attributes: toState("active-public"),
 			},
 			err: true,
@@ -2128,8 +2128,8 @@ func TestChangeState(t *testing.T) {
 		{
 			name: "Force Mismatched To Public",
 			req: &pbs.ChangeStateRequest{
-				Id:                             mismatchedAM.GetPublicId(),
-				Version:                        mismatchedAM.GetVersion(),
+				Id:      mismatchedAM.GetPublicId(),
+				Version: mismatchedAM.GetVersion(),
 				Attributes: func() *structpb.Struct {
 					s := toState("active-public")
 					s.Fields["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)

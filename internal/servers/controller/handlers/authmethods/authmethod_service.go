@@ -47,16 +47,16 @@ const (
 	pwKeyField     = "password"
 
 	// oidc field names
-	discoveryUrlField     = "attributes.discovery_url"
-	clientSecretField     = "attributes.client_secret"
-	clientIdField         = "attributes.client_id"
-	clientSecretHmacField = "attributes.client_secret_hmac"
-	stateField            = "attributes.state"
-	callbackUrlField      = "attributes.callback_url"
-	apiUrlPrefixeField    = "attributes.api_url_prefixes"
-	certificateField      = "attributes.certificates"
-	maxAgeField           = "attributes.max_age"
-	signingAlgorithmField = "attributes.signing_algorithms"
+	discoveryUrlField            = "attributes.discovery_url"
+	clientSecretField            = "attributes.client_secret"
+	clientIdField                = "attributes.client_id"
+	clientSecretHmacField        = "attributes.client_secret_hmac"
+	stateField                   = "attributes.state"
+	callbackUrlField             = "attributes.callback_url"
+	apiUrlPrefixeField           = "attributes.api_url_prefixes"
+	certificateField             = "attributes.certificates"
+	maxAgeField                  = "attributes.max_age"
+	signingAlgorithmField        = "attributes.signing_algorithms"
 	overrideDiscoveryConfigField = "attributes.override_oidc_discovery_url_config"
 )
 

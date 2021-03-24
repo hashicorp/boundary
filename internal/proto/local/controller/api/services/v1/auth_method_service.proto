@@ -164,6 +164,7 @@ message DeleteAuthMethodRequest {
 
 message DeleteAuthMethodResponse {}
 
+// Attributes specific to changing the state of an oidc auth method.
 message OidcChangeStateAttributes {
   // state must be `inactive`, `active-private`, or `active-public`
   string state = 1;

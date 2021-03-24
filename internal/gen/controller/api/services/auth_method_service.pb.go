@@ -527,6 +527,7 @@ func (*DeleteAuthMethodResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_auth_method_service_proto_rawDescGZIP(), []int{9}
 }
 
+// Attributes specific to changing the state of an oidc auth method.
 type OidcChangeStateAttributes struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
