@@ -9,5 +9,5 @@ if [[ "$VERCEL_GIT_COMMIT_REF" == "stable-website"  ]] ; then
   exit 1;
 else
   # Check for differences in the website directory
-  git diff --quiet HEAD^ HEAD ./
+  git diff --quiet HEAD^ HEAD ./ ../internal/gen/controller.swagger.json
 fi
