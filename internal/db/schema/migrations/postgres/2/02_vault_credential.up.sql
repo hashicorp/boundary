@@ -55,6 +55,43 @@ begin;
   create trigger delete_credential_store_subtype after delete on credential_vault_store
     for each row execute procedure delete_credential_store_subtype();
 
+  create table credential_vault_token (
+    vault_token text primary key
+      constraint vault_token_must_not_be_empty
+        check(length(trim(vault_token)) > 0),
+    store_id wt_public_id not null
+      constraint credential_vault_store_fk
+        references credential_vault_store (public_id)
+        on delete cascade
+        on update cascade,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    last_renewal_time timestamp with time zone not null,
+    expiration_time timestamp with time zone not null
+      constraint last_renewal_time_must_be_before_expiration_time
+        check(last_renewal_time < expiration_time),
+    kms_key_id text not null
+      constraint kms_database_key_version_fk
+        references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade
+  );
+  comment on table credential_vault_token is
+    'credential_vault_token is a table where each row contains a Vault token for one Vault credential store.';
+
+  create trigger update_version_column after update on credential_vault_token
+    for each row execute procedure update_version_column();
+
+  create trigger update_time_column before update on credential_vault_token
+    for each row execute procedure update_time_column();
+
+  create trigger default_create_time_column before insert on credential_vault_token
+    for each row execute procedure default_create_time();
+
+  create trigger immutable_columns before update on credential_vault_token
+    for each row execute procedure immutable_columns('vault_token', 'store_id','create_time');
+
   create table credential_vault_client_certificate (
     store_id wt_public_id primary key
       constraint credential_vault_store_fk
@@ -126,43 +163,6 @@ begin;
 
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
-
-  create table credential_vault_token (
-    vault_token text primary key
-      constraint vault_token_must_not_be_empty
-        check(length(trim(vault_token)) > 0),
-    store_id wt_public_id not null
-      constraint credential_vault_store_fk
-        references credential_vault_store (public_id)
-        on delete cascade
-        on update cascade,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    last_renewal_time timestamp with time zone not null,
-    expiration_time timestamp with time zone not null
-      constraint last_renewal_time_must_be_before_expiration_time
-        check(last_renewal_time < expiration_time),
-    kms_key_id text not null
-      constraint kms_database_key_version_fk
-        references kms_database_key_version (private_id)
-        on delete restrict
-        on update cascade
-  );
-  comment on table credential_vault_token is
-    'credential_vault_token is a table where each row contains a Vault token for one Vault credential store.';
-
-  create trigger update_version_column after update on credential_vault_token
-    for each row execute procedure update_version_column();
-
-  create trigger update_time_column before update on credential_vault_token
-    for each row execute procedure update_time_column();
-
-  create trigger default_create_time_column before insert on credential_vault_token
-    for each row execute procedure default_create_time();
-
-  create trigger immutable_columns before update on credential_vault_token
-    for each row execute procedure immutable_columns('vault_token', 'store_id','create_time');
 
   create table credential_vault_lease (
     lease_id text primary key
