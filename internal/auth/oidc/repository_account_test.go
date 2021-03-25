@@ -39,9 +39,10 @@ func TestRepository_LookupAccount(t *testing.T) {
 		WithSigningAlgs(RS256),
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	account := TestAccount(t, conn, authMethod.PublicId, TestConvertToUrls(t, authMethod.DiscoveryUrl)[0], "create-success")
+	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
+	account := TestAccount(t, conn, authMethod, issuerId, "test-subject")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(authMethod, issuerId.String(), "random-id")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -104,9 +105,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		WithSigningAlgs(RS256),
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	account := TestAccount(t, conn, authMethod.PublicId, TestConvertToUrls(t, authMethod.DiscoveryUrl)[0], "create-success")
+	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
+	account := TestAccount(t, conn, authMethod, issuerId, "create-success")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(authMethod, issuerId.String(), "random-subject")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -185,14 +187,14 @@ func TestRepository_ListAccounts(t *testing.T) {
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	accounts1 := []*Account{
-		TestAccount(t, conn, authMethod1.PublicId, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success"),
-		TestAccount(t, conn, authMethod1.PublicId, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success2"),
-		TestAccount(t, conn, authMethod1.PublicId, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success3"),
+		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success"),
+		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success2"),
+		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success3"),
 	}
 	accounts2 := []*Account{
-		TestAccount(t, conn, authMethod2.PublicId, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success"),
-		TestAccount(t, conn, authMethod2.PublicId, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success2"),
-		TestAccount(t, conn, authMethod2.PublicId, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success3"),
+		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success"),
+		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success2"),
+		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success3"),
 	}
 	_ = accounts2
 
@@ -267,7 +269,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 
 	accountCount := 10
 	for i := 0; i < accountCount; i++ {
-		TestAccount(t, conn, am.PublicId, TestConvertToUrls(t, am.DiscoveryUrl)[0], fmt.Sprintf("create-success-%d", i))
+		TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], fmt.Sprintf("create-success-%d", i))
 	}
 
 	tests := []struct {
@@ -613,7 +615,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 			)
 
-			orig := TestAccount(t, conn, am.PublicId, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success",
+			orig := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success",
 				WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
 
 			tt.orig.AuthMethodId = am.PublicId
@@ -684,8 +686,8 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, am.PublicId, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success1")
-		ab := TestAccount(t, conn, am.PublicId, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success2")
+		aa := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success1")
+		ab := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success2")
 
 		aa.Name = name
 		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
@@ -722,7 +724,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, ama.PublicId, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1",
+		aa := TestAccount(t, conn, ama, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1",
 			WithName("test-name-aa"))
 
 		amb := TestAuthMethod(
@@ -732,7 +734,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		ab := TestAccount(t, conn, amb.PublicId, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2",
+		ab := TestAccount(t, conn, amb, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2",
 			WithName("test-name-ab"))
 
 		ab.Name = aa.Name
@@ -762,7 +764,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, ama.PublicId, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1")
+		aa := TestAccount(t, conn, ama, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1")
 
 		amb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
@@ -771,7 +773,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		ab := TestAccount(t, conn, amb.PublicId, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2")
+		ab := TestAccount(t, conn, amb, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2")
 
 		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
 		orig := aa.Clone()
