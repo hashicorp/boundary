@@ -947,7 +947,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateScopeResponse{
 				Item: &pb.Scope{
 					Id:                          scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
