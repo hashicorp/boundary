@@ -29,7 +29,7 @@ type Store struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The scope_id of the owning scope and must be set.
@@ -88,7 +88,7 @@ type Library struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The store_id of the owning store and must be set.
@@ -147,7 +147,7 @@ type Credential struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 }
@@ -196,7 +196,7 @@ type Static struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The store_id of the owning store and must be set.
@@ -255,7 +255,7 @@ type Dynamic struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_is is a surrogate key suitable for use in a public API.
+	// public_id is a surrogate key suitable for use in a public API.
 	// @inject_tag: `gorm:"primary_key"`
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The library_id of the owning library and must be set.
