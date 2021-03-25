@@ -84,7 +84,7 @@ func TestGet(t *testing.T) {
 	pHostCatalog := &pb.HostCatalog{
 		Id:                          hc.GetPublicId(),
 		ScopeId:                     hc.GetScopeId(),
-		Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 		Name:                        &wrappers.StringValue{Value: hc.GetName()},
 		Description:                 &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
@@ -133,7 +133,7 @@ func TestGet(t *testing.T) {
 			s, err := host_catalogs.NewService(repo, iamRepoFn)
 			require.NoError(err, "Couldn't create a new host catalog service.")
 
-			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -161,8 +161,8 @@ func TestList(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	_, pNoCatalogs := iam.TestScopes(t, iamRepo)
-	_, pWithCatalogs := iam.TestScopes(t, iamRepo)
-	_, pWithOtherCatalogs := iam.TestScopes(t, iamRepo)
+	oWithCatalogs, pWithCatalogs := iam.TestScopes(t, iamRepo)
+	oWithOtherCatalogs, pWithOtherCatalogs := iam.TestScopes(t, iamRepo)
 
 	var wantSomeCatalogs []*pb.HostCatalog
 	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
@@ -171,7 +171,7 @@ func TestList(t *testing.T) {
 			ScopeId:                     hc.GetScopeId(),
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
-			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           []string{"read", "update", "delete"},
@@ -186,7 +186,7 @@ func TestList(t *testing.T) {
 			ScopeId:                     hc.GetScopeId(),
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
-			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String()},
+			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
 			Version:                     1,
 			Type:                        "static",
 			AuthorizedActions:           []string{"read", "update", "delete"},
@@ -257,7 +257,7 @@ func TestList(t *testing.T) {
 			s, err := host_catalogs.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -309,7 +309,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostCatalog(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -329,7 +329,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHostCatalog(ctx, req)
@@ -362,7 +362,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("host-catalogs/%s_", static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					ScopeId:                     proj.GetPublicId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "name"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					Type:                        "static",
@@ -442,7 +442,7 @@ func TestCreate(t *testing.T) {
 			s, err := host_catalogs.NewService(repo, iamRepoFn)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
-			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -516,7 +516,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "new"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -542,7 +542,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "new"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -598,7 +598,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Description:                 &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
@@ -621,7 +621,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
@@ -645,7 +645,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "updated"},
 					Description:                 &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -670,7 +670,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
 					ScopeId:                     hc.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "default"},
 					Description:                 &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -702,7 +702,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -717,7 +717,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Id:          "p_somethinge",
-					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				},
@@ -775,14 +775,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test some bad versions
 			req.Item.Version = version + 2
-			_, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version - 1
-			_, gErr = tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr = tested.UpdateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version
 
-			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.err)
