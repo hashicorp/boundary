@@ -52,7 +52,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		AuthorizedActions:       []string{"read", "delete"},
 	}
 
@@ -89,7 +89,7 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
+			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -127,7 +127,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
@@ -146,7 +146,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
+			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
@@ -165,7 +165,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
+			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			AuthorizedActions:       []string{"read", "delete"},
 		})
 	}
@@ -229,7 +229,7 @@ func TestList(t *testing.T) {
 			s, err := authtokens.NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -295,7 +295,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), tc.req)
+			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, tc.scope), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -327,9 +327,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),
 	}
-	_, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, at.GetScopeId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, at.GetScopeId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
