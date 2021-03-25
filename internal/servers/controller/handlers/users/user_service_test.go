@@ -51,7 +51,7 @@ func TestGet(t *testing.T) {
 	wantU := &pb.User{
 		Id:                u.GetPublicId(),
 		ScopeId:           u.GetScopeId(),
-		Scope:             &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
+		Scope:             &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Name:              &wrapperspb.StringValue{Value: u.GetName()},
 		Description:       &wrapperspb.StringValue{Value: u.GetDescription()},
 		CreatedTime:       u.CreateTime.GetTimestamp(),
@@ -99,7 +99,7 @@ func TestGet(t *testing.T) {
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			got, gErr := s.GetUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -128,7 +128,7 @@ func TestList(t *testing.T) {
 
 	// Populate expected values for recursive test
 	var totalUsers []*pb.User
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId("global"))
+	ctx := auth.DisabledAuthTestContext(repoFn, "global")
 	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_anon"})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, anon.GetItem())
@@ -148,7 +148,7 @@ func TestList(t *testing.T) {
 		wantUsers = append(wantUsers, &pb.User{
 			Id:                u.GetPublicId(),
 			ScopeId:           u.GetScopeId(),
-			Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+			Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:       u.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
 			Version:           1,
@@ -157,7 +157,7 @@ func TestList(t *testing.T) {
 	}
 
 	// Populate these users into the total
-	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(oWithUsers.GetPublicId()))
+	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId())
 	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
@@ -208,7 +208,7 @@ func TestList(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -219,9 +219,9 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	u, repo := createDefaultUserAndRepo(t)
+	u, repoFn := createDefaultUserAndRepo(t)
 
-	s, err := users.NewService(repo)
+	s, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -254,7 +254,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), tc.req)
+			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -266,14 +266,14 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
+	u, repoFn := createDefaultUserAndRepo(t)
 
-	s, err := users.NewService(repo)
+	s, err := users.NewService(repoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId()))
+	ctx := auth.DisabledAuthTestContext(repoFn, u.GetScopeId())
 	_, gErr := s.DeleteUser(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteUser(ctx, req)
@@ -282,7 +282,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultUser, repo := createDefaultUserAndRepo(t)
+	defaultUser, repoFn := createDefaultUserAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
@@ -303,7 +303,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
 					ScopeId:           defaultUser.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
@@ -322,7 +322,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
 				Item: &pb.User{
 					ScopeId:           scope.Global.String(),
-					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
@@ -361,10 +361,10 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := users.NewService(repo)
+			s, err := users.NewService(repoFn)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -433,7 +433,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.User{
 					Id:                u.GetPublicId(),
 					ScopeId:           u.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
@@ -456,7 +456,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.User{
 					Id:                u.GetPublicId(),
 					ScopeId:           u.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
@@ -510,7 +510,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.User{
 					Id:                u.GetPublicId(),
 					ScopeId:           u.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
 					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
@@ -532,7 +532,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.User{
 					Id:                u.GetPublicId(),
 					ScopeId:           u.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
@@ -555,7 +555,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.User{
 					Id:                u.GetPublicId(),
 					ScopeId:           u.GetScopeId(),
-					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
+					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
@@ -630,14 +630,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test with bad version (too high, too low)
 			req.Item.Version = version + 2
-			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			require.Error(gErr)
 			req.Item.Version = version - 1
-			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			require.Error(gErr)
 			req.Item.Version = version
 
-			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(repoFn, u.GetScopeId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				require.True(errors.Is(gErr, tc.err), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -737,7 +737,7 @@ func TestAddAccount(t *testing.T) {
 				AccountIds: tc.addAccounts,
 			}
 
-			got, err := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.AddUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -775,7 +775,7 @@ func TestAddAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.AddUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -860,7 +860,7 @@ func TestSetAccount(t *testing.T) {
 				AccountIds: tc.setAccounts,
 			}
 
-			got, err := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.SetUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -898,7 +898,7 @@ func TestSetAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.SetUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -992,7 +992,7 @@ func TestRemoveAccount(t *testing.T) {
 				AccountIds: tc.removeAccounts,
 			}
 
-			got, err := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+			got, err := s.RemoveUserAccounts(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -1031,7 +1031,7 @@ func TestRemoveAccount(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveUserAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(usr.GetScopeId())), tc.req)
+			_, gErr := s.RemoveUserAccounts(auth.DisabledAuthTestContext(repoFn, usr.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddUserAccounts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
