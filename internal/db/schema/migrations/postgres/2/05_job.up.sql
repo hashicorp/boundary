@@ -5,7 +5,9 @@ create table job (
     name wt_name not null,
     description wt_description not null,
     code text not null,
-    next_scheduled_run timestamp not null default current_timestamp,
+        constraint code_can_not_be_negative
+            check(completed_count >= 0),
+    next_scheduled_run timestamp not null,
 
     constraint job_name_code_uq
         unique(name, code)
@@ -20,7 +22,7 @@ create trigger immutable_columns before update on job
 create table job_run_status_enm (
     name text not null primary key
         constraint only_predefined_job_status_allowed
-            check(name in ('running', 'complete', 'failed', 'interrupted'))
+            check(name in ('running', 'completed', 'failed', 'interrupted'))
 );
 
 comment on table job_run_status_enm is
@@ -29,10 +31,9 @@ comment on table job_run_status_enm is
 insert into job_run_status_enm (name)
     values
     ('running'),
-    ('complete'),
+    ('completed'),
     ('failed'),
     ('interrupted');
-
 
 create table job_run (
      id serial primary key,
@@ -81,4 +82,4 @@ create trigger default_create_time_column before insert on job_run
     for each row execute procedure default_create_time();
 
 create trigger immutable_columns before update on job_run
-    for each row execute procedure immutable_columns('id', 'job_id', 'server_id', 'create_time');
+    for each row execute procedure immutable_columns('id', 'job_id', 'create_time');
