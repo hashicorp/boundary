@@ -109,6 +109,30 @@ func DefaultOidcAuthMethodAllowedAudiences() Option {
 	}
 }
 
+func WithOidcAuthMethodApiUrlPrefix(inApiUrlPrefix string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["api_url_prefix"] = inApiUrlPrefix
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodApiUrlPrefix() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["api_url_prefix"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes
@@ -118,30 +142,6 @@ func WithAttributes(inAttributes map[string]interface{}) Option {
 func DefaultAttributes() Option {
 	return func(o *options) {
 		o.postMap["attributes"] = nil
-	}
-}
-
-func WithOidcAuthMethodCallbackUrlPrefixes(inCallbackUrlPrefixes []string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["callback_url_prefixes"] = inCallbackUrlPrefixes
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultOidcAuthMethodCallbackUrlPrefixes() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["callback_url_prefixes"] = nil
-		o.postMap["attributes"] = val
 	}
 }
 
@@ -334,6 +334,30 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
+	}
+}
+
+func WithOidcAuthMethodOverrideOidcDiscoveryUrlConfig(inOverrideOidcDiscoveryUrlConfig bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["override_oidc_discovery_url_config"] = inOverrideOidcDiscoveryUrlConfig
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodOverrideOidcDiscoveryUrlConfig() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["override_oidc_discovery_url_config"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

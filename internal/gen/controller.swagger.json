@@ -3960,12 +3960,11 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "state": {
-          "type": "string",
-          "title": "state must be `inactive`, `active-private`, or `active-public`"
+        "attributes": {
+          "type": "object",
+          "description": "The attributes specific to this auth method's state."
         }
-      },
-      "description": "TODO: Figure out how to support force (through API or embedded in the item being updated)."
+      }
     },
     "controller.api.services.v1.ChangeStateResponse": {
       "type": "object",

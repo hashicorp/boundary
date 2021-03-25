@@ -99,7 +99,7 @@ func TestCustomMethods(t *testing.T) {
 	u, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
 		authmethods.WithOidcAuthMethodDiscoveryUrl(tp.Addr()),
-		authmethods.WithOidcAuthMethodCallbackUrlPrefixes([]string{"https://example.com"}),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"),
 		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string(tpAlg)}),
