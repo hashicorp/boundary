@@ -62,12 +62,12 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-atTk-full-name-and-email",
 			am:       amActivePriv,
-			idClaims: map[string]interface{}{"iss": "https://alice.com", "sub": "success-defaults"},
+			idClaims: map[string]interface{}{"iss": "https://alice.com", "sub": "success-atTk-full-name-and-email"},
 			atClaims: map[string]interface{}{"name": "alice eve-smith", "email": "alice@alice.com"},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
 				IssuerId:     "https://alice.com",
-				SubjectId:    "success-defaults",
+				SubjectId:    "success-atTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},
@@ -75,12 +75,12 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-idTk-full-name-and-email",
 			am:       amActivePriv,
-			idClaims: map[string]interface{}{"iss": "https://alice.com", "sub": "success-defaults", "name": "alice eve-smith", "email": "alice@alice.com"},
+			idClaims: map[string]interface{}{"iss": "https://alice.com", "sub": "success-idTk-full-name-and-email", "name": "alice eve-smith", "email": "alice@alice.com"},
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
 				IssuerId:     "https://alice.com",
-				SubjectId:    "success-defaults",
+				SubjectId:    "success-idTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},
@@ -88,7 +88,7 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:            "non-existent-auth-method-scope-id",
 			am:              func() *AuthMethod { cp := amActivePriv.Clone(); cp.ScopeId = "non-existent-scope-id"; return cp }(),
-			idClaims:        map[string]interface{}{"iss": "https://alice.com", "sub": "success-defaults"},
+			idClaims:        map[string]interface{}{"iss": "https://alice.com", "sub": "non-existent-auth-method-scope-id"},
 			atClaims:        map[string]interface{}{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to get oplog wrapper",
@@ -96,21 +96,21 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:            "non-parsable-issuer",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{"iss": ":::::alice.com", "sub": ""},
+			idClaims:        map[string]interface{}{"iss": ":::::alice.com", "sub": "non-parsable-issuer"},
 			atClaims:        map[string]interface{}{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to parse issuer",
 		},
 		{
-			name:            "empty-issuer",
+			name:            "empty-sub",
 			am:              amActivePriv,
 			idClaims:        map[string]interface{}{"iss": "https://alice.com", "sub": ""},
 			atClaims:        map[string]interface{}{},
 			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "missing subject id",
+			wantErrContains: "missing subject",
 		},
 		{
-			name:            "empty-sub",
+			name:            "empty-issuer",
 			am:              amActivePriv,
 			idClaims:        map[string]interface{}{"iss": "", "sub": "bad-issuer"},
 			atClaims:        map[string]interface{}{},
@@ -165,6 +165,7 @@ func Test_upsertAccount(t *testing.T) {
 				}
 				return
 			}
+			require.NoError(err)
 			tt.wantAcct.PublicId = gotAcct.PublicId
 			tt.wantAcct.Version = gotAcct.Version
 			tt.wantAcct.CreateTime = gotAcct.CreateTime
@@ -218,7 +219,7 @@ func Test_upsertOplog(t *testing.T) {
 			wrapper: oplogWrapper,
 			op:      oplog.OpType_OP_TYPE_CREATE,
 			scopeId: org.PublicId,
-			acct:    TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "create-success"),
+			acct:    TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "create-success"),
 		},
 		{
 			name:       "update-success-withFieldMask-only",
@@ -227,7 +228,7 @@ func Test_upsertOplog(t *testing.T) {
 			op:         oplog.OpType_OP_TYPE_UPDATE,
 			fieldMasks: []string{"FullName"},
 			scopeId:    org.PublicId,
-			acct:       TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-success-withFieldMask-only"),
+			acct:       TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-success-withFieldMask-only"),
 		},
 		{
 			name:       "update-success-withNullFields-only",
@@ -236,7 +237,7 @@ func Test_upsertOplog(t *testing.T) {
 			op:         oplog.OpType_OP_TYPE_UPDATE,
 			nullFields: []string{"FullName"},
 			scopeId:    org.PublicId,
-			acct:       TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-success-withNullFields-only"),
+			acct:       TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-success-withNullFields-only"),
 		},
 		{
 			name:            "update-missing-fieldMask-and-nullFields",
@@ -244,7 +245,7 @@ func Test_upsertOplog(t *testing.T) {
 			wrapper:         oplogWrapper,
 			op:              oplog.OpType_OP_TYPE_UPDATE,
 			scopeId:         org.PublicId,
-			acct:            TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-missing-fieldMask-and-nullFields"),
+			acct:            TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "update-missing-fieldMask-and-nullFields"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "update operations must specify field masks and/or null masks",
 		},
@@ -253,7 +254,7 @@ func Test_upsertOplog(t *testing.T) {
 			wrapper:         oplogWrapper,
 			op:              oplog.OpType_OP_TYPE_CREATE,
 			scopeId:         org.PublicId,
-			acct:            TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-writer"),
+			acct:            TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-writer"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing db writer",
 		},
@@ -262,7 +263,7 @@ func Test_upsertOplog(t *testing.T) {
 			writer:          rw,
 			op:              oplog.OpType_OP_TYPE_CREATE,
 			scopeId:         org.PublicId,
-			acct:            TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-oplog-wrapper"),
+			acct:            TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-oplog-wrapper"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing oplog wrapper",
 		},
@@ -272,7 +273,7 @@ func Test_upsertOplog(t *testing.T) {
 			wrapper:         oplogWrapper,
 			op:              oplog.OpType_OP_TYPE_DELETE,
 			scopeId:         org.PublicId,
-			acct:            TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "bad-op-type"),
+			acct:            TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "bad-op-type"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "not a supported operation",
 		},
@@ -281,7 +282,7 @@ func Test_upsertOplog(t *testing.T) {
 			writer:          rw,
 			wrapper:         oplogWrapper,
 			op:              oplog.OpType_OP_TYPE_UPDATE,
-			acct:            TestAccount(t, conn, testAuthMethod.PublicId, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-scope-id"),
+			acct:            TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, testAuthMethod.DiscoveryUrl)[0], "missing-scope-id"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing scope id",
 		},

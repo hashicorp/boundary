@@ -361,6 +361,57 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 // "issued".  If the token has already been issued, an error is returned with a
 // nil token.  If no token is found for the tokenRequestId an error is returned
 // with a nil token.
+//
+// Note: no oplog entries are created for auth token operations (this is intentional).
 func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) (*AuthToken, error) {
-	panic("to-do")
+	const op = "authtoken.(Repository).IssueAuthToken"
+	if tokenRequestId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing token request id")
+	}
+
+	var at *AuthToken
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			at = allocAuthToken()
+			at.PublicId = tokenRequestId
+			at.Status = string(IssuedStatus)
+			// note: no oplog operations are created for auth token operations (this is intentional).
+			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
+			// trigger to set ApproximateLastAccessTime to the commit timestamp.
+			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, []string{"ApproximateLastAccessTime"}, db.WithWhere("status = ?", PendingStatus))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated == 0 {
+				return errors.New(errors.RecordNotFound, op, "pending auth token not found")
+			}
+			if rowsUpdated > 1 {
+				return errors.New(errors.Internal, op, fmt.Sprintf("should have updated 1 row and we attempted to update %d rows", rowsUpdated))
+			}
+			if at.Status != string(IssuedStatus) {
+				return errors.New(errors.Internal, op, "updated auth token status != issued")
+			}
+
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+			}
+			at, err = txRepo.LookupAuthToken(ctx, at.PublicId, withTokenValue())
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if at == nil {
+				return errors.New(errors.RecordNotFound, op, "issued auth token not found")
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err // error already wrapped when raised from r.DoTx(...)
+	}
+	return at, nil
 }
