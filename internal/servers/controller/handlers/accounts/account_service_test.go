@@ -37,6 +37,9 @@ func TestGet(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
@@ -50,7 +53,7 @@ func TestGet(t *testing.T) {
 		AuthMethodId:      aa.GetAuthMethodId(),
 		CreatedTime:       aa.GetCreateTime().GetTimestamp(),
 		UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
-		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:           1,
 		Type:              "password",
 		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
@@ -90,7 +93,7 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.GetAccount(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
+			got, gErr := s.GetAccount(auth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -108,6 +111,9 @@ func TestList(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 3)
@@ -120,7 +126,7 @@ func TestList(t *testing.T) {
 			AuthMethodId:      aa.GetAuthMethodId(),
 			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
-			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:           1,
 			Type:              "password",
 			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
@@ -135,7 +141,7 @@ func TestList(t *testing.T) {
 			AuthMethodId:      aa.GetAuthMethodId(),
 			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
-			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:           1,
 			Type:              "password",
 			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
@@ -197,7 +203,7 @@ func TestList(t *testing.T) {
 			s, err := accounts.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -216,6 +222,9 @@ func TestDelete(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -257,7 +266,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -276,6 +285,9 @@ func TestDelete_twice(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
@@ -286,9 +298,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
 	}
-	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
@@ -300,6 +312,9 @@ func TestCreate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	s, err := accounts.NewService(repoFn)
@@ -344,7 +359,7 @@ func TestCreate(t *testing.T) {
 					AuthMethodId:      defaultAccount.GetAuthMethodId(),
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("validaccount", ""),
@@ -364,7 +379,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("accounts/%s_", password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId:      defaultAccount.GetAuthMethodId(),
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("notypedefined", ""),
@@ -388,7 +403,7 @@ func TestCreate(t *testing.T) {
 					AuthMethodId:      defaultAccount.GetAuthMethodId(),
 					Name:              &wrapperspb.StringValue{Value: "name_with_password"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("haspassword", ""),
@@ -462,7 +477,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -496,13 +511,16 @@ func TestUpdate(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	tested, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
-	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
 		"login_name": structpb.NewStringValue("default"),
 	}}
@@ -512,7 +530,7 @@ func TestUpdate(t *testing.T) {
 
 	freshAccount := func(t *testing.T) (*pb.Account, func()) {
 		t.Helper()
-		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			&pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
@@ -526,7 +544,7 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -816,7 +834,7 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.CreatedTime = acc.GetCreatedTime()
 			}
 
-			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -856,6 +874,9 @@ func TestSetPassword(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	tested, err := accounts.NewService(repoFn)
@@ -871,7 +892,7 @@ func TestSetPassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -911,7 +932,7 @@ func TestSetPassword(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			acct := createAccount(t, tt.oldPw)
 
-			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       acct.GetId(),
 				Version:  acct.GetVersion(),
 				Password: tt.newPw,
@@ -951,7 +972,7 @@ func TestSetPassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
+			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.SetPasswordRequest{
 				Id:       tt.accountId,
 				Version:  tt.version,
 				Password: tt.password,
@@ -970,6 +991,9 @@ func TestChangePassword(t *testing.T) {
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	tested, err := accounts.NewService(repoFn)
@@ -985,7 +1009,7 @@ func TestChangePassword(t *testing.T) {
 		}
 		attrs, err := handlers.ProtoToStruct(pwAttrs)
 		require.NoError(t, err)
-		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
+		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
@@ -1002,7 +1026,7 @@ func TestChangePassword(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "originalpassword",
@@ -1021,7 +1045,7 @@ func TestChangePassword(t *testing.T) {
 		assert := assert.New(t)
 		acct := createAccount(t, "originalpassword")
 
-		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 			Id:              acct.GetId(),
 			Version:         acct.GetVersion(),
 			CurrentPassword: "thewrongpassword",
@@ -1094,7 +1118,7 @@ func TestChangePassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.ChangePasswordRequest{
 				Id:              tt.accountId,
 				Version:         tt.version,
 				CurrentPassword: tt.oldPW,
