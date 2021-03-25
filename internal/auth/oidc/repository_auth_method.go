@@ -32,10 +32,6 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if AccessTokenClaims == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing Access Token claims")
 	}
-	pubId, err := newAccountId()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
 	var iss, sub string
 	var ok bool
 	if iss, ok = IdTokenClaims["iss"].(string); !ok {
@@ -43,6 +39,10 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	}
 	if sub, ok = IdTokenClaims["sub"].(string); !ok {
 		return nil, errors.New(errors.Unknown, op, "subject is not present in ID Token, which should not be possible")
+	}
+	pubId, err := newAccountId(am, iss, sub)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
 
 	columns := []string{"public_id", "auth_method_id", "issuer_id", "subject_id"}

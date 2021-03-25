@@ -138,7 +138,7 @@ func Test_Callback(t *testing.T) {
 			state:             testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
-			wantSubject:       "alice@example.com",
+			wantSubject:       "simple@example.com",
 			wantInfoName:      "alice doe-eve",
 			wantInfoEmail:     "alice@example.com",
 		},
@@ -151,14 +151,14 @@ func Test_Callback(t *testing.T) {
 			state:             testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
-			wantSubject:       "alice@example.com",
+			wantSubject:       "dup@example.com",
 			wantInfoName:      "alice doe-eve",
 			wantInfoEmail:     "alice@example.com",
 		},
 		{
 			name: "inactive-valid",
 			setup: func() {
-				acct := TestAccount(t, conn, testAuthMethod2.PublicId, TestConvertToUrls(t, tp.Addr())[0], "alice@example.com")
+				acct := TestAccount(t, conn, testAuthMethod2, TestConvertToUrls(t, tp.Addr())[0], "inactive-valid@example.com")
 				_ = iam.TestUser(t, iamRepo, org2.PublicId, iam.WithAccountIds(acct.PublicId))
 			},
 			oidcRepoFn:        repoFn,
@@ -168,7 +168,7 @@ func Test_Callback(t *testing.T) {
 			state:             testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash2, testNonce),
 			code:              "simple",
 			wantFinalRedirect: "https://testcontroler.com/hi-alice",
-			wantSubject:       "alice@example.com",
+			wantSubject:       "inactive-valid@example.com",
 			wantInfoName:      "alice doe-eve",
 			wantInfoEmail:     "alice@example.com",
 		},
@@ -328,6 +328,8 @@ func Test_Callback(t *testing.T) {
 			if tt.state != "" {
 				tp.SetExpectedState(tt.state)
 			}
+			tp.SetExpectedSubject(tt.wantSubject)
+
 			info := map[string]string{}
 			if tt.wantSubject != "" {
 				info["sub"] = tt.wantSubject
@@ -460,6 +462,12 @@ func Test_Callback(t *testing.T) {
 		state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
 		tp.SetExpectedAuthCode("simple")
 		tp.SetExpectedState(state)
+
+		wantSubject := "replay-attack-with-dup-state@example.com"
+		tp.SetExpectedSubject(wantSubject)
+
+		tp.SetUserInfoReply(map[string]string{"sub": wantSubject})
+		tp.SetExpectedAuthNonce(testNonce)
 
 		// the first request should succeed.
 		gotRedirect, err := Callback(ctx,
