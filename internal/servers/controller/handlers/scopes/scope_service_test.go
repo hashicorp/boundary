@@ -40,8 +40,8 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 
 	oRes, pRes := iam.TestScopes(t, iamRepo)
 
-	oRes.Name = "defaultProj"
-	oRes.Description = "defaultProj"
+	oRes.Name = "defaultOrg"
+	oRes.Description = "defaultOrg"
 	repo, err := repoFn()
 	require.NoError(t, err)
 	oRes, _, err = repo.UpdateScope(context.Background(), oRes, 1, []string{"Name", "Description"})
@@ -170,7 +170,7 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 func TestGet(t *testing.T) {
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 	toMerge := &pbs.GetScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -178,7 +178,7 @@ func TestGet(t *testing.T) {
 	oScope := &pb.Scope{
 		Id:                          org.GetPublicId(),
 		ScopeId:                     org.GetParentId(),
-		Scope:                       &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
+		Scope:                       &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 		Name:                        &wrapperspb.StringValue{Value: org.GetName()},
 		Description:                 &wrapperspb.StringValue{Value: org.GetDescription()},
 		CreatedTime:                 org.CreateTime.GetTimestamp(),
@@ -192,7 +192,7 @@ func TestGet(t *testing.T) {
 	pScope := &pb.Scope{
 		Id:                          proj.GetPublicId(),
 		ScopeId:                     proj.GetParentId(),
-		Scope:                       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
+		Scope:                       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 		Name:                        &wrapperspb.StringValue{Value: proj.GetName()},
 		Description:                 &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime:                 proj.CreateTime.GetTimestamp(),
@@ -258,10 +258,10 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(repo)
+			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new project service.")
 
-			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
@@ -289,7 +289,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 
 	var initialOrgs []*pb.Scope
-	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String()}
+	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 	oNoProjectsProto := scopes.ToProto(oNoProjects)
 	oNoProjectsProto.Scope = globalScope
 	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
@@ -339,7 +339,7 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -378,7 +378,7 @@ func TestList(t *testing.T) {
 		wantProjects = append(wantProjects, &pb.Scope{
 			Id:                          p.GetPublicId(),
 			ScopeId:                     oWithProjects.GetPublicId(),
-			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
+			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:                 p.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
@@ -441,7 +441,7 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -452,9 +452,9 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 
-	s, err := scopes.NewService(repo)
+	s, err := scopes.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -516,7 +516,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -528,11 +528,11 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 
-	s, err := scopes.NewService(repo)
+	s, err := scopes.NewService(repoFn)
 	require.NoError(err, "Error when getting new scopes service")
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -542,7 +542,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 
-	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
+	ctx = auth.DisabledAuthTestContext(repoFn, scope.Global.String())
 	req = &pbs.DeleteScopeRequest{
 		Id: org.GetPublicId(),
 	}
@@ -592,7 +592,7 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
 					ScopeId:                     defaultOrg.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "name"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
@@ -616,7 +616,7 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:                        &wrapperspb.StringValue{Value: "name"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
@@ -640,7 +640,7 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
 					ScopeId:                     defaultOrg.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
@@ -663,7 +663,7 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
@@ -755,7 +755,7 @@ func TestCreate(t *testing.T) {
 					}
 					assert.NotEmpty(userId)
 				}
-				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId), auth.WithUserId(userId)), req)
+				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(userId)), req)
 				if tc.err != nil {
 					require.Error(gErr)
 					assert.True(errors.Is(gErr, tc.err), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -894,7 +894,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
@@ -921,7 +921,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          org.GetPublicId(),
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
@@ -973,7 +973,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
@@ -1047,7 +1047,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
@@ -1071,7 +1071,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
@@ -1096,7 +1096,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "updated"},
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
@@ -1122,7 +1122,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "defaultProj"},
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
@@ -1157,7 +1157,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Scope{
 					Id:          "p_somethinge",
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -1227,7 +1227,7 @@ func TestUpdate(t *testing.T) {
 			}
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)

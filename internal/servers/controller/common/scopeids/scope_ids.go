@@ -57,7 +57,7 @@ func GetListingScopeIds(
 	// Base case: if not recursive, return the scope we were given and the
 	// already-looked-up info
 	if !recursive {
-		return []string{rootScopeId}, map[string]*scopes.ScopeInfo{rootScopeId: authResults.Scope}, nil
+		return []string{authResults.Scope.Id}, map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}, nil
 	}
 
 	// This will be used to memoize scope info so we can put the right scope
