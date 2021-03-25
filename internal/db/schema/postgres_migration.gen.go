@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 1003,
+		binarySchemaVersion: 2001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4892,7 +4892,7 @@ comment on domain wt_full_name is
 'standard column for the full name of a person';
 
 -- wt_url defines a type for URLs which must be longer that 3 chars and
--- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- less than 4k chars.  It's defined to allow nulls, which can be overridden as
 -- needed when used in tables.
 create domain wt_url as text
     constraint wt_url_too_short
@@ -4914,7 +4914,7 @@ create domain wt_name as text
 comment on domain wt_name is
 'standard column for resource names';
 
--- wt_description defines a type for resource descriptionss that must be less
+-- wt_description defines a type for resource descriptions that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
     constraint wt_description_too_short
@@ -4986,6 +4986,93 @@ create trigger
 	kms_version_column
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
+`),
+			2001: []byte(`
+create table job (
+     private_id wt_private_id primary key,
+     name wt_name not null,
+     description wt_description not null,
+     code text not null
+         constraint code_too_short
+             check (length(trim(value)) > 0)
+         constraint code_too_long
+             check (length(trim(value)) < 128),
+     next_scheduled_run timestamp not null,
+
+     constraint job_name_code_uq
+         unique(name, code)
+);
+
+comment on table job is
+    'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+create trigger immutable_columns before update on job
+    for each row execute procedure immutable_columns('private_id', 'name', 'code');
+
+create table job_run_status_enm (
+    name text not null primary key
+        constraint only_predefined_job_status_allowed
+            check(name in ('running', 'completed', 'failed', 'interrupted'))
+);
+
+comment on table job_run_status_enm is
+    'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
+
+insert into job_run_status_enm (name)
+values
+('running'),
+('completed'),
+('failed'),
+('interrupted');
+
+create table job_run (
+     id serial primary key,
+     job_id text not null
+         constraint job_fkey
+             references job(private_id)
+             on delete cascade
+             on update cascade,
+     server_id text
+         constraint server_fkey
+             references server(private_id)
+             on delete set null
+             on update cascade,
+     create_time wt_timestamp,
+     update_time wt_timestamp,
+     end_time timestamp with time zone,
+     completed_count int not null
+         default 0
+         constraint completed_count_can_not_be_negative
+             check(completed_count >= 0),
+     total_count int not null
+         default 0
+         constraint total_count_can_not_be_negative
+             check(total_count >= 0),
+     status text not null
+         constraint status_enm_fkey
+             references job_run_status_enm (name)
+             on delete restrict
+             on update cascade,
+
+     constraint job_run_completed_count_less_than_equal_to_total_count
+         check(completed_count <= total_count)
+);
+
+comment on table job_run is
+    'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
+
+create unique index job_run_status_constraint
+    on job_run (job_id)
+    where status = 'running';
+
+create trigger update_time_column before update on job_run
+    for each row execute procedure update_time_column();
+
+create trigger default_create_time_column before insert on job_run
+    for each row execute procedure default_create_time();
+
+create trigger immutable_columns before update on job_run
+    for each row execute procedure immutable_columns('id', 'job_id', 'create_time');
 `),
 		},
 	}
