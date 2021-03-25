@@ -37,7 +37,12 @@ func TestGet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -57,7 +62,7 @@ func TestGet(t *testing.T) {
 		Id:                hs.GetPublicId(),
 		CreatedTime:       hs.CreateTime.GetTimestamp(),
 		UpdatedTime:       hs.UpdateTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:              "static",
 		HostIds:           hIds,
 		AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
@@ -102,7 +107,7 @@ func TestGet(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create a new host set service.")
 
-			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -121,7 +126,12 @@ func TestList(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -135,7 +145,7 @@ func TestList(t *testing.T) {
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:                h.GetPublicId(),
 			HostCatalogId:     h.GetCatalogId(),
-			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 			CreatedTime:       h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			Version:           h.GetVersion(),
@@ -182,7 +192,7 @@ func TestList(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -200,7 +210,12 @@ func TestDelete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -255,7 +270,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -272,7 +287,12 @@ func TestDelete_twice(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -286,7 +306,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteHostSetRequest{
 		Id: h.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHostSet(ctx, req)
@@ -300,7 +320,12 @@ func TestCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -329,7 +354,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "name"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					Type:              "static",
@@ -358,7 +383,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
 					Type:              "static",
@@ -401,7 +426,7 @@ func TestCreate(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
-			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -436,7 +461,12 @@ func TestUpdate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -497,7 +527,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "new"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
@@ -523,7 +553,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "new"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
@@ -593,7 +623,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Description:       &wrappers.StringValue{Value: "default"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
@@ -616,7 +646,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "default"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
@@ -640,7 +670,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "updated"},
 					Description:       &wrappers.StringValue{Value: "default"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
@@ -665,7 +695,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Id:                hs.GetPublicId(),
-					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:              &wrappers.StringValue{Value: "default"},
 					Description:       &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
@@ -684,7 +714,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostSet{
 					Name:        &wrappers.StringValue{Value: "new"},
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -699,7 +729,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostSet{
 					Id:          "p_somethinge",
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				},
@@ -757,14 +787,14 @@ func TestUpdate(t *testing.T) {
 
 			// Test some bad versions
 			req.Item.Version = version + 2
-			_, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version - 1
-			_, gErr = tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			_, gErr = tested.UpdateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.Error(gErr)
 			req.Item.Version = version
 
-			got, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := tested.UpdateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateHostSet(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -798,7 +828,12 @@ func TestAddHostSetHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -850,7 +885,7 @@ func TestAddHostSetHosts(t *testing.T) {
 				HostIds: tc.addHosts,
 			}
 
-			got, err := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.AddHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			s, ok := status.FromError(err)
 			require.True(t, ok)
 			require.NoError(t, err, "Got error: %v", s)
@@ -896,7 +931,7 @@ func TestAddHostSetHosts(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.AddHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -910,7 +945,12 @@ func TestSetHostSetHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -969,7 +1009,7 @@ func TestSetHostSetHosts(t *testing.T) {
 				HostIds: tc.setHosts,
 			}
 
-			got, err := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.SetHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultHosts, got.GetItem().GetHostIds())
 		})
@@ -1004,7 +1044,7 @@ func TestSetHostSetHosts(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.SetHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1018,7 +1058,12 @@ func TestRemoveHostSetHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
@@ -1079,7 +1124,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 				HostIds: tc.removeHosts,
 			}
 
-			got, err := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -1130,7 +1175,7 @@ func TestRemoveHostSetHosts(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.RemoveHostSetHosts(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveHostSetHosts(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
