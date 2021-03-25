@@ -153,7 +153,7 @@ func TestAccount_Create(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.create {
 				ctx := context.Background()
-				id, err := newAccountId()
+				id, err := newAccountId(testAuthMethod, tt.args.issuerId.String(), tt.args.subjectId)
 				require.NoError(err)
 				got.PublicId = id
 				err = rw.Create(ctx, got)
@@ -201,7 +201,7 @@ func TestAccount_Delete(t *testing.T) {
 		require.NoError(t, err)
 		a, err := NewAccount(authMethodId, i, subject)
 		require.NoError(t, err)
-		id, err := newAccountId()
+		id, err := newAccountId(testAuthMethod, issuer, subject)
 		require.NoError(t, err)
 		a.PublicId = id
 		return a

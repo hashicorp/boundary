@@ -708,3 +708,70 @@ func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
+
+func Test_IssuePendingToken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+
+	tests := []struct {
+		name            string
+		tokenRequestId  string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing token request id",
+		},
+		{
+			name: "not-found",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "pending auth token",
+		},
+		{
+			name: "success",
+			tokenRequestId: func() string {
+				tokenPublicId, err := NewAuthTokenId()
+				require.NoError(t, err)
+				tk := TestAuthToken(t, conn, kmsCache, org.PublicId, WithStatus(PendingStatus), WithPublicId(tokenPublicId))
+				return tk.PublicId
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			tk, err := repo.IssueAuthToken(ctx, tt.tokenRequestId)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %+v", tt.wantErrMatch.Code, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(tk)
+			accessTime, err := ptypes.Timestamp(tk.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
+		})
+	}
+}
