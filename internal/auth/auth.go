@@ -133,18 +133,50 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	opts := getOpts(opt...)
 
 	ret.Scope = new(scopes.ScopeInfo)
+
+	// In tests we often simply disable auth so we can test the service handlers
+	// without fuss
 	if v.requestInfo.DisableAuthEntirely {
+		const op = "auth.(disabled).lookupScope"
 		ret.Scope.Id = v.requestInfo.scopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
-		switch {
-		case ret.Scope.Id == "global":
-			ret.Scope.Type = "global"
-		case strings.HasPrefix(ret.Scope.Id, scope.Org.Prefix()):
-			ret.Scope.Type = scope.Org.String()
-		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
-			ret.Scope.Type = scope.Project.String()
+		// Look up scope details to return. We can skip a lookup when using the
+		// global scope
+		switch ret.Scope.Id {
+		case "global":
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scope.Global.String(),
+				Type:          scope.Global.String(),
+				Name:          scope.Global.String(),
+				Description:   "Global Scope",
+				ParentScopeId: "",
+			}
+
+		default:
+			iamRepo, err := v.iamRepoFn()
+			if err != nil {
+				ret.Error = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+				return
+			}
+
+			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
+			if err != nil {
+				ret.Error = errors.Wrap(err, op)
+				return
+			}
+			if scp == nil {
+				ret.Error = errors.New(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
+				return
+			}
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scp.GetPublicId(),
+				Type:          scp.GetType(),
+				Name:          scp.GetName(),
+				Description:   scp.GetDescription(),
+				ParentScopeId: scp.GetParentId(),
+			}
 		}
 		ret.UserId = v.requestInfo.userIdOverride
 		ret.Error = nil
