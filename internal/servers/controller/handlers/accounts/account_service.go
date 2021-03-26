@@ -660,10 +660,18 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
+	const op = "account_service.validateGetRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
+	const op = "account_service.validateCreateRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if req.GetItem().GetAuthMethodId() == "" {
@@ -692,6 +700,10 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
+	const op = "account_service.validateUpdateRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
@@ -725,10 +737,18 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
+	const op = "account_service.validateDeleteRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
+	const op = "account_service.validateListRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AccountPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
@@ -743,6 +763,10 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 }
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
+	const op = "account_service.validateChangePasswordRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
@@ -763,6 +787,10 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 }
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
+	const op = "account_service.validateSetPasswordRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
