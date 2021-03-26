@@ -116,8 +116,8 @@ func TestMigrateDatabase(t *testing.T) {
 				require.NoError(t, err)
 				return u
 			},
-			expectedCode:  2,
-			expectedError: "Database has already been initialized.  Please use 'boundary database\nmigrate'.\n",
+			expectedCode:   -1,
+			expectedOutput: "Database has already been initialized. Please use 'boundary database migrate'\nfor any upgrade needs.\n",
 		},
 		{
 			name:          "bad_url_require_fresh",
