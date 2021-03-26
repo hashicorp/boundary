@@ -5229,7 +5229,7 @@ create table auth_oidc_account (
     -- ###############################################################
     constraint auth_oidc_account_auth_method_id_issuer_id_subject_id_uq
       unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
-    constraint auth_oidc_account_auth_method_id_public_id
+    constraint auth_oidc_account_auth_method_id_public_id_uq
       unique(auth_method_id, public_id)
 );
 comment on table auth_oidc_method is
