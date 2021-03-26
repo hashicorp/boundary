@@ -146,6 +146,12 @@ type ResourcePrivateIder interface {
 	GetPrivateId() string
 }
 
+// ResourceIder defines an interface that LookupById() can use to get the
+// resource's id.
+type ResourceIder interface {
+	GetId() int64
+}
+
 type OpType int
 
 const (
@@ -948,23 +954,28 @@ func (rw *Db) LookupById(_ context.Context, resourceWithIder interface{}, _ ...O
 	return nil
 }
 
-func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e error) {
+func primaryKeyWhere(resourceWithIder interface{}) (pkey interface{}, w interface{}, e error) {
 	const op = "db.primaryKeyWhere"
-	var primaryKey, where string
+
 	switch resourceType := resourceWithIder.(type) {
 	case ResourcePublicIder:
-		primaryKey = resourceType.GetPublicId()
-		where = "public_id = ?"
+		if id := resourceType.GetPublicId(); id != "" {
+			return id, "public_id = ?", nil
+		}
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	case ResourcePrivateIder:
-		primaryKey = resourceType.GetPrivateId()
-		where = "private_id = ?"
+		if id := resourceType.GetPrivateId(); id != "" {
+			return id, "private_id = ?", nil
+		}
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	case ResourceIder:
+		if id := resourceType.GetId(); id != 0 {
+			return id, "id = ?", nil
+		}
+		return nil, nil, errors.New(errors.InvalidParameter, op, "missing id")
 	default:
-		return "", "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder))
+		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder))
 	}
-	if primaryKey == "" {
-		return "", "", errors.New(errors.InvalidParameter, op, "missing primary key")
-	}
-	return primaryKey, where, nil
 }
 
 // LookupByPublicId will lookup resource by its public_id, which must be unique.

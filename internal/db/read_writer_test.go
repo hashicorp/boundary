@@ -5,6 +5,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -827,7 +828,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		require.Error(err)
-		assert.Contains(err.Error(), "db.LookupById: db.primaryKeyWhere: missing primary key: parameter violation: error #100")
+		assert.Contains(err.Error(), "db.LookupById: db.primaryKeyWhere: missing public id: parameter violation: error #100")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -2930,6 +2931,95 @@ func TestDb_lookupAfterWrite(t *testing.T) {
 			require.NoError(err)
 			if tt.want != nil {
 				assert.True(proto.Equal(tt.want, cp.(proto.Message)))
+			}
+		})
+	}
+}
+
+type privateId struct{ id string }
+
+func (p privateId) GetPrivateId() string { return p.id }
+
+type publicId struct{ id string }
+
+func (p publicId) GetPublicId() string { return p.id }
+
+type id struct{ id int64 }
+
+func (p id) GetId() int64 { return p.id }
+
+func Test_primaryKeyWhere(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		in          interface{}
+		wantPkey    interface{}
+		wantW       interface{}
+		wantErr     bool
+		wantErrCode errors.Code
+		wantErrMsg  string
+	}{
+		{
+			name:     "private id",
+			in:       privateId{id: "1234"},
+			wantPkey: "1234",
+			wantW:    "private_id = ?",
+		},
+		{
+			name:        "missing private id",
+			in:          privateId{},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "db.primaryKeyWhere: missing private id: parameter violation: error #100",
+		},
+		{
+			name:     "public id",
+			in:       publicId{id: "1234"},
+			wantPkey: "1234",
+			wantW:    "public_id = ?",
+		},
+		{
+			name:        "missing public id",
+			in:          publicId{},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "db.primaryKeyWhere: missing public id: parameter violation: error #100",
+		},
+		{
+			name:     "id",
+			in:       id{id: 1234},
+			wantPkey: int64(1234),
+			wantW:    "id = ?",
+		},
+		{
+			name:        "missing id",
+			in:          id{},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "db.primaryKeyWhere: missing id: parameter violation: error #100",
+		},
+		{
+			name:        "unsupported",
+			in:          "unsupported",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "db.primaryKeyWhere: unsupported interface type string: parameter violation: error #100",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			gotPkey, gotW, err := primaryKeyWhere(tt.in)
+			if tt.wantErr {
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			if !reflect.DeepEqual(gotPkey, tt.wantPkey) {
+				t.Errorf("gotPkey = %v, want %v", gotPkey, tt.wantPkey)
+			}
+			if !reflect.DeepEqual(gotW, tt.wantW) {
+				t.Errorf("gotW = %v, want %v", gotW, tt.wantW)
 			}
 		})
 	}
