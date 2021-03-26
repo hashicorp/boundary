@@ -18,15 +18,6 @@ add constraint auth_method
   foreign key (public_id, primary_auth_method_id) 
   references auth_method(scope_id, public_id); 
 
--- for backward compatibility, set any existing auth password method as the 
--- primary auth method, so they will continue to autovivify
-update 
-    iam_scope
-set 
-    primary_auth_method_id = p.scope_id
-from
-    (select scope_id from auth_password_method) as p 
-where p.scope_id = iam_scope.public_id;
 
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
