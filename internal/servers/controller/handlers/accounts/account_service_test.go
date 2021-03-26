@@ -591,7 +591,373 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdatePassword(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kms)
+	}
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
+	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"login_name": structpb.NewStringValue("default"),
+	}}
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"login_name": structpb.NewStringValue("modified"),
+	}}
+
+	freshAccount := func(t *testing.T) (*pb.Account, func()) {
+		t.Helper()
+		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			&pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         wrapperspb.String("default"),
+					Description:  wrapperspb.String("default"),
+					Type:         "password",
+					Attributes:   defaultAttributes,
+				},
+			},
+		)
+		require.NoError(t, err)
+
+		clean := func() {
+			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
+			require.NoError(t, err)
+		}
+
+		return acc.GetItem(), clean
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.UpdateAccountRequest
+		res  *pbs.UpdateAccountResponse
+		err  error
+	}{
+		{
+			name: "Update an Existing AuthMethod",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Type:              "password",
+					Attributes:        defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Type:              "password",
+					Attributes:        defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateAccountRequest{
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Name: &wrapperspb.StringValue{Value: ""},
+					Type: "oidc",
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "No Paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              "password",
+					Attributes:        defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "updated"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              "password",
+					Attributes:        defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "notignored"},
+					Type:              "password",
+					Attributes:        defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only LoginName",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.login_name"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              "password",
+					Attributes:        modifiedAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update a Non Existing Account",
+			req: &pbs.UpdateAccountRequest{
+				Id: password.AccountPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.Account{
+					Id:          password.AccountPrefix + "_somethinge",
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Account{
+					CreatedTime: timestamppb.Now(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Account{
+					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.Account{
+					Type: "oidc",
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			acc, cleanup := freshAccount(t)
+			defer cleanup()
+
+			tc.req.Item.Version = 1
+
+			if tc.req.GetId() == "" {
+				tc.req.Id = acc.GetId()
+			}
+
+			if tc.res != nil && tc.res.Item != nil {
+				tc.res.Item.Id = acc.GetId()
+				tc.res.Item.CreatedTime = acc.GetCreatedTime()
+			}
+
+			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+
+			if tc.res == nil {
+				require.Nil(got)
+			}
+
+			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateAccount response to be nil, but was %v", got)
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
+				require.NoError(err, "Error converting proto to timestamp")
+
+				created := acc.GetCreatedTime()
+				require.NoError(err, "Error converting proto to timestamp")
+
+				// Verify it is a auth_method updated after it was created
+				assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Updated account should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+				// Clear all values which are hard to compare against.
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.EqualValues(2, got.Item.Version)
+				tc.res.Item.Version = 2
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdateOidc(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
