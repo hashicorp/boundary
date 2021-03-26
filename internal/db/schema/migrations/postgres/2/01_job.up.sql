@@ -38,7 +38,7 @@ insert into job_run_status_enm (name)
     ('interrupted');
 
 create table job_run (
-     id int generated always as identity primary key,
+     id bigint generated always as identity primary key,
      job_id wt_private_id not null
          constraint job_fkey
              references job(private_id)
