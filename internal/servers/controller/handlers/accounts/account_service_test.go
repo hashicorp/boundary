@@ -68,9 +68,6 @@ func TestGet(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-	require.NoError(t, err)
-
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	pwA := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -86,6 +83,8 @@ func TestGet(t *testing.T) {
 		AuthorizedActions: pwAuthorizedActions,
 	}
 
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState,
 		oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
@@ -276,23 +275,36 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(rw, rw, kmsCache)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am1 := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	issuerId := oidc.TestConvertToUrls(t, oidcAm.DiscoveryUrl)[0]
+	oidcA := oidc.TestAccount(t, conn, oidcAm, issuerId, "test-subject")
 
 	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -305,9 +317,16 @@ func TestDelete(t *testing.T) {
 		err   error
 	}{
 		{
-			name: "Delete an existing token",
+			name: "Delete an existing pw account",
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
+			},
+			res: &pbs.DeleteAccountResponse{},
+		},
+		{
+			name: "Delete an existing oidc account",
+			req: &pbs.DeleteAccountRequest{
+				Id: oidcA.GetPublicId(),
 			},
 			res: &pbs.DeleteAccountResponse{},
 		},
