@@ -95,15 +95,15 @@ func TestGet(t *testing.T) {
 	issuerId := oidc.TestConvertToUrls(t, oidcAm.DiscoveryUrl)[0]
 	oidcA := oidc.TestAccount(t, conn, oidcAm, issuerId, "test-subject")
 	oidcWireAccount := pb.Account{
-		Id:                oidcA.GetPublicId(),
-		AuthMethodId:      oidcA.GetAuthMethodId(),
-		CreatedTime:       oidcA.GetCreateTime().GetTimestamp(),
-		UpdatedTime:       oidcA.GetUpdateTime().GetTimestamp(),
-		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		Version:           1,
-		Type:              auth.OidcSubtype.String(),
-		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer_id": structpb.NewStringValue(issuerId.String()),
+		Id:           oidcA.GetPublicId(),
+		AuthMethodId: oidcA.GetAuthMethodId(),
+		CreatedTime:  oidcA.GetCreateTime().GetTimestamp(),
+		UpdatedTime:  oidcA.GetUpdateTime().GetTimestamp(),
+		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:      1,
+		Type:         auth.OidcSubtype.String(),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer_id":  structpb.NewStringValue(issuerId.String()),
 			"subject_id": structpb.NewStringValue("test-subject"),
 		}},
 		AuthorizedActions: oidcAuthorizedActions,
@@ -991,11 +991,11 @@ func TestUpdateOidc(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer_id": structpb.NewStringValue("https://www.alice.com"),
+		"issuer_id":  structpb.NewStringValue("https://www.alice.com"),
 		"subject_id": structpb.NewStringValue("test-subject"),
 	}}
 	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer_id": structpb.NewStringValue("https://www.changed.com"),
+		"issuer_id":  structpb.NewStringValue("https://www.changed.com"),
 		"subject_id": structpb.NewStringValue("changed"),
 	}}
 
@@ -1274,8 +1274,8 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.issuer_id"},
 				},
 				Item: &pb.Account{
-					Name:        &wrapperspb.StringValue{Value: "ignored"},
-					Attributes:  modifiedAttributes,
+					Name:       &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1287,8 +1287,8 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.subject_id"},
 				},
 				Item: &pb.Account{
-					Name:        &wrapperspb.StringValue{Value: "ignored"},
-					Attributes:  modifiedAttributes,
+					Name:       &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
