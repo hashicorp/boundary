@@ -464,7 +464,7 @@ func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt
 // ID. It returns the root scope ID as a part of the set.
 func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId string, opt ...Option) ([]*Scope, error) {
 	const op = "iam.(Repository).ListRecursively"
-	var orgs []*Scope
+	var scopes []*Scope
 	var where string
 	var args []interface{}
 	switch {
@@ -483,9 +483,9 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 		// We have no idea what scope type this is so bail
 		return nil, errors.New(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
 	}
-	err := r.list(ctx, &orgs, where, args, opt...)
+	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op+":ListQuery")
 	}
-	return orgs, nil
+	return scopes, nil
 }

@@ -99,7 +99,7 @@ func TestCustomMethods(t *testing.T) {
 	u, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
 		authmethods.WithOidcAuthMethodDiscoveryUrl(tp.Addr()),
-		authmethods.WithOidcAuthMethodCallbackUrlPrefixes([]string{"https://example.com"}),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"),
 		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string(tpAlg)}),
@@ -111,6 +111,9 @@ func TestCustomMethods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Equal(t, newState, u.Item.Attributes["state"])
+
+	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "")
+	assert.Error(t, err)
 }
 
 func TestErrors(t *testing.T) {

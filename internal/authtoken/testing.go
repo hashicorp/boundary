@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, scopeId string) *AuthToken {
+func TestAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, scopeId string, opt ...Option) *AuthToken {
 	t.Helper()
 	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
 	// auth account is only used to join auth method to user.
@@ -29,7 +29,7 @@ func TestAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, scopeId string) *A
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	at, err := repo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	at, err := repo.CreateAuthToken(ctx, u, acct.GetPublicId(), opt...)
 	require.NoError(t, err)
 	return at
 }

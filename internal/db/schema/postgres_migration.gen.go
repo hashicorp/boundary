@@ -5229,7 +5229,8 @@ create table auth_oidc_account (
     -- ###############################################################
     constraint auth_oidc_account_auth_method_id_issuer_id_subject_id_uq
       unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
-    unique(auth_method_id, public_id)
+    constraint auth_oidc_account_auth_method_id_public_id_uq
+      unique(auth_method_id, public_id)
 );
 comment on table auth_oidc_method is
 'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
@@ -5383,10 +5384,39 @@ create trigger
 after update on auth_oidc_account
   for each row execute procedure update_version_column();
 
+
+-- insert_auth_oidc_account_subtype is intended as a before insert
+-- trigger on auth_oidc_account. Its purpose is to insert a base
+-- auth_account for new oidc accounts.  It's a bit different than the
+-- standard trigger for this, because it will have conflicting PKs
+-- and we just want to "do nothing" on those conflicts, deferring the
+-- raising on an error to insert into the auth_oidc_account table.
+-- this is all necessary because of we're using predictable public ids
+-- for oidc accounts.
+create or replace function
+  insert_auth_oidc_account_subtype()
+  returns trigger
+as $$
+begin
+  select auth_method.scope_id
+    into new.scope_id
+  from auth_method
+  where auth_method.public_id = new.auth_method_id;
+
+  insert into auth_account
+    (public_id, auth_method_id, scope_id)
+  values
+    (new.public_id, new.auth_method_id, new.scope_id)
+  on conflict do nothing;
+
+  return new;
+end;
+  $$ language plpgsql;
+
 create trigger
-  insert_auth_account_subtype
+  insert_auth_oidc_account_subtype
 before insert on auth_oidc_account
-  for each row execute procedure insert_auth_account_subtype();
+  for each row execute procedure insert_auth_oidc_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
 -- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg

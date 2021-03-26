@@ -66,8 +66,17 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	if wrapper == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
-	if am == nil {
+	if wrapper.KeyID() == "" {
+		return "", errors.New(errors.InvalidParameter, op, "missing wrapper key id")
+	}
+	if am == nil || am.AuthMethod == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
+	}
+	if am.ScopeId == "" {
+		return "", errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+	}
+	if am.PublicId == "" {
+		return "", errors.New(errors.InvalidParameter, op, "missing auth method public id")
 	}
 	if m == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing message to encrypt")

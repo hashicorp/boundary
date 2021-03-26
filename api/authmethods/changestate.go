@@ -12,6 +12,9 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 	if authMethodId == "" {
 		return nil, fmt.Errorf("empty authMethodId value passed into ChangeState request")
 	}
+	if state == "" {
+		return nil, fmt.Errorf("empty state value passed into ChangeState request")
+	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in ChangeState request")
 	}
@@ -20,7 +23,7 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+			return nil, errors.New("zero version number passed into ChangeState request and automatic versioning not specified")
 		}
 		existingTarget, existingErr := c.Read(ctx, authMethodId, opt...)
 		if existingErr != nil {
@@ -37,7 +40,7 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 
 	reqBody := map[string]interface{}{
 		"version": version,
-		"state":   state,
+		"attributes": map[string]interface{}{"state":   state},
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:change-state", authMethodId), reqBody, apiOpts...)

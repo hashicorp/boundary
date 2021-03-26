@@ -324,7 +324,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
-        "summary": "Deprecated: Use AuthenticateLogin instead",
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
         "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
@@ -358,7 +358,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate:login": {
       "post": {
-        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "summary": "Deprecated: Use Authenticate instead",
         "operationId": "AuthMethodService_AuthenticateLogin",
         "responses": {
           "200": {
@@ -3846,7 +3846,15 @@
         },
         "credentials": {
           "type": "object",
-          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
+          "description": "Deprecated; use \"attributes\" instead."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to perform."
         }
       }
     },
@@ -3952,12 +3960,11 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "state": {
-          "type": "string",
-          "title": "state must be `inactive`, `active-private`, or `active-public`"
+        "attributes": {
+          "type": "object",
+          "description": "The attributes specific to this auth method's state."
         }
-      },
-      "description": "TODO: Figure out how to support force (through API or embedded in the item being updated)."
+      }
     },
     "controller.api.services.v1.ChangeStateResponse": {
       "type": "object",
