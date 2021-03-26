@@ -958,55 +958,59 @@ func TestUpdatePassword(t *testing.T) {
 }
 
 func TestUpdateOidc(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(rw, rw, kmsCache)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	issuerId := oidc.TestConvertToUrls(t, am.DiscoveryUrl)[0]
+
 	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"login_name": structpb.NewStringValue("default"),
+		"issuer_id": structpb.NewStringValue("https://www.alice.com"),
+		"subject_id": structpb.NewStringValue("test-subject"),
 	}}
 	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"login_name": structpb.NewStringValue("modified"),
+		"issuer_id": structpb.NewStringValue("https://www.changed.com"),
+		"subject_id": structpb.NewStringValue("changed"),
 	}}
 
-	freshAccount := func(t *testing.T) (*pb.Account, func()) {
+	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
 		t.Helper()
-		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
-			&pbs.CreateAccountRequest{
-				Item: &pb.Account{
-					AuthMethodId: am.GetPublicId(),
-					Name:         wrapperspb.String("default"),
-					Description:  wrapperspb.String("default"),
-					Type:         "password",
-					Attributes:   defaultAttributes,
-				},
-			},
-		)
+		acc := oidc.TestAccount(t, conn, am, issuerId, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
 		require.NoError(t, err)
 
 		clean := func() {
 			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
-				&pbs.DeleteAccountRequest{Id: acc.GetItem().GetId()})
+				&pbs.DeleteAccountRequest{Id: acc.GetPublicId()})
 			require.NoError(t, err)
 		}
 
-		return acc.GetItem(), clean
+		return acc, clean
 	}
 
 	cases := []struct {
@@ -1024,7 +1028,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        "password",
+					Type:        auth.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1032,10 +1036,10 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              "password",
+					Type:              auth.OidcSubtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -1048,7 +1052,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        "password",
+					Type:        auth.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1056,10 +1060,10 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              "password",
+					Type:              auth.OidcSubtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -1126,10 +1130,10 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              "password",
+					Type:              auth.OidcSubtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -1150,10 +1154,10 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              "password",
+					Type:              auth.OidcSubtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -1174,15 +1178,15 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              "password",
+					Type:              auth.OidcSubtype.String(),
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
 		{
-			name: "Update Only LoginName",
+			name: "Update LoginName",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.login_name"},
@@ -1193,17 +1197,7 @@ func TestUpdateOidc(t *testing.T) {
 					Attributes:  modifiedAttributes,
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
-					AuthMethodId:      am.GetPublicId(),
-					Name:              &wrapperspb.StringValue{Value: "default"},
-					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              "password",
-					Attributes:        modifiedAttributes,
-					Scope:             defaultScopeInfo,
-					AuthorizedActions: pwAuthorizedActions,
-				},
-			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Update a Non Existing Account",
@@ -1273,6 +1267,32 @@ func TestUpdateOidc(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Update Issuer Id",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer_id"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Update Subject Id",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.subject_id"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1283,12 +1303,12 @@ func TestUpdateOidc(t *testing.T) {
 			tc.req.Item.Version = 1
 
 			if tc.req.GetId() == "" {
-				tc.req.Id = acc.GetId()
+				tc.req.Id = acc.GetPublicId()
 			}
 
 			if tc.res != nil && tc.res.Item != nil {
-				tc.res.Item.Id = acc.GetId()
-				tc.res.Item.CreatedTime = acc.GetCreatedTime()
+				tc.res.Item.Id = acc.GetPublicId()
+				tc.res.Item.CreatedTime = acc.GetCreateTime().GetTimestamp()
 			}
 
 			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -1306,7 +1326,7 @@ func TestUpdateOidc(t *testing.T) {
 				gotUpdateTime := got.GetItem().GetUpdatedTime()
 				require.NoError(err, "Error converting proto to timestamp")
 
-				created := acc.GetCreatedTime()
+				created := acc.GetCreateTime().GetTimestamp()
 				require.NoError(err, "Error converting proto to timestamp")
 
 				// Verify it is a auth_method updated after it was created

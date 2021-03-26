@@ -352,16 +352,14 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
-	var opts []oidc.Option
-	if item.GetName() != nil {
-		opts = append(opts, oidc.WithName(item.GetName().GetValue()))
-	}
-	if item.GetDescription() != nil {
-		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
-	}
-
 	u := oidc.AllocAccount()
 	u.PublicId = id
+	if item.GetName() != nil {
+		u.Name = item.GetName().GetValue()
+	}
+	if item.GetDescription() != nil {
+		u.Description = item.GetDescription().GetValue()
+	}
 
 	version := item.GetVersion()
 
