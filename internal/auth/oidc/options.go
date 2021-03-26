@@ -19,24 +19,36 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName                string
-	withDescription         string
-	withLimit               int
-	withMaxAge              int
-	withCallbackUrls        []*url.URL
-	withCertificates        []*x509.Certificate
-	withAudClaims           []string
-	withSigningAlgs         []Alg
-	withEmail               string
-	withFullName            string
-	withOrderClause         string
-	withUnauthenticatedUser bool
-	withForce               bool
-	withDryRun              bool
-	withAuthMethod          *AuthMethod
-	withPublicId            string
-	withRoundtripPayload    string
-	withKeyId               string
+	withName                    string
+	withDescription             string
+	withLimit                   int
+	withMaxAge                  int
+	withCallbackUrls            []*url.URL
+	withCertificates            []*x509.Certificate
+	withAudClaims               []string
+	withSigningAlgs             []Alg
+	withEmail                   string
+	withFullName                string
+	withOrderClause             string
+	withUnauthenticatedUser     bool
+	withForce                   bool
+	withDryRun                  bool
+	withAuthMethod              *AuthMethod
+	withPublicId                string
+	withRoundtripPayload        string
+	withKeyId                   string
+	withOidcAuthenticationError *oidcAuthenticationError
+	withAuthorizationCode       string
+}
+
+// oidcAuthenticationError represents an OIDC authentication error
+// response from the provider.
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+type oidcAuthenticationError struct {
+	code string
+	desc string
+	uri  string
 }
 
 func getDefaultOptions() options {
@@ -182,5 +194,29 @@ func WithRoundtripPayload(payload string) Option {
 func WithKeyId(id string) Option {
 	return func(o *options) {
 		o.withKeyId = id
+	}
+}
+
+// WithOidcAuthenticationError provides an option for passing an
+// OIDC authentication error.
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+func WithOidcAuthenticationError(code, desc, uri string) Option {
+	return func(o *options) {
+		o.withOidcAuthenticationError = &oidcAuthenticationError{
+			code: code,
+			desc: desc,
+			uri:  uri,
+		}
+	}
+}
+
+// WithAuthorizationCode provides an option for passing an
+// OIDC authorization code.
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#AuthResponse
+func WithAuthorizationCode(code string) Option {
+	return func(o *options) {
+		o.withAuthorizationCode = code
 	}
 }
