@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -34,14 +35,17 @@ func TestGet(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	s, err := accounts.NewService(repoFn)
+	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -108,8 +112,11 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -200,7 +207,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(repoFn)
+			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -220,8 +227,11 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -231,7 +241,7 @@ func TestDelete(t *testing.T) {
 	am1 := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
 
-	s, err := accounts.NewService(repoFn)
+	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -282,8 +292,11 @@ func TestDelete_twice(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -293,7 +306,7 @@ func TestDelete_twice(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
-	s, err := accounts.NewService(repoFn)
+	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
@@ -310,20 +323,23 @@ func TestCreate(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
-	s, err := accounts.NewService(repoFn)
+	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	defaultAccount := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
-	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
+	defaultCreated := defaultAccount.GetCreateTime().GetTimestamp()
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
 	createAttr := func(un, pw string) *structpb.Struct {
@@ -441,7 +457,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					CreatedTime:  ptypes.TimestampNow(),
+					CreatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attributes:   createAttr("nocreatedtime", ""),
 				},
@@ -454,7 +470,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					UpdatedTime:  ptypes.TimestampNow(),
+					UpdatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attributes:   createAttr("noupdatetime", ""),
 				},
@@ -485,13 +501,13 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AccountPrefix+"_"))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+				gotCreateTime := got.GetItem().GetCreatedTime()
 				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				// Verify it is a user created after the test setup's default user
-				assert.True(gotCreateTime.After(defaultCreated), "New account should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
-				assert.True(gotUpdateTime.After(defaultCreated), "New account should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				assert.True(gotCreateTime.AsTime().After(defaultCreated.AsTime()), "New account should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.AsTime().After(defaultCreated.AsTime()), "New account should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -508,8 +524,11 @@ func TestUpdate(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
@@ -517,7 +536,7 @@ func TestUpdate(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	tested, err := accounts.NewService(repoFn)
+	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -784,7 +803,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Account{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -797,7 +816,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Account{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -846,14 +865,14 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAccount response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
 				require.NoError(err, "Error converting proto to timestamp")
 
-				created, err := ptypes.Timestamp(acc.GetCreatedTime())
+				created := acc.GetCreatedTime()
 				require.NoError(err, "Error converting proto to timestamp")
 
 				// Verify it is a auth_method updated after it was created
-				assert.True(gotUpdateTime.After(created), "Updated account should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+				assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Updated account should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
@@ -871,15 +890,18 @@ func TestSetPassword(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(repoFn)
+	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
@@ -988,15 +1010,18 @@ func TestChangePassword(t *testing.T) {
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*password.Repository, error) {
+	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(repoFn)
+	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {

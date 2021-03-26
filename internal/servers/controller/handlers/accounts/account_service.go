@@ -27,17 +27,23 @@ const (
 	authMethodIdField = "auth_method_id"
 	typeField         = "type"
 	attributesField   = "attributes"
-	filterField = "filter"
-	idField = "id"
+	filterField       = "filter"
+	idField           = "id"
 
 	// password field names
-	loginNameField = "login_name"
-	newPasswordField = "new_password"
+	loginNameKey         = "login_name"
+	newPasswordField     = "new_password"
 	currentPasswordField = "current_password"
+
+	// oidc field names
+	issuerIdField   = "attributes.issuer_id"
+	subjectIdField  = "attributes.subject_id"
+	nameClaimField  = "attributes.full_name"
+	emailClaimField = "attributes.email"
 )
 
 var (
-	pwMaskManager handlers.MaskManager
+	pwMaskManager   handlers.MaskManager
 	oidcMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
@@ -79,7 +85,7 @@ func init() {
 type Service struct {
 	pbs.UnimplementedAccountServiceServer
 
-	pwRepoFn common.PasswordAuthRepoFactory
+	pwRepoFn   common.PasswordAuthRepoFactory
 	oidcRepoFn common.OidcAuthRepoFactory
 }
 
@@ -340,6 +346,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 	}
 	return out, nil
 }
+
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
 	const op = "account_service.(Service).updateOidcInRepo"
 	if item == nil {
@@ -352,15 +359,8 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	if item.GetDescription() != nil {
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
-	// TODO: Change the signature to not require so many fields when creating a new account.
-	u, err := oidc.NewAccount(amId, opts...)
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
-	}
 
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for update: %v.", err)
-	}
+	u := oidc.AllocAccount()
 	u.PublicId = id
 
 	version := item.GetVersion()
@@ -568,7 +568,7 @@ func toProto(in auth.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	switch i:= in.(type) {
+	switch i := in.(type) {
 	case *password.Account:
 		out.Type = auth.PasswordSubtype.String()
 		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
@@ -647,8 +647,11 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if pwAttrs.GetLoginName() == "" {
-				badFields[loginNameField] = "This is a required field for this type."
+				badFields[loginNameKey] = "This is a required field for this type."
 			}
+		case auth.OidcSubtype:
+			// TODO: Enable creating accounts for this auth method type.
+			badFields[authMethodIdField] = "Unable to create accounts for this auth method type."
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type from ID."
 		}
@@ -667,6 +670,22 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			pwAttrs := &pb.PasswordAccountAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
+			}
+		case auth.OidcSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
+				badFields[typeField] = "Cannot modify the resource type."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerIdField) {
+				badFields[issuerIdField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectIdField) {
+				badFields[subjectIdField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
+				badFields[emailClaimField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), nameClaimField) {
+				badFields[nameClaimField] = "Field is read only."
 			}
 		}
 		return badFields
