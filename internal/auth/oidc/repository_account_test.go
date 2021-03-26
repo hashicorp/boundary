@@ -112,25 +112,36 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
+		scopeId    string
 		in         string
 		want       int
 		wantIsErr  errors.Code
 		wantErrMsg string
 	}{
 		{
+			name:       "With no scope id",
+			scopeId:    "",
+			in:         account.GetPublicId(),
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).DeleteAccount: missing scope id: parameter violation: error #100",
+		},
+		{
 			name:       "With no public id",
+			scopeId:    org.GetPublicId(),
 			wantIsErr:  errors.InvalidPublicId,
 			wantErrMsg: "oidc.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
 		},
 		{
-			name: "With non existing account id",
-			in:   newAcctId,
-			want: 0,
+			name:    "With non existing account id",
+			scopeId: org.GetPublicId(),
+			in:      newAcctId,
+			want:    0,
 		},
 		{
-			name: "With existing account id",
-			in:   account.GetPublicId(),
-			want: 1,
+			name:    "With existing account id",
+			scopeId: org.GetPublicId(),
+			in:      account.GetPublicId(),
+			want:    1,
 		},
 	}
 
@@ -141,7 +152,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
+			got, err := repo.DeleteAccount(context.Background(), tt.scopeId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -337,6 +348,17 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		WithSigningAlgs(RS256),
+		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
 
 	changeName := func(s string) func(*Account) *Account {
 		return func(a *Account) *Account {
@@ -389,6 +411,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	tests := []struct {
 		name       string
+		scopeId string
+		version uint32
 		orig       *Account
 		chgFn      func(*Account) *Account
 		masks      []string
@@ -399,6 +423,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	}{
 		{
 			name: "nil-Account",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
 			},
@@ -409,6 +435,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "nil-embedded-Account",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
 			},
@@ -418,7 +446,35 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
+			name: "no-scope-id",
+			version: 1,
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "no-scope-id-test-name-repo",
+				},
+			},
+			chgFn: changeName("no-scope-id-test-update-name-repo"),
+			masks: []string{"Name"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).UpdateAccount: missing scope id: parameter violation: error #100",
+		},
+		{
+			name: "missing-version",
+			scopeId: org.GetPublicId(),
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "missing-version-test-name-repo",
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).UpdateAccount: missing version: parameter violation: error #100",
+		},
+		{
 			name: "no-public-id",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
 			},
@@ -429,69 +485,81 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "updating-non-existent-Account",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "updating-non-existent-Account-test-name-repo",
 				},
 			},
-			chgFn:      combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-Account-test-update-name-repo")),
 			masks:      []string{"Name"},
 			wantIsErr:  errors.RecordNotFound,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name: "empty-field-mask",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "empty-field-mask-test-name-repo",
 				},
 			},
-			chgFn:      changeName("test-update-name-repo"),
+			chgFn:      changeName("empty-field-mask-test-update-name-repo"),
 			wantIsErr:  errors.EmptyFieldMask,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields-in-field-mask",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "read-only-fields-in-field-mask-test-name-repo",
 				},
 			},
-			chgFn:      changeName("test-update-name-repo"),
+			chgFn:      changeName("read-only-fields-in-field-mask-test-update-name-repo"),
 			masks:      []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
 			wantIsErr:  errors.InvalidFieldMask,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
 		},
 		{
 			name: "unknown-field-in-field-mask",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "unknown-field-in-field-mask-test-name-repo",
 				},
 			},
-			chgFn:      changeName("test-update-name-repo"),
+			chgFn:      changeName("unknown-field-in-field-mask-test-update-name-repo"),
 			masks:      []string{"Bilbo"},
 			wantIsErr:  errors.InvalidFieldMask,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
 		},
 		{
 			name: "change-name",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "change-name-test-name-repo",
 				},
 			},
-			chgFn: changeName("test-update-name-repo"),
+			chgFn: changeName("change-name-test-update-name-repo"),
 			masks: []string{"Name"},
 			want: &Account{
 				Account: &store.Account{
-					Name: "test-update-name-repo",
+					Name: "change-name-test-update-name-repo",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "change-description",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
 					Description: "test-description-repo",
@@ -508,17 +576,19 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "change-name-and-description",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "change-name-and-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("change-name-and-description-test-update-name-repo")),
 			masks: []string{"Name", "Description"},
 			want: &Account{
 				Account: &store.Account{
-					Name:        "test-update-name-repo",
+					Name:        "change-name-and-description-test-update-name-repo",
 					Description: "test-update-description-repo",
 				},
 			},
@@ -526,9 +596,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "delete-name",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "delete-name-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
@@ -543,9 +615,11 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "delete-description",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "delete-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
@@ -553,16 +627,18 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &Account{
 				Account: &store.Account{
-					Name: "test-name-repo",
+					Name: "delete-description-test-name-repo",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "do-not-delete-name",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "do-not-delete-name-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
@@ -570,7 +646,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "do-not-delete-name-test-name-repo",
 					Description: "test-update-description-repo",
 				},
 			},
@@ -578,17 +654,19 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-description",
+			scopeId : org.GetPublicId(),
+			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "test-name-repo",
+					Name:        "do-not-delete-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			masks: []string{"Name"},
-			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			chgFn: combine(changeDescription(""), changeName("do-not-delete-description-test-update-name-repo")),
 			want: &Account{
 				Account: &store.Account{
-					Name:        "test-update-name-repo",
+					Name:        "do-not-delete-description-test-update-name-repo",
 					Description: "test-description-repo",
 				},
 			},
@@ -604,25 +682,14 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			org, _ := iam.TestScopes(t, iamRepo)
-			databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-			require.NoError(err)
-			am := TestAuthMethod(
-				t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-				TestConvertToUrls(t, "https://www.alice.com")[0],
-				"alice-rp", "fido",
-				WithSigningAlgs(RS256),
-				WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-			)
-
-			orig := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success",
+			orig := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], tt.name,
 				WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), orig, 1, tt.masks)
+			got, gotCount, err := repo.UpdateAccount(context.Background(), tt.scopeId, orig, tt.version, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantErrMsg, err.Error())
