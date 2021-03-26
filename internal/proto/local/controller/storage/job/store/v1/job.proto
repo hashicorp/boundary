@@ -32,7 +32,7 @@ message Job {
 message JobRun {
   // id is a surrogate key and is auto incrementing.
   // @inject_tag: `gorm:"primary_key"`
-  int32 id = 1;
+  int64 id = 1;
 
   // The job_id of the owning job and must be set.
   // @inject_tag: `gorm:"not_null"`
