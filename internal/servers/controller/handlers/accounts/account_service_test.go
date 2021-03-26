@@ -1,6 +1,7 @@
 package accounts_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,38 +32,82 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+var (
+	pwAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.SetPassword.String(),
+		action.ChangePassword.String(),
+	}
+	oidcAuthorizedActions = []string{
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+	}
+)
+
 func TestGet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrap)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(rw, rw, kms)
+		return oidc.NewRepository(rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(rw, rw, kmsCache)
 	}
 
 	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	aa := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
-	wireAccount := pb.Account{
-		Id:                aa.GetPublicId(),
-		AuthMethodId:      aa.GetAuthMethodId(),
-		CreatedTime:       aa.GetCreateTime().GetTimestamp(),
-		UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	pwA := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+
+	pwWireAccount := pb.Account{
+		Id:                pwA.GetPublicId(),
+		AuthMethodId:      pwA.GetAuthMethodId(),
+		CreatedTime:       pwA.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       pwA.GetUpdateTime().GetTimestamp(),
 		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:           1,
 		Type:              "password",
-		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
-		AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(pwA.GetLoginName())}},
+		AuthorizedActions: pwAuthorizedActions,
+	}
+
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	issuerId := oidc.TestConvertToUrls(t, oidcAm.DiscoveryUrl)[0]
+	oidcA := oidc.TestAccount(t, conn, oidcAm, issuerId, "test-subject")
+	oidcWireAccount := pb.Account{
+		Id:                oidcA.GetPublicId(),
+		AuthMethodId:      oidcA.GetAuthMethodId(),
+		CreatedTime:       oidcA.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       oidcA.GetUpdateTime().GetTimestamp(),
+		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:           1,
+		Type:              auth.OidcSubtype.String(),
+		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer_id": structpb.NewStringValue(issuerId.String()),
+			"subject_id": structpb.NewStringValue("test-subject"),
+		}},
+		AuthorizedActions: oidcAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -71,9 +117,14 @@ func TestGet(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Get an existing account",
-			req:  &pbs.GetAccountRequest{Id: wireAccount.GetId()},
-			res:  &pbs.GetAccountResponse{Item: &wireAccount},
+			name: "Get a password account",
+			req:  &pbs.GetAccountRequest{Id: pwWireAccount.GetId()},
+			res:  &pbs.GetAccountResponse{Item: &pwWireAccount},
+		},
+		{
+			name: "Get an oidc account",
+			req:  &pbs.GetAccountRequest{Id: oidcWireAccount.GetId()},
+			res:  &pbs.GetAccountResponse{Item: &oidcWireAccount},
 		},
 		{
 			name: "Get a non existing account",
@@ -101,7 +152,9 @@ func TestGet(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
@@ -137,7 +190,7 @@ func TestList(t *testing.T) {
 			Version:           1,
 			Type:              "password",
 			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
-			AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
 
@@ -152,7 +205,7 @@ func TestList(t *testing.T) {
 			Version:           1,
 			Type:              "password",
 			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
-			AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
 
@@ -379,7 +432,7 @@ func TestCreate(t *testing.T) {
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("validaccount", ""),
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -399,7 +452,7 @@ func TestCreate(t *testing.T) {
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("notypedefined", ""),
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -423,7 +476,7 @@ func TestCreate(t *testing.T) {
 					Version:           1,
 					Type:              "password",
 					Attributes:        createAttr("haspassword", ""),
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -597,7 +650,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -621,7 +674,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -691,7 +744,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -715,7 +768,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -739,7 +792,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},
@@ -763,7 +816,7 @@ func TestUpdate(t *testing.T) {
 					Type:              "password",
 					Attributes:        modifiedAttributes,
 					Scope:             defaultScopeInfo,
-					AuthorizedActions: []string{"read", "update", "delete", "set-password", "change-password"},
+					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
 		},

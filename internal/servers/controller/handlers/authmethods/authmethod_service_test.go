@@ -46,8 +46,6 @@ var (
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
-		action.ChangePassword.String(),
-		action.SetPassword.String(),
 		action.Authenticate.String(),
 	}
 	oidcAuthorizedActions = []string{

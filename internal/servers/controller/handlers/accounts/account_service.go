@@ -513,42 +513,76 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return toProto(out)
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*password.AuthMethod, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
 	res := auth.VerifyResults{}
-	repo, err := s.pwRepoFn()
+	pwRepo, err := s.pwRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		res.Error = err
 		return nil, res
 	}
 
 	var parentId string
-	var authMeth *password.AuthMethod
 	opts := []auth.Option{auth.WithType(resource.Account), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
 	default:
-		acct, err := repo.LookupAccount(ctx, id)
+		switch auth.SubtypeFromId(id) {
+		case auth.PasswordSubtype:
+			acct, err := pwRepo.LookupAccount(ctx, id)
+			if err != nil {
+				res.Error = err
+				return nil, res
+			}
+			if acct == nil {
+				res.Error = handlers.NotFoundError()
+				return nil, res
+			}
+			parentId = acct.GetAuthMethodId()
+		case auth.OidcSubtype:
+			acct, err := oidcRepo.LookupAccount(ctx, id)
+			if err != nil {
+				res.Error = err
+				return nil, res
+			}
+			if acct == nil {
+				res.Error = handlers.NotFoundError()
+				return nil, res
+			}
+			parentId = acct.GetAuthMethodId()
+		}
+		opts = append(opts, auth.WithId(id))
+	}
+
+	var authMeth auth.AuthMethod
+	switch auth.SubtypeFromId(parentId) {
+	case auth.PasswordSubtype:
+		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return nil, res
 		}
-		if acct == nil {
+		if am == nil {
 			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
-		parentId = acct.GetAuthMethodId()
-		opts = append(opts, auth.WithId(id))
-	}
-
-	authMeth, err = repo.LookupAuthMethod(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if authMeth == nil {
-		res.Error = handlers.NotFoundError()
-		return nil, res
+		authMeth = am
+	case auth.OidcSubtype:
+		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if am == nil {
+			res.Error = handlers.NotFoundError()
+			return nil, res
+		}
+		authMeth = am
 	}
 	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
 	return authMeth, auth.Verify(ctx, opts...)
