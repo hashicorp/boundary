@@ -118,14 +118,17 @@ func (a *Account) SetTableName(n string) {
 }
 
 // oplog will create oplog metadata for the Account.
-func (c *Account) oplog(op oplog.OpType) oplog.Metadata {
+func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.GetPublicId()},
-		"resource-type":      []string{"password account"},
+		"resource-type":      []string{"oidc account"},
 		"op-type":            []string{op.String()},
 	}
 	if c.AuthMethodId != "" {
 		metadata["auth-method-id"] = []string{c.AuthMethodId}
+	}
+	if authMethodScopeId != "" {
+		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
 }

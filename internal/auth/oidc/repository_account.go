@@ -74,7 +74,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE)
+			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE, scopeId)
 			dAc := ac.Clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
@@ -152,7 +152,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	a = a.Clone()
 
-	metadata := a.oplog(oplog.OpType_OP_TYPE_UPDATE)
+	metadata := a.oplog(oplog.OpType_OP_TYPE_UPDATE, scopeId)
 
 	var rowsUpdated int
 	var returnedAccount *Account

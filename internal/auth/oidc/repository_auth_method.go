@@ -196,7 +196,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 	}
-	metadata := acct.oplog(operation)
+	metadata := acct.oplog(operation, scopeId)
 	acctAsReplayable, ok := interface{}(acct).(oplog.ReplayableMessage)
 	if !ok {
 		return errors.New(errors.Internal, op, "account is not replayable")
