@@ -415,3 +415,69 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 	}
 	return at, nil
 }
+
+// AuthenticationFailedForPendingToken will update the "pending" token to a FailedStatus.
+// If the token is not in a "pending" state and error will be returned.  If no token is found
+// for the token request id, an error is returned.
+func (r *Repository) AuthenticationFailedForPendingToken(ctx context.Context, tokenRequestId string) error {
+	const op = "authtoken.(Repository).AuthenticationFailedForToken"
+	if tokenRequestId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing token request id")
+	}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			at := allocAuthToken()
+			at.PublicId = tokenRequestId
+			at.Status = string(FailedStatus)
+			rowsUpdated, err := w.Update(ctx, at, []string{"Status"}, nil, db.WithWhere("status = ?", PendingStatus))
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rowsUpdated == 0 {
+				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("pending auth token not found for %s", tokenRequestId))
+			}
+			if rowsUpdated > 1 {
+				return errors.New(errors.Internal, op, fmt.Sprintf("should have updated 1 row and we attempted to update %d rows", rowsUpdated))
+			}
+			if at.Status != string(FailedStatus) {
+				return errors.New(errors.Internal, op, fmt.Sprintf("expected updated auth token status %s and got: %s", string(FailedStatus), string(at.Status)))
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return err // error already wrapped when raised from r.DoTx(...)
+	}
+	return nil
+}
+
+// CloseExpiredPendingTokens will close expired pending tokens in the repo.
+// This function should called on a periodic basis a Controllers via it's
+// "ticker" pattern.
+func (r *Repository) CloseExpiredPendingTokens(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).CloseExpiredPendingTokens"
+
+	args := []interface{}{string(FailedStatus), string(PendingStatus)}
+	const sql = `update auth_token set status = ? where status = ? and now() > expiration_time`
+	var tokensClosed int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			var err error
+			tokensClosed, err = w.Exec(ctx, sql, args)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, err // error already wrapped when raised from r.DoTx(...)
+	}
+	return tokensClosed, nil
+}

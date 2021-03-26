@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -772,6 +773,183 @@ func Test_IssuePendingToken(t *testing.T) {
 			createTime, err := ptypes.Timestamp(tk.GetCreateTime().GetTimestamp())
 			require.NoError(err)
 			assert.True(accessTime.After(createTime), "last access time %q was not after the creation time %q", accessTime, createTime)
+		})
+	}
+}
+
+func Test_AuthenticationFailedForPendingToken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	createWith := func(status Status) string {
+		authMethods := password.TestAuthMethods(t, conn, org.PublicId, 1)
+		authMethodId := authMethods[0].PublicId
+
+		accts := password.TestAccounts(t, conn, authMethodId, 1)
+		require.Equal(t, 1, len(accts))
+		at := allocAuthToken()
+		id, err := NewAuthTokenId()
+		require.NoError(t, err)
+		at.PublicId = id
+		exp, err := ptypes.TimestampProto(time.Now().Add(120 * time.Second).Truncate(time.Second))
+		require.NoError(t, err)
+		at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
+		at.Status = string(status)
+		at.AuthAccountId = accts[0].PublicId
+		at.KeyId = databaseWrapper.KeyID()
+		at.CtToken = []byte(id)
+		err = rw.Create(ctx, at)
+		require.NoError(t, err)
+		return at.PublicId
+	}
+
+	tests := []struct {
+		name            string
+		tokenRequestId  string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:           "success",
+			tokenRequestId: createWith(PendingStatus),
+		},
+		{
+			name:            "missing-id",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing token request id",
+		},
+		{
+			name:            "not-found",
+			tokenRequestId:  "not-found",
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "record not found",
+		},
+		{
+			name:            "pending-not-found",
+			tokenRequestId:  createWith(IssuedStatus),
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "pending auth token not found",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := repo.AuthenticationFailedForPendingToken(ctx, tt.tokenRequestId)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %s", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			tk, err := repo.LookupAuthToken(ctx, tt.tokenRequestId)
+			require.NoError(err)
+			assert.Equal(string(FailedStatus), tk.Status)
+		})
+	}
+}
+
+func Test_CloseExpiredPendingTokens(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	createWith := func(cnt int, expIn time.Duration, status Status) {
+		authMethods := password.TestAuthMethods(t, conn, org.PublicId, 1)
+		authMethodId := authMethods[0].PublicId
+
+		accts := password.TestAccounts(t, conn, authMethodId, cnt)
+		for i := 0; i < cnt; i++ {
+			at := allocAuthToken()
+			id, err := NewAuthTokenId()
+			require.NoError(t, err)
+			at.PublicId = id
+			exp, err := ptypes.TimestampProto(time.Now().Add(expIn).Truncate(time.Second))
+			require.NoError(t, err)
+			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
+			at.Status = string(status)
+			at.AuthAccountId = accts[i].PublicId
+			at.KeyId = databaseWrapper.KeyID()
+			at.CtToken = []byte(id)
+			err = rw.Create(ctx, at)
+			require.NoError(t, err)
+		}
+	}
+	tests := []struct {
+		name            string
+		setup           func()
+		wantCnt         int
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name: "nada-todo",
+		},
+		{
+			name: "close-2",
+			setup: func() {
+				createWith(2, -10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+				createWith(1, 10*time.Second, PendingStatus)
+			},
+			wantCnt: 2,
+		},
+		{
+			name: "close-zero",
+			setup: func() {
+				createWith(2, 10*time.Second, PendingStatus)
+				createWith(1, 10*time.Second, IssuedStatus)
+			},
+			wantCnt: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// start with no tokens in the db.
+			_, err := rw.Exec(ctx, "delete from auth_token", nil)
+			require.NoError(err)
+			_, err = rw.Exec(ctx, "delete from auth_account", nil)
+			require.NoError(err)
+
+			if tt.setup != nil {
+				tt.setup()
+			}
+			tokensClosed, err := repo.CloseExpiredPendingTokens(ctx)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Equal(0, tokensClosed)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %s and got: %s", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, tokensClosed)
 		})
 	}
 }
