@@ -350,7 +350,7 @@ func Test_Callback(t *testing.T) {
 				tt.atRepoFn,
 				tt.am.PublicId,
 				tt.state,
-				WithAuthorizationCode(tt.code),
+				tt.code,
 			)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
@@ -476,7 +476,7 @@ func Test_Callback(t *testing.T) {
 			atRepoFn,
 			testAuthMethod.PublicId,
 			state,
-			WithAuthorizationCode("simple"),
+			"simple",
 		)
 		require.NoError(err)
 		require.NotNil(gotRedirect)
@@ -488,7 +488,7 @@ func Test_Callback(t *testing.T) {
 			atRepoFn,
 			testAuthMethod.PublicId,
 			state,
-			WithAuthorizationCode("simple"),
+			"simple",
 		)
 		require.Error(err)
 		require.Empty(gotRedirect2)

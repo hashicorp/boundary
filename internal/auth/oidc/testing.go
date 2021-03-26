@@ -440,7 +440,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 				s.atRepoFn,
 				s.authMethodId,
 				state,
-				WithAuthorizationCode(code),
+				code,
 			)
 			if err != nil {
 				errorRedirectTo := fmt.Sprintf("%s/%s?error=%s", s.Addr(), AuthenticationErrorsEndpoint, url.QueryEscape(err.Error()))

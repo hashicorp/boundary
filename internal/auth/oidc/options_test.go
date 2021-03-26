@@ -156,18 +156,4 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withKeyId = "specific_id"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithAuthorizationCode", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithAuthorizationCode("specified-code"))
-		testOpts := getDefaultOptions()
-		testOpts.withAuthorizationCode = "specified-code"
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithOidcAuthenticationError", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithOidcAuthenticationError("code", "", ""))
-		testOpts := getDefaultOptions()
-		testOpts.withOidcAuthenticationError = &oidcAuthenticationError{"code", "", ""}
-		assert.Equal(opts, testOpts)
-	})
 }
