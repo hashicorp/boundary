@@ -220,7 +220,7 @@ func Test_Callback(t *testing.T) {
 			am:              testAuthMethod,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing code",
+			wantErrContains: "missing authorization code",
 		},
 		{
 			name:            "missing-auth-method-id",
@@ -350,7 +350,7 @@ func Test_Callback(t *testing.T) {
 				tt.atRepoFn,
 				tt.am.PublicId,
 				tt.state,
-				tt.code,
+				WithAuthorizationCode(tt.code),
 			)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
@@ -476,7 +476,7 @@ func Test_Callback(t *testing.T) {
 			atRepoFn,
 			testAuthMethod.PublicId,
 			state,
-			"simple",
+			WithAuthorizationCode("simple"),
 		)
 		require.NoError(err)
 		require.NotNil(gotRedirect)
@@ -488,7 +488,7 @@ func Test_Callback(t *testing.T) {
 			atRepoFn,
 			testAuthMethod.PublicId,
 			state,
-			"simple",
+			WithAuthorizationCode("simple"),
 		)
 		require.Error(err)
 		require.Empty(gotRedirect2)
