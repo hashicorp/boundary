@@ -111,6 +111,9 @@ func TestCustomMethods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Equal(t, newState, u.Item.Attributes["state"])
+
+	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "")
+	assert.Error(t, err)
 }
 
 func TestErrors(t *testing.T) {
