@@ -4994,10 +4994,10 @@ create table job (
      description wt_description not null,
      code text not null
          constraint code_too_short
-             check (length(trim(value)) > 0)
+             check (length(trim(code)) > 0)
          constraint code_too_long
-             check (length(trim(value)) < 128),
-     next_scheduled_run timestamp not null,
+             check (length(trim(code)) < 128),
+     next_scheduled_run timestamp with time zone not null,
 
      constraint job_name_code_uq
          unique(name, code)
@@ -5019,20 +5019,20 @@ comment on table job_run_status_enm is
     'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
 
 insert into job_run_status_enm (name)
-values
-('running'),
-('completed'),
-('failed'),
-('interrupted');
+    values
+    ('running'),
+    ('completed'),
+    ('failed'),
+    ('interrupted');
 
 create table job_run (
-     id serial primary key,
-     job_id text not null
+     id int generated always as identity primary key,
+     job_id wt_private_id not null
          constraint job_fkey
              references job(private_id)
              on delete cascade
              on update cascade,
-     server_id text
+     server_id wt_private_id
          constraint server_fkey
              references server(private_id)
              on delete set null
@@ -5049,7 +5049,7 @@ create table job_run (
          constraint total_count_can_not_be_negative
              check(total_count >= 0),
      status text not null
-         constraint status_enm_fkey
+         constraint job_run_status_enm_fkey
              references job_run_status_enm (name)
              on delete restrict
              on update cascade,
