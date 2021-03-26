@@ -220,7 +220,7 @@ func Test_Callback(t *testing.T) {
 			am:              testAuthMethod,
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing authorization code",
+			wantErrContains: "missing code",
 		},
 		{
 			name:            "missing-auth-method-id",
