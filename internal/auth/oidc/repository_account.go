@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
+
 // LookupAccount will look up an account in the repository.  If the account is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
