@@ -411,8 +411,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		scopeId string
-		version uint32
+		scopeId    string
+		version    uint32
 		orig       *Account
 		chgFn      func(*Account) *Account
 		masks      []string
@@ -422,8 +422,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		wantErrMsg string
 	}{
 		{
-			name: "nil-Account",
-			scopeId : org.GetPublicId(),
+			name:    "nil-Account",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
@@ -434,8 +434,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
 		},
 		{
-			name: "nil-embedded-Account",
-			scopeId : org.GetPublicId(),
+			name:    "nil-embedded-Account",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
@@ -446,34 +446,34 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
-			name: "no-scope-id",
+			name:    "no-scope-id",
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "no-scope-id-test-name-repo",
+					Name: "no-scope-id-test-name-repo",
 				},
 			},
-			chgFn: changeName("no-scope-id-test-update-name-repo"),
-			masks: []string{"Name"},
+			chgFn:      changeName("no-scope-id-test-update-name-repo"),
+			masks:      []string{"Name"},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing scope id: parameter violation: error #100",
 		},
 		{
-			name: "missing-version",
+			name:    "missing-version",
 			scopeId: org.GetPublicId(),
 			orig: &Account{
 				Account: &store.Account{
-					Name:        "missing-version-test-name-repo",
+					Name: "missing-version-test-name-repo",
 				},
 			},
-			chgFn: changeName("test-update-name-repo"),
-			masks: []string{"Name"},
+			chgFn:      changeName("test-update-name-repo"),
+			masks:      []string{"Name"},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing version: parameter violation: error #100",
 		},
 		{
-			name: "no-public-id",
-			scopeId : org.GetPublicId(),
+			name:    "no-public-id",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{},
@@ -484,8 +484,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
 		},
 		{
-			name: "updating-non-existent-Account",
-			scopeId : org.GetPublicId(),
+			name:    "updating-non-existent-Account",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -498,8 +498,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
-			name: "empty-field-mask",
-			scopeId : org.GetPublicId(),
+			name:    "empty-field-mask",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -511,8 +511,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
 		},
 		{
-			name: "read-only-fields-in-field-mask",
-			scopeId : org.GetPublicId(),
+			name:    "read-only-fields-in-field-mask",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -525,8 +525,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
 		},
 		{
-			name: "unknown-field-in-field-mask",
-			scopeId : org.GetPublicId(),
+			name:    "unknown-field-in-field-mask",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -539,8 +539,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
 		},
 		{
-			name: "change-name",
-			scopeId : org.GetPublicId(),
+			name:    "change-name",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -557,8 +557,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-description",
-			scopeId : org.GetPublicId(),
+			name:    "change-description",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -575,8 +575,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-name-and-description",
-			scopeId : org.GetPublicId(),
+			name:    "change-name-and-description",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -595,8 +595,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "delete-name",
-			scopeId : org.GetPublicId(),
+			name:    "delete-name",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -614,8 +614,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "delete-description",
-			scopeId : org.GetPublicId(),
+			name:    "delete-description",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -633,8 +633,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "do-not-delete-name",
-			scopeId : org.GetPublicId(),
+			name:    "do-not-delete-name",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
@@ -653,8 +653,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "do-not-delete-description",
-			scopeId : org.GetPublicId(),
+			name:    "do-not-delete-description",
+			scopeId: org.GetPublicId(),
 			version: 1,
 			orig: &Account{
 				Account: &store.Account{
