@@ -14,8 +14,14 @@ const (
 	missingPrimaryAuthMethodMsg = "scope %s has more than one existing auth method, so we didn't set a primary auth method"
 )
 
-func PrimaryAuthMethod(ctx context.Context, tx *sql.Tx, w io.Writer) error {
+func PrimaryAuthMethod(ctx context.Context, tx *sql.Tx, logWriter io.Writer) error {
 	const op = "migrations.PrimaryAuthMethod"
+	if tx == nil {
+		return errors.New(errors.InvalidParameter, op, "missing tx")
+	}
+	if logWriter == nil {
+		return errors.New(errors.InvalidParameter, op, "missing log writer")
+	}
 	if _, err := setPrimaryAuthMethods(ctx, tx); err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -25,7 +31,7 @@ func PrimaryAuthMethod(ctx context.Context, tx *sql.Tx, w io.Writer) error {
 		return errors.Wrap(err, op)
 	}
 	for _, s := range scopesWithoutPrimaryAuthMethod {
-		l, err := w.Write([]byte(fmt.Sprintf(missingPrimaryAuthMethodMsg, s)))
+		l, err := logWriter.Write([]byte(fmt.Sprintf(missingPrimaryAuthMethodMsg, s)))
 		if err != nil {
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to write scope %s has no primary auth method msg", s)))
 		}
@@ -38,7 +44,10 @@ func PrimaryAuthMethod(ctx context.Context, tx *sql.Tx, w io.Writer) error {
 
 func setPrimaryAuthMethods(ctx context.Context, tx *sql.Tx) (int, error) {
 	const op = "migration.setPrimaryAuthMethods"
-	sql := `
+	if tx == nil {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing tx")
+	}
+	const sql = `
 with single_authmethod (scope_id, public_id) as (
 select 
 	am.scope_id, 
@@ -71,7 +80,10 @@ where p.scope_id = iam_scope.public_id;
 
 func findScopesWithNoPrimary(ctx context.Context, tx *sql.Tx) (scopeIds []string, e error) {
 	const op = "migration.findScopesWithNoPrimary"
-	sql := `
+	if tx == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing tx")
+	}
+	const sql = `
  select 
 	am.scope_id, 
 	am.public_id  
