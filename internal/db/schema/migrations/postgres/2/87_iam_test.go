@@ -20,6 +20,15 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 	const priorMigration = 2086
 	const primaryAuthMethodMigration = 2087
 	t.Run("migrate-store", func(t *testing.T) {
+		// this is a sequential test which relies on:
+		// 1) initializing the db using a migration up to the "priorMigration"
+		//
+		// 2) seeding the database with some test scopes and auth methods
+		//
+		// 3) running the migrations that sets the primary auth methods for
+		// existing scopes which only have one auth method.
+		//
+		// 4) asserting some bits about the state of the db.
 		assert, require := assert.New(t), require.New(t)
 		dialect := "postgres"
 		ctx := context.Background()
@@ -57,9 +66,9 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		_ = password.TestAuthMethods(t, conn, org2.PublicId, 2)
 
 		org3, _ := iam.TestScopes(t, iamRepo)
-		_ = password.TestAuthMethods(t, conn, org3.PublicId, 1)
+		org3AuthMethods := password.TestAuthMethods(t, conn, org3.PublicId, 1)
 		org4, _ := iam.TestScopes(t, iamRepo)
-		_ = password.TestAuthMethods(t, conn, org4.PublicId, 1)
+		org4AuthMethods := password.TestAuthMethods(t, conn, org4.PublicId, 1)
 
 		// now we're ready for the migration we want to test.
 		oState = schema.TestCloneMigrationStates(t)
@@ -80,6 +89,22 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 			t.Log(e)
 		}
 		assert.Equalf(2, len(entries), "expected 2 scopes without a primary auth method and got: ", len(entries))
+
+		scope1, err := iamRepo.LookupScope(ctx, org.PublicId)
+		require.NoError(err)
+		assert.Empty(scope1.PrimaryAuthMethodId)
+		scope2, err := iamRepo.LookupScope(ctx, org2.PublicId)
+		require.NoError(err)
+		assert.Empty(scope2.PrimaryAuthMethodId)
+
+		scope3, err := iamRepo.LookupScope(ctx, org3.PublicId)
+		require.NoError(err)
+		assert.Equal(org3AuthMethods[0].PublicId, scope3.PrimaryAuthMethodId)
+
+		scope4, err := iamRepo.LookupScope(ctx, org4.PublicId)
+		require.NoError(err)
+		assert.Equal(org4AuthMethods[0].PublicId, scope4.PrimaryAuthMethodId)
+
 	})
 }
 
