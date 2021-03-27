@@ -32,7 +32,7 @@ create or replace function
 as $$
   declare current_version bigint;
   begin
-    select max(version) from migration_version into current_version;
+    select max(version) from boundary_schema_version into current_version;
     new.migration_version = current_version;
     return new;
   end;
