@@ -38,16 +38,25 @@ type driver interface {
 // the underlying boundary database schema.
 // Manager is not thread safe.
 type Manager struct {
-	db      *sql.DB
-	driver  driver
-	dialect string
+	db              *sql.DB
+	driver          driver
+	dialect         string
+	migrationStates map[string]migrationState
 }
 
 // NewManager creates a new schema manager. An error is returned
 // if the provided dialect is unrecognized or if the passed in db is unreachable.
-func NewManager(ctx context.Context, dialect string, db *sql.DB) (*Manager, error) {
+func NewManager(ctx context.Context, dialect string, db *sql.DB, opt ...Option) (*Manager, error) {
 	const op = "schema.NewManager"
 	dbM := Manager{db: db, dialect: dialect}
+	opts := getOpts(opt...)
+	if opts.withMigrationStates != nil {
+		dbM.migrationStates = opts.withMigrationStates
+	} else {
+		// intentionally set it to the reference, so changes to the global var
+		// will be reflected in the manager instance
+		dbM.migrationStates = migrationStates
+	}
 	switch dialect {
 	case "postgres":
 		var err error
@@ -156,7 +165,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
-	if err = b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion)); err != nil {
+	if err = b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion, WithMigrationStates(b.migrationStates))); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
