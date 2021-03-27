@@ -84,9 +84,10 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		assert.Equal(primaryAuthMethodMigration, state.DatabaseSchemaVersion)
 		assert.False(state.Dirty)
 
-		entries := getMigrationLog(t, d)
+		entries, err := schema.GetMigrationLog(ctx, d)
+		require.NoError(err)
 		for _, e := range entries {
-			t.Log(e)
+			t.Logf("%+v", e)
 		}
 		assert.Equalf(2, len(entries), "expected 2 scopes without a primary auth method and got: ", len(entries))
 
@@ -106,29 +107,4 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		assert.Equal(org4AuthMethods[0].PublicId, scope4.PrimaryAuthMethodId)
 
 	})
-}
-
-type logEntry struct {
-	Id               int
-	MigrationVersion string
-	Entry            string
-}
-
-func getMigrationLog(t *testing.T, d *sql.DB) []logEntry {
-	t.Helper()
-	require := require.New(t)
-	const sql = "select id, migration_version, entry from log_migration"
-	ctx := context.Background()
-	rows, err := d.QueryContext(ctx, sql)
-	require.NoError(err)
-	defer rows.Close()
-
-	var entries []logEntry
-	for rows.Next() {
-		var e logEntry
-		require.NoError(rows.Scan(&e.Id, &e.MigrationVersion, &e.Entry))
-		entries = append(entries, e)
-	}
-	require.NoError(rows.Err())
-	return entries
 }

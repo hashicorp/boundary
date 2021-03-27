@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db/schema/postgres"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -208,4 +209,37 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 		return errors.Wrap(err, op)
 	}
 	return nil
+}
+
+type LogEntry struct {
+	Id               int
+	MigrationVersion string
+	CreateTime       time.Time
+	Entry            string
+}
+
+func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
+	const op = "schema.GetMigrationLog"
+	const sql = "select id, create_time, migration_version, entry from log_migration"
+	if d == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
+	}
+	rows, err := d.QueryContext(ctx, sql)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	defer rows.Close()
+
+	var entries []LogEntry
+	for rows.Next() {
+		var e LogEntry
+		if err := rows.Scan(&e.Id, &e.CreateTime, &e.MigrationVersion, &e.Entry); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		entries = append(entries, e)
+	}
+	if rows.Err() != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return entries, nil
 }
