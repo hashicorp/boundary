@@ -9,7 +9,7 @@ import (
 
 // MigrateStore executes the migrations needed to initialize the store. It
 // returns true if migrations actually ran; false if the database is already current
-// or if there was an error.
+// or if there was an error.  Supports the WithMigrationStates(...) option.
 func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option) (bool, error) {
 	const op = "schema.MigrateStore"
 
