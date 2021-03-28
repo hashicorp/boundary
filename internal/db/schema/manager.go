@@ -211,6 +211,7 @@ func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) erro
 	return nil
 }
 
+// LogEntry represents a log entry generated during migrations.
 type LogEntry struct {
 	Id               int
 	MigrationVersion string
@@ -218,6 +219,7 @@ type LogEntry struct {
 	Entry            string
 }
 
+// GetMigrationLog will retrieve the migration logs from the db for the last migration.
 func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
 	const op = "schema.GetMigrationLog"
 	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
