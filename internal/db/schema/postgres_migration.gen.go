@@ -4988,6 +4988,7 @@ before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
 			2080: []byte(`
+-- log_migration entries represent logs generated during migrations
 create table log_migration(
   id bigint generated always as identity primary key,
   migration_version bigint not null, -- cannot declare FK since the table is truncated during runtime
@@ -4995,7 +4996,7 @@ create table log_migration(
   entry text not null
 );
 comment on table log_migration is 
-'log_migration entries are logging out put from databaes migrations';
+'log_migration entries are logging output from databaes migrations';
 
 -- log_migration triggers
 create trigger 
