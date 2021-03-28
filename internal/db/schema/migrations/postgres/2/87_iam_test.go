@@ -84,12 +84,13 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		assert.Equal(primaryAuthMethodMigration, state.DatabaseSchemaVersion)
 		assert.False(state.Dirty)
 
+		t.Log("current migration version: ", state.DatabaseSchemaVersion)
 		entries, err := schema.GetMigrationLog(ctx, d)
 		require.NoError(err)
 		for _, e := range entries {
 			t.Logf("%+v", e)
 		}
-		assert.Equalf(2, len(entries), "expected 2 scopes without a primary auth method and got: ", len(entries))
+		assert.Equalf(2, len(entries), "expected 2 scopes without a primary auth method and got: %d", len(entries))
 
 		scope1, err := iamRepo.LookupScope(ctx, org.PublicId)
 		require.NoError(err)

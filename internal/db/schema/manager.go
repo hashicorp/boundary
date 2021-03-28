@@ -219,10 +219,11 @@ type LogEntry struct {
 	Entry            string
 }
 
-// GetMigrationLog will retrieve the migration logs from the db for the last migration.
+// GetMigrationLog will retrieve the migration logs from the db for the last
+// migration. Once it's read the entries, it will delete them from the database.
 func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
 	const op = "schema.GetMigrationLog"
-	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
+	const sql = "select id, create_time, migration_version, entry from log_migration"
 	if d == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
 	}
@@ -241,6 +242,10 @@ func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
 		entries = append(entries, e)
 	}
 	if rows.Err() != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	_, err = d.ExecContext(ctx, "delete from log_migration")
+	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	return entries, nil
