@@ -260,17 +260,25 @@ func Test_GetMigrationLog(t *testing.T) {
 		}
 	}
 	tests := []struct {
-		name         string
-		d            *sql.DB
-		setup        func()
-		wantEntries  []string
-		wantErrMatch *errors.Template
+		name          string
+		d             *sql.DB
+		setup         func()
+		withDeleteLog bool
+		wantEntries   []string
+		wantErrMatch  *errors.Template
 	}{
 		{
 			name:        "simple",
 			d:           d,
 			setup:       func() { createEntries("alice", "eve", "bob") },
 			wantEntries: []string{"alice", "eve", "bob"},
+		},
+		{
+			name:          "with-delete-log",
+			d:             d,
+			setup:         func() { createEntries("alice", "eve", "bob") },
+			withDeleteLog: true,
+			wantEntries:   []string{"alice", "eve", "bob"},
 		},
 		{
 			name:         "missing-sql-DB",
@@ -280,10 +288,15 @@ func Test_GetMigrationLog(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			// start with no log entries
+			_, err := d.ExecContext(ctx, "truncate log_migration")
+			require.NoError(err)
+
 			if tt.setup != nil {
 				tt.setup()
 			}
-			gotLog, err := GetMigrationLog(ctx, tt.d)
+			gotLog, err := GetMigrationLog(ctx, tt.d, WithDeleteLog(tt.withDeleteLog))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "expected error with code: %s and got err: %q", tt.wantErrMatch.Code, err)
@@ -297,6 +310,16 @@ func Test_GetMigrationLog(t *testing.T) {
 			sort.Strings(got)
 			sort.Strings(tt.wantEntries)
 			assert.Equal(tt.wantEntries, got)
+
+			row := d.QueryRowContext(ctx, "select count(*) from log_migration")
+			require.NoError(row.Err())
+			var cnt int
+			require.NoError(row.Scan(&cnt))
+			if tt.withDeleteLog {
+				assert.Equal(0, cnt)
+			} else {
+				assert.Equal(len(gotLog), cnt)
+			}
 		})
 	}
 }
