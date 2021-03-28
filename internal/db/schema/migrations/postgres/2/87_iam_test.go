@@ -105,6 +105,5 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		scope4, err := iamRepo.LookupScope(ctx, org4.PublicId)
 		require.NoError(err)
 		assert.Equal(org4AuthMethods[0].PublicId, scope4.PrimaryAuthMethodId)
-
 	})
 }
