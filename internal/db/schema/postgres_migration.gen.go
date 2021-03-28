@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2086,
+		binarySchemaVersion: 2087,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,6 +4987,54 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
+			2080: []byte(`
+-- log_migration entries represent logs generated during migrations
+create table log_migration(
+  id bigint generated always as identity primary key,
+  migration_version bigint not null, -- cannot declare FK since the table is truncated during runtime
+  create_time wt_timestamp,
+  entry text not null
+);
+comment on table log_migration is 
+'log_migration entries are logging output from databaes migrations';
+
+-- log_migration triggers
+create trigger 
+  default_create_time_column
+before
+insert on log_migration
+  for each row execute procedure default_create_time();
+
+create trigger
+  immutable_columns
+before
+update on log_migration
+  for each row execute procedure immutable_columns('id', 'migration_version', 'create_time', 'entry');
+
+
+-- log_migration_version() defines a function to be used in a "before update"
+-- trigger for log_migrations entries.  Its intent: set the log_migration
+-- version column to the current migration version.  
+create or replace function
+  log_migration_version()
+  returns trigger
+as $$
+  declare current_version bigint;
+  begin
+    select max(version) from boundary_schema_version into current_version;
+    new.migration_version = current_version;
+    return new;
+  end;
+$$ language plpgsql;
+comment on function log_migration_version() is
+'log_migration_version will set the log_migration entries to the current migration version';    
+
+create trigger
+  migration_version_column
+before
+insert on log_migration
+  for each row execute procedure log_migration_version();
+`),
 			2083: []byte(`
 -- auth_oidc_method_state_enum entries define the possible oidc auth method
 -- states. 
@@ -5611,16 +5659,6 @@ add constraint auth_method
   foreign key (public_id, primary_auth_method_id) 
   references auth_method(scope_id, public_id); 
 
--- for backward compatibility, set any existing auth password method as the 
--- primary auth method, so they will continue to autovivify
-update 
-    iam_scope
-set 
-    primary_auth_method_id = p.scope_id
-from
-    (select scope_id from auth_password_method) as p 
-where p.scope_id = iam_scope.public_id;
-
 -- iam_user_acct_info provides account info for users by determining which
 -- auth_method is designated as for "account info" in the user's scope via the
 -- scope's primary_auth_method_id.  Every sub-type of auth_account must be
@@ -5669,6 +5707,72 @@ select
 from 	
 	iam_user u
 left outer join iam_acct_info i on u.public_id = i.iam_user_id;
+`),
+			2087: []byte(`
+-- the intent of this update statement: set the primary auth method for scopes
+-- that only have a single auth_password_method, since currently there are only
+-- auth_password_methods in boundary. Before this release all
+-- auth_password_methods were "basically" primary auth methods and would create
+-- an iam_user on first login.
+with single_authmethod (scope_id, public_id) as (
+  select 
+    am.scope_id, 
+    am.public_id  
+  from 
+    auth_password_method am,
+    (select 
+        scope_id, 
+        count(public_id) as cnt 
+     from 
+        auth_password_method 
+     group by scope_id) as singles
+    where 
+      am.scope_id = singles.scope_id and
+      singles.cnt = 1
+)
+update 
+  iam_scope
+set 
+  primary_auth_method_id = p.public_id
+from
+  single_authmethod p
+where p.scope_id = iam_scope.public_id;
+
+
+-- the intent of the insert with select statement: log the scopes that have more
+-- than 1 auth method and therefore cannot have their primary auth method
+-- automatically set for them.
+with many_authmethod (scope_id, authmethod_cnt) as (
+  select 
+    am.scope_id, 
+    many.cnt
+  from 
+    auth_password_method am,
+    (select 
+        scope_id, 
+        count(public_id) as cnt 
+     from 
+        auth_password_method 
+     group by scope_id) as many
+    where 
+      am.scope_id = many.scope_id and
+      many.cnt > 1
+)
+insert into log_migration(entry) 
+select 
+  distinct  concat(
+      'unable to set primary_auth_method for ', 
+      public_id,
+      ' there were ', 
+      m.authmethod_cnt, 
+      ' password auth methods for that scope.'
+  ) as entry
+from
+  iam_scope s,
+  many_authmethod m
+where 
+  s.primary_auth_method_id is null and 
+  s.public_id = m.scope_id;
 `),
 		},
 	}

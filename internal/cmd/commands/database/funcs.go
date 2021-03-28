@@ -67,6 +67,17 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, requireF
 	if base.Format(ui) == "table" {
 		ui.Info("Migrations successfully run.")
 	}
+	migrationLogs, err := schema.GetMigrationLog(ctx, dBase)
+	if err != nil {
+		ui.Error(fmt.Errorf("Error retrieving database migration logs: %w", err).Error())
+		return unlock, 2
+	}
+	if len(migrationLogs) > 0 && base.Format(ui) == "table" {
+		ui.Info("Migration Logs...")
+		for _, e := range migrationLogs {
+			ui.Info(e.Entry)
+		}
+	}
 	return unlock, 0
 }
 
