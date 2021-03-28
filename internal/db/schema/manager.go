@@ -220,7 +220,7 @@ type LogEntry struct {
 
 func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
 	const op = "schema.GetMigrationLog"
-	const sql = "select id, create_time, migration_version, entry from log_migration"
+	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
 	if d == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
 	}
