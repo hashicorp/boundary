@@ -10,6 +10,16 @@ alter table auth_method
     unique (scope_id, name);
 
 
+-- the intent of this statement is to update the base type's name with the
+-- existing password auth method names.
+update auth_method 
+set name = pw.name
+from 
+  auth_password_method pw
+where 
+  auth_method.public_id = pw.public_id and
+  pw.name is not null;
+
 -- insert_auth_method_subtype() is a replacement of the function definition in
 -- migration 07_auth.up.sql  This new definition also inserts the sub type's name
 -- into the base type. The name column must be on the base type, so the database
