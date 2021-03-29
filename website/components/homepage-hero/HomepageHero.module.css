@@ -1,7 +1,7 @@
 .homepageHero {
   padding: 128px 0;
   background-repeat: no-repeat;
-  background-color: var(--boundary-l3);
+  background-color: var(--boundary-secondary);
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
