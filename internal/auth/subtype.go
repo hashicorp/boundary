@@ -42,6 +42,21 @@ var (
 	_ AuthMethod = (*password.AuthMethod)(nil)
 )
 
+type Account interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetAuthMethodId() string
+	GetVersion() uint32
+}
+
+var (
+	_ Account = (*oidc.Account)(nil)
+	_ Account = (*password.Account)(nil)
+)
+
 // SubtypeFromType converts a string to a SubType.
 // returns UnknownSubtype if no SubType with that name is found.
 func SubtypeFromType(t string) SubType {
