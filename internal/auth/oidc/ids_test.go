@@ -16,10 +16,7 @@ func Test_Ids(t *testing.T) {
 		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
 	})
 	t.Run(AccountPrefix, func(t *testing.T) {
-		am := AllocAuthMethod()
-		am.PublicId = "public-id"
-		am.ScopeId = "scope-id"
-		id, err := newAccountId(&am, "test-issuer", "test-subject")
+		id, err := newAccountId("public-id", "test-issuer", "test-subject")
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, AccountPrefix+"_"))
 	})

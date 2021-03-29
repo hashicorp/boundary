@@ -12,6 +12,72 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
+// CreateAccount inserts a into the repository and returns a new Account
+// containing the account's PublicId. a is not changed. a must contain a
+// valid AuthMethodId. a must not contain a PublicId. The PublicId is
+// generated and assigned by this method.
+//
+// a must contain a valid IssuerId.
+
+// a must contain a valid SubjectId. a.SubjectId must be unique within
+// an IssuerId and a.AuthMethodId combination.
+//
+// Both a.Name and a.Description are optional. If a.Name is set, it must be
+// unique within a.AuthMethodId.
+func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
+	const op = "oidc.(Repository).CreateAccount"
+	if a == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
+	}
+	if a.Account == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+	}
+	if a.AuthMethodId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+	}
+	if a.IssuerId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
+	}
+	if a.PublicId != "" {
+		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+	}
+	if scopeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
+
+	a = a.Clone()
+	id, err := newAccountId(a.AuthMethodId, a.IssuerId, a.SubjectId)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	a.PublicId = id
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+	}
+
+	var newAccount *Account
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			newAccount = a.Clone()
+			if err := w.Create(ctx, newAccount, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId))); err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q already exists or subject %q already exists for issuer %q",
+				a.AuthMethodId, a.Name, a.SubjectId, a.IssuerId))
+		}
+		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
+	}
+	return newAccount, nil
+}
+
 // LookupAccount will look up an account in the repository.  If the account is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {

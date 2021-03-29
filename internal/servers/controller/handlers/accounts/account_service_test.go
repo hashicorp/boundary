@@ -390,7 +390,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
 
-func TestCreate(t *testing.T) {
+func TestCreatePassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -581,6 +581,189 @@ func TestCreate(t *testing.T) {
 				assert.True(gotCreateTime.AsTime().After(defaultCreated.AsTime()), "New account should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.AsTime().After(defaultCreated.AsTime()), "New account should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
+				// Clear all values which are hard to compare against.
+				got.Uri, tc.res.Uri = "", ""
+				got.Item.Id, tc.res.Item.Id = "", ""
+				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestCreateOidc(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+
+	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	require.NoError(t, err, "Error when getting new account service.")
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
+	createAttr := func(iid, sid string) *structpb.Struct {
+		attr := &pb.OidcAccountAttributes{IssuerId: iid, SubjectId: sid}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.CreateAccountRequest
+		res  *pbs.CreateAccountResponse
+		err  error
+	}{
+		{
+			name: "Create a valid Account",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Type:         auth.OidcSubtype.String(),
+					Attributes:   createAttr("validaccount", ""),
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:           1,
+					Type:              auth.OidcSubtype.String(),
+					Attributes:        createAttr("validaccount", ""),
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid Account without type defined",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Attributes:   createAttr("notypedefined", ""),
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:           1,
+					Type:              auth.OidcSubtype.String(),
+					Attributes:        createAttr("notypedefined", ""),
+					AuthorizedActions: pwAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Cant specify mismatching type",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         auth.PasswordSubtype.String(),
+					Attributes:   createAttr("mismatchedtype", ""),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Id",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Id:           oidc.AccountPrefix + "_notallowed",
+					Type:         auth.OidcSubtype.String(),
+					Attributes:   createAttr("cantprovideid", ""),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					CreatedTime:  timestamppb.Now(),
+					Type:         auth.OidcSubtype.String(),
+					Attributes:   createAttr("nocreatedtime", ""),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					UpdatedTime:  timestamppb.Now(),
+					Type:         auth.OidcSubtype.String(),
+					Attributes:   createAttr("noupdatetime", ""),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must specify issuer id",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         auth.OidcSubtype.String(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must specify subject id",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         auth.OidcSubtype.String(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			if got != nil {
+				assert.Contains(got.GetUri(), tc.res.Uri)
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), oidc.AccountPrefix+"_"))
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
@@ -1002,7 +1185,6 @@ func TestUpdateOidc(t *testing.T) {
 	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
 		t.Helper()
 		acc := oidc.TestAccount(t, conn, am, issuerId, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
-		require.NoError(t, err)
 
 		clean := func() {
 			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),

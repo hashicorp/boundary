@@ -21,12 +21,9 @@ func newAuthMethodId() (string, error) {
 	return id, nil
 }
 
-func newAccountId(am *AuthMethod, issuer, sub string) (string, error) {
+func newAccountId(authMethodId, issuer, sub string) (string, error) {
 	const op = "oidc.newAccountId"
-	if am == nil || am.AuthMethod == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
-	}
-	if am.PublicId == "" {
+	if authMethodId == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if issuer == "" {
@@ -35,7 +32,7 @@ func newAccountId(am *AuthMethod, issuer, sub string) (string, error) {
 	if sub == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing subject")
 	}
-	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{am.PublicId, issuer, sub}))
+	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

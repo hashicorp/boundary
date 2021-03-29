@@ -154,7 +154,7 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, issuerId *url.URL,
 	a, err := NewAccount(am.PublicId, issuerId, subjectId, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId(am, issuerId.String(), subjectId)
+	id, err := newAccountId(am.GetPublicId(), issuerId.String(), subjectId)
 	require.NoError(err)
 	a.PublicId = id
 

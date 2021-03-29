@@ -42,7 +42,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
 	account := TestAccount(t, conn, authMethod, issuerId, "test-subject")
 
-	newAcctId, err := newAccountId(authMethod, issuerId.String(), "random-id")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), issuerId.String(), "random-id")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -108,7 +108,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
 	account := TestAccount(t, conn, authMethod, issuerId, "create-success")
 
-	newAcctId, err := newAccountId(authMethod, issuerId.String(), "random-subject")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), issuerId.String(), "random-subject")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string

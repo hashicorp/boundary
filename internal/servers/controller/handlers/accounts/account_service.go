@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -279,7 +280,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	return toProto(acct)
 }
 
-func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
+func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*password.Account, error) {
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -311,6 +312,68 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
+	}
+	return out, nil
+}
+
+func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*oidc.Account, error) {
+	const op = "account_service.(Service).createOidcInRepo"
+	var opts []oidc.Option
+	if item.GetName() != nil {
+		opts = append(opts, oidc.WithName(item.GetName().GetValue()))
+	}
+	if item.GetDescription() != nil {
+		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
+	}
+	attrs := &pb.OidcAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{"attributes": "Attribute fields do not match the expected format."})
+	}
+	u, err := url.Parse(attrs.GetIssuerId())
+	if err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "can't parse issuer id")
+	}
+	a, err := oidc.NewAccount(authMethodId, u, attrs.GetSubjectId(), opts...)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
+	}
+	repo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := repo.CreateAccount(ctx, scopeId, a)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create user"))
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
+	}
+	return out, nil
+}
+
+func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
+	var out auth.Account
+	switch auth.SubtypeFromId(authMethodId) {
+	case auth.PasswordSubtype:
+		am, err := s.createPwInRepo(ctx, authMethodId, scopeId, item)
+		if err != nil {
+			return nil, err
+		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
+	case auth.OidcSubtype:
+		am, err := s.createOidcInRepo(ctx, authMethodId, scopeId, item)
+		if err != nil {
+			return nil, err
+		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
 	}
 	return toProto(out)
 }
@@ -682,16 +745,38 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
-			pwAttrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+			attrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-			if pwAttrs.GetLoginName() == "" {
+			if attrs.GetLoginName() == "" {
 				badFields[loginNameKey] = "This is a required field for this type."
 			}
 		case auth.OidcSubtype:
-			// TODO: Enable creating accounts for this auth method type.
-			badFields[authMethodIdField] = "Unable to create accounts for this auth method type."
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
+				badFields[typeField] = "Doesn't match the parent resource's type."
+			}
+			attrs := &pb.OidcAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[attributesField] = "Attribute fields do not match the expected format."
+			}
+			if attrs.GetIssuerId() == "" {
+				badFields[issuerIdField] = "This is a required field for this type."
+			} else {
+				_, err := url.Parse(attrs.GetIssuerId())
+				if err != nil {
+					badFields[issuerIdField] = fmt.Sprintf("Could not parse %q as a url.", attrs.GetIssuerId())
+				}
+			}
+			if attrs.GetSubjectId() == "" {
+				badFields[subjectIdField] = "This is a required field for this type."
+			}
+			if attrs.GetFullName() != "" {
+				badFields[nameClaimField] = "This is a read only field."
+			}
+			if attrs.GetEmail() != "" {
+				badFields[emailClaimField] = "This is a read only field."
+			}
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type from ID."
 		}
@@ -720,10 +805,10 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerIdField) {
-				badFields[issuerIdField] = "Field is read only."
+				badFields[issuerIdField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectIdField) {
-				badFields[subjectIdField] = "Field is read only."
+				badFields[subjectIdField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
 				badFields[emailClaimField] = "Field is read only."
