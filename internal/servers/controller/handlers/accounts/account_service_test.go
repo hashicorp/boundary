@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -46,6 +48,56 @@ var (
 		action.Delete.String(),
 	}
 )
+
+func TestNewService(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+
+	cases := []struct {
+		name     string
+		pwRepo   common.PasswordAuthRepoFactory
+		oidcRepo common.OidcAuthRepoFactory
+		wantErr  bool
+	}{
+		{
+			name:    "nil-all",
+			wantErr: true,
+		},
+		{
+			name:     "nil-pw-repo",
+			oidcRepo: oidcRepoFn,
+			wantErr:  true,
+		},
+		{
+			name:    "nil-oidc-repo",
+			pwRepo:  pwRepoFn,
+			wantErr: true,
+		},
+		{
+			name:     "success",
+			pwRepo:   pwRepoFn,
+			oidcRepo: oidcRepoFn,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := accounts.NewService(tc.pwRepo, tc.oidcRepo)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestGet(t *testing.T) {
 	ctx := context.Background()
@@ -126,8 +178,14 @@ func TestGet(t *testing.T) {
 			res:  &pbs.GetAccountResponse{Item: &oidcWireAccount},
 		},
 		{
-			name: "Get a non existing account",
+			name: "Get a non existing password account",
 			req:  &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Get a non existing oidc account",
+			req:  &pbs.GetAccountRequest{Id: oidc.AccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -159,7 +217,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestListPassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -266,10 +324,165 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			} else {
 				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestListOidc(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	amNoAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.noAccounts.com")[0],
+		"noAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	amSomeAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.someAccounts.com")[0],
+		"someAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	amOtherAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.otherAccounts.com")[0],
+		"otherAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
+	var wantSomeAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		issuerId := oidc.TestConvertToUrls(t, amSomeAccounts.DiscoveryUrl)[0]
+		subId := fmt.Sprintf("test-subject%d", i)
+		aa := oidc.TestAccount(t, conn, amSomeAccounts, issuerId, subId)
+		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id":  structpb.NewStringValue(issuerId.String()),
+				"subject_id": structpb.NewStringValue(subId),
+			}},
+			AuthorizedActions: oidcAuthorizedActions,
+		})
+	}
+
+	var wantOtherAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		issuerId := oidc.TestConvertToUrls(t, amOtherAccounts.DiscoveryUrl)[0]
+		subId := fmt.Sprintf("test-subject%d", i)
+		aa := oidc.TestAccount(t, conn, amOtherAccounts, issuerId, subId)
+		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id":  structpb.NewStringValue(issuerId.String()),
+				"subject_id": structpb.NewStringValue(subId),
+			}},
+			AuthorizedActions: oidcAuthorizedActions,
+		})
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.ListAccountsRequest
+		res  *pbs.ListAccountsResponse
+		err  error
+	}{
+		{
+			name: "List Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+		},
+		{
+			name: "List Other Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+		},
+		{
+			name: "List No Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Filter Some Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       fmt.Sprintf(`"/item/attributes/subject_id"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject_id"]),
+			},
+			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+		},
+		{
+			name: "Filter All Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       `"/item/id"=="noaccountmatchesthis"`,
+			},
+			res: &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+			require.NoError(err, "Couldn't create new user service.")
+
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			} else {
+				require.NoError(gErr)
+			}
+			sort.Slice(got.Items, func(i, j int) bool {
+				return strings.Compare(got.Items[i].GetAttributes().GetFields()["subject_id"].GetStringValue(),
+					got.Items[j].GetAttributes().GetFields()["subject_id"].GetStringValue()) < 0
+			})
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -331,9 +544,16 @@ func TestDelete(t *testing.T) {
 			res: &pbs.DeleteAccountResponse{},
 		},
 		{
-			name: "Delete bad account id",
+			name: "Delete bad pw account id",
 			req: &pbs.DeleteAccountRequest{
 				Id: password.AccountPrefix + "_doesntexis",
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Delete bad oidc account id",
+			req: &pbs.DeleteAccountRequest{
+				Id: oidc.AccountPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -1628,6 +1848,18 @@ func TestSetPassword(t *testing.T) {
 			version:   0,
 			password:  "somepassword",
 		},
+		{
+			name:      "notfound account id",
+			accountId: password.AccountPrefix + "_DoesntExis",
+			version:   defaultAcct.GetVersion(),
+			password:  "anewpassword",
+		},
+		{
+			name:      "password to short",
+			accountId: defaultAcct.GetId(),
+			version:   defaultAcct.GetVersion(),
+			password:  "123",
+		},
 	}
 
 	for _, tt := range badRequestCases {
@@ -1776,6 +2008,22 @@ func TestChangePassword(t *testing.T) {
 			version:      defaultAcct.GetVersion(),
 			oldPW:        "somepassword",
 			newPW:        "somepassword",
+		},
+		{
+			name:         "notfound account id",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    password.AccountPrefix + "_DoesntExis",
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "new password to short",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "123",
 		},
 	}
 
