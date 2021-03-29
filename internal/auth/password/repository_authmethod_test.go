@@ -209,7 +209,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 				Name: "test-name-repo",
 			},
 		}
-		in2 := in.clone()
+		in2 := in.Clone()
 
 		in.ScopeId = org1.GetPublicId()
 		got, err := repo.CreateAuthMethod(context.Background(), in)

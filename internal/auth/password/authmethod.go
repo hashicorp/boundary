@@ -43,7 +43,8 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	return a, nil
 }
 
-func (a *AuthMethod) clone() *AuthMethod {
+// Clone simply clones the AuthMethod
+func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),
