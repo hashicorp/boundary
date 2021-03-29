@@ -18,6 +18,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -46,6 +47,56 @@ var (
 		action.Delete.String(),
 	}
 )
+
+func TestNewService(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+
+	cases := []struct{
+		name string
+		pwRepo common.PasswordAuthRepoFactory
+		oidcRepo common.OidcAuthRepoFactory
+		wantErr bool
+	} {
+		{
+			name: "nil-all",
+			wantErr: true,
+		},
+		{
+			name: "nil-pw-repo",
+			oidcRepo: oidcRepoFn,
+			wantErr: true,
+		},
+		{
+			name: "nil-oidc-repo",
+			pwRepo: pwRepoFn,
+			wantErr: true,
+		},
+		{
+			name: "success",
+			pwRepo: pwRepoFn,
+			oidcRepo: oidcRepoFn,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := accounts.NewService(tc.pwRepo, tc.oidcRepo)
+			if tc.wantErr{
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestGet(t *testing.T) {
 	ctx := context.Background()
