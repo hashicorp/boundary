@@ -715,13 +715,17 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			pwAttrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
+			attrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 		case auth.OidcSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
+			}
+			attrs := &pb.OidcAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerIdField) {
 				badFields[issuerIdField] = "Field is read only."
