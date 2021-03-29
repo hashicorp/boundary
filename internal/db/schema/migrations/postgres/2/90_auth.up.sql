@@ -39,9 +39,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if new.name != old.name then 
-    update auth_method set name = new.name;
-  end if;
+  update auth_method set name = new.name where public_id = new.public_id and new.name != name;
   return new;
 end;
 $$ language plpgsql;
