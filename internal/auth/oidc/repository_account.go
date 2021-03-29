@@ -38,6 +38,9 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.IssuerId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
 	}
+	if a.SubjectId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing subject id")
+	}
 	if a.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
 	}
