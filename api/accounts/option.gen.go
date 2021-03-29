@@ -96,6 +96,30 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithOidcAccountIssuerId(inIssuerId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer_id"] = inIssuerId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountIssuerId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer_id"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -152,6 +176,30 @@ func DefaultPasswordAccountPassword() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["password"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAccountSubjectId(inSubjectId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject_id"] = inSubjectId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountSubjectId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject_id"] = nil
 		o.postMap["attributes"] = val
 	}
 }

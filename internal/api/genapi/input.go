@@ -273,6 +273,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "PasswordAccount",
 	},
 	{
+		inProto:     &accounts.OidcAccountAttributes{},
+		outFile:     "accounts/oidc_account_attributes.gen.go",
+		subtypeName: "OidcAccount",
+	},
+	{
 		inProto: &accounts.Account{},
 		outFile: "accounts/account.gen.go",
 		templates: []*template.Template{
