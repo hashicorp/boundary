@@ -29,28 +29,28 @@ type extraOidcCmdVars struct {
 }
 
 const (
-	discoveryFlagName        = "discovery-url"
+	discoveryUrlFlagName     = "discovery-url"
 	clientIdFlagName         = "client-id"
 	clientSecretFlagName     = "client-secret"
 	maxAgeFlagName           = "max-age"
 	apiUrlPrefixFlagName     = "api-url-prefix"
 	signingAlgorithmFlagName = "signing-algorithm"
-	certificatesFlagName     = "certificates"
-	audiencesFlagName        = "allowed-audiences"
+	certificateFlagName      = "certificate"
+	allowedAudienceFlagName  = "allowed-audience"
 	stateFlagName            = "state"
 )
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 	flags := map[string][]string{
 		"create": {
-			discoveryFlagName,
+			discoveryUrlFlagName,
 			clientIdFlagName,
 			clientSecretFlagName,
 			maxAgeFlagName,
 			apiUrlPrefixFlagName,
 			signingAlgorithmFlagName,
-			certificatesFlagName,
-			audiencesFlagName,
+			certificateFlagName,
+			allowedAudienceFlagName,
 		},
 		"change-state": {
 			stateFlagName,
@@ -61,15 +61,15 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 }
 
 func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("Oidc Auth Method Options")
+	f = set.NewFlagSet("OIDC Auth Method Options")
 
 	for _, name := range flagsOidcMap[c.Func] {
 		switch name {
-		case discoveryFlagName:
+		case discoveryUrlFlagName:
 			f.StringVar(&base.StringVar{
-				Name:   discoveryFlagName,
+				Name:   discoveryUrlFlagName,
 				Target: &c.flagDiscoveryUrl,
-				Usage:  "The url to the provider's discovery config.",
+				Usage:  "The URL of the provider's discovery endpoint.",
 			})
 		case clientIdFlagName:
 			f.StringVar(&base.StringVar{
@@ -93,23 +93,23 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet)
 			f.StringVar(&base.StringVar{
 				Name:   apiUrlPrefixFlagName,
 				Target: &c.flagApiUrlPrefix,
-				Usage:  "The url prefixes used by the OIDC provider in the authentication flow.",
+				Usage:  "The URL prefix used by the OIDC provider in the authentication flow.",
 			})
 		case signingAlgorithmFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   signingAlgorithmFlagName,
 				Target: &c.flagSigningAlgorithms,
-				Usage:  "The signing algorithms allowed for an oidc auth method.",
+				Usage:  "The signing algorithms allowed for an OIDC auth method.",
 			})
-		case certificatesFlagName:
+		case certificateFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   certificatesFlagName,
+				Name:   certificateFlagName,
 				Target: &c.flagCertificates,
-				Usage:  "Optional PEM encoded x509 certificates that can be used as trust anchors when connecting to an OIDC provider.",
+				Usage:  "Optional PEM-encoded x509 certificates that can be used as trust anchors when connecting to an OIDC provider.",
 			})
-		case audiencesFlagName:
+		case allowedAudienceFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   audiencesFlagName,
+				Name:   allowedAudienceFlagName,
 				Target: &c.flagAllowedAudiences,
 				Usage:  "The audience claims for this auth method.",
 			})
@@ -184,9 +184,9 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	switch c.flagApiUrlPrefix {
 	case "":
 	case "null":
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodCallbackUrlPrefixes())
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodApiUrlPrefix())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodCallbackUrlPrefixes([]string{c.flagApiUrlPrefix}))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodApiUrlPrefix(c.flagApiUrlPrefix))
 	}
 	switch c.flagSigningAlgorithms {
 	case nil:
@@ -210,7 +210,7 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *OidcCommand, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "change-state":
 		return amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)

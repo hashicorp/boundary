@@ -238,7 +238,7 @@ type OidcAuthMethodAttributes struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Output only. Will be "inactive", "active-private", or "active-public"
+	// Output only. Will be "inactive", "active-private", or "active-public".
 	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty"`
 	// A URL where the OIDC provider's configuration can be retrieved. Boundary
 	// expects only the schema, host, and port and will strip off
@@ -248,28 +248,30 @@ type OidcAuthMethodAttributes struct {
 	ClientId *wrappers.StringValue `protobuf:"bytes,30,opt,name=client_id,proto3" json:"client_id,omitempty"`
 	// Input only. The client's secret.
 	ClientSecret *wrappers.StringValue `protobuf:"bytes,40,opt,name=client_secret,proto3" json:"client_secret,omitempty"`
-	// Output only. The hashed value of the clients secret to indicate whether the client secret has changed.
+	// Output only. The hashed value of the clients secret to indicate whether
+	// the client secret has changed.
 	ClientSecretHmac string `protobuf:"bytes,50,opt,name=client_secret_hmac,proto3" json:"client_secret_hmac,omitempty"`
-	// The elapsed time in seconds before the end user should be forced to re-authenticate. 0 is invalid, -1 indicates
-	// an immediate need to reauthenticate.
+	// The elapsed time in seconds before the end user should be forced to
+	// re-authenticate. 0 is invalid, -1 indicates an immediate need to
+	// reauthenticate.
 	MaxAge *wrappers.Int32Value `protobuf:"bytes,60,opt,name=max_age,proto3" json:"max_age,omitempty"`
-	// The signing algorithms allowed for an oidc auth method
+	// The signing algorithms allowed for the auth method.
 	SigningAlgorithms []string `protobuf:"bytes,70,rep,name=signing_algorithms,proto3" json:"signing_algorithms,omitempty"`
-	// The url prefixes used by the OIDC provider for call back url, the token
-	// retrieval url, and the final redirect url used in the authentication flow
-	// for this auth method.
+	// The prefix that should be used for any URLs needed during the
+	// authentication flow. This includes the callback URL, the token retrieval
+	// URL, and the redirection URL used by the OIDC Authorization Server.
 	ApiUrlPrefix *wrappers.StringValue `protobuf:"bytes,80,opt,name=api_url_prefix,proto3" json:"api_url_prefix,omitempty"`
-	// Output only. The callback url used by the OIDC provider in the authentication flow. This will have
-	// boundary's callback api path appended too them.
+	// Output only. The callback URL that should be configured for the OIDC
+	// provider to use during the authentication flow.
 	CallbackUrl string `protobuf:"bytes,90,opt,name=callback_url,proto3" json:"callback_url,omitempty"`
-	// certificates are optional PEM encoded x509 certificates that can be
-	// used as trust anchors when connecting to an OIDC provider.
+	// Optional PEM-encoded X.509 certificates that can be used as trust anchors
+	// when connecting to an OIDC provider.
 	Certificates []string `protobuf:"bytes,100,rep,name=certificates,proto3" json:"certificates,omitempty"`
-	// The audience claims for this oidc typed auth method.
+	// Allowed audience claims for this auth method..
 	AllowedAudiences []string `protobuf:"bytes,110,rep,name=allowed_audiences,proto3" json:"allowed_audiences,omitempty"`
-	// Input only. This is only valid in an update request and should not be used
-	// unless the oidc provider's config is incorrectly set and is stopping the
-	// activation of this auth method.
+	// Input only. This is only valid in an update request and should not be
+	// used unless the OIDC provider's config is incorrectly set and is stopping
+	// the activation of this auth method.
 	OverrideOidcDiscoveryUrlConfig bool `protobuf:"varint,120,opt,name=override_oidc_discovery_url_config,proto3" json:"override_oidc_discovery_url_config,omitempty"`
 }
 

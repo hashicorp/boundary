@@ -61,7 +61,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         auth.PasswordSubtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
-				Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"test": structpb.NewStringValue("something"),
 				}},
 			},
@@ -72,7 +72,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         auth.PasswordSubtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
-				Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					loginNameKey: structpb.NewStringValue("something"),
 				}},
 			},
@@ -103,7 +103,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: password.AccountPrefix + "_1234567890",
 				Item: &pb.Account{
-					Type:         auth.OidcSubtype.String(),
+					Type: auth.OidcSubtype.String(),
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
@@ -113,7 +113,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: oidc.AccountPrefix + "_1234567890",
 				Item: &pb.Account{
-					Type:         auth.PasswordSubtype.String(),
+					Type: auth.PasswordSubtype.String(),
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
@@ -145,10 +145,8 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "no error",
 			req: &pbs.UpdateAccountRequest{
-				Id: oidc.AccountPrefix + "_1234567890",
-				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{
-
-				}},
+				Id:         oidc.AccountPrefix + "_1234567890",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.Account{
 					Version: 1,
 				},
@@ -175,7 +173,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			nameClaimField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
-			Id: oidc.AccountPrefix + "1234567890",
+			Id:         oidc.AccountPrefix + "1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
 
