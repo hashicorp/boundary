@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -15,42 +16,79 @@ import (
 
 func Test_AuthMethodSubtypes(t *testing.T) {
 	t.Parallel()
-	t.Run("oidc", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		ctx := context.Background()
-		conn, _ := db.TestSetup(t, "postgres")
-		rw := db.New(conn)
-		rootWrapper := db.TestWrapper(t)
-		kmsCache := kms.TestKms(t, conn, rootWrapper)
-		iamRepo := iam.TestRepo(t, conn, rootWrapper)
-		org, _ := iam.TestScopes(t, iamRepo)
-		oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
-		require.NoError(err)
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
 
-		// test subtype insert
-		am, err := oidc.NewAuthMethod(org.PublicId, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido", oidc.WithName("alice"))
-		require.NoError(err)
-		newAm, err := oidcRepo.CreateAuthMethod(ctx, am)
-		require.NoError(err)
-		p, err := findParent(t, rw, am.PublicId)
-		require.NoError(err)
-		assert.Equal(newAm.Name, p.Name)
+	// test oidc subtype insert
+	oidcAm, err := oidc.NewAuthMethod(org.PublicId, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido", oidc.WithName("alice"))
+	require.NoError(err)
+	oidcAm, err = oidcRepo.CreateAuthMethod(ctx, oidcAm)
+	require.NoError(err)
+	oidcParent, err := findParent(t, rw, oidcAm.PublicId)
+	require.NoError(err)
+	assert.Equal(oidcAm.Name, oidcParent.Name)
 
-		// test subtype update
-		newAm.Name = "eve"
-		updated, _, err := oidcRepo.UpdateAuthMethod(ctx, newAm, newAm.Version, []string{"Name"})
-		require.NoError(err)
-		p, err = findParent(t, rw, updated.PublicId)
-		require.NoError(err)
-		assert.Equal(updated.Name, p.Name)
+	// test oidc subtype update
+	updatedOidc := oidcAm.Clone()
+	updatedOidc.Name = "eve's least favorite"
+	updatedOidc, _, err = oidcRepo.UpdateAuthMethod(ctx, oidcAm, oidcAm.Version, []string{"Name"})
+	require.NoError(err)
+	assert.Equal(updatedOidc.Name, oidcAm.Name)
+	oidcParent, err = findParent(t, rw, updatedOidc.PublicId)
+	require.NoError(err)
+	assert.Equal(updatedOidc.Name, oidcParent.Name)
 
-		// test subtype delete
-		_, err = oidcRepo.DeleteAuthMethod(ctx, updated.PublicId)
-		require.NoError(err)
-		p, err = findParent(t, rw, updated.PublicId)
-		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "expected error code %s and got error: %q", errors.RecordNotFound, err)
-		assert.Nil(p)
-	})
+	// test password subtype insert
+	pw, err := password.NewAuthMethod(org.PublicId, password.WithName("eve's favorite"))
+	require.NoError(err)
+	passRepo, err := password.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	pw, err = passRepo.CreateAuthMethod(ctx, pw)
+	require.NoError(err)
+	pwParent, err := findParent(t, rw, pw.PublicId)
+	require.NoError(err)
+	require.Equal(pwParent.PublicId, pw.PublicId)
+	assert.Equal("eve's favorite", pwParent.Name)
+
+	// test password subtype update
+	updatedPw := pw.Clone()
+	updatedPw.Name = "new name"
+	updatedPw, _, err = passRepo.UpdateAuthMethod(ctx, updatedPw, updatedPw.Version, []string{"Name"})
+	require.NoError(err)
+	pwParent, err = findParent(t, rw, updatedPw.PublicId)
+	require.NoError(err)
+	require.Equal(pwParent.PublicId, updatedPw.PublicId)
+	assert.Equal(updatedPw.Name, pwParent.Name)
+
+	// // test non-unique names across subtypes
+	notUnique := updatedPw.Clone()
+	notUnique.Name = updatedOidc.Name
+	_, _, err = passRepo.UpdateAuthMethod(ctx, notUnique, notUnique.Version, []string{"Name"})
+	require.Error(err)
+	assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "expected error code %s and got error: %q", errors.NotUnique, err)
+
+	// test password subtype delete
+	_, err = passRepo.DeleteAuthMethod(ctx, updatedPw.ScopeId, updatedPw.PublicId)
+	require.NoError(err)
+	pwParent, err = findParent(t, rw, updatedPw.PublicId)
+	require.Error(err)
+	assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "expected error code %s and got error: %q", errors.RecordNotFound, err)
+	assert.Nil(pwParent)
+
+	// test oidc subtype delete
+	_, err = oidcRepo.DeleteAuthMethod(ctx, updatedOidc.PublicId)
+	require.NoError(err)
+	oidcParent, err = findParent(t, rw, updatedOidc.PublicId)
+	assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "expected error code %s and got error: %q", errors.RecordNotFound, err)
+	assert.Nil(oidcParent)
 }
 
 type parent struct {
