@@ -171,7 +171,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(req.GetItem().GetAuthMethodId())]).Strings()
 	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("accounts/%s", u.GetId())}, nil
 }
 

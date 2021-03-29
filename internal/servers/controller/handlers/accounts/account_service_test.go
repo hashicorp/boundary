@@ -862,7 +862,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr("validaccount", ""),
+					Attributes:   createAttr("https://www.alice.com", "valid-account"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -874,8 +874,8 @@ func TestCreateOidc(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              auth.OidcSubtype.String(),
-					Attributes:        createAttr("validaccount", ""),
-					AuthorizedActions: pwAuthorizedActions,
+					Attributes:        createAttr("https://www.alice.com", "valid-account"),
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -884,7 +884,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Attributes:   createAttr("notypedefined", ""),
+					Attributes:   createAttr("https://www.alice.com", "no type defined"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -894,8 +894,8 @@ func TestCreateOidc(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              auth.OidcSubtype.String(),
-					Attributes:        createAttr("notypedefined", ""),
-					AuthorizedActions: pwAuthorizedActions,
+					Attributes:        createAttr("https://www.alice.com", "no type defined"),
+					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
 		},
@@ -980,7 +980,9 @@ func TestCreateOidc(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), oidc.AccountPrefix+"_"))
