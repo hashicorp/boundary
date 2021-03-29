@@ -1660,6 +1660,18 @@ func TestSetPassword(t *testing.T) {
 			version:   0,
 			password:  "somepassword",
 		},
+		{
+			name:         "notfound account id",
+			accountId:    password.AccountPrefix+ "_DoesntExis",
+			version:      defaultAcct.GetVersion(),
+			password:        "anewpassword",
+		},
+		{
+			name:         "password to short",
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			password:        "123",
+		},
 	}
 
 	for _, tt := range badRequestCases {
@@ -1808,6 +1820,22 @@ func TestChangePassword(t *testing.T) {
 			version:      defaultAcct.GetVersion(),
 			oldPW:        "somepassword",
 			newPW:        "somepassword",
+		},
+		{
+			name:         "notfound account id",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    password.AccountPrefix+ "_DoesntExis",
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "new password to short",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "123",
 		},
 	}
 
