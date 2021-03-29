@@ -178,8 +178,14 @@ func TestGet(t *testing.T) {
 			res:  &pbs.GetAccountResponse{Item: &oidcWireAccount},
 		},
 		{
-			name: "Get a non existing account",
+			name: "Get a non existing password account",
 			req:  &pbs.GetAccountRequest{Id: password.AccountPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Get a non existing oidc account",
+			req:  &pbs.GetAccountRequest{Id: oidc.AccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
