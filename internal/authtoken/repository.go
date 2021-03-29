@@ -415,3 +415,31 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 	}
 	return at, nil
 }
+
+// CloseExpiredPendingTokens will close expired pending tokens in the repo.
+// This function should called on a periodic basis a Controllers via it's
+// "ticker" pattern.
+func (r *Repository) CloseExpiredPendingTokens(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).CloseExpiredPendingTokens"
+
+	args := []interface{}{string(FailedStatus), string(PendingStatus)}
+	const sql = `update auth_token set status = ? where status = ? and now() > expiration_time`
+	var tokensClosed int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			var err error
+			tokensClosed, err = w.Exec(ctx, sql, args)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, err // error already wrapped when raised from r.DoTx(...)
+	}
+	return tokensClosed, nil
+}

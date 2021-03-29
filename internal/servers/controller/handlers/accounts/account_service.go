@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/auth/password/store"
+	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -19,17 +21,46 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const (
+	// general auth method field names
+	versionField      = "version"
+	authMethodIdField = "auth_method_id"
+	typeField         = "type"
+	attributesField   = "attributes"
+	filterField       = "filter"
+	idField           = "id"
+
+	// password field names
+	loginNameKey         = "login_name"
+	newPasswordField     = "new_password"
+	currentPasswordField = "current_password"
+
+	// oidc field names
+	issuerIdField   = "attributes.issuer_id"
+	subjectIdField  = "attributes.subject_id"
+	nameClaimField  = "attributes.full_name"
+	emailClaimField = "attributes.email"
+)
+
 var (
-	maskManager handlers.MaskManager
+	pwMaskManager   handlers.MaskManager
+	oidcMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
-		action.Read,
-		action.Update,
-		action.Delete,
-		action.SetPassword,
-		action.ChangePassword,
+	IdActions = map[auth.SubType]action.ActionSet{
+		auth.PasswordSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+			action.SetPassword,
+			action.ChangePassword,
+		},
+		auth.OidcSubtype: {
+			action.Read,
+			action.Update,
+			action.Delete,
+		},
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -42,7 +73,10 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(&pwstore.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
+		panic(err)
+	}
+	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.Account{}, &pb.Account{}, &pb.OidcAccountAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -51,15 +85,19 @@ func init() {
 type Service struct {
 	pbs.UnimplementedAccountServiceServer
 
-	repoFn common.PasswordAuthRepoFactory
+	pwRepoFn   common.PasswordAuthRepoFactory
+	oidcRepoFn common.OidcAuthRepoFactory
 }
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo common.PasswordAuthRepoFactory) (Service, error) {
-	if repo == nil {
+func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+	if pwRepo == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	if oidcRepo == nil {
+		return Service{}, fmt.Errorf("nil oidc repository provided")
+	}
+	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
 
 var _ pbs.AccountServiceServer = Service{}
@@ -89,7 +127,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	for _, item := range ul {
 		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
@@ -114,7 +152,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.GetAccountResponse{Item: u}, nil
 }
 
@@ -132,7 +170,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("accounts/%s", u.GetId())}, nil
 }
 
@@ -145,12 +183,12 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req)
 	if err != nil {
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.UpdateAccountResponse{Item: u}, nil
 }
 
@@ -184,7 +222,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.ChangePasswordResponse{Item: u}, nil
 }
 
@@ -202,26 +240,43 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
+	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
 	return &pbs.SetPasswordResponse{Item: u}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	u, err := repo.LookupAccount(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
+	var acct auth.Account
+	switch auth.SubtypeFromId(id) {
+	case auth.PasswordSubtype:
+		repo, err := s.pwRepoFn()
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
+		a, err := repo.LookupAccount(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
+			}
+			return nil, err
+		}
+		acct = a
+	case auth.OidcSubtype:
+		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		a, err := repo.LookupAccount(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
+			}
+			return nil, err
+		}
+		acct = a
+	default:
+		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	if u == nil {
-		return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
-	}
-	return toProto(u)
+	return toProto(acct)
 }
 
 func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
@@ -241,7 +296,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -260,34 +315,20 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
-	var opts []password.Option
-	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, password.WithDescription(desc.GetValue()))
-	}
-	if name := item.GetName(); name != nil {
-		opts = append(opts, password.WithName(name.GetValue()))
-	}
-	u, err := password.NewAccount(authMethId, opts...)
+func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
+	u, err := toStoragePwAccount(authMethId, item)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for update: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for update: %v.", err)
 	}
 	u.PublicId = id
 
-	pwAttrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
-	}
-	if pwAttrs.GetLoginName() != "" {
-		u.LoginName = pwAttrs.GetLoginName()
-	}
 	version := item.GetVersion()
 
-	dbMask := maskManager.Translate(mask)
+	dbMask := pwMaskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -303,15 +344,85 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
 	}
+	return out, nil
+}
+
+func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
+	const op = "account_service.(Service).updateOidcInRepo"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
+	}
+	u := oidc.AllocAccount()
+	u.PublicId = id
+	if item.GetName() != nil {
+		u.Name = item.GetName().GetValue()
+	}
+	if item.GetDescription() != nil {
+		u.Description = item.GetDescription().GetValue()
+	}
+
+	version := item.GetVersion()
+
+	dbMask := oidcMaskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
+	if err != nil {
+		return nil, fmt.Errorf("unable to update account: %w", err)
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (*pb.Account, error) {
+	var out auth.Account
+	switch auth.SubtypeFromId(req.GetId()) {
+	case auth.PasswordSubtype:
+		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		if err != nil {
+			return nil, err
+		}
+		if a == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
+		}
+		out = a
+	case auth.OidcSubtype:
+		a, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		if err != nil {
+			return nil, err
+		}
+		if a == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
+		}
+		out = a
+	}
 	return toProto(out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return false, err
+	var rows int
+	var err error
+	switch auth.SubtypeFromId(id) {
+	case auth.PasswordSubtype:
+		repo, iErr := s.pwRepoFn()
+		if iErr != nil {
+			return false, iErr
+		}
+		rows, err = repo.DeleteAccount(ctx, scopeId, id)
+	case auth.OidcSubtype:
+		repo, iErr := s.oidcRepoFn()
+		if iErr != nil {
+			return false, iErr
+		}
+		rows, err = repo.DeleteAccount(ctx, scopeId, id)
 	}
-	rows, err := repo.DeleteAccount(ctx, scopeId, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
@@ -322,27 +433,46 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 }
 
 func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListAccounts(ctx, authMethodId)
-	if err != nil {
-		return nil, err
-	}
 	var outUl []*pb.Account
-	for _, u := range ul {
-		ou, err := toProto(u)
+	switch auth.SubtypeFromId(authMethodId) {
+	case auth.PasswordSubtype:
+		pwRepo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, err
 		}
-		outUl = append(outUl, ou)
+		pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range pwl {
+			ou, err := toProto(u)
+			if err != nil {
+				return nil, err
+			}
+			outUl = append(outUl, ou)
+		}
+	case auth.OidcSubtype:
+		oidcRepo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range oidcl {
+			ou, err := toProto(u)
+			if err != nil {
+				return nil, err
+			}
+			outUl = append(outUl, ou)
+		}
 	}
 	return outUl, nil
 }
 
 func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +497,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 }
 
 func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
-	repo, err := s.repoFn()
+	repo, err := s.pwRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -385,55 +515,88 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 	return toProto(out)
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*password.AuthMethod, auth.VerifyResults) {
+func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
 	res := auth.VerifyResults{}
-	repo, err := s.repoFn()
+	pwRepo, err := s.pwRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		res.Error = err
 		return nil, res
 	}
 
 	var parentId string
-	var authMeth *password.AuthMethod
 	opts := []auth.Option{auth.WithType(resource.Account), auth.WithAction(a)}
 	switch a {
 	case action.List, action.Create:
 		parentId = id
 	default:
-		acct, err := repo.LookupAccount(ctx, id)
+		switch auth.SubtypeFromId(id) {
+		case auth.PasswordSubtype:
+			acct, err := pwRepo.LookupAccount(ctx, id)
+			if err != nil {
+				res.Error = err
+				return nil, res
+			}
+			if acct == nil {
+				res.Error = handlers.NotFoundError()
+				return nil, res
+			}
+			parentId = acct.GetAuthMethodId()
+		case auth.OidcSubtype:
+			acct, err := oidcRepo.LookupAccount(ctx, id)
+			if err != nil {
+				res.Error = err
+				return nil, res
+			}
+			if acct == nil {
+				res.Error = handlers.NotFoundError()
+				return nil, res
+			}
+			parentId = acct.GetAuthMethodId()
+		}
+		opts = append(opts, auth.WithId(id))
+	}
+
+	var authMeth auth.AuthMethod
+	switch auth.SubtypeFromId(parentId) {
+	case auth.PasswordSubtype:
+		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return nil, res
 		}
-		if acct == nil {
+		if am == nil {
 			res.Error = handlers.NotFoundError()
 			return nil, res
 		}
-		parentId = acct.GetAuthMethodId()
-		opts = append(opts, auth.WithId(id))
-	}
-
-	authMeth, err = repo.LookupAuthMethod(ctx, parentId)
-	if err != nil {
-		res.Error = err
-		return nil, res
-	}
-	if authMeth == nil {
-		res.Error = handlers.NotFoundError()
-		return nil, res
+		authMeth = am
+	case auth.OidcSubtype:
+		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if am == nil {
+			res.Error = handlers.NotFoundError()
+			return nil, res
+		}
+		authMeth = am
 	}
 	opts = append(opts, auth.WithScopeId(authMeth.GetScopeId()), auth.WithPin(parentId))
 	return authMeth, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *password.Account) (*pb.Account, error) {
+func toProto(in auth.Account) (*pb.Account, error) {
 	out := pb.Account{
 		Id:           in.GetPublicId(),
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
 		Version:      in.GetVersion(),
-		Type:         auth.PasswordSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -441,12 +604,58 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetLoginName()}); err == nil {
+	switch i := in.(type) {
+	case *password.Account:
+		out.Type = auth.PasswordSubtype.String()
+		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		}
 		out.Attributes = st
-	} else {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+	case *oidc.Account:
+		out.Type = auth.OidcSubtype.String()
+		attrs := &pb.OidcAccountAttributes{
+			IssuerId:  i.GetIssuerId(),
+			SubjectId: i.GetSubjectId(),
+			FullName:  i.GetFullName(),
+			Email:     i.GetEmail(),
+		}
+		st, err := handlers.ProtoToStruct(attrs)
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
+		}
+		out.Attributes = st
 	}
 	return &out, nil
+}
+
+func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
+	const op = "account_service.toStoragePwAccount"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
+	}
+	var opts []password.Option
+	if item.GetName() != nil {
+		opts = append(opts, password.WithName(item.GetName().GetValue()))
+	}
+	if item.GetDescription() != nil {
+		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
+	}
+	u, err := password.NewAccount(amId, opts...)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
+	}
+
+	attrs := &pb.PasswordAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
+	}
+
+	if attrs.GetLoginName() != "" {
+		u.LoginName = attrs.GetLoginName()
+	}
+	return u, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -455,62 +664,105 @@ func toProto(in *password.Account) (*pb.Account, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
+	const op = "account_service.validateGetRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
+	const op = "account_service.validateCreateRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if req.GetItem().GetAuthMethodId() == "" {
-			badFields["auth_method_id"] = "This field is required."
+			badFields[authMethodIdField] = "This field is required."
 		}
 		switch auth.SubtypeFromId(req.GetItem().GetAuthMethodId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
-				badFields["type"] = "Doesn't match the parent resource's type."
+				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			pwAttrs := &pb.PasswordAccountAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if pwAttrs.GetLoginName() == "" {
-				badFields["login_name"] = "This is a required field for this type."
+				badFields[loginNameKey] = "This is a required field for this type."
 			}
+		case auth.OidcSubtype:
+			// TODO: Enable creating accounts for this auth method type.
+			badFields[authMethodIdField] = "Unable to create accounts for this auth method type."
 		default:
-			badFields["auth_method_id"] = "Unknown auth method type from ID."
+			badFields[authMethodIdField] = "Unknown auth method type from ID."
 		}
 		return badFields
 	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
+	const op = "account_service.validateUpdateRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.PasswordSubtype.String() {
-				badFields["type"] = "Cannot modify the resource type."
+				badFields[typeField] = "Cannot modify the resource type."
 			}
-			pwAttrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), pwAttrs); err != nil {
-				badFields["attributes"] = "Attribute fields do not match the expected format."
+			attrs := &pb.PasswordAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[attributesField] = "Attribute fields do not match the expected format."
+			}
+		case auth.OidcSubtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
+				badFields[typeField] = "Cannot modify the resource type."
+			}
+			attrs := &pb.OidcAccountAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[attributesField] = "Attribute fields do not match the expected format."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerIdField) {
+				badFields[issuerIdField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectIdField) {
+				badFields[subjectIdField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
+				badFields[emailClaimField] = "Field is read only."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), nameClaimField) {
+				badFields[nameClaimField] = "Field is read only."
 			}
 		}
 		return badFields
-	}, password.AccountPrefix)
+	}, password.AccountPrefix, oidc.AccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix)
+	const op = "account_service.validateDeleteRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
+	const op = "account_service.validateListRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
-		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
+		badFields[filterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
@@ -519,18 +771,22 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 }
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
+	const op = "account_service.validateChangePasswordRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
-		badFields["id"] = "Improperly formatted identifier."
+		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
+		badFields[versionField] = "Existing resource version is required for an update."
 	}
 	if req.GetNewPassword() == "" {
-		badFields["new_password"] = "This is a required field."
+		badFields[newPasswordField] = "This is a required field."
 	}
 	if req.GetCurrentPassword() == "" {
-		badFields["current_password"] = "This is a required field."
+		badFields[currentPasswordField] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
@@ -539,12 +795,16 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 }
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
+	const op = "account_service.validateSetPasswordRequest"
+	if req == nil {
+		return errors.New(errors.InvalidParameter, op, "nil request")
+	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
-		badFields["id"] = "Improperly formatted identifier."
+		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
-		badFields["version"] = "Existing resource version is required for an update."
+		badFields[versionField] = "Existing resource version is required for an update."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)

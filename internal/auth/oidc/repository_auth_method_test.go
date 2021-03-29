@@ -312,17 +312,17 @@ func Test_upsertOplog(t *testing.T) {
 				}
 				if tt.acct != nil {
 					// check for create
-					err := db.TestVerifyOplog(t, rw, tt.acct.AuthMethodId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+					err := db.TestVerifyOplog(t, rw, tt.acct.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 					require.Errorf(err, "should not have found oplog entry for %s", tt.acct.AuthMethodId)
 
 					// check for update
-					err = db.TestVerifyOplog(t, rw, tt.acct.AuthMethodId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+					err = db.TestVerifyOplog(t, rw, tt.acct.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 					require.Errorf(err, "should not have found oplog entry for %s", tt.acct.AuthMethodId)
 				}
 				return
 			}
 			require.NoError(err)
-			err = db.TestVerifyOplog(t, rw, tt.acct.AuthMethodId, db.WithOperation(tt.op), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, tt.acct.PublicId, db.WithOperation(tt.op), db.WithCreateNotBefore(10*time.Second))
 			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 		})
 	}

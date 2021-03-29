@@ -143,7 +143,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			}
 			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
 			if result.Version == 1 && updatedAcct.PublicId == pubId {
-				if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, am.ScopeId, &updatedAcct, nil, nil); err != nil {
+				if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, am.ScopeId, updatedAcct, nil, nil); err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to write create oplog for account"))
 				}
 			} else {
@@ -156,7 +156,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 					if foundName != nil {
 						acctForOplog.FullName = foundName.(string)
 					}
-					if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, am.ScopeId, &acctForOplog, fieldMasks, nullMasks); err != nil {
+					if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, am.ScopeId, acctForOplog, fieldMasks, nullMasks); err != nil {
 						return errors.Wrap(err, op, errors.WithMsg("unable to write update oplog for account"))
 					}
 				}
@@ -167,7 +167,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return &updatedAcct, nil
+	return updatedAcct, nil
 }
 
 // upsertOplog will write oplog msgs for account upserts. The db.Writer needs to be the writer for the current
