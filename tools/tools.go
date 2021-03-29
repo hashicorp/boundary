@@ -16,7 +16,6 @@ package tools
 //go:generate go install mvdan.cc/gofumpt
 //go:generate go install github.com/bufbuild/buf/cmd/buf
 //go:generate go install github.com/favadi/protoc-go-inject-tag
-//go:generate go install github.com/go-swagger/go-swagger/cmd/swagger
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 //go:generate go install golang.org/x/tools/cmd/goimports
@@ -32,8 +31,6 @@ import (
 	_ "github.com/bufbuild/buf/cmd/buf"
 
 	_ "github.com/favadi/protoc-go-inject-tag"
-
-	_ "github.com/go-swagger/go-swagger/cmd/swagger"
 
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 
