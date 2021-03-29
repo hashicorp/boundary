@@ -11,7 +11,7 @@ alter table auth_method
 
 
 -- insert_auth_method_subtype() is a replacement of the function definition in
--- migraiton 07_auth.up.sql  This new defintion also inserts the sub type's name
+-- migration 07_auth.up.sql  This new defintion also inserts the sub type's name
 -- into the base type. The name column must be on the base type, so the database
 -- can ensure that auth method names are unique across all sub types.
 create or replace function
