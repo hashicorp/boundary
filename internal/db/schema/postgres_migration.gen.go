@@ -5825,13 +5825,13 @@ comment on function update_auth_method_subtype() is
 
 create trigger
   update_auth_method_subtype
-before insert on auth_oidc_method
+before update on auth_oidc_method
   for each row execute procedure update_auth_method_subtype();
 
 
 create trigger
   update_auth_method_subtype
-before insert on auth_password_method
+before update on auth_password_method
   for each row execute procedure update_auth_method_subtype();
 
 
