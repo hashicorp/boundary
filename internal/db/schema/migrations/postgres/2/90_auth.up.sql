@@ -27,7 +27,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function insert_auth_method_subtype() is
-'insert_auth_method_subtype() inserts sub type date into the base type auth method table';
+'insert_auth_method_subtype() inserts sub type name into the base type auth method table';
 
 -- update_auth_method_subtype() is a new function intended to be used in "before
 -- update" triggers for all auth method sub types.  It's purpose is to ensure
