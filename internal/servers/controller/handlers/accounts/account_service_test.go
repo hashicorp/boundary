@@ -61,36 +61,36 @@ func TestNewService(t *testing.T) {
 		return oidc.NewRepository(rw, rw, kmsCache)
 	}
 
-	cases := []struct{
-		name string
-		pwRepo common.PasswordAuthRepoFactory
+	cases := []struct {
+		name     string
+		pwRepo   common.PasswordAuthRepoFactory
 		oidcRepo common.OidcAuthRepoFactory
-		wantErr bool
-	} {
+		wantErr  bool
+	}{
 		{
-			name: "nil-all",
+			name:    "nil-all",
 			wantErr: true,
 		},
 		{
-			name: "nil-pw-repo",
+			name:     "nil-pw-repo",
 			oidcRepo: oidcRepoFn,
+			wantErr:  true,
+		},
+		{
+			name:    "nil-oidc-repo",
+			pwRepo:  pwRepoFn,
 			wantErr: true,
 		},
 		{
-			name: "nil-oidc-repo",
-			pwRepo: pwRepoFn,
-			wantErr: true,
-		},
-		{
-			name: "success",
-			pwRepo: pwRepoFn,
+			name:     "success",
+			pwRepo:   pwRepoFn,
 			oidcRepo: oidcRepoFn,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := accounts.NewService(tc.pwRepo, tc.oidcRepo)
-			if tc.wantErr{
+			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
@@ -374,15 +374,15 @@ func TestListOidc(t *testing.T) {
 		subId := fmt.Sprintf("test-subject%d", i)
 		aa := oidc.TestAccount(t, conn, amSomeAccounts, issuerId, subId)
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
-			Id:                aa.GetPublicId(),
-			AuthMethodId:      aa.GetAuthMethodId(),
-			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
-			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			Version:           1,
-			Type:              auth.OidcSubtype.String(),
-			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id": structpb.NewStringValue(issuerId.String()),
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id":  structpb.NewStringValue(issuerId.String()),
 				"subject_id": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -395,15 +395,15 @@ func TestListOidc(t *testing.T) {
 		subId := fmt.Sprintf("test-subject%d", i)
 		aa := oidc.TestAccount(t, conn, amOtherAccounts, issuerId, subId)
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
-			Id:                aa.GetPublicId(),
-			AuthMethodId:      aa.GetAuthMethodId(),
-			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
-			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			Version:           1,
-			Type:              auth.OidcSubtype.String(),
-			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id": structpb.NewStringValue(issuerId.String()),
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         auth.OidcSubtype.String(),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id":  structpb.NewStringValue(issuerId.String()),
 				"subject_id": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -1661,16 +1661,16 @@ func TestSetPassword(t *testing.T) {
 			password:  "somepassword",
 		},
 		{
-			name:         "notfound account id",
-			accountId:    password.AccountPrefix+ "_DoesntExis",
-			version:      defaultAcct.GetVersion(),
-			password:        "anewpassword",
+			name:      "notfound account id",
+			accountId: password.AccountPrefix + "_DoesntExis",
+			version:   defaultAcct.GetVersion(),
+			password:  "anewpassword",
 		},
 		{
-			name:         "password to short",
-			accountId:    defaultAcct.GetId(),
-			version:      defaultAcct.GetVersion(),
-			password:        "123",
+			name:      "password to short",
+			accountId: defaultAcct.GetId(),
+			version:   defaultAcct.GetVersion(),
+			password:  "123",
 		},
 	}
 
@@ -1824,7 +1824,7 @@ func TestChangePassword(t *testing.T) {
 		{
 			name:         "notfound account id",
 			authMethodId: defaultAcct.GetAuthMethodId(),
-			accountId:    password.AccountPrefix+ "_DoesntExis",
+			accountId:    password.AccountPrefix + "_DoesntExis",
 			version:      defaultAcct.GetVersion(),
 			oldPW:        "somepassword",
 			newPW:        "anewpassword",
