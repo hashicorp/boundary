@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -210,7 +211,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestListPassword(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -317,10 +318,165 @@ func TestList(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			} else {
 				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestListOidc(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	amNoAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.noAccounts.com")[0],
+		"noAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	amSomeAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.someAccounts.com")[0],
+		"someAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	amOtherAccounts := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		oidc.TestConvertToUrls(t, "https://www.otherAccounts.com")[0],
+		"otherAccounts", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
+	var wantSomeAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		issuerId := oidc.TestConvertToUrls(t, amSomeAccounts.DiscoveryUrl)[0]
+		subId := fmt.Sprintf("test-subject%d", i)
+		aa := oidc.TestAccount(t, conn, amSomeAccounts, issuerId, subId)
+		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
+			Id:                aa.GetPublicId(),
+			AuthMethodId:      aa.GetAuthMethodId(),
+			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:           1,
+			Type:              auth.OidcSubtype.String(),
+			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id": structpb.NewStringValue(issuerId.String()),
+				"subject_id": structpb.NewStringValue(subId),
+			}},
+			AuthorizedActions: oidcAuthorizedActions,
+		})
+	}
+
+	var wantOtherAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		issuerId := oidc.TestConvertToUrls(t, amOtherAccounts.DiscoveryUrl)[0]
+		subId := fmt.Sprintf("test-subject%d", i)
+		aa := oidc.TestAccount(t, conn, amOtherAccounts, issuerId, subId)
+		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
+			Id:                aa.GetPublicId(),
+			AuthMethodId:      aa.GetAuthMethodId(),
+			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:           1,
+			Type:              auth.OidcSubtype.String(),
+			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer_id": structpb.NewStringValue(issuerId.String()),
+				"subject_id": structpb.NewStringValue(subId),
+			}},
+			AuthorizedActions: oidcAuthorizedActions,
+		})
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.ListAccountsRequest
+		res  *pbs.ListAccountsResponse
+		err  error
+	}{
+		{
+			name: "List Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+		},
+		{
+			name: "List Other Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+		},
+		{
+			name: "List No Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Filter Some Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       fmt.Sprintf(`"/item/attributes/subject_id"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject_id"]),
+			},
+			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+		},
+		{
+			name: "Filter All Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       `"/item/id"=="noaccountmatchesthis"`,
+			},
+			res: &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+			require.NoError(err, "Couldn't create new user service.")
+
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			} else {
+				require.NoError(gErr)
+			}
+			sort.Slice(got.Items, func(i, j int) bool {
+				return strings.Compare(got.Items[i].GetAttributes().GetFields()["subject_id"].GetStringValue(),
+					got.Items[j].GetAttributes().GetFields()["subject_id"].GetStringValue()) < 0
+			})
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -382,9 +538,16 @@ func TestDelete(t *testing.T) {
 			res: &pbs.DeleteAccountResponse{},
 		},
 		{
-			name: "Delete bad account id",
+			name: "Delete bad pw account id",
 			req: &pbs.DeleteAccountRequest{
 				Id: password.AccountPrefix + "_doesntexis",
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Delete bad oidc account id",
+			req: &pbs.DeleteAccountRequest{
+				Id: oidc.AccountPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},

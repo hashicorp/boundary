@@ -433,36 +433,40 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 }
 
 func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
-	pwRepo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
-	if err != nil {
-		return nil, err
-	}
 	var outUl []*pb.Account
-	for _, u := range pwl {
-		ou, err := toProto(u)
+	switch auth.SubtypeFromId(authMethodId) {
+	case auth.PasswordSubtype:
+		pwRepo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, err
 		}
-		outUl = append(outUl, ou)
-	}
-	oidcRepo, err := s.oidcRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
-	if err != nil {
-		return nil, err
-	}
-	for _, u := range oidcl {
-		ou, err := toProto(u)
+		pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
 		if err != nil {
 			return nil, err
 		}
-		outUl = append(outUl, ou)
+		for _, u := range pwl {
+			ou, err := toProto(u)
+			if err != nil {
+				return nil, err
+			}
+			outUl = append(outUl, ou)
+		}
+	case auth.OidcSubtype:
+		oidcRepo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range oidcl {
+			ou, err := toProto(u)
+			if err != nil {
+				return nil, err
+			}
+			outUl = append(outUl, ou)
+		}
 	}
 	return outUl, nil
 }
@@ -750,7 +754,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
