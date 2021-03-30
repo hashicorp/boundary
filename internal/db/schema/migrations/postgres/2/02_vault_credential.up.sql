@@ -24,7 +24,7 @@ begin;
     tls_server_name text
       constraint tls_server_name_must_not_be_empty
         check(length(trim(tls_server_name)) > 0),
-    tls_skip_verify boolean not null,
+    tls_skip_verify boolean default false not null,
     constraint credential_store_fk
       foreign key (scope_id, public_id)
       references credential_store (scope_id, public_id)
@@ -55,6 +55,29 @@ begin;
   create trigger delete_credential_store_subtype after delete on credential_vault_store
     for each row execute procedure delete_credential_store_subtype();
 
+  create table credential_vault_token_status_enm (
+    name text primary key
+      constraint only_predefined_token_statuses_allowed
+      check (
+        name in (
+          'current',
+          'maintaining',
+          'revoked',
+          'expired'
+        )
+      )
+  );
+  comment on table credential_vault_token_status_enm is
+    'credential_vault_token_status_enm is an enumeration table for the status of vault tokens.'
+    'It contains rows for representing the current, maintaining, revoked, and expired statuses.';
+
+  insert into credential_vault_token_status_enm (name)
+  values
+    ('current'),
+    ('maintaining'),
+    ('revoked'),
+    ('expired');
+
   create table credential_vault_token (
     token_sha256 bytea primary key, -- sha256 hash
     token bytea not null, -- encrypted value
@@ -75,6 +98,11 @@ begin;
     key_id text not null
       constraint kms_database_key_version_fk
         references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade,
+    token_status text not null
+      constraint credential_vault_token_status_enm_fk
+        references credential_vault_token_status_enm (name)
         on delete restrict
         on update cascade
   );
@@ -173,6 +201,11 @@ begin;
     session_id wt_public_id not null
       constraint session_fk
         references session (public_id)
+        on delete cascade
+        on update cascade,
+    token_sha256 bytea not null
+      constraint credential_vault_token_fk
+        references credential_vault_token (token_sha256)
         on delete cascade
         on update cascade,
     create_time wt_timestamp,
