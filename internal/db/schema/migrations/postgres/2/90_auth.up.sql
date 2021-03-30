@@ -10,8 +10,18 @@ alter table auth_method
     unique (scope_id, name);
 
 
+-- the intent of this statement is to update the base type's name with the
+-- existing password auth method names.
+update auth_method 
+set name = pw.name
+from 
+  auth_password_method pw
+where 
+  auth_method.public_id = pw.public_id and
+  pw.name is not null;
+
 -- insert_auth_method_subtype() is a replacement of the function definition in
--- migraiton 07_auth.up.sql  This new defintion also inserts the sub type's name
+-- migration 07_auth.up.sql  This new definition also inserts the sub type's name
 -- into the base type. The name column must be on the base type, so the database
 -- can ensure that auth method names are unique across all sub types.
 create or replace function
@@ -27,7 +37,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function insert_auth_method_subtype() is
-'insert_auth_method_subtype() inserts sub type date into the base type auth method table';
+'insert_auth_method_subtype() inserts sub type name into the base type auth method table';
 
 -- update_auth_method_subtype() is a new function intended to be used in "before
 -- update" triggers for all auth method sub types.  It's purpose is to ensure

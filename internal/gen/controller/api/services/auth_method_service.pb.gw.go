@@ -305,13 +305,17 @@ func local_request_AuthMethodService_DeleteAuthMethod_0(ctx context.Context, mar
 
 }
 
-var (
-	filter_AuthMethodService_ChangeState_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_AuthMethodService_ChangeState_0(ctx context.Context, marshaler runtime.Marshaler, client AuthMethodServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ChangeStateRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -328,13 +332,6 @@ func request_AuthMethodService_ChangeState_0(ctx context.Context, marshaler runt
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_ChangeState_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.ChangeState(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -346,6 +343,14 @@ func local_request_AuthMethodService_ChangeState_0(ctx context.Context, marshale
 	var protoReq ChangeStateRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -361,13 +366,6 @@ func local_request_AuthMethodService_ChangeState_0(ctx context.Context, marshale
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthMethodService_ChangeState_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.ChangeState(ctx, &protoReq)
@@ -651,7 +649,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 
-		forward_AuthMethodService_ChangeState_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AuthMethodService_ChangeState_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -858,7 +856,7 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			return
 		}
 
-		forward_AuthMethodService_ChangeState_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AuthMethodService_ChangeState_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_ChangeState_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -929,6 +927,15 @@ type response_AuthMethodService_UpdateAuthMethod_0 struct {
 
 func (m response_AuthMethodService_UpdateAuthMethod_0) XXX_ResponseBody() interface{} {
 	response := m.Message.(*UpdateAuthMethodResponse)
+	return response.Item
+}
+
+type response_AuthMethodService_ChangeState_0 struct {
+	proto.Message
+}
+
+func (m response_AuthMethodService_ChangeState_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*ChangeStateResponse)
 	return response.Item
 }
 
