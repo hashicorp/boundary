@@ -1,7 +1,8 @@
 package authmethodscmd
 
 import (
-	"flag"
+	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -20,7 +21,7 @@ type extraOidcCmdVars struct {
 	flagIssuer                            string
 	flagClientId                          string
 	flagClientSecret                      string
-	flagMaxAgeSeconds                     uint
+	flagMaxAgeSeconds                     string
 	flagApiUrlPrefix                      string
 	flagSigningAlgorithms                 []string
 	flagCaCerts                           []string
@@ -86,7 +87,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Usage:  "The corresponding client secret.",
 			})
 		case maxAgeFlagName:
-			f.UintVar(&base.UintVar{
+			f.StringVar(&base.StringVar{
 				Name:   maxAgeFlagName,
 				Target: &c.flagMaxAgeSeconds,
 				Usage:  `The OIDC "max_age" parameter sent to the provider.`,
@@ -181,6 +182,18 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodClientSecret(c.flagClientSecret))
 	}
+	switch c.flagMaxAgeSeconds {
+	case "":
+	case "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodMaxAge())
+	default:
+		val, err := strconv.ParseUint(c.flagMaxAgeSeconds, 10, 32)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagMaxAgeSeconds, err))
+			return false
+		}
+		*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(uint32(val)))
+	}
 	switch c.flagSigningAlgorithms {
 	case nil:
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
@@ -209,14 +222,6 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	if c.flagDisableDiscoveredConfigValidation {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))
 	}
-
-	// Only add this if a value was actually set on the CLI, so we can
-	// disambiguate from a default of 0
-	f.Visit(func(fl *flag.Flag) {
-		if fl.Name == maxAgeFlagName {
-			*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(uint32(c.flagMaxAgeSeconds)))
-		}
-	})
 
 	return true
 }
