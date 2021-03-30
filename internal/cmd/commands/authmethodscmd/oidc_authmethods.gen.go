@@ -190,7 +190,7 @@ func (c *OidcCommand) Run(args []string) int {
 
 	}
 
-	if ok := extraOidcFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraOidcFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -247,7 +247,7 @@ var (
 	extraOidcActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraOidcSynopsisFunc        = func(*OidcCommand) string { return "" }
 	extraOidcFlagsFunc           = func(*OidcCommand, *base.FlagSets, *base.FlagSet) {}
-	extraOidcFlagsHandlingFunc   = func(*OidcCommand, *[]authmethods.Option) bool { return true }
+	extraOidcFlagsHandlingFunc   = func(*OidcCommand, *base.FlagSets, *[]authmethods.Option) bool { return true }
 	executeExtraOidcActions      = func(_ *OidcCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

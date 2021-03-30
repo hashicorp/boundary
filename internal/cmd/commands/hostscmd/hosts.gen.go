@@ -180,7 +180,7 @@ func (c *Command) Run(args []string) int {
 
 	var version uint32
 
-	if ok := extraFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -294,7 +294,7 @@ var (
 	extraActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
-	extraFlagsHandlingFunc   = func(*Command, *[]hosts.Option) bool { return true }
+	extraFlagsHandlingFunc   = func(*Command, *base.FlagSets, *[]hosts.Option) bool { return true }
 	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

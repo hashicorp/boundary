@@ -1,7 +1,7 @@
 package authmethodscmd
 
 import (
-	"fmt"
+	"flag"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -12,82 +12,90 @@ func init() {
 	extraOidcActionsFlagsMapFunc = extraOidcActionsFlagsMapFuncImpl
 	extraOidcFlagsFunc = extraOidcFlagsFuncImpl
 	extraOidcFlagsHandlingFunc = extraOidcFlagHandlingFuncImpl
-	executeExtraActions = executeExtraActionsImpl
+	executeExtraOidcActions = executeExtraOidcActionsImpl
 }
 
 type extraOidcCmdVars struct {
-	flagState                   string
-	flagDiscoveryUrl            string
-	flagClientId                string
-	flagClientSecret            string
-	flagMaxAgeSeconds           int
-	flagApiUrlPrefix            string
-	flagSigningAlgorithms       []string
-	flagCertificates            []string
-	flagAllowedAudiences        []string
-	flagOverrideDiscoveryConfig bool
+	flagState                             string
+	flagIssuer                            string
+	flagClientId                          string
+	flagClientSecret                      string
+	flagMaxAgeSeconds                     uint
+	flagApiUrlPrefix                      string
+	flagSigningAlgorithms                 []string
+	flagCaCerts                           []string
+	flagAllowedAudiences                  []string
+	flagDisableDiscoveredConfigValidation bool
 }
 
 const (
-	discoveryUrlFlagName     = "discovery-url"
-	clientIdFlagName         = "client-id"
-	clientSecretFlagName     = "client-secret"
-	maxAgeFlagName           = "max-age"
-	apiUrlPrefixFlagName     = "api-url-prefix"
-	signingAlgorithmFlagName = "signing-algorithm"
-	certificateFlagName      = "certificate"
-	allowedAudienceFlagName  = "allowed-audience"
-	stateFlagName            = "state"
+	issuerFlagName                            = "issuer"
+	clientIdFlagName                          = "client-id"
+	clientSecretFlagName                      = "client-secret"
+	maxAgeFlagName                            = "max-age"
+	signingAlgorithmFlagName                  = "signing-algorithm"
+	apiUrlPrefixFlagName                      = "api-url-prefix"
+	caCertFlagName                            = "ca-cert"
+	allowedAudienceFlagName                   = "allowed-audience"
+	stateFlagName                             = "state"
+	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
 )
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 	flags := map[string][]string{
 		"create": {
-			discoveryUrlFlagName,
+			issuerFlagName,
 			clientIdFlagName,
 			clientSecretFlagName,
 			maxAgeFlagName,
-			apiUrlPrefixFlagName,
 			signingAlgorithmFlagName,
-			certificateFlagName,
+			apiUrlPrefixFlagName,
+			caCertFlagName,
 			allowedAudienceFlagName,
 		},
 		"change-state": {
 			stateFlagName,
+			disableDiscoveredConfigValidationFlagName,
 		},
 	}
-	flags["update"] = flags["create"]
+	flags["update"] = append(flags["create"], disableDiscoveredConfigValidationFlagName)
 	return flags
 }
 
-func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet) {
-	f = set.NewFlagSet("OIDC Auth Method Options")
+func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet) {
+	f := set.NewFlagSet("OIDC Auth Method Options")
 
 	for _, name := range flagsOidcMap[c.Func] {
 		switch name {
-		case discoveryUrlFlagName:
+		case issuerFlagName:
 			f.StringVar(&base.StringVar{
-				Name:   discoveryUrlFlagName,
-				Target: &c.flagDiscoveryUrl,
-				Usage:  "The URL of the provider's discovery endpoint.",
+				Name:   issuerFlagName,
+				Target: &c.flagIssuer,
+				Usage:  "The provider's Issuer URL.",
 			})
 		case clientIdFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   clientIdFlagName,
 				Target: &c.flagClientId,
-				Usage:  "An OAuth 2.0 Client Identifier valid at the Authorization Server.",
+				Usage:  "The OAuth 2.0 Client Identifier this auth method should use with the provider.",
 			})
 		case clientSecretFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   clientSecretFlagName,
 				Target: &c.flagClientSecret,
-				Usage:  "The client secret.",
+				Usage:  "The corresponding client secret.",
 			})
 		case maxAgeFlagName:
-			f.IntVar(&base.IntVar{
+			f.UintVar(&base.UintVar{
 				Name:   maxAgeFlagName,
 				Target: &c.flagMaxAgeSeconds,
-				Usage:  "The elapsed time in seconds before the end user should be forced to re-authenticate.",
+				Usage:  `The OIDC "max_age" parameter sent to the provider.`,
+			})
+		case signingAlgorithmFlagName:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   signingAlgorithmFlagName,
+				Target: &c.flagSigningAlgorithms,
+				Usage:  "The allowed signing algorithm. May be specified multiple times for multiple values.",
 			})
 		case apiUrlPrefixFlagName:
 			f.StringVar(&base.StringVar{
@@ -95,29 +103,29 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet)
 				Target: &c.flagApiUrlPrefix,
 				Usage:  "The URL prefix used by the OIDC provider in the authentication flow.",
 			})
-		case signingAlgorithmFlagName:
+		case caCertFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   signingAlgorithmFlagName,
-				Target: &c.flagSigningAlgorithms,
-				Usage:  "The signing algorithms allowed for an OIDC auth method.",
-			})
-		case certificateFlagName:
-			f.StringSliceVar(&base.StringSliceVar{
-				Name:   certificateFlagName,
-				Target: &c.flagCertificates,
-				Usage:  "Optional PEM-encoded x509 certificates that can be used as trust anchors when connecting to an OIDC provider.",
+				Name:   caCertFlagName,
+				Target: &c.flagCaCerts,
+				Usage:  "Optional PEM-encoded X.509 CA certificate that can be used as trust anchors when connecting to an OIDC provider. May be specified multiple times.",
 			})
 		case allowedAudienceFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   allowedAudienceFlagName,
 				Target: &c.flagAllowedAudiences,
-				Usage:  "The audience claims for this auth method.",
+				Usage:  `The acceptable audience ("aud") claim. May be specified multiple times.`,
 			})
 		case stateFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   stateFlagName,
 				Target: &c.flagState,
-				Usage:  "The operational state of the auth method.",
+				Usage:  "The desired operational state of the auth method.",
+			})
+		case disableDiscoveredConfigValidationFlagName:
+			f.BoolVar(&base.BoolVar{
+				Name:   disableDiscoveredConfigValidationFlagName,
+				Target: &c.flagDisableDiscoveredConfigValidation,
+				Usage:  "Disable validating the given parameters against configuration from the authorization server's discovery URL. This must be specified every time there is an update or state change; not specifying it is equivalent to setting it to false.",
 			})
 		}
 	}
@@ -151,20 +159,13 @@ func (c *OidcCommand) extraOidcHelpFunc(helpMap map[string]func() string) string
 	return helpStr + c.Flags().Help()
 }
 
-func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) bool {
-	switch c.flagDiscoveryUrl {
+func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]authmethods.Option) bool {
+	switch c.flagIssuer {
 	case "":
 	case "null":
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodDiscoveryUrl())
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodIssuer())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodDiscoveryUrl(c.flagDiscoveryUrl))
-	}
-	switch c.flagClientSecret {
-	case "":
-	case "null":
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodClientSecret())
-	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodClientSecret(c.flagClientSecret))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodIssuer(c.flagIssuer))
 	}
 	switch c.flagClientId {
 	case "":
@@ -173,13 +174,18 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodClientId(c.flagClientId))
 	}
-	switch c.flagMaxAgeSeconds {
-	// TODO: Figure out the right data type for this flag.
-	case 0:
-		c.UI.Error(fmt.Sprintf("Error parsing %q: %s"))
-		return false
+	switch c.flagClientSecret {
+	case "":
+	case "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodClientSecret())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(int32(c.flagMaxAgeSeconds)))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodClientSecret(c.flagClientSecret))
+	}
+	switch c.flagSigningAlgorithms {
+	case nil:
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
 	}
 	switch c.flagApiUrlPrefix {
 	case "":
@@ -188,17 +194,11 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodApiUrlPrefix(c.flagApiUrlPrefix))
 	}
-	switch c.flagSigningAlgorithms {
+	switch c.flagCaCerts {
 	case nil:
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodCaCerts())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
-	}
-	switch c.flagCertificates {
-	case nil:
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodCertificates())
-	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodCertificates(c.flagCertificates))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodCaCerts(c.flagCaCerts))
 	}
 	switch c.flagAllowedAudiences {
 	case nil:
@@ -206,11 +206,22 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, opts *[]authmethods.Option) b
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAllowedAudiences(c.flagAllowedAudiences))
 	}
+	if c.flagDisableDiscoveredConfigValidation {
+		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))
+	}
+
+	// Only add this if a value was actually set on the CLI, so we can
+	// disambiguate from a default of 0
+	f.Visit(func(fl *flag.Flag) {
+		if fl.Name == maxAgeFlagName {
+			*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(uint32(c.flagMaxAgeSeconds)))
+		}
+	})
 
 	return true
 }
 
-func executeExtraActionsImpl(c *OidcCommand, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
+func executeExtraOidcActionsImpl(c *OidcCommand, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "change-state":
 		return amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
