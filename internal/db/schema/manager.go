@@ -154,7 +154,11 @@ func (b *Manager) RollForward(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 	defer func() {
-		b.driver.Unlock(ctx)
+		if err := b.driver.Unlock(ctx); err != nil {
+			// I'm not sure this is ideal, but we have to rollback the current
+			// transaction if we're unable to release the lock
+			panic(errors.Wrap(err, op))
+		}
 	}()
 
 	curVersion, _, dirty, err := b.driver.CurrentState(ctx)
@@ -221,9 +225,10 @@ type LogEntry struct {
 
 // GetMigrationLog will retrieve the migration logs from the db for the last
 // migration. Once it's read the entries, it will delete them from the database.
-func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
+//  The WithDeleteLog option is supported and will remove all log entries when provided.
+func GetMigrationLog(ctx context.Context, d *sql.DB, opt ...Option) ([]LogEntry, error) {
 	const op = "schema.GetMigrationLog"
-	const sql = "select id, create_time, migration_version, entry from log_migration"
+	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
 	if d == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
 	}
@@ -244,9 +249,13 @@ func GetMigrationLog(ctx context.Context, d *sql.DB) ([]LogEntry, error) {
 	if rows.Err() != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	_, err = d.ExecContext(ctx, "delete from log_migration")
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+	opts := getOpts(opt...)
+	if opts.withDeleteLog {
+		// this truncate could change to a delete if FKs are needed in the future
+		_, err = d.ExecContext(ctx, "truncate log_migration")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
 	}
 	return entries, nil
 }

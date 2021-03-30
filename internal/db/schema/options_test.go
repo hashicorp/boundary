@@ -19,4 +19,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withMigrationStates = oState
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithDeleteLog", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithDeleteLog(true))
+		testOpts := getDefaultOptions()
+		testOpts.withDeleteLog = true
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -53,8 +53,8 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, requireF
 		return unlock, 2
 	}
 	if requireFresh && st.InitializationStarted {
-		ui.Error(base.WrapAtLength("Database has already been initialized.  Please use 'boundary database migrate'."))
-		return unlock, 2
+		ui.Output(base.WrapAtLength("Database has already been initialized. Please use 'boundary database migrate' for any upgrade needs."))
+		return unlock, -1
 	}
 	if st.Dirty {
 		ui.Error(base.WrapAtLength("Database is in a bad state.  Please revert back to the last known good state."))

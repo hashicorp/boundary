@@ -46,3 +46,5 @@ create trigger
 before
 insert on log_migration
   for each row execute procedure log_migration_version();
+
+  commit;
