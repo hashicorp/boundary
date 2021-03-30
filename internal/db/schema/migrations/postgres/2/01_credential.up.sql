@@ -4,7 +4,7 @@ begin;
   create table credential_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint iam_scope_fk
+      constraint iam_scope_fkey
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
@@ -53,7 +53,7 @@ begin;
   create table credential_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
-      constraint credential_store_fk
+      constraint credential_store_fkey
         references credential_store (public_id)
         on delete cascade
         on update cascade,
@@ -132,12 +132,12 @@ begin;
   -- credential_static
   create table credential_static (
     public_id wt_public_id primary key
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     store_id wt_public_id not null
-      constraint credential_store_fk
+      constraint credential_store_fkey
         references credential_store (public_id)
         on delete cascade
         on update cascade,
@@ -186,12 +186,12 @@ begin;
   -- credential_dynamic
   create table credential_dynamic (
     public_id wt_public_id primary key
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     library_id wt_public_id not null
-      constraint credential_library_fk
+      constraint credential_library_fkey
         references credential_library (public_id)
         on delete cascade
         on update cascade,
