@@ -159,6 +159,8 @@ func backendErrorToApiError(inErr error) error {
 		}
 	case errors.Match(errors.T(errors.RecordNotFound), inErr):
 		return NotFoundErrorf(genericNotFoundMsg)
+	case errors.Match(errors.T(errors.AccountAlreadyAssociated), inErr):
+		return InvalidArgumentErrorf(inErr.Error(), nil)
 	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
 	case errors.IsUniqueError(inErr):
