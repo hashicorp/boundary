@@ -75,7 +75,7 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 	}
 }
 
-func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, opts *[]authmethods.Option) bool {
+func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, opts *[]authmethods.Option) bool {
 	var attributes map[string]interface{}
 	addAttribute := func(name string, value interface{}) {
 		if attributes == nil {
