@@ -119,11 +119,11 @@ message Account {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40;
+  string name = 40 [(custom_options.v1.mask_mapping) = {this:"Name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50;
+  string description = 50 [(custom_options.v1.mask_mapping) = {this:"Description" that: "description"}];
 
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 60;

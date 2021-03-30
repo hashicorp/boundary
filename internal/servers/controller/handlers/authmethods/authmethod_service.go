@@ -71,8 +71,6 @@ var (
 			action.Read,
 			action.Update,
 			action.Delete,
-			action.ChangePassword,
-			action.SetPassword,
 			action.Authenticate,
 		},
 		auth.OidcSubtype: {

@@ -36,7 +36,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	if m.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
-	m = m.clone()
+	m = m.Clone()
 
 	opts := getOpts(opt...)
 
@@ -81,7 +81,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to create argon conf"))
 			}
-			newAuthMethod = m.clone()
+			newAuthMethod = m.Clone()
 			if err := w.Create(ctx, newAuthMethod, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to create auth method"))
 			}
@@ -159,7 +159,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
-			dAc := am.clone()
+			dAc := am.Clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
 				return errors.Wrap(err, op)
@@ -232,7 +232,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	upAuthMethod := authMethod.clone()
+	upAuthMethod := authMethod.Clone()
 	var rowsUpdated int
 	_, err = r.writer.DoTx(
 		ctx,
