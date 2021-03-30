@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Server Configuration
-sidebar_title: Configuration
 description: Boundary configuration reference.
 ---
 
@@ -22,13 +21,13 @@ After the configuration is written, use the `-config` flag to specify a local pa
 ## Parameters
 
 - [`controller`](/docs/configuration/controller): Controller specific
-configuration. If present, `boundary server` will start a Controller subprocess.
+  configuration. If present, `boundary server` will start a Controller subprocess.
 
 - [`worker`](/docs/configuration/worker): Worker specific configuration. If
-present, `boundary server` will start a Worker subprocess.
+  present, `boundary server` will start a Worker subprocess.
 
 - [`listener`](/docs/configuration/listener): Configures the listeners on which
-Boundary serves traffic (API, cluster, and proxy).
+  Boundary serves traffic (API, cluster, and proxy).
 
   Controllers will have two listener blocks: one marked for `api` purpose and
   the other marked for `cluster` purpose. By default, the API listener runs on
@@ -38,7 +37,7 @@ Boundary serves traffic (API, cluster, and proxy).
   Workers will have only one listener, marked for `proxy` purpose.
 
 - [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
-purposes](/docs/concepts/security/data-encryption).
+  purposes](/docs/concepts/security/data-encryption).
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
   `mlock` syscall, which prevents memory from being swapped to disk. This is
