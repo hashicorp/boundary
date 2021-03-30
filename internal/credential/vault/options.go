@@ -14,16 +14,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
+	withName          string
+	withDescription   string
+	withLimit         int
+	withCACert        string
+	withNamespace     string
+	withTlsServerName string
+	withTlsSkipVerify bool
 }
 
 func getDefaultOptions() options {
-	return options{
-		withDescription: "",
-		withName:        "",
-	}
+	return options{}
 }
 
 // WithDescription provides an optional description.
@@ -46,5 +47,38 @@ func WithName(name string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithCACert provides an optional PEM-encoded certificate
+// to verify the Vault server's SSL certificate.
+func WithCACert(cert string) Option {
+	return func(o *options) {
+		o.withCACert = cert
+	}
+}
+
+// WithNamespace provides an optional Vault namespace.
+func WithNamespace(namespace string) Option {
+	return func(o *options) {
+		o.withNamespace = namespace
+	}
+}
+
+// WithTlsServerName provides an optional name to use as the SNI host when
+// connecting to Vault via TLS.
+func WithTlsServerName(name string) Option {
+	return func(o *options) {
+		o.withTlsServerName = name
+	}
+}
+
+// WithTlsSkipVerify provides an option to disable verification of TLS
+// certificates when connection to Vault. Using this option is highly
+// discouraged as it decreases the security of data transmissions to and
+// from the Vault server.
+func WithTlsSkipVerify(skipVerify bool) Option {
+	return func(o *options) {
+		o.withTlsSkipVerify = skipVerify
 	}
 }
