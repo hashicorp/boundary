@@ -82,3 +82,5 @@ func WithTlsSkipVerify(skipVerify bool) Option {
 		o.withTlsSkipVerify = skipVerify
 	}
 }
+
+// TODO(mgaffney) 03/2021: Add option for client certificate

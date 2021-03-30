@@ -15,9 +15,10 @@ type CredentialStore struct {
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
 // server at vaultAddress assigned to scopeId.
-// Name and description are the only valid options.
+// Name, description, CA cert, namespace, TLS server name, and TLS skip
+// verify are the only valid options.
 // All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, vaultToken string, opt ...Option) (*CredentialStore, error) {
 	const op = "vault.NewCredentialStore"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
@@ -25,6 +26,11 @@ func NewCredentialStore(scopeId string, vaultAddress string, opt ...Option) (*Cr
 	if vaultAddress == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault address")
 	}
+	if vaultToken == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
+	}
+
+	// TODO(mgaffney) 03/2021: handle vaultToken
 
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
@@ -33,7 +39,10 @@ func NewCredentialStore(scopeId string, vaultAddress string, opt ...Option) (*Cr
 			Name:          opts.withName,
 			Description:   opts.withDescription,
 			VaultAddress:  vaultAddress,
-			TlsSkipVerify: false,
+			CaCert:        opts.withCACert,
+			Namespace:     opts.withNamespace,
+			TlsServerName: opts.withTlsServerName,
+			TlsSkipVerify: opts.withTlsSkipVerify,
 		},
 	}
 	return cs, nil
