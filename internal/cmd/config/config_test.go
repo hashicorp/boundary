@@ -140,6 +140,31 @@ func TestDevWorker(t *testing.T) {
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 
+	// Handle when there is a singular value not indicated as a slice
+	devWorkerKeyValueConfig = `
+	listener "tcp" {
+		purpose = "proxy"
+	}
+
+	worker {
+		name = "dev-worker"
+		description = "A default worker created in dev mode"
+		controllers = ["127.0.0.1"]
+		tags {
+			type = "local"
+		}
+	}
+	`
+
+	actual, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.NoError(t, err)
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
+	prevTags := exp.Worker.Tags
+	exp.Worker.Tags = map[string][]string{"type": {"local"}}
+	assert.Equal(t, exp, actual)
+	exp.Worker.Tags = prevTags
+
 	// Redo it with non-lower-cased keys
 	devWorkerKeyValueConfig = `
 	listener "tcp" {
