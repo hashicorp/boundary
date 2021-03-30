@@ -2,22 +2,22 @@ begin;
 
   create table session_credential_library (
     session_id wt_public_id not null
-      constraint session_fk
+      constraint session_fkey
         references session (public_id)
         on delete cascade
         on update cascade,
     credential_id wt_public_id not null
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     credential_library_id wt_public_id not null
-      constraint credential_library_fk
+      constraint credential_library_fkey
         references credential_library (public_id)
         on delete cascade
         on update cascade,
     target_credential_purpose text not null
-      constraint target_credential_purpose_fk
+      constraint target_credential_purpose_fkey
         references target_credential_purpose_enm (name)
         on delete restrict
         on update cascade,
