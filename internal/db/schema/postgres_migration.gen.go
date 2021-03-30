@@ -4992,7 +4992,7 @@ before insert on kms_oidc_key_version
   create table credential_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint iam_scope_fk
+      constraint iam_scope_fkey
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
@@ -5041,7 +5041,7 @@ before insert on kms_oidc_key_version
   create table credential_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
-      constraint credential_store_fk
+      constraint credential_store_fkey
         references credential_store (public_id)
         on delete cascade
         on update cascade,
@@ -5120,12 +5120,12 @@ before insert on kms_oidc_key_version
   -- credential_static
   create table credential_static (
     public_id wt_public_id primary key
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     store_id wt_public_id not null
-      constraint credential_store_fk
+      constraint credential_store_fkey
         references credential_store (public_id)
         on delete cascade
         on update cascade,
@@ -5174,12 +5174,12 @@ before insert on kms_oidc_key_version
   -- credential_dynamic
   create table credential_dynamic (
     public_id wt_public_id primary key
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     library_id wt_public_id not null
-      constraint credential_library_fk
+      constraint credential_library_fkey
         references credential_library (public_id)
         on delete cascade
         on update cascade,
@@ -5229,7 +5229,7 @@ before insert on kms_oidc_key_version
 create table credential_vault_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
-      constraint iam_scope_fk
+      constraint iam_scope_fkey
         references iam_scope (public_id)
         on delete cascade
         on update cascade,
@@ -5250,8 +5250,8 @@ create table credential_vault_store (
     tls_server_name text
       constraint tls_server_name_must_not_be_empty
         check(length(trim(tls_server_name)) > 0),
-    tls_skip_verify boolean not null,
-    constraint credential_store_fk
+    tls_skip_verify boolean default false not null,
+    constraint credential_store_fkey
       foreign key (scope_id, public_id)
       references credential_store (scope_id, public_id)
       on delete cascade
@@ -5281,13 +5281,36 @@ create table credential_vault_store (
   create trigger delete_credential_store_subtype after delete on credential_vault_store
     for each row execute procedure delete_credential_store_subtype();
 
+  create table credential_vault_token_status_enm (
+    name text primary key
+      constraint only_predefined_token_statuses_allowed
+      check (
+        name in (
+          'current',
+          'maintaining',
+          'revoked',
+          'expired'
+        )
+      )
+  );
+  comment on table credential_vault_token_status_enm is
+    'credential_vault_token_status_enm is an enumeration table for the status of vault tokens.'
+    'It contains rows for representing the current, maintaining, revoked, and expired statuses.';
+
+  insert into credential_vault_token_status_enm (name)
+  values
+    ('current'),
+    ('maintaining'),
+    ('revoked'),
+    ('expired');
+
   create table credential_vault_token (
     token_sha256 bytea primary key, -- sha256 hash
     token bytea not null, -- encrypted value
     store_id wt_public_id not null
       constraint credential_vault_token_store_id_uq
         unique
-      constraint credential_vault_store_fk
+      constraint credential_vault_store_fkey
         references credential_vault_store (public_id)
         on delete cascade
         on update cascade,
@@ -5299,8 +5322,13 @@ create table credential_vault_store (
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
     key_id text not null
-      constraint kms_database_key_version_fk
+      constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
+        on delete restrict
+        on update cascade,
+    token_status text not null
+      constraint credential_vault_token_status_enm_fkey
+        references credential_vault_token_status_enm (name)
         on delete restrict
         on update cascade
   );
@@ -5321,7 +5349,7 @@ create table credential_vault_store (
 
   create table credential_vault_client_certificate (
     store_id wt_public_id primary key
-      constraint credential_vault_store_fk
+      constraint credential_vault_store_fkey
         references credential_vault_store (public_id)
         on delete cascade
         on update cascade,
@@ -5330,7 +5358,7 @@ create table credential_vault_store (
         check(length(trim(certificate)) > 0),
     certificate_key bytea not null, -- encrypted PEM encoded private key for certificate
     key_id text not null
-      constraint kms_database_key_version_fk
+      constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
         on delete restrict
         on update cascade
@@ -5345,7 +5373,7 @@ create table credential_vault_store (
   create table credential_vault_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
-      constraint credential_vault_store_fk
+      constraint credential_vault_store_fkey
         references credential_vault_store (public_id)
         on delete cascade
         on update cascade,
@@ -5359,7 +5387,7 @@ create table credential_vault_store (
         check(length(trim(vault_path)) > 0),
     constraint credential_vault_library_store_id_name_uq
       unique(store_id, name),
-    constraint credential_library_fk
+    constraint credential_library_fkey
       foreign key (store_id, public_id)
       references credential_library (store_id, public_id)
       on delete cascade
@@ -5392,13 +5420,18 @@ create table credential_vault_store (
   create table credential_vault_lease (
     public_id wt_public_id primary key,
     library_id wt_public_id not null
-      constraint credential_vault_library_fk
+      constraint credential_vault_library_fkey
         references credential_vault_library (public_id)
         on delete cascade
         on update cascade,
     session_id wt_public_id not null
-      constraint session_fk
+      constraint session_fkey
         references session (public_id)
+        on delete cascade
+        on update cascade,
+    token_sha256 bytea not null
+      constraint credential_vault_token_fkey
+        references credential_vault_token (token_sha256)
         on delete cascade
         on update cascade,
     create_time wt_timestamp,
@@ -5414,7 +5447,7 @@ create table credential_vault_store (
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
     is_renewable boolean not null,
-    constraint credential_dynamic_fk
+    constraint credential_dynamic_fkey
       foreign key (library_id, public_id)
       references credential_dynamic (library_id, public_id)
       on delete cascade
@@ -5473,17 +5506,17 @@ create table target_credential_purpose_enm (
 
   create table target_credential_library (
     target_id wt_public_id not null
-      constraint target_fk
+      constraint target_fkey
         references target (public_id)
         on delete cascade
         on update cascade,
     credential_library_id wt_public_id not null
-      constraint credential_library_fk
+      constraint credential_library_fkey
         references credential_library (public_id)
         on delete cascade
         on update cascade,
     target_credential_purpose text not null
-      constraint target_credential_purpose_fk
+      constraint target_credential_purpose_fkey
         references target_credential_purpose_enm (name)
         on delete restrict
         on update cascade,
@@ -5503,22 +5536,22 @@ create table target_credential_purpose_enm (
 			2004: []byte(`
 create table session_credential_library (
     session_id wt_public_id not null
-      constraint session_fk
+      constraint session_fkey
         references session (public_id)
         on delete cascade
         on update cascade,
     credential_id wt_public_id not null
-      constraint credential_fk
+      constraint credential_fkey
         references credential (public_id)
         on delete cascade
         on update cascade,
     credential_library_id wt_public_id not null
-      constraint credential_library_fk
+      constraint credential_library_fkey
         references credential_library (public_id)
         on delete cascade
         on update cascade,
     target_credential_purpose text not null
-      constraint target_credential_purpose_fk
+      constraint target_credential_purpose_fkey
         references target_credential_purpose_enm (name)
         on delete restrict
         on update cascade,
