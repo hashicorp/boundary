@@ -38,7 +38,7 @@ insert into job_run_status_enm (name)
     ('interrupted');
 
 create table job_run (
-     id bigint generated always as identity primary key,
+     private_id wt_private_id primary key,
      job_id wt_private_id not null
          constraint job_fkey
              references job(private_id)
@@ -84,4 +84,4 @@ create trigger default_create_time_column before insert on job_run
     for each row execute procedure default_create_time();
 
 create trigger immutable_columns before update on job_run
-    for each row execute procedure immutable_columns('id', 'job_id', 'create_time');
+    for each row execute procedure immutable_columns('private_id', 'job_id', 'create_time');
