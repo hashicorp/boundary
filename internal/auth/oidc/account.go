@@ -40,24 +40,21 @@ type Account struct {
 // value being unique
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
-func NewAccount(authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) (*Account, error) {
+func NewAccount(authMethodId string, subjectId string, opt ...Option) (*Account, error) {
 	const op = "oidc.NewAccount"
-
-	if issuerId == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
-	}
-
 	opts := getOpts(opt...)
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			IssuerId:     issuerId.String(),
 			SubjectId:    subjectId,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 			FullName:     opts.withFullName,
 			Email:        opts.withEmail,
 		},
+	}
+	if opts.withIssuer != nil {
+		a.IssuerId = opts.withIssuer.String()
 	}
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
@@ -74,10 +71,7 @@ func (a *Account) validate(caller errors.Op) error {
 	if a.SubjectId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing subject id")
 	}
-	if a.IssuerId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing issuer id")
-	}
-	if _, err := url.Parse(a.IssuerId); err != nil {
+	if _, err := url.Parse(a.IssuerId); a.IssuerId != "" && err != nil {
 		return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 	}
 	if a.Email != "" && len(a.Email) > 320 {

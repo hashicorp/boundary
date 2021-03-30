@@ -1101,8 +1101,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			orig := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], tt.name,
-				WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
+			orig := TestAccount(t, conn, am, tt.name, WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.chgFn != nil {
@@ -1210,8 +1209,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, ama, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1",
-			WithName("test-name-aa"))
+		aa := TestAccount(t, conn, ama, "create-success1", WithName("test-name-aa"))
 
 		amb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
@@ -1220,8 +1218,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		ab := TestAccount(t, conn, amb, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2",
-			WithName("test-name-ab"))
+		ab := TestAccount(t, conn, amb, "create-success2", WithName("test-name-ab"))
 
 		ab.Name = aa.Name
 		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})

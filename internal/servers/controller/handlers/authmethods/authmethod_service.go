@@ -978,9 +978,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			} else {
-				if attrs.GetDiscoveryUrl().GetValue() == "" {
-					badFields[discoveryUrlField] = "Field required for creating an OIDC auth method."
-				} else {
+				if attrs.GetDiscoveryUrl().GetValue() != "" {
 					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
 					if err != nil {
 						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
@@ -1064,9 +1062,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), discoveryUrlField) {
-				if attrs.GetDiscoveryUrl().GetValue() == "" {
-					badFields[discoveryUrlField] = "Field required and cannot be set to empty."
-				} else {
+				if attrs.GetDiscoveryUrl().GetValue() != "" {
 					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
 					if err != nil {
 						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
@@ -1116,7 +1112,6 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
 				}
 			}
-
 		default:
 			badFields["id"] = "Incorrectly formatted identifier."
 		}

@@ -30,7 +30,6 @@ func TestAccount_Create(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		issuerId     *url.URL
 		subjectId    string
 		opts         []Option
 	}
@@ -48,13 +47,12 @@ func TestAccount_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "alice",
 				opts:         []Option{WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "alice", WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -63,13 +61,12 @@ func TestAccount_Create(t *testing.T) {
 			name: "dup", // must follow "valid" test.
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "alice",
 				opts:         []Option{WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
-				want, err := NewAccount(testAuthMethod.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "alice", WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
+				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat"))
 				require.NoError(t, err)
 				return want
 			}(),
@@ -80,17 +77,6 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-auth-method",
 			args: args{
 				authMethodId: "",
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
-				subjectId:    "alice",
-			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
-		},
-		{
-			name: "empty-issuer",
-			args: args{
-				authMethodId: testAuthMethod.PublicId,
-				issuerId:     nil,
 				subjectId:    "alice",
 			},
 			wantErr:   true,
@@ -100,7 +86,6 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-subject",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "",
 			},
 			wantErr:   true,
@@ -110,7 +95,6 @@ func TestAccount_Create(t *testing.T) {
 			name: "email-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "alice",
 				opts:         []Option{WithEmail(strings.Repeat("a", 500) + "@alice.com")},
 			},
@@ -121,7 +105,6 @@ func TestAccount_Create(t *testing.T) {
 			name: "name-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     TestConvertToUrls(t, "https://alice.com")[0],
 				subjectId:    "alice",
 				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
 			},
@@ -132,9 +115,8 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-issuer-url",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				issuerId:     &url.URL{},
 				subjectId:    "alice",
-				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
+				opts:         []Option{WithIssuer(&url.URL{})},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -143,7 +125,7 @@ func TestAccount_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(tt.args.authMethodId, tt.args.issuerId, tt.args.subjectId, tt.args.opts...)
+			got, err := NewAccount(tt.args.authMethodId, tt.args.subjectId, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -153,7 +135,7 @@ func TestAccount_Create(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.create {
 				ctx := context.Background()
-				id, err := newAccountId(testAuthMethod.GetPublicId(), tt.args.issuerId.String(), tt.args.subjectId)
+				id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetDiscoveryUrl(), tt.args.subjectId)
 				require.NoError(err)
 				got.PublicId = id
 				err = rw.Create(ctx, got)
@@ -196,19 +178,17 @@ func TestAccount_Delete(t *testing.T) {
 			"alice_rp",
 			"my-dogs-name")
 
-	testResource := func(authMethodId string, issuer, subject string) *Account {
-		i, err := url.Parse(issuer)
+	testResource := func(authMethodId string, subject string) *Account {
+		a, err := NewAccount(authMethodId, subject)
 		require.NoError(t, err)
-		a, err := NewAccount(authMethodId, i, subject)
-		require.NoError(t, err)
-		id, err := newAccountId(testAuthMethod.GetPublicId(), issuer, subject)
+		id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetDiscoveryUrl(), subject)
 		require.NoError(t, err)
 		a.PublicId = id
 		return a
 	}
 
 	// seed an extra callback url to just make sure the delete only gets the right num of rows
-	seedAccount := testResource(testAuthMethod.PublicId, "http://alice.com", "jane")
+	seedAccount := testResource(testAuthMethod.PublicId, "jane")
 	require.NoError(t, rw.Create(context.Background(), &seedAccount))
 
 	tests := []struct {
@@ -221,13 +201,13 @@ func TestAccount_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			Account:         testResource(testAuthMethod.PublicId, "https://alice.com", "alice"),
+			Account:         testResource(testAuthMethod.PublicId, "alice"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name:            "bad-publicId",
-			Account:         testResource(testAuthMethod.PublicId, "https://alice.com", "bad-publicId"),
+			Account:         testResource(testAuthMethod.PublicId, "bad-publicId"),
 			overrides:       func(c *Account) { c.PublicId = "bad-id" },
 			wantErr:         false,
 			wantRowsDeleted: 0,
@@ -274,7 +254,7 @@ func TestAccount_Clone(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
-		orig, err := NewAccount(m.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
+		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
 		cp := orig.Clone()
 		assert.True(proto.Equal(cp.Account, orig.Account))
@@ -285,9 +265,9 @@ func TestAccount_Clone(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
-		orig, err := NewAccount(m.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
+		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
-		orig2, err := NewAccount(m.PublicId, TestConvertToUrls(t, "https://alice.com")[0], "bob", WithFullName("Bob Eve Smith"), WithEmail("bob@alice.com"))
+		orig2, err := NewAccount(m.PublicId, "bob", WithFullName("Bob Eve Smith"), WithEmail("bob@alice.com"))
 		require.NoError(err)
 
 		cp := orig.Clone()

@@ -330,11 +330,7 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
-	u, err := url.Parse(attrs.GetIssuerId())
-	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "can't parse issuer id")
-	}
-	a, err := oidc.NewAccount(authMethodId, u, attrs.GetSubjectId(), opts...)
+	a, err := oidc.NewAccount(authMethodId, attrs.GetSubjectId(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}

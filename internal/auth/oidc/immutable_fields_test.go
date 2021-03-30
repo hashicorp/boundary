@@ -440,7 +440,7 @@ func TestAccount_ImmutableFields(t *testing.T) {
 
 	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, u, "alice_rp", "my-dogs-name")
 
-	new := TestAccount(t, conn, am, u, "alice", WithName("Alice"), WithDescription("alice's account"), WithFullName("Alice Smith"), WithEmail("alice@alice.com"))
+	new := TestAccount(t, conn, am, "alice", WithName("Alice"), WithDescription("alice's account"), WithFullName("Alice Smith"), WithEmail("alice@alice.com"))
 
 	tests := []struct {
 		name      string

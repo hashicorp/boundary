@@ -1406,7 +1406,7 @@ func TestUpdateOidc(t *testing.T) {
 
 	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
 		t.Helper()
-		acc := oidc.TestAccount(t, conn, am, issuerId, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
+		acc := oidc.TestAccount(t, conn, am, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
 
 		clean := func() {
 			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),

@@ -144,6 +144,11 @@ create table auth_oidc_account (
     update_time wt_timestamp,
     version wt_version,
     issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
+    constraint auth_oidc_method_issuer_id_fkey
+        foreign key (scope_id, auth_method_id, issuer_id)
+            references auth_oidc_method (scope_id, public_id, discovery_url)
+            on delete no action
+            on update no action,
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
       constraint subject_id_must_not_be_empty 
       check (
@@ -362,6 +367,32 @@ create trigger
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_oidc_account_subtype();
 
+-- insert_auth_oidc_account_issuer is intended as a before insert
+-- trigger on auth_oidc_account. Its purpose is to add the auth
+-- method's discovery_url to the account's issuer_id.
+create or replace function
+    insert_auth_oidc_account_issuer()
+    returns trigger
+as $$
+begin
+    select auth_oidc_method.discovery_url
+    into new.issuer_id
+    from auth_oidc_method
+    where auth_oidc_method.public_id = new.auth_method_id;
+
+    if new.issuer_id == "" then
+        raise exception 'oidc account can only be created for oidc auth methods with a discovery_url set.';
+    end if;
+
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger
+    insert_auth_oidc_account_issuer
+    before insert on auth_oidc_account
+    for each row execute procedure insert_auth_oidc_account_issuer();
+
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
 -- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg
 
@@ -398,9 +429,9 @@ declare cb_cnt int;
     if am_state != inactive then
       case 
         when alg_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no signing algorithms'; 
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no signing algorithms';
         when cb_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no callback URLs';
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no callback URLs';
       end case;
     end if; 
   

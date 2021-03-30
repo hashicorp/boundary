@@ -88,7 +88,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if err != nil {
 		return nil, errors.New(errors.Unknown, op, "unable to parse issuer", errors.WithWrap(err))
 	}
-	acctForOplog, err := NewAccount(am.PublicId, issAsUrl, sub)
+	acctForOplog, err := NewAccount(am.PublicId, sub, WithIssuer(issAsUrl))
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}
