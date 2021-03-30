@@ -203,7 +203,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Option) bool {
 	// This is custom logic because of the authorized-session handling. If we
 	// support all resources to be looked up by name + scope info we can
 	// eventually graduate this out to the main template.
