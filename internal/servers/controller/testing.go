@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -128,7 +129,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
 		"login",
@@ -141,7 +142,12 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
-	return token.Item
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
@@ -149,7 +155,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
 		tc.b.DevAuthMethodId,
 		"login",
@@ -162,7 +168,12 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
-	return token.Item
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) addrs(purpose string) []string {

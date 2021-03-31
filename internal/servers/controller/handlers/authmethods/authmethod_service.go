@@ -37,6 +37,7 @@ const (
 	scopeIdField    = "scope_id"
 	typeField       = "type"
 	attributesField = "attributes"
+	tokenTypeField  = "token_type"
 )
 
 var (
@@ -295,7 +296,13 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 			Type:    resource.AuthToken,
 		}
 		tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
-		return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+		attrs, err := handlers.ProtoToStruct(tok)
+		if err != nil {
+			return nil, err
+		}
+		attrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
+		return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: attrs}, nil
+
 	case auth.OidcSubtype:
 		return &pbs.AuthenticateResponse{}, nil
 	}
@@ -934,7 +941,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		}
 		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 		if tType != "" && tType != "token" && tType != "cookie" {
-			badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 		}
 
 	case auth.OidcSubtype:
@@ -976,7 +983,7 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)

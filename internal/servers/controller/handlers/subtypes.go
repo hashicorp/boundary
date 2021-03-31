@@ -6,12 +6,18 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func StructToProto(fields *structpb.Struct, p proto.Message) error {
+func StructToProto(fields *structpb.Struct, p proto.Message, opt ...Option) error {
 	js, err := fields.MarshalJSON()
 	if err != nil {
 		return err
 	}
-	if err := protojson.Unmarshal(js, p); err != nil {
+	opts := getOpts(opt...)
+	if opts.withDiscardUnknownFields {
+		err = (protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(js, p))
+	} else {
+		err = protojson.Unmarshal(js, p)
+	}
+	if err != nil {
 		return err
 	}
 	return nil

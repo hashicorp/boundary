@@ -672,7 +672,7 @@ func RegisterAuthMethodServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 
-		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -876,7 +876,7 @@ func RegisterAuthMethodServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			return
 		}
 
-		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_AuthMethodService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AuthMethodService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -936,15 +936,6 @@ type response_AuthMethodService_ChangeState_0 struct {
 
 func (m response_AuthMethodService_ChangeState_0) XXX_ResponseBody() interface{} {
 	response := m.Message.(*ChangeStateResponse)
-	return response.Item
-}
-
-type response_AuthMethodService_Authenticate_0 struct {
-	proto.Message
-}
-
-func (m response_AuthMethodService_Authenticate_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AuthenticateResponse)
 	return response.Item
 }
 
