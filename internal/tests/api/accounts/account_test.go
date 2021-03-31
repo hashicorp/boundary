@@ -102,7 +102,6 @@ func TestListOidc(t *testing.T) {
 	}})
 
 	cr, err := accountClient.Create(tc.Context(), am.Id,
-		accounts.WithOidcAccountIssuer(expected[0].Attributes[issuerKey].(string)),
 		accounts.WithOidcAccountSubject("subject0"))
 	require.NoError(err)
 	expected[0] = cr.Item
@@ -113,7 +112,6 @@ func TestListOidc(t *testing.T) {
 
 	for i := 1; i < 10; i++ {
 		newAcctResult, err := accountClient.Create(tc.Context(), am.Id,
-			accounts.WithOidcAccountIssuer(expected[0].Attributes[issuerKey].(string)),
 			accounts.WithOidcAccountSubject(fmt.Sprintf("subject-%d", i)))
 		require.NoError(err)
 		expected = append(expected, newAcctResult.Item)
@@ -124,7 +122,7 @@ func TestListOidc(t *testing.T) {
 
 	filterItem := expected[3]
 	ulResult, err = accountClient.List(tc.Context(), am.Id,
-		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/subject_id"==%q`, filterItem.Attributes["subject_id"])))
+		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/subject"==%q`, filterItem.Attributes["subject"])))
 	require.NoError(err)
 	assert.Len(ulResult.Items, 1)
 	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
@@ -216,7 +214,6 @@ func TestCrudOidc(t *testing.T) {
 	}
 
 	u, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"),
-		accounts.WithOidcAccountIssuer("https://www.issuer.com"),
 		accounts.WithOidcAccountSubject("subject"))
 	checkAccount("create", u.Item, err, "foo", 1)
 
@@ -345,7 +342,6 @@ func TestErrorsOidc(t *testing.T) {
 	accountClient := accounts.NewClient(client)
 
 	u, err := accountClient.Create(tc.Context(), amId,
-		accounts.WithOidcAccountIssuer("https://issuer.com"),
 		accounts.WithOidcAccountSubject("subject1"))
 	require.NoError(err)
 	assert.NotNil(u)
@@ -359,7 +355,6 @@ func TestErrorsOidc(t *testing.T) {
 
 	// Create another resource with the same name.
 	_, err = accountClient.Create(tc.Context(), amId,
-		accounts.WithOidcAccountIssuer("https://issuer.com"),
 		accounts.WithOidcAccountSubject("subject1"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)

@@ -3,7 +3,6 @@ package accounts
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -771,16 +770,11 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-			if attrs.GetIssuer() == "" {
-				badFields[issuerField] = "This is a required field for this type."
-			} else {
-				_, err := url.Parse(attrs.GetIssuer())
-				if err != nil {
-					badFields[issuerField] = fmt.Sprintf("Could not parse %q as a url.", attrs.GetIssuer())
-				}
-			}
 			if attrs.GetSubject() == "" {
 				badFields[subjectField] = "This is a required field for this type."
+			}
+			if attrs.GetIssuer() != "" {
+				badFields[issuerField] = "This is a read only field."
 			}
 			if attrs.GetFullName() != "" {
 				badFields[nameClaimField] = "This is a read only field."
@@ -819,11 +813,11 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				badFields[issuerField] = "Field cannot be updated."
-			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
 				badFields[subjectField] = "Field cannot be updated."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
+				badFields[issuerField] = "Field is read only."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
 				badFields[emailClaimField] = "Field is read only."

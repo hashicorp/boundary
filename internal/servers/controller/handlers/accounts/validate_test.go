@@ -54,22 +54,8 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.Account{
 				Type:         auth.OidcSubtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer_id": structpb.NewStringValue("https://www.alice.com"),
-				}},
 			},
 			errContains: fieldError(subjectField, "This is a required field for this type."),
-		},
-		{
-			name: "missing oidc issuer id",
-			item: &pb.Account{
-				Type:         auth.OidcSubtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"subject_id": structpb.NewStringValue("something"),
-				}},
-			},
-			errContains: fieldError(issuerField, "This is a required field for this type."),
 		},
 		{
 			name: "read only name claim field",
@@ -130,6 +116,16 @@ func TestValidateCreateRequest(t *testing.T) {
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					loginNameKey: structpb.NewStringValue("something"),
+				}},
+			},
+		},
+		{
+			name: "no oidc errors",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"subject": structpb.NewStringValue("no oidc errors"),
 				}},
 			},
 		},
@@ -223,6 +219,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc read only fields", func(t *testing.T) {
 		readOnlyFields := []string{
+			issuerField,
 			emailClaimField,
 			nameClaimField,
 		}
@@ -240,7 +237,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc write only at create fields", func(t *testing.T) {
 		readOnlyFields := []string{
-			issuerField,
 			subjectField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{

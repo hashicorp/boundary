@@ -57,7 +57,7 @@ message PasswordAccountAttributes {
 
 message OidcAccountAttributes {
 	// Output only. issuer_id is a case sensitive URL that maps to the OIDC iss claim
-	string issuer = 80 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true];
+	string issuer = 80 [json_name="issuer"];
 
 	// Output only. subject_id is a case sensitive string that maps to the OIDC sub claim.
 	string subject = 90 [json_name="subject", (custom_options.v1.generate_sdk_option) = true];

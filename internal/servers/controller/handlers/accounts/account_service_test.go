@@ -837,8 +837,8 @@ func TestCreateOidc(t *testing.T) {
 		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	createAttr := func(iid, sid string) *structpb.Struct {
-		attr := &pb.OidcAccountAttributes{Issuer: iid, Subject: sid}
+	createAttr := func(sid string) *structpb.Struct {
+		attr := &pb.OidcAccountAttributes{Subject: sid}
 		ret, err := handlers.ProtoToStruct(attr)
 		require.NoError(t, err, "Error converting proto to struct.")
 		return ret
@@ -858,7 +858,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr("https://www.alice.com", "valid-account"),
+					Attributes:   createAttr("valid-account"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -870,7 +870,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              auth.OidcSubtype.String(),
-					Attributes:        createAttr("https://www.alice.com", "valid-account"),
+					Attributes:        func() *structpb.Struct {
+						a := createAttr("valid-account")
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -880,7 +884,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Attributes:   createAttr("https://www.alice.com", "no type defined"),
+					Attributes:   createAttr("no type defined"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -890,7 +894,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:           1,
 					Type:              auth.OidcSubtype.String(),
-					Attributes:        createAttr("https://www.alice.com", "no type defined"),
+					Attributes:        func() *structpb.Struct {
+						a := createAttr("no type defined")
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -901,7 +909,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Type:         auth.PasswordSubtype.String(),
-					Attributes:   createAttr("mismatchedtype", ""),
+					Attributes:   createAttr( ""),
 				},
 			},
 			res: nil,
@@ -914,7 +922,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Id:           oidc.AccountPrefix + "_notallowed",
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr("cantprovideid", ""),
+					Attributes:   createAttr(""),
 				},
 			},
 			res: nil,
@@ -927,7 +935,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr("nocreatedtime", ""),
+					Attributes:   createAttr(""),
 				},
 			},
 			res: nil,
@@ -940,7 +948,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr("noupdatetime", ""),
+					Attributes:   createAttr(""),
 				},
 			},
 			res: nil,
