@@ -323,6 +323,16 @@ func TestAuthMethod_Clone(t *testing.T) {
 		cp := m.Clone()
 		assert.True(!proto.Equal(cp.AuthMethod, m2.AuthMethod))
 	})
+	t.Run("clone-problem", func(t *testing.T) {
+		assert := assert.New(t)
+		am := &store.AuthMethod{
+			DisableDiscoveredConfigValidation: true,
+		}
+		cp := proto.Clone(am)
+		assert.NotEqual(am.DisableDiscoveredConfigValidation, cp.(*store.AuthMethod).DisableDiscoveredConfigValidation)
+		assert.Equal(true, am.DisableDiscoveredConfigValidation)
+		assert.Equal(false, cp.(*store.AuthMethod).DisableDiscoveredConfigValidation)
+	})
 }
 
 func TestAuthMethod_SetTableName(t *testing.T) {
