@@ -651,7 +651,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != "" && acct.IamUserId != userId {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is already associated with another user", accountId))
+			return errors.New(errors.AccountAlreadyAssociated, op, fmt.Sprintf("%s account is already associated with another user", accountId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
@@ -677,7 +677,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to associate %s account", aa.PublicId)))
 		}
 		if updatedRows == 0 {
-			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to associate %s account: it is already associated with another user", aa.PublicId))
+			return errors.New(errors.AccountAlreadyAssociated, op, fmt.Sprintf("failed to associate %s account: it is already associated with another user", aa.PublicId))
 		}
 		if updatedRows > 1 {
 			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to associate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows))
@@ -715,7 +715,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
 		if acct.IamUserId != userId {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s account is not associated with user %s", accountId, userId))
+			return errors.New(errors.AccountAlreadyAssociated, op, fmt.Sprintf("%s account is not associated with user %s", accountId, userId))
 		}
 		authAccounts = append(authAccounts, &acct)
 	}
@@ -741,7 +741,7 @@ func dissociateUserFromAccounts(ctx context.Context, repoKms *kms.Kms, reader db
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to disassociate %s account", aa.PublicId)))
 		}
 		if updatedRows == 0 {
-			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to disassociate %s account: it is already associated with another user", aa.PublicId))
+			return errors.New(errors.AccountAlreadyAssociated, op, fmt.Sprintf("failed to disassociate %s account: it is already associated with another user", aa.PublicId))
 		}
 		if updatedRows > 1 {
 			return errors.New(errors.MultipleRecords, op, fmt.Sprintf("failed to disassociate %s account: would have updated too many accounts %d", aa.PublicId, updatedRows))

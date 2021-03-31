@@ -72,6 +72,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	AccountAlreadyAssociated: {
+		Message: "account already associated with another user",
+		Kind:    Parameter,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,

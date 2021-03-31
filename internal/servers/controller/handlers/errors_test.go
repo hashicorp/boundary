@@ -185,6 +185,17 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "Domain error account already associated",
+			err:  errors.E(errors.WithCode(errors.AccountAlreadyAssociated)),
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: "account already associated with another user, parameter violation: error #114",
+				},
+			},
+		},
+		{
 			name: "Wrapped domain error",
 			err:  errors.E(errors.WithCode(errors.InvalidAddress), errors.WithMsg("test msg"), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull), errors.WithMsg("inner msg")))),
 			expected: apiError{
