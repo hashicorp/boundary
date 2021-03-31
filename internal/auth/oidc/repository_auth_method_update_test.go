@@ -130,6 +130,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.CallbackUrls = updateWith.CallbackUrls
 				am.SigningAlgs = updateWith.SigningAlgs
 				am.Certificates = updateWith.Certificates
+				am.DisableDiscoveredConfigValidation = true
 				return am
 			},
 		},
@@ -538,6 +539,70 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_DisableDiscoveredConfigValidation(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	tp := oidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+	tpCert, err := ParseCertificates(tp.CACert())
+	require.NoError(err)
+	require.Equal(1, len(tpCert))
+
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(err)
+	am := TestAuthMethod(t,
+		conn, databaseWrapper,
+		org.PublicId,
+		InactiveState,
+		TestConvertToUrls(t, tp.Addr())[0],
+		"alice-rp", "alice-secret",
+		WithAudClaims("www.alice.com"),
+		WithCertificates(tpCert[0]),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
+	updateWith := am.Clone()
+	updateWith.Name = "alice's restaurant"
+	updatedWithForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updateWith, updateWith.Version, []string{"Name"}, WithForce())
+	require.NoError(err)
+	assert.Equal(1, rowsUpdated)
+	assert.Equal(true, updatedWithForce.DisableDiscoveredConfigValidation)
+
+	updateWith.Name = "alice and eve's restaurant"
+	updatedWithoutForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updatedWithForce, updatedWithForce.Version, []string{"Name"})
+	require.NoError(err)
+	assert.Equal(1, rowsUpdated)
+	assert.Equal(false, updatedWithoutForce.DisableDiscoveredConfigValidation)
+
+	privWithForce, err := repo.MakePrivate(ctx, updatedWithForce.PublicId, updatedWithoutForce.Version, WithForce())
+	require.NoError(err)
+	assert.Equal(true, privWithForce.DisableDiscoveredConfigValidation)
+
+	privWithoutForce, err := repo.MakePrivate(ctx, privWithForce.PublicId, privWithForce.Version)
+	require.NoError(err)
+	assert.Equal(false, privWithoutForce.DisableDiscoveredConfigValidation)
+
+	pubWithForce, err := repo.MakePublic(ctx, privWithoutForce.PublicId, privWithoutForce.Version, WithForce())
+	require.NoError(err)
+	assert.Equal(true, pubWithForce.DisableDiscoveredConfigValidation)
+	pubWithoutForce, err := repo.MakePrivate(ctx, pubWithForce.PublicId, pubWithForce.Version)
+	require.NoError(err)
+	assert.Equal(false, pubWithoutForce.DisableDiscoveredConfigValidation)
 }
 
 func Test_ValidateDiscoveryInfo(t *testing.T) {

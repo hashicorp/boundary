@@ -189,6 +189,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
+
+	// we always set this to the current value of opts.withForce
+	am.DisableDiscoveredConfigValidation = opts.withForce
+
 	var updatedAm *AuthMethod
 	var rowsUpdated int
 	_, err = r.writer.DoTx(
@@ -208,7 +212,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				// method's version.
 				updatedAm = am.Clone()
 				updatedAm.Version = uint32(version) + 1
-				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version", "DisableDiscoveredConfigValidation"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
 				}
@@ -216,6 +220,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
 				}
 			default:
+				filteredDbMask = append(filteredDbMask, "DisableDiscoveredConfigValidation")
 				updatedAm = am.Clone()
 				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
