@@ -36,28 +36,27 @@ import (
 
 const (
 	// general auth method field names
-	versionField      = "version"
-	scopeIdField      = "scope_id"
-	typeField         = "type"
-	attributesField   = "attributes"
-	overrideOidcField = "override_oidc_discovery_url_config"
+	versionField    = "version"
+	scopeIdField    = "scope_id"
+	typeField       = "type"
+	attributesField = "attributes"
 
 	// password field names
 	loginNameField = "login_name"
 	passwordField  = "password"
 
 	// oidc field names
-	discoveryUrlField            = "attributes.discovery_url"
-	clientSecretField            = "attributes.client_secret"
-	clientIdField                = "attributes.client_id"
-	clientSecretHmacField        = "attributes.client_secret_hmac"
-	stateField                   = "attributes.state"
-	callbackUrlField             = "attributes.callback_url"
-	apiUrlPrefixeField           = "attributes.api_url_prefixes"
-	certificateField             = "attributes.certificates"
-	maxAgeField                  = "attributes.max_age"
-	signingAlgorithmField        = "attributes.signing_algorithms"
-	overrideDiscoveryConfigField = "attributes.override_oidc_discovery_url_config"
+	issuerField                            = "attributes.issuer"
+	clientSecretField                      = "attributes.client_secret"
+	clientIdField                          = "attributes.client_id"
+	clientSecretHmacField                  = "attributes.client_secret_hmac"
+	stateField                             = "attributes.state"
+	callbackUrlField                       = "attributes.callback_url"
+	apiUrlPrefixeField                     = "attributes.api_url_prefixes"
+	caCertsField                           = "attributes.ca_certs"
+	maxAgeField                            = "attributes.max_age"
+	signingAlgorithmField                  = "attributes.signing_algorithms"
+	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 )
 
 var (
@@ -802,10 +801,10 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAuthMethodAttributes{
-			DiscoveryUrl:      wrapperspb.String(i.DiscoveryUrl),
+			Issuer:            wrapperspb.String(i.DiscoveryUrl),
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
-			Certificates:      i.GetCertificates(),
+			CaCerts:           i.GetCertificates(),
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
@@ -814,8 +813,12 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
 			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetCallbackUrls()[0], i.GetPublicId())
 		}
-		if i.GetMaxAge() != 0 {
-			attrs.MaxAge = wrapperspb.Int32(i.GetMaxAge())
+		switch i.GetMaxAge() {
+		case 0:
+		case -1:
+			attrs.MaxAge = wrapperspb.UInt32(0)
+		default:
+			attrs.MaxAge = wrapperspb.UInt32(uint32(i.GetMaxAge()))
 		}
 
 		st, err := handlers.ProtoToStruct(attrs)
@@ -894,7 +897,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	}
 
 	var discoveryUrl *url.URL
-	if ds := attrs.GetDiscoveryUrl().GetValue(); ds != "" {
+	if ds := attrs.GetIssuer().GetValue(); ds != "" {
 		var err error
 		if discoveryUrl, err = url.Parse(ds); err != nil {
 			return nil, false, err
@@ -905,8 +908,13 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		}
 	}
 
-	if attrs.GetMaxAge().GetValue() != 0 {
-		opts = append(opts, oidc.WithMaxAge(int(attrs.GetMaxAge().GetValue())))
+	if attrs.GetMaxAge() != nil {
+		maxAge := attrs.GetMaxAge().GetValue()
+		if maxAge == 0 {
+			opts = append(opts, oidc.WithMaxAge(-1))
+		} else {
+			opts = append(opts, oidc.WithMaxAge(int(maxAge)))
+		}
 	}
 	var signAlgs []oidc.Alg
 	for _, a := range attrs.GetSigningAlgorithms() {
@@ -928,8 +936,8 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithCallbackUrls(apiU))
 	}
 
-	if len(attrs.GetCertificates()) > 0 {
-		certs, err := oidc.ParseCertificates(attrs.GetCertificates()...)
+	if len(attrs.GetCaCerts()) > 0 {
+		certs, err := oidc.ParseCertificates(attrs.GetCaCerts()...)
 		if err != nil {
 			return nil, false, err
 		}
@@ -940,7 +948,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	if err != nil {
 		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}
-	return u, attrs.OverrideOidcDiscoveryUrlConfig, nil
+	return u, attrs.DisableDiscoveredConfigValidation, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -978,17 +986,17 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			} else {
-				if attrs.GetDiscoveryUrl().GetValue() != "" {
-					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
+				if attrs.GetIssuer().GetValue() != "" {
+					du, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
-						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
 					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
+						badFields[issuerField] = "The path should be empty or `/.well-known/openid-configuration`"
 					}
 				}
-				if attrs.GetOverrideOidcDiscoveryUrlConfig() {
-					badFields[overrideDiscoveryConfigField] = "Field is not allowed at create time."
+				if attrs.GetDisableDiscoveredConfigValidation() {
+					badFields[disableDiscoveredConfigValidationField] = "Field is not allowed at create time."
 				}
 				if attrs.GetClientId().GetValue() == "" {
 					badFields[clientIdField] = "Field required for creating an OIDC auth method."
@@ -1005,10 +1013,6 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				if attrs.GetCallbackUrl() != "" {
 					badFields[callbackUrlField] = "Field is read only."
 				}
-
-				if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
-					badFields[maxAgeField] = "If defined, must not be `0`."
-				}
 				if len(attrs.GetSigningAlgorithms()) > 0 {
 					for _, sa := range attrs.GetSigningAlgorithms() {
 						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
@@ -1023,9 +1027,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						break
 					}
 				}
-				if len(attrs.GetCertificates()) > 0 {
-					if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
-						badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+				if len(attrs.GetCaCerts()) > 0 {
+					if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
 			}
@@ -1061,14 +1065,14 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), discoveryUrlField) {
-				if attrs.GetDiscoveryUrl().GetValue() != "" {
-					du, err := url.Parse(attrs.GetDiscoveryUrl().GetValue())
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
+				if attrs.GetIssuer().GetValue() != "" {
+					du, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
-						badFields[discoveryUrlField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
 					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields[discoveryUrlField] = "The path should be empty or `/.well-known/openid-configuration`"
+						badFields[issuerField] = "The path should be empty or `/.well-known/openid-configuration`"
 					}
 				}
 			}
@@ -1107,9 +1111,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					break
 				}
 			}
-			if len(attrs.GetCertificates()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetCertificates()...); err != nil {
-					badFields[certificateField] = fmt.Sprintf("Cannot parse certificates. %v", err.Error())
+			if len(attrs.GetCaCerts()) > 0 {
+				if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
 		default:

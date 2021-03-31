@@ -241,7 +241,11 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
 	defer clean()
-	if errCode != 0 {
+	switch errCode {
+	case 0:
+	case -1:
+		return 0
+	default:
 		return errCode
 	}
 
