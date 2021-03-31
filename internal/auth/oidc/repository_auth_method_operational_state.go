@@ -67,10 +67,10 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 	if am == nil {
 		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
 	}
-	if am.OperationalState == string(desiredState) {
+	opts := getOpts(opt...)
+	if am.OperationalState == string(desiredState) && am.DisableDiscoveredConfigValidation == opts.withForce {
 		return am, nil
 	}
-	opts := getOpts(opt...)
 	if am.OperationalState == string(InactiveState) {
 		if !opts.withForce {
 			updatedAm := am.Clone()
@@ -94,14 +94,41 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			updatedAm = am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			updatedAm.DisableDiscoveredConfigValidation = opts.withForce
 			dbMask := []string{"OperationalState", "DisableDiscoveredConfigValidation"}
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
+			switch {
+			case err != nil:
+				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+			case err == nil && rowsUpdated > 1:
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			case err == nil && rowsUpdated == 0:
+				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			default:
+			}
+			// if err != nil {
+			// 	return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+			// }
+			// if err == nil && rowsUpdated != 1 {
+			// 	return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+			// }
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := &Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the account ids without a limit
+			}
+			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+			}
+			if updatedAm == nil {
+				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return err
 		},
