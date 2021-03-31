@@ -54,6 +54,12 @@ type AuthMethod struct {
 	// active-private, or active-public).
 	// @inject_tag: `gorm:"column:state;not_null"`
 	OperationalState string `protobuf:"bytes,80,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" gorm:"column:state;not_null"`
+	// disable_discovered_config_validation is a flag that when set to true
+	// indicates the AuthMethod config was not validated against the IdP's
+	// discovery info document when it was updated or its operational_state was
+	// changed.
+	// @inject_tag: `gorm:"not_null"`
+	DisableDiscoveredConfigValidation bool `protobuf:"varint,89,opt,name=disable_discovered_config_validation,json=disableDiscoveredConfigValidation,proto3" json:"disable_discovered_config_validation,omitempty" gorm:"not_null"`
 	// discovery_url is the OIDC Discovery URL without any .well-known component
 	// @inject_tag: `gorm:"default:null"`
 	DiscoveryUrl string `protobuf:"bytes,90,opt,name=discovery_url,json=discoveryUrl,proto3" json:"discovery_url,omitempty" gorm:"default:null"`
@@ -191,6 +197,13 @@ func (x *AuthMethod) GetOperationalState() string {
 		return x.OperationalState
 	}
 	return ""
+}
+
+func (x *AuthMethod) GetDisableDiscoveredConfigValidation() bool {
+	if x != nil {
+		return x.DisableDiscoveredConfigValidation
+	}
+	return false
 }
 
 func (x *AuthMethod) GetDiscoveryUrl() string {

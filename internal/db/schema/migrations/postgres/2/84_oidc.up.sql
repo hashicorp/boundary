@@ -17,6 +17,7 @@ create table auth_oidc_method (
       references auth_oidc_method_state_enm(name)
       on delete restrict
       on update cascade,
+  disable_discovered_config_validation bool not null default false,
   discovery_url wt_url, -- oidc discovery URL without any .well-known component
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -497,6 +498,7 @@ select
   am.update_time,
   am.version,
   am.state,
+  am.disable_discovered_config_validation,
   am.discovery_url,
   am.client_id,
   am.client_secret,

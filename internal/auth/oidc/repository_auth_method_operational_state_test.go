@@ -250,9 +250,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:           111111,
-			wantNoRowsUpdated: true,
-			wantNoOplog:       true,
+			version:         111111,
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "updated auth method and 0 rows updated",
 		},
 		{
 			name:            "missing-auth-method-id",
@@ -331,6 +331,27 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			wantErrContains: "auth method signing alg is not in discovered",
 		},
 		{
+			name:    "InActive-to-ActivePublic-with-force",
+			toState: ActivePublicState,
+			operateOn: func() string {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					TestConvertToUrls(t, tp.Addr())[0],
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(ES512), // won't match discovery info returned
+					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				).PublicId
+			}(),
+			version: 1,
+			opt:     []Option{WithForce()},
+		},
+		{
 			name:    "bad cert InActive-to-ActivePublic",
 			toState: ActivePublicState,
 			operateOn: func() string {
@@ -389,6 +410,10 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			if !tt.wantNoRowsUpdated {
 				assert.Equal(updated.OperationalState, string(tt.toState))
 				assert.Equal(string(tt.toState), found.OperationalState)
+				opts := getOpts(tt.opt...)
+				if opts.withForce {
+					assert.Equal(true, updated.DisableDiscoveredConfigValidation)
+				}
 			}
 			if !tt.wantNoOplog {
 				err = db.TestVerifyOplog(t, rw, tt.operateOn, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))

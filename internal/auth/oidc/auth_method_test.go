@@ -307,8 +307,10 @@ func TestAuthMethod_Clone(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
 		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m.DisableDiscoveredConfigValidation = true
 
 		cp := m.Clone()
+		assert.Equal(cp.DisableDiscoveredConfigValidation, true)
 		assert.True(proto.Equal(cp.AuthMethod, m.AuthMethod))
 	})
 	t.Run("not-equal", func(t *testing.T) {
@@ -321,6 +323,16 @@ func TestAuthMethod_Clone(t *testing.T) {
 
 		cp := m.Clone()
 		assert.True(!proto.Equal(cp.AuthMethod, m2.AuthMethod))
+	})
+	t.Run("clone-problem", func(t *testing.T) {
+		assert := assert.New(t)
+		am := &store.AuthMethod{
+			DisableDiscoveredConfigValidation: true,
+		}
+		cp := proto.Clone(am)
+		assert.NotEqual(am.DisableDiscoveredConfigValidation, cp.(*store.AuthMethod).DisableDiscoveredConfigValidation)
+		assert.Equal(true, am.DisableDiscoveredConfigValidation)
+		assert.Equal(false, cp.(*store.AuthMethod).DisableDiscoveredConfigValidation)
 	})
 }
 

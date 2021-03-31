@@ -23,11 +23,11 @@ message AuthMethod {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = {this:"Name" that: "name"}];
+  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = {this:"Description" that: "description"}];
+  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
 
   // The scope_id of the owning scope. Must be set.
   // @inject_tag: `gorm:"not_null"`
@@ -41,13 +41,20 @@ message AuthMethod {
   // @inject_tag: `gorm:"column:state;not_null"`
   string operational_state = 80;
 
+  // disable_discovered_config_validation is a flag that when set to true
+  // indicates the AuthMethod config was not validated against the IdP's
+  // discovery info document when it was updated or its operational_state was
+  // changed.
+  // @inject_tag: `gorm:"not_null"`
+  bool disable_discovered_config_validation = 89;
+
   // discovery_url is the OIDC Discovery URL without any .well-known component
   // @inject_tag: `gorm:"default:null"`
-  string discovery_url = 90 [(custom_options.v1.mask_mapping) = {this:"DiscoveryUrl" that:"attributes.issuer"}];
+  string discovery_url = 90 [(custom_options.v1.mask_mapping) = { this: "DiscoveryUrl" that: "attributes.issuer" }];
 
   // client_id is the OIDC client identifier
   // @inject_tag: `gorm:"not_null"`
-  string client_id = 100 [(custom_options.v1.mask_mapping) = {this:"ClientId" that:"attributes.client_id"}];
+  string client_id = 100 [(custom_options.v1.mask_mapping) = { this: "ClientId" that: "attributes.client_id" }];
 
   // ct_client_secret is the encrypted OIDC client secret which is stored in the db.
   // @inject_tag: `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
@@ -55,7 +62,7 @@ message AuthMethod {
 
   // client_secret is the unencrypted OIDC client secret which is not stored in the database.
   // @inject_tag: `gorm:"-" wrapping:"pt,client_secret"`
-  string client_secret = 120 [(custom_options.v1.mask_mapping) = {this:"ClientSecret" that:"attributes.client_secret"}];
+  string client_secret = 120 [(custom_options.v1.mask_mapping) = { this: "ClientSecret" that: "attributes.client_secret" }];
 
   // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
   // is returned from the API for read.  It is recalculated everytime the raw
@@ -74,32 +81,32 @@ message AuthMethod {
   // should be re-authenticated immediately and would represent the zero value
   // for max age based on the oidc spec.
   // @inject_tag: `gorm:"default:null"`
-  int32 max_age = 150 [(custom_options.v1.mask_mapping) = {this:"MaxAge" that:"attributes.max_age"}];
+  int32 max_age = 150 [(custom_options.v1.mask_mapping) = { this: "MaxAge" that: "attributes.max_age" }];
 
   // signing_algs are the signing algorithms allowed for an oidc auth method.
   // These are Value Objects that will be stored as SigningAlg messages, and are
   // operated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string signing_algs = 160 [(custom_options.v1.mask_mapping) = {this:"SigningAlgs" that:"attributes.signing_algorithms"}];
+  repeated string signing_algs = 160 [(custom_options.v1.mask_mapping) = { this: "SigningAlgs" that: "attributes.signing_algorithms" }];
 
   // callback_urls are the callback URLs allowed for a specific oidc auth
   // method. These are Value Objects that will be stored as CallbackUrl messages,
   // and are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string callback_urls = 170 [(custom_options.v1.mask_mapping) = {this:"CallbackUrls" that:"attributes.api_url_prefix"}];
+  repeated string callback_urls = 170 [(custom_options.v1.mask_mapping) = { this: "CallbackUrls" that: "attributes.api_url_prefix" }];
 
   // aud_claims are the audience claims for a specific oidc auth method. These
   // are Value Objects that will be stored as AudClaim messages, and are
   // operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = {this:"AudClaims" that:"attributes.allowed_audiences"}];
+  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = { this: "AudClaims" that: "attributes.allowed_audiences" }];
 
   // certificates are optional PEM encoded x509 certificates that can be
   // used as trust anchors when connecting to an OIDC provider. These are Value
   // Objects that will be stored as Certificate messages, and are operatated on
   // as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = {this:"Certificates" that:"attributes.ca_certs"}];
+  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.ca_certs" }];
 }
 
 // Account represents an OIDC account
@@ -119,11 +126,11 @@ message Account {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = {this:"Name" that: "name"}];
+  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = {this:"Description" that: "description"}];
+  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
 
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 60;
