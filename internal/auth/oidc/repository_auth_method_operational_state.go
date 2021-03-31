@@ -112,12 +112,6 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			default:
 			}
-			// if err != nil {
-			// 	return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
-			// }
-			// if err == nil && rowsUpdated != 1 {
-			// 	return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
-			// }
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
 				reader: reader,
