@@ -9,14 +9,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
-	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -40,46 +37,12 @@ const (
 	scopeIdField    = "scope_id"
 	typeField       = "type"
 	attributesField = "attributes"
-
-	// password field names
-	loginNameField = "login_name"
-	passwordField  = "password"
-
-	// oidc field names
-	issuerField                            = "attributes.issuer"
-	clientSecretField                      = "attributes.client_secret"
-	clientIdField                          = "attributes.client_id"
-	clientSecretHmacField                  = "attributes.client_secret_hmac"
-	stateField                             = "attributes.state"
-	callbackUrlField                       = "attributes.callback_url"
-	apiUrlPrefixeField                     = "attributes.api_url_prefixes"
-	caCertsField                           = "attributes.ca_certs"
-	maxAgeField                            = "attributes.max_age"
-	signingAlgorithmField                  = "attributes.signing_algorithms"
-	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 )
 
 var (
-	pwMaskManager   handlers.MaskManager
-	oidcMaskManager handlers.MaskManager
-
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[auth.SubType]action.ActionSet{
-		auth.PasswordSubtype: {
-			action.Read,
-			action.Update,
-			action.Delete,
-			action.Authenticate,
-		},
-		auth.OidcSubtype: {
-			action.Read,
-			action.Update,
-			action.Delete,
-			action.ChangeState,
-			action.Authenticate,
-		},
-	}
+	IdActions = make(map[auth.SubType]action.ActionSet)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
@@ -92,16 +55,6 @@ var (
 		resource.Account: accounts.CollectionActions,
 	}
 )
-
-func init() {
-	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(&pwstore.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
-		panic(err)
-	}
-	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.AuthMethod{}, &pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}); err != nil {
-		panic(err)
-	}
-}
 
 func populateCollectionAuthorizedActions(ctx context.Context,
 	authResults auth.VerifyResults,
@@ -322,6 +275,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).Authenticate"
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
 	}
@@ -330,16 +284,22 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, authResults.Error
 	}
 	attrs := req.GetAttributes().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), attrs[loginNameField].GetStringValue(), attrs[passwordField].GetStringValue())
-	if err != nil {
-		return nil, err
+	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	case auth.PasswordSubtype:
+		tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), attrs[loginNameField].GetStringValue(), attrs[passwordField].GetStringValue())
+		if err != nil {
+			return nil, err
+		}
+		res := &perms.Resource{
+			ScopeId: authResults.Scope.Id,
+			Type:    resource.AuthToken,
+		}
+		tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+		return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+	case auth.OidcSubtype:
+		return &pbs.AuthenticateResponse{}, nil
 	}
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthToken,
-	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
-	return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+	return nil, errors.New(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
 
 // Deprecated: use Authenticate
@@ -352,7 +312,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 		return nil, authResults.Error
 	}
 	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameField].GetStringValue(), creds[passwordField].GetStringValue())
+	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), creds[loginNameField].GetStringValue(), creds[passwordField].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -365,6 +325,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
+	var lookupErr error
 	var am auth.AuthMethod
 	switch auth.SubtypeFromId(id) {
 	case auth.PasswordSubtype:
@@ -372,36 +333,29 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 		if err != nil {
 			return nil, err
 		}
-		u, err := repo.LookupAuthMethod(ctx, id)
-		if err != nil {
-			if errors.IsNotFoundError(err) {
-				return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
-			}
-			return nil, err
-		}
-		if u == nil {
-			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
-		}
-		am = u
+		am, lookupErr = repo.LookupAuthMethod(ctx, id)
+
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, err
 		}
-		u, err := repo.LookupAuthMethod(ctx, id)
-		if err != nil {
-			if errors.IsNotFoundError(err) {
-				return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
-			}
-			return nil, err
-		}
-		if u == nil {
-			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
-		}
-		am = u
+		am, lookupErr = repo.LookupAuthMethod(ctx, id)
+
 	default:
 		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
+
+	if lookupErr != nil {
+		if errors.IsNotFoundError(lookupErr) {
+			return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+		}
+		return nil, lookupErr
+	}
+	if am == nil {
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
+	}
+
 	return toAuthMethodProto(am)
 }
 
@@ -441,42 +395,6 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	return outUl, nil
 }
 
-// createPwInRepo creates a password auth method in a repo and returns the result.
-// This method should never return a nil AuthMethod without returning an error.
-func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
-	if err != nil {
-		return nil, err
-	}
-	repo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, err := repo.CreateAuthMethod(ctx, u)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create auth method: %w", err)
-	}
-	return out, err
-}
-
-// createOidcInRepo creates an oidc auth method in a repo and returns the result.
-// This method should never return a nil AuthMethod without returning an error.
-func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
-	u, _, err := toStorageOidcAuthMethod(scopeId, item)
-	if err != nil {
-		return nil, err
-	}
-	repo, err := s.oidcRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, err := repo.CreateAuthMethod(ctx, u)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create auth method: %w", err)
-	}
-	return out, nil
-}
-
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var out auth.AuthMethod
 	switch auth.SubtypeFromType(item.GetType()) {
@@ -500,67 +418,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 		out = am
 	}
 	return toAuthMethodProto(out)
-}
-
-func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, error) {
-	item := req.GetItem()
-	u, forced, err := toStorageOidcAuthMethod(scopeId, item)
-	if err != nil {
-		return nil, err
-	}
-	u.PublicId = req.GetId()
-
-	var opts []oidc.Option
-	if forced {
-		opts = append(opts, oidc.WithForce())
-	}
-
-	version := item.GetVersion()
-	dbMask := oidcMaskManager.Translate(req.GetUpdateMask().GetPaths())
-	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
-	}
-
-	repo, err := s.oidcRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
-	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
-	}
-	return out, nil
-}
-
-func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
-	if err != nil {
-		return nil, err
-	}
-
-	version := item.GetVersion()
-	u.PublicId = id
-
-	dbMask := pwMaskManager.Translate(mask)
-	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
-	}
-
-	repo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
-	if err != nil {
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
-	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
-	}
-	return out, nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*pb.AuthMethod, error) {
@@ -598,6 +455,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 			return false, err
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, scopeId, id)
+
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
@@ -605,103 +463,56 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
 	}
+
 	if dErr != nil {
 		if errors.IsNotFoundError(dErr) {
 			return false, nil
 		}
 		return false, fmt.Errorf("unable to delete auth method: %w", dErr)
 	}
+
 	return rows > 0, nil
 }
 
 func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (*pb.AuthMethod, error) {
 	const op = "authmethod_service.(Service).changeStateInRepo"
-	repo, err := s.oidcRepoFn()
-	if err != nil {
-		return nil, err
+
+	switch auth.SubtypeFromId(req.GetId()) {
+	case auth.OidcSubtype:
+		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+
+		attrs := &pbs.OidcChangeStateAttributes{}
+		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+			errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
+		}
+
+		var opts []oidc.Option
+		if attrs.GetOverrideOidcDiscoveryUrlConfig() {
+			opts = append(opts, oidc.WithForce())
+		}
+
+		var am *oidc.AuthMethod
+		switch oidcStateMap[attrs.GetState()] {
+		case inactiveState:
+			am, err = repo.MakeInactive(ctx, req.GetId(), req.GetVersion())
+		case privateState:
+			am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion(), opts...)
+		case publicState:
+			am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
+		default:
+			err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		return toAuthMethodProto(am)
 	}
 
-	attrs := &pbs.OidcChangeStateAttributes{}
-	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
-	}
-
-	var opts []oidc.Option
-	if attrs.GetOverrideOidcDiscoveryUrlConfig() {
-		opts = append(opts, oidc.WithForce())
-	}
-
-	var am *oidc.AuthMethod
-	switch oidcStateMap[attrs.GetState()] {
-	case inactiveState:
-		am, err = repo.MakeInactive(ctx, req.GetId(), req.GetVersion())
-	case privateState:
-		am, err = repo.MakePrivate(ctx, req.GetId(), req.GetVersion(), opts...)
-	case publicState:
-		am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
-	default:
-		err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return toAuthMethodProto(am)
-}
-
-func (s Service) authenticateWithRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
-	iamRepo, err := s.iamRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	atRepo, err := s.atRepoFn()
-	if err != nil {
-		return nil, err
-	}
-	pwRepo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, err
-	}
-
-	acct, err := pwRepo.Authenticate(ctx, scopeId, authMethodId, loginName, pw)
-	if err != nil {
-		return nil, err
-	}
-	if acct == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
-	}
-
-	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId())
-	if err != nil {
-		return nil, err
-	}
-	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
-	if err != nil {
-		return nil, err
-	}
-
-	tok.Token = tok.GetPublicId() + "_" + token
-	prot := toAuthTokenProto(tok)
-
-	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
-	if err != nil {
-		return nil, err
-	}
-	if scp == nil {
-		return nil, err
-	}
-	prot.Scope = &scopes.ScopeInfo{
-		Id:            scp.GetPublicId(),
-		Type:          scp.GetType(),
-		ParentScopeId: scp.GetParentId(),
-	}
-
-	return prot, nil
+	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -842,113 +653,6 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          t.GetExpirationTime().GetTimestamp(),
 	}
-}
-
-func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	const op = "authmethod_service.toStoragePwAuthMethod"
-	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil auth method.")
-	}
-	var opts []password.Option
-	if item.GetName() != nil {
-		opts = append(opts, password.WithName(item.GetName().GetValue()))
-	}
-	if item.GetDescription() != nil {
-		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
-	}
-	u, err := password.NewAuthMethod(scopeId, opts...)
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
-	}
-
-	pwAttrs := &pb.PasswordAuthMethodAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
-	if pwAttrs.GetMinLoginNameLength() != 0 {
-		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
-	}
-	if pwAttrs.GetMinPasswordLength() != 0 {
-		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
-	}
-	return u, nil
-}
-
-func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, forced bool, err error) {
-	const op = "authmethod_service.toStorageOidcAuthMethod"
-	if in == nil {
-		return nil, false, errors.New(errors.InvalidParameter, op, "nil auth method.")
-	}
-	attrs := &pb.OidcAuthMethodAttributes{}
-	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
-		return nil, false, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
-	clientId := attrs.GetClientId().GetValue()
-	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
-
-	var opts []oidc.Option
-	if in.GetName() != nil {
-		opts = append(opts, oidc.WithName(in.GetName().GetValue()))
-	}
-	if in.GetDescription() != nil {
-		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
-	}
-
-	var discoveryUrl *url.URL
-	if ds := attrs.GetIssuer().GetValue(); ds != "" {
-		var err error
-		if discoveryUrl, err = url.Parse(ds); err != nil {
-			return nil, false, err
-		}
-		// remove everything except for protocol, hostname, and port.
-		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
-			return nil, false, err
-		}
-	}
-
-	if attrs.GetMaxAge() != nil {
-		maxAge := attrs.GetMaxAge().GetValue()
-		if maxAge == 0 {
-			opts = append(opts, oidc.WithMaxAge(-1))
-		} else {
-			opts = append(opts, oidc.WithMaxAge(int(maxAge)))
-		}
-	}
-	var signAlgs []oidc.Alg
-	for _, a := range attrs.GetSigningAlgorithms() {
-		signAlgs = append(signAlgs, oidc.Alg(a))
-	}
-	if len(signAlgs) > 0 {
-		opts = append(opts, oidc.WithSigningAlgs(signAlgs...))
-	}
-	if len(attrs.GetAllowedAudiences()) > 0 {
-		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
-	}
-
-	if attrs.GetApiUrlPrefix().GetValue() != "" {
-		apiU, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
-		if err != nil {
-			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{apiUrlPrefixeField: "Unparsable url"})
-		}
-		opts = append(opts, oidc.WithCallbackUrls(apiU))
-	}
-
-	if len(attrs.GetCaCerts()) > 0 {
-		certs, err := oidc.ParseCertificates(attrs.GetCaCerts()...)
-		if err != nil {
-			return nil, false, err
-		}
-		opts = append(opts, oidc.WithCertificates(certs...))
-	}
-
-	u, err := oidc.NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opts...)
-	if err != nil {
-		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
-	}
-	return u, attrs.DisableDiscoveredConfigValidation, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -1188,37 +892,57 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	if st := auth.SubtypeFromId(req.GetAuthMethodId()); st != auth.PasswordSubtype {
-		handlers.NotFoundErrorf("This endpoint is not available for the %q Auth Method type.", st.String())
-	}
+
+	// In some cases in this function we hort-circuit checking other fields and
+	// return early with current badFields to return the right error, since
+	// there are some switches on types, and since some parameters we need to
+	// exit early if they're nil (like attributes and attribute fields...unlike
+	// other getters for e.g. StringValue these can return nil values).
 	badFields := make(map[string]string)
+
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
-	} else if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
+
 	if req.GetAttributes() == nil && req.GetCredentials() != nil {
 		// TODO: Eventually, remove this
 		req.Attributes = req.Credentials
 	}
-	if req.GetCommand() == "" {
-		// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
-		req.Command = "login"
+	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
+		badFields["attributes"] = "This is a required field."
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
-	if req.Command != "login" {
-		badFields["command"] = "Invalid command for this auth method type."
-	}
+
 	attrs := req.GetAttributes().GetFields()
-	if _, ok := attrs[loginNameField]; !ok {
-		badFields["attributes.login_name"] = "This is a required field."
+
+	st := auth.SubtypeFromId(req.GetAuthMethodId())
+	switch st {
+	case auth.PasswordSubtype:
+		if _, ok := attrs[loginNameField]; !ok {
+			badFields["attributes.login_name"] = "This is a required field."
+		}
+		if _, ok := attrs[passwordField]; !ok {
+			badFields["attributes.password"] = "This is a required field."
+		}
+		if req.GetCommand() == "" {
+			// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
+			req.Command = "login"
+		}
+		if req.Command != "login" {
+			badFields["command"] = "Invalid command for this auth method type."
+		}
+		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+		if tType != "" && tType != "token" && tType != "cookie" {
+			badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+		}
+
+	case auth.OidcSubtype:
+
+	default:
+		return handlers.NotFoundErrorf("This endpoint/command is not available for the %q Auth Method type.", st.String())
 	}
-	if _, ok := attrs[passwordField]; !ok {
-		badFields["attributes.password"] = "This is a required field."
-	}
-	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
-	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
-	}
+
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
