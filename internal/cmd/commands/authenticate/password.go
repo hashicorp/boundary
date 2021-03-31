@@ -95,6 +95,8 @@ type dummyGenericResponse struct {
 	response *api.Response
 }
 
+var _ api.GenericResult = (*dummyGenericResponse)(nil)
+
 func (d *dummyGenericResponse) GetItem() interface{} {
 	return d.item
 }

@@ -11,7 +11,7 @@ import (
 type AuthenticateResult struct {
 	Command       string                 `json:"-"`
 	Attributes    map[string]interface{} `json:"-"`
-	attributesRaw json.RawMessage        `json:"-"`
+	attributesRaw json.RawMessage
 
 	response *api.Response
 }
@@ -61,12 +61,20 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, command string,
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
+	if authMethodId == "" {
+		return nil, fmt.Errorf("empty auth method passed into Authenticate request")
+	}
+	if command == "" {
+		return nil, fmt.Errorf("empty command passed into Authenticate request")
+	}
 
 	_, apiOpts := getOpts(opt...)
 
 	reqBody := map[string]interface{}{
-		"command":    command,
-		"attributes": attributes,
+		"command": command,
+	}
+	if attributes != nil {
+		reqBody["attributes"] = attributes
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, apiOpts...)
