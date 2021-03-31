@@ -119,7 +119,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"discovery_url":      structpb.NewStringValue("https://alice.com"),
+			"issuer":             structpb.NewStringValue("https://alice.com"),
 			"client_id":          structpb.NewStringValue("alice_rp"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
@@ -234,7 +234,7 @@ func TestList(t *testing.T) {
 		Version:     1,
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"discovery_url":      structpb.NewStringValue("https://alice.com"),
+			"issuer":             structpb.NewStringValue("https://alice.com"),
 			"client_id":          structpb.NewStringValue("alice_rp"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
@@ -535,7 +535,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url":  structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":      structpb.NewStringValue("someclientid"),
 					"client_secret":  structpb.NewStringValue("secret"),
 					"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
@@ -557,7 +557,7 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"discovery_url":      structpb.NewStringValue("https://example.discovery.url:4821"),
+						"issuer":             structpb.NewStringValue("https://example.discovery.url:4821"),
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
@@ -609,7 +609,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: scope.Global.String(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url"),
+					"issuer":        structpb.NewStringValue("https://example.discovery.url"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
 				}},
@@ -626,7 +626,7 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"discovery_url":      structpb.NewStringValue("https://example.discovery.url"),
+						"issuer":             structpb.NewStringValue("https://example.discovery.url"),
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
@@ -733,7 +733,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"issuer":        structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_secret": structpb.NewStringValue("secret"),
 				}},
 			}},
@@ -745,8 +745,8 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_id":     structpb.NewStringValue("someclientid"),
+					"issuer":    structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id": structpb.NewStringValue("someclientid"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -757,7 +757,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url":      structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":          structpb.NewStringValue("someclientid"),
 					"client_secret":      structpb.NewStringValue("secret"),
 					"client_secret_hmac": structpb.NewStringValue("hmac"),
@@ -771,7 +771,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"issuer":        structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
 					"state":         structpb.NewStringValue(string(oidc.InactiveState)),
@@ -785,7 +785,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
 					"signing_algorithms": func() *structpb.Value {
@@ -802,7 +802,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url":  structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":      structpb.NewStringValue("someclientid"),
 					"client_secret":  structpb.NewStringValue("secret"),
 					"api_url_prefix": structpb.NewStringValue("invalid path"),
@@ -816,7 +816,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
 					"callback_url":  structpb.NewStringValue("http://another.url.com:82471"),
@@ -830,7 +830,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"discovery_url": structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
 					"certificates": func() *structpb.Value {
@@ -1330,11 +1330,11 @@ func TestUpdate_OIDC(t *testing.T) {
 
 	defaultAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url":  structpb.NewStringValue(tp.Addr()),
+			"issuer":         structpb.NewStringValue(tp.Addr()),
 			"client_id":      structpb.NewStringValue("someclientid"),
 			"client_secret":  structpb.NewStringValue("secret"),
 			"api_url_prefix": structpb.NewStringValue("http://example.com"),
-			"certificates": func() *structpb.Value {
+			"ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -1346,13 +1346,13 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 	defaultReadAttributeFields := func() map[string]*structpb.Value {
 		return map[string]*structpb.Value{
-			"discovery_url":      structpb.NewStringValue(tp.Addr()),
+			"issuer":             structpb.NewStringValue(tp.Addr()),
 			"client_id":          structpb.NewStringValue("someclientid"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
-			"certificates": func() *structpb.Value {
+			"ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -1894,7 +1894,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: func() map[string]*structpb.Value {
 							f := defaultAttributeFields()
-							f["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
 							f["signing_algorithms"] = func() *structpb.Value {
 								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
 								return structpb.NewListValue(lv)
@@ -2051,14 +2051,14 @@ func TestChangeState(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"discovery_url":      structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"issuer":             structpb.NewStringValue(oidcam.DiscoveryUrl),
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
-			"certificates":       certs,
+			"ca_certs":           certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{

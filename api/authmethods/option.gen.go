@@ -145,26 +145,26 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithOidcAuthMethodCertificates(inCertificates []string) Option {
+func WithOidcAuthMethodCaCerts(inCaCerts []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["certificates"] = inCertificates
+		val["ca_certs"] = inCaCerts
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultOidcAuthMethodCertificates() Option {
+func DefaultOidcAuthMethodCaCerts() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["certificates"] = nil
+		val["ca_certs"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -229,31 +229,55 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithOidcAuthMethodDiscoveryUrl(inDiscoveryUrl string) Option {
+func WithOidcAuthMethodDisableDiscoveredConfigValidation(inDisableDiscoveredConfigValidation bool) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["discovery_url"] = inDiscoveryUrl
+		val["disable_discovered_config_validation"] = inDisableDiscoveredConfigValidation
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultOidcAuthMethodDiscoveryUrl() Option {
+func DefaultOidcAuthMethodDisableDiscoveredConfigValidation() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["discovery_url"] = nil
+		val["disable_discovered_config_validation"] = nil
 		o.postMap["attributes"] = val
 	}
 }
 
-func WithOidcAuthMethodMaxAge(inMaxAge int32) Option {
+func WithOidcAuthMethodIssuer(inIssuer string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = inIssuer
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodIssuer() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodMaxAge(inMaxAge uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -334,30 +358,6 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.postMap["name"] = nil
-	}
-}
-
-func WithOidcAuthMethodOverrideOidcDiscoveryUrlConfig(inOverrideOidcDiscoveryUrlConfig bool) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["override_oidc_discovery_url_config"] = inOverrideOidcDiscoveryUrlConfig
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultOidcAuthMethodOverrideOidcDiscoveryUrlConfig() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["override_oidc_discovery_url_config"] = nil
-		o.postMap["attributes"] = val
 	}
 }
 

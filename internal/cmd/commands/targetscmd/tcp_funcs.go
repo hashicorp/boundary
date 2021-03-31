@@ -91,7 +91,7 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, opts *[]targets.Option) bool {
+func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, _ *base.FlagSets, opts *[]targets.Option) bool {
 	switch c.flagDefaultPort {
 	case "":
 	case "null":

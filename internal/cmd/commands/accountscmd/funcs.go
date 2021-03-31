@@ -115,7 +115,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.Option) bool {
 	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
 		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)

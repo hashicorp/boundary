@@ -47,7 +47,7 @@ import (
 // * WithForce: when this option is provided, the auth method is persisted in
 // the repository without testing it's validity against its provider's published
 // OIDC discovery document. Even if this option is provided, the auth method will
-//  not be persisted in the repository when the update would have resulted in
+// not be persisted in the repository when the update would have resulted in
 // an incomplete/non-operational auth method and it's OperationalStatus is
 // currently ActivePublic or ActivePrivate.
 //
