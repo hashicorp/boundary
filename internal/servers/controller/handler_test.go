@@ -46,9 +46,9 @@ func TestAuthenticationHandler(t *testing.T) {
 	body := make(map[string]interface{})
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	require.Contains(t, body, "id")
-	require.Contains(t, body, "token")
-	pubId, tok := body["id"].(string), body["token"].(string)
+	require.Contains(t, body, "attributes")
+	attrs := body["attributes"].(map[string]interface{})
+	pubId, tok := attrs["id"].(string), attrs["token"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
@@ -67,10 +67,12 @@ func TestAuthenticationHandler(t *testing.T) {
 	body = make(map[string]interface{})
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	require.Contains(t, body, "id")
-	require.Contains(t, body, "auth_method_id")
-	require.Contains(t, body, "user_id")
-	require.NotContains(t, body, "token")
+	attrs = body["attributes"].(map[string]interface{})
+
+	require.Contains(t, attrs, "id")
+	require.Contains(t, attrs, "auth_method_id")
+	require.Contains(t, attrs, "user_id")
+	require.NotContains(t, attrs, "token")
 
 	cookies := make(map[string]*http.Cookie)
 	for _, c := range resp.Cookies() {
@@ -84,7 +86,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.False(t, cookies[handlers.JsVisibleCookieName].HttpOnly)
 	tok = cookies[handlers.JsVisibleCookieName].Value
 
-	pubId = body["id"].(string)
+	pubId = attrs["id"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 }
