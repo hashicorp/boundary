@@ -685,10 +685,10 @@ func toProto(in auth.Account) (*pb.Account, error) {
 	case *oidc.Account:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAccountAttributes{
-			Issuer:  i.GetIssuerId(),
-			Subject: i.GetSubjectId(),
-			FullName:  i.GetFullName(),
-			Email:     i.GetEmail(),
+			Issuer:   i.GetIssuerId(),
+			Subject:  i.GetSubjectId(),
+			FullName: i.GetFullName(),
+			Email:    i.GetEmail(),
 		}
 		st, err := handlers.ProtoToStruct(attrs)
 		if err != nil {
