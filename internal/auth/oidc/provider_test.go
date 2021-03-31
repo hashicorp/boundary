@@ -111,7 +111,7 @@ func Test_convertToProvider(t *testing.T) {
 		wantErrCode errors.Code
 	}{
 		{"equal", testAm, p, false, errors.Unknown},
-		{"missing-discovery-url", func() *AuthMethod { cp := testAm.Clone(); cp.Issuer = ""; return cp }(), nil, true, errors.InvalidParameter},
+		{"missing-issuer", func() *AuthMethod { cp := testAm.Clone(); cp.Issuer = ""; return cp }(), nil, true, errors.InvalidParameter},
 		{"missing-client-id", func() *AuthMethod { cp := testAm.Clone(); cp.ClientId = ""; return cp }(), nil, true, errors.InvalidParameter},
 		{"missing-client-secret", func() *AuthMethod { cp := testAm.Clone(); cp.ClientSecret = ""; return cp }(), nil, true, errors.InvalidParameter},
 		{"missing-algs", func() *AuthMethod { cp := testAm.Clone(); cp.SigningAlgs = nil; return cp }(), nil, true, errors.InvalidParameter},

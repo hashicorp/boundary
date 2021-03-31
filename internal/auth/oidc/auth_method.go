@@ -40,10 +40,8 @@ type AuthMethod struct {
 // parameter when creating new AuthMethod's since it must be Inactive for all
 // new AuthMethods.
 //
-// Issuer equals a URL where the OIDC provider's configuration can be
-// retrieved. The OIDC Discovery Specification requires the URL end in
-// /.well-known/openid-configuration. However, Boundary will strip off
-// anything beyond scheme, host and port
+// Issuer equals a URL that identifies the OIDC provider.
+// Boundary will strip off anything beyond scheme, host and port
 //
 // ClientId equals an OAuth 2.0 Client Identifier valid at the Authorization
 // Server.
@@ -70,7 +68,7 @@ func NewAuthMethod(scopeId string, issuer *url.URL, clientId string, clientSecre
 	switch {
 	case issuer != nil:
 		// trim off anything beyond scheme, host and port
-		u = strings.TrimSuffix(issuer.String(), "/")
+		u = strings.TrimSuffix(strings.TrimSuffix(issuer.String(), "/"), "/.well-known/openid-configuration")
 	}
 
 	opts := getOpts(opt...)
