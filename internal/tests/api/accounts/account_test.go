@@ -102,8 +102,8 @@ func TestListOidc(t *testing.T) {
 	}})
 
 	cr, err := accountClient.Create(tc.Context(), am.Id,
-		accounts.WithOidcAccountIssuerId(expected[0].Attributes[issuerKey].(string)),
-		accounts.WithOidcAccountSubjectId("subject0"))
+		accounts.WithOidcAccountIssuer(expected[0].Attributes[issuerKey].(string)),
+		accounts.WithOidcAccountSubject("subject0"))
 	require.NoError(err)
 	expected[0] = cr.Item
 
@@ -113,8 +113,8 @@ func TestListOidc(t *testing.T) {
 
 	for i := 1; i < 10; i++ {
 		newAcctResult, err := accountClient.Create(tc.Context(), am.Id,
-			accounts.WithOidcAccountIssuerId(expected[0].Attributes[issuerKey].(string)),
-			accounts.WithOidcAccountSubjectId(fmt.Sprintf("subject-%d", i)))
+			accounts.WithOidcAccountIssuer(expected[0].Attributes[issuerKey].(string)),
+			accounts.WithOidcAccountSubject(fmt.Sprintf("subject-%d", i)))
 		require.NoError(err)
 		expected = append(expected, newAcctResult.Item)
 	}
@@ -216,8 +216,8 @@ func TestCrudOidc(t *testing.T) {
 	}
 
 	u, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"),
-		accounts.WithOidcAccountIssuerId("https://www.issuer.com"),
-		accounts.WithOidcAccountSubjectId("subject"))
+		accounts.WithOidcAccountIssuer("https://www.issuer.com"),
+		accounts.WithOidcAccountSubject("subject"))
 	checkAccount("create", u.Item, err, "foo", 1)
 
 	u, err = accountClient.Read(tc.Context(), u.Item.Id)
@@ -345,8 +345,8 @@ func TestErrorsOidc(t *testing.T) {
 	accountClient := accounts.NewClient(client)
 
 	u, err := accountClient.Create(tc.Context(), amId,
-		accounts.WithOidcAccountIssuerId("https://issuer.com"),
-		accounts.WithOidcAccountSubjectId("subject1"))
+		accounts.WithOidcAccountIssuer("https://issuer.com"),
+		accounts.WithOidcAccountSubject("subject1"))
 	require.NoError(err)
 	assert.NotNil(u)
 
@@ -359,8 +359,8 @@ func TestErrorsOidc(t *testing.T) {
 
 	// Create another resource with the same name.
 	_, err = accountClient.Create(tc.Context(), amId,
-		accounts.WithOidcAccountIssuerId("https://issuer.com"),
-		accounts.WithOidcAccountSubjectId("subject1"))
+		accounts.WithOidcAccountIssuer("https://issuer.com"),
+		accounts.WithOidcAccountSubject("subject1"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
@@ -378,7 +378,7 @@ func TestErrorsOidc(t *testing.T) {
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	// Can't update issuer
-	_, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version, accounts.WithOidcAccountSubjectId("new"))
+	_, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version, accounts.WithOidcAccountSubject("new"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
