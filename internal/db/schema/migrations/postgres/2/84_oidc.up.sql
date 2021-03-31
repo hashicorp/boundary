@@ -362,11 +362,14 @@ create trigger
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_oidc_account_subtype();
 
--- insert_auth_oidc_account_issuer is intended as a before insert
--- trigger on auth_oidc_account. Its purpose is to add the auth
--- method's discovery_url to the account's issuer_id.
+-- auth_oidc_account_issuer_matches_auth_oidc_method_display_url
+-- requires that a new auth_oidc_account's issuer matches disovery_url
+-- of its auth_oidc_method.  A not null constraint on the issuer
+-- requires that it is set.  Together there is an implicit requirement
+-- that an auth_oidc_method has the discovery_url set before a record
+-- can be added to auth_oidc_account for that auth_oidc_method.
 create or replace function
-    insert_auth_oidc_account_issuer()
+    auth_oidc_account_issuer_matches_auth_oidc_method_display_url()
     returns trigger
 as $$
 begin
@@ -378,15 +381,14 @@ begin
     if not found then
         raise exception 'oidc account must match the auth method discovery url';
     end if;
-
     return new;
-end
-$$ language plpgsql;
+end;
+  $$ language plpgsql;
 
 create trigger
-    insert_auth_oidc_account_issuer
+    auth_oidc_account_issuer_matches_auth_oidc_method_display_url
     before insert on auth_oidc_account
-    for each row execute procedure insert_auth_oidc_account_issuer();
+    for each row execute procedure auth_oidc_account_issuer_matches_auth_oidc_method_display_url();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
 -- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg

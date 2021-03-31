@@ -716,7 +716,7 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "OIDC AuthMethod Requires Discovery URL",
+			name: "OIDC AuthMethod Doesn't Require Issuer",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
@@ -725,7 +725,25 @@ func TestCreate(t *testing.T) {
 					"client_secret": structpb.NewStringValue("secret"),
 				}},
 			}},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					ScopeId:     o.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
+					Version:     1,
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+					}},
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
 		},
 		{
 			name: "OIDC AuthMethod Requires Client Id",
@@ -1666,16 +1684,6 @@ func TestUpdate_OIDC(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Unset Discovery URL",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.discovery_url"},
-				},
-				Item: &pb.AuthMethod{},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name: "Unset Client Id",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -1788,7 +1796,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
-			name: "Change Callback Url Prefix",
+			name: "Change Api Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.api_url_prefix"},
@@ -1862,6 +1870,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "Unset Issuer Is Incomplete",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			wantErr: true,
 		},
 		{
 			name: "Unsupported Signing Algorithms",

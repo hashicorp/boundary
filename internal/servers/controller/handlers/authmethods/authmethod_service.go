@@ -801,13 +801,15 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAuthMethodAttributes{
-			Issuer:            wrapperspb.String(i.DiscoveryUrl),
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
 			CaCerts:           i.GetCertificates(),
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
+		}
+		if i.GetDiscoveryUrl() != "" {
+			attrs.Issuer = wrapperspb.String(i.DiscoveryUrl)
 		}
 		if len(i.GetCallbackUrls()) > 0 {
 			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
