@@ -281,6 +281,10 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 }
 
 func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*password.Account, error) {
+	const op = "account_service.(Serivce).createPwInRepo"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+	}
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -318,6 +322,9 @@ func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId strin
 
 func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*oidc.Account, error) {
 	const op = "account_service.(Service).createOidcInRepo"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+	}
 	var opts []oidc.Option
 	if item.GetName() != nil {
 		opts = append(opts, oidc.WithName(item.GetName().GetValue()))
@@ -350,6 +357,10 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 }
 
 func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
+	const op = "account_service.(Service).createInRepo"
+	if item == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+	}
 	var out auth.Account
 	switch auth.SubtypeFromId(authMethodId) {
 	case auth.PasswordSubtype:
