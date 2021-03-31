@@ -100,7 +100,7 @@ begin;
         references kms_database_key_version (private_id)
         on delete restrict
         on update cascade,
-    token_status text not null
+    status text not null
       constraint credential_vault_token_status_enm_fkey
         references credential_vault_token_status_enm (name)
         on delete restrict
