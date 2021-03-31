@@ -3,6 +3,7 @@ package authmethods
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -12,9 +13,14 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -85,6 +91,26 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []
 	return out, nil
 }
 
+// Authenticate implements the interface pbs.AuthenticationServiceServer.
+func (s Service) authenticatePassword(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	reqAttrs := req.GetAttributes().GetFields()
+	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
+	if err != nil {
+		return nil, err
+	}
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	retAttrs, err := handlers.ProtoToStruct(tok)
+	if err != nil {
+		return nil, err
+	}
+	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+}
+
 func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
@@ -138,6 +164,34 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	}
 
 	return prot, nil
+}
+
+func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+
+	attrs := req.GetAttributes().GetFields()
+	if _, ok := attrs[loginNameField]; !ok {
+		badFields["attributes.login_name"] = "This is a required field."
+	}
+	if _, ok := attrs[passwordField]; !ok {
+		badFields["attributes.password"] = "This is a required field."
+	}
+	if req.GetCommand() == "" {
+		// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
+		req.Command = "login"
+	}
+	if req.Command != "login" {
+		badFields["command"] = "Invalid command for this auth method type."
+	}
+	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+	if tType != "" && tType != "token" && tType != "cookie" {
+		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+	}
+
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+	return nil
 }
 
 func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
