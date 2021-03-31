@@ -144,14 +144,14 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	var discoveryUrl *url.URL
+	var issuer *url.URL
 	if ds := attrs.GetIssuer().GetValue(); ds != "" {
 		var err error
-		if discoveryUrl, err = url.Parse(ds); err != nil {
+		if issuer, err = url.Parse(ds); err != nil {
 			return nil, false, err
 		}
 		// remove everything except for protocol, hostname, and port.
-		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
+		if issuer, err = issuer.Parse("/"); err != nil {
 			return nil, false, err
 		}
 	}
@@ -192,7 +192,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
-	u, err := oidc.NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opts...)
+	u, err := oidc.NewAuthMethod(scopeId, issuer, clientId, clientSecret, opts...)
 	if err != nil {
 		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}

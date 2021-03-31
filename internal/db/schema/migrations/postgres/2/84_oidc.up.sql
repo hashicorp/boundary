@@ -18,7 +18,7 @@ create table auth_oidc_method (
       on delete restrict
       on update cascade,
   disable_discovered_config_validation bool not null default false,
-  issuer wt_url, -- oidc issuer without any .well-known component
+  issuer wt_url,
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
@@ -47,7 +47,7 @@ create table auth_oidc_method (
     unique(scope_id, name),
   constraint auth_oidc_method_scope_id_public_id_uq
     unique(scope_id, public_id),
-  constraint auth_oidc_method_scope_id_discover_url_client_id_unique
+  constraint auth_oidc_method_scope_id_issuer_client_id_unique
     unique(scope_id, issuer, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is

@@ -30,7 +30,7 @@ func TestAccount_Create(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		subject    string
+		subject      string
 		opts         []Option
 	}
 	tests := []struct {
@@ -47,7 +47,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "alice",
+				subject:      "alice",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
@@ -61,7 +61,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "dup", // must follow "valid" test.
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "alice",
+				subject:      "alice",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
@@ -77,7 +77,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "mismatch issuer",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "newsubject",
+				subject:      "newsubject",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0])},
 			},
 			create: true,
@@ -93,7 +93,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-auth-method",
 			args: args{
 				authMethodId: "",
-				subject:    "alice",
+				subject:      "alice",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -102,7 +102,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-subject",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "",
+				subject:      "",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -111,7 +111,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "email-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "alice",
+				subject:      "alice",
 				opts:         []Option{WithEmail(strings.Repeat("a", 500) + "@alice.com")},
 			},
 			wantErr:   true,
@@ -121,7 +121,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "name-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "alice",
+				subject:      "alice",
 				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
 			},
 			wantErr:   true,
@@ -131,7 +131,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-issuer-url",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subject:    "alice",
+				subject:      "alice",
 				opts:         []Option{WithIssuer(&url.URL{})},
 			},
 			create: true,

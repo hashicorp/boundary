@@ -227,9 +227,9 @@ type OidcAccountAttributes struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Output only. issuer_id is a case sensitive URL that maps to the OIDC iss claim
+	// Output only. issuer is a case sensitive URL that maps to the OIDC iss claim
 	Issuer string `protobuf:"bytes,80,opt,name=issuer,proto3" json:"issuer,omitempty"`
-	// Output only. subject_id is a case sensitive string that maps to the OIDC sub claim.
+	// Output only. subject is a case sensitive string that maps to the OIDC sub claim.
 	Subject string `protobuf:"bytes,90,opt,name=subject,proto3" json:"subject,omitempty"`
 	// Output only. full_name is a string that maps to the OIDC name claim
 	FullName string `protobuf:"bytes,100,opt,name=full_name,proto3" json:"full_name,omitempty"`

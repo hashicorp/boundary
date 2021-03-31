@@ -2069,7 +2069,7 @@ func TestChangeState(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer":             structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),

@@ -30,7 +30,7 @@ func TestAuthMethod_Create(t *testing.T) {
 
 	type args struct {
 		scopeId      string
-		discoveryURL *url.URL
+		issuer       *url.URL
 		clientId     string
 		clientSecret ClientSecret
 		opt          []Option
@@ -49,7 +49,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
@@ -72,7 +72,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "dup", // must follow "valid" test. combination of ScopeId, Issuer and ClientId must be unique.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
@@ -97,7 +97,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid-with-no-options",
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "eve_rp",
 				clientSecret: ClientSecret("rp-secret"),
 			},
@@ -117,7 +117,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "empty-scope-id",
 			args: args{
 				scopeId:      "",
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
 				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
@@ -129,7 +129,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "nil-url", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: nil,
+				issuer:       nil,
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
 			},
@@ -149,7 +149,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-id", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "",
 				clientSecret: ClientSecret("rp-secret"),
 			},
@@ -168,7 +168,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-secret", // should succeed
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
+				issuer:       func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret(""),
 			},
@@ -187,7 +187,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAuthMethod(tt.args.scopeId, tt.args.discoveryURL, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
+			got, err := NewAuthMethod(tt.args.scopeId, tt.args.issuer, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))

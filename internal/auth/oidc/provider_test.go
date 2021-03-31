@@ -16,7 +16,7 @@ func Test_ProviderCaching(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	tp := oidc.StartTestProvider(t)
-	discoveryURL, err := url.Parse(tp.Addr())
+	issuer, err := url.Parse(tp.Addr())
 	require.NoError(t, err)
 
 	_, _, signingAlg, _ := tp.SigningKeys()
@@ -27,7 +27,7 @@ func Test_ProviderCaching(t *testing.T) {
 	secret := authMethodId
 	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider needs the complete callback URL
 
-	testAm, err := NewAuthMethod("fake-org", discoveryURL, id, ClientSecret(secret))
+	testAm, err := NewAuthMethod("fake-org", issuer, id, ClientSecret(secret))
 	require.NoError(t, err)
 
 	testAm.PublicId = authMethodId
@@ -83,7 +83,7 @@ func Test_convertToProvider(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	tp := oidc.StartTestProvider(t)
-	discoveryURL, err := url.Parse(tp.Addr())
+	issuer, err := url.Parse(tp.Addr())
 	require.NoError(t, err)
 
 	_, _, signingAlg, _ := tp.SigningKeys()
@@ -94,7 +94,7 @@ func Test_convertToProvider(t *testing.T) {
 	id := authMethodId
 	secret := authMethodId
 	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider callback needs the complete URL
-	testAm, err := NewAuthMethod("fake-org", discoveryURL, id, ClientSecret(secret))
+	testAm, err := NewAuthMethod("fake-org", issuer, id, ClientSecret(secret))
 	require.NoError(t, err)
 
 	testAm.PublicId = authMethodId
