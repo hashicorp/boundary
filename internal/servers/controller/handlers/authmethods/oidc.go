@@ -2,8 +2,10 @@ package authmethods
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -11,13 +13,22 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
-	// oidc field names
+	// commands
+	startCommand    = "start"
+	callbackCommand = "callback"
+	tokenCommand    = "token"
+
+	// field names
 	issuerField                            = "attributes.issuer"
 	clientSecretField                      = "attributes.client_secret"
 	clientIdField                          = "attributes.client_id"
@@ -29,6 +40,7 @@ const (
 	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
+	roundtripPayloadField                  = "attributes.roundtrip_payload"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -121,6 +133,70 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
 	}
 	return out, nil
+}
+
+func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	switch req.GetCommand() {
+	case startCommand:
+		return s.authenticateOidcStart(ctx, req, authResults)
+	}
+	reqAttrs := req.GetAttributes().GetFields()
+	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
+	if err != nil {
+		return nil, err
+	}
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	retAttrs, err := handlers.ProtoToStruct(tok)
+	if err != nil {
+		return nil, err
+	}
+	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+}
+
+func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidcStart"
+	var opts []oidc.Option
+	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
+		if val, ok := req.GetAttributes().GetFields()[roundtripPayloadField]; ok {
+			structVal := val.GetStructValue()
+			if structVal != nil {
+				m, err := json.Marshal(structVal)
+				if err != nil {
+					// We don't know what's in this payload so we swallow the
+					// error, as it could be something sensitive.
+					return nil, errors.New(errors.InvalidParameter, op, "Unable to marshal attrs.roundtrip_payload as JSON")
+				}
+				opts = append(opts, oidc.WithRoundtripPayload(string(m)))
+			}
+		}
+	}
+	return nil, nil
+}
+
+func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+
+	switch req.GetCommand() {
+	case startCommand:
+	case callbackCommand:
+	case tokenCommand:
+		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+		if tType != "" && tType != "token" && tType != "cookie" {
+			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+		}
+	default:
+		badFields["command"] = "Invalid command for this auth method type."
+	}
+
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+	return nil
 }
 
 func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, forced bool, err error) {

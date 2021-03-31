@@ -6,35 +6,32 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/cap/oidc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // StartAuth accepts a request to start an OIDC authentication/authorization
-// attempt.  It returns two URLs and a tokenId.  authUrl is an OIDC authorization
-// request URL. The authUrl includes a "state" parameter which is encrypted
-// and has a payload which includes (among other things) the final redirect
-// (calculated from the clientInfo), a token_request_id,  and nonce. The
-// tokenUrl is the URL theclient can use to retrieve the results of the
-// user's OIDC authentication attempt. The tokenId is an encrypted payload for
-// the POST request to the tokenUrl.
+// attempt. It returns two URLs and a tokenId.  authUrl is an OIDC authorization
+// request URL. The authUrl includes a "state" parameter which is encrypted and
+// has a payload which includes (among other things) the final redirect
+// (calculated from the clientInfo), a token_request_id, and nonce. The tokenUrl
+// is the URL theclient can use to retrieve the results of the user's OIDC
+// authentication attempt. The tokenId is an encrypted payload for the POST
+// request to the tokenUrl.
 //
 // If the auth method is in an InactiveState, then an error is returned.
 //
 // Options supported:
 //
 // WithRoundTripPayload(string) provides an option for a client roundtrip
-// payload.  This payload will be added to the final redirect as a query
+// payload. This payload will be added to the final redirect as a query
 // parameter.
-func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, apiAddr string, authMethodId string, opt ...Option) (authUrl *url.URL, tokenUrl *url.URL, tokenId string, e error) {
+func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId string, opt ...Option) (authUrl *url.URL, tokenUrl *url.URL, tokenId string, e error) {
 	const op = "oidc.StartAuth"
-	if apiAddr == "" {
-		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing api address")
-	}
 	if authMethodId == "" {
 		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
@@ -56,27 +53,29 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, apiAddr string, 
 		return nil, nil, "", errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
 
+	callbackUrls := am.GetCallbackUrls()
+	if len(callbackUrls) == 0 {
+		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing api callback url in auth method configuration")
+	}
+	apiAddr := callbackUrls[0]
+
 	// get the provider from the cache (if possible)
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, op)
 	}
-	callbackRedirect := fmt.Sprintf(CallbackEndpoint, apiAddr, authMethodId)
+	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetCallbackUrls()[0], authMethodId)
 
 	opts := getOpts(opt...)
 	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, apiAddr)
 	if opts.withRoundtripPayload != "" {
-		finalRedirect = fmt.Sprintf("%s?%s", finalRedirect, opts.withRoundtripPayload)
+		u := make(url.Values)
+		u.Add("roundtrip_payload", opts.withRoundtripPayload)
+		finalRedirect = fmt.Sprintf("%s?%s", finalRedirect, u.Encode())
 	}
 	now := time.Now()
-	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
-	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "create timestamp failed", errors.WithWrap(err))
-	}
-	exp, err := ptypes.TimestampProto(now.Add(AttemptExpiration).Truncate(time.Second))
-	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "exp timestamp failed", errors.WithWrap(err))
-	}
+	createTime := timestamppb.New(now.Truncate(time.Second))
+	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
 	tokenRequestId, err := authtoken.NewAuthTokenId()
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, op)

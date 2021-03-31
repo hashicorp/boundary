@@ -286,6 +286,10 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		if err := validateAuthenticatePasswordRequest(req); err != nil {
 			return nil, err
 		}
+	case auth.OidcSubtype:
+		if err := validateAuthenticateOidcRequest(req); err != nil {
+			return nil, err
+		}
 	}
 
 	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
@@ -298,7 +302,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return s.authenticatePassword(ctx, req, &authResults)
 
 	case auth.OidcSubtype:
-		return &pbs.AuthenticateResponse{}, nil
+		return s.authenticateOidc(ctx, req, &authResults)
 	}
 	return nil, errors.New(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
@@ -905,14 +909,6 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		default:
 			badFields["auth_method_id"] = "Unknown auth method type."
 		}
-	}
-
-	if req.GetAttributes() == nil && req.GetCredentials() != nil {
-		// TODO: Eventually, remove this
-		req.Attributes = req.Credentials
-	}
-	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
-		badFields["attributes"] = "This is a required field."
 	}
 
 	if len(badFields) > 0 {
