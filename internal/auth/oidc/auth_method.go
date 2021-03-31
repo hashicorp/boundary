@@ -160,9 +160,6 @@ func AllocAuthMethod() AuthMethod {
 // Clone an AuthMethod.
 func (a *AuthMethod) Clone() *AuthMethod {
 	cp := proto.Clone(a.AuthMethod)
-	// it doesn't appear that proto.Clone() properly handles booleans, so this
-	// will address that issue until it's fixed in the library
-	cp.(*store.AuthMethod).DisableDiscoveredConfigValidation = a.DisableDiscoveredConfigValidation
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),
 	}
