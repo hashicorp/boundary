@@ -97,7 +97,8 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 		func(_ db.Reader, w db.Writer) error {
 			updatedAm = am.Clone()
 			updatedAm.OperationalState = string(desiredState)
-			dbMask := []string{"OperationalState"}
+			updatedAm.DisableDiscoveredConfigValidation = opts.withForce
+			dbMask := []string{"OperationalState", "DisableDiscoveredConfigValidation"}
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))

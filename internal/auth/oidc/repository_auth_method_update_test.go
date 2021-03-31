@@ -130,6 +130,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.CallbackUrls = updateWith.CallbackUrls
 				am.SigningAlgs = updateWith.SigningAlgs
 				am.Certificates = updateWith.Certificates
+				am.DisableDiscoveredConfigValidation = true
 				return am
 			},
 		},
