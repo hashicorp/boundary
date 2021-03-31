@@ -22,7 +22,7 @@ func TestCredentialStore_New(t *testing.T) {
 	type args struct {
 		scopeId      string
 		vaultAddress string
-		vaultToken   string
+		token        string
 		opts         []Option
 	}
 
@@ -47,7 +47,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 			},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
@@ -61,7 +61,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithName("test-name"),
 				},
@@ -79,7 +79,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithDescription("test-description"),
 				},
@@ -97,7 +97,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithCACert("ca-cert"),
 				},
@@ -115,7 +115,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithNamespace("kazmierczak"),
 				},
@@ -133,7 +133,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithTlsServerName("crews"),
 				},
@@ -151,7 +151,7 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				vaultToken:   "token",
+				token:        "token",
 				opts: []Option{
 					WithTlsSkipVerify(true),
 				},
@@ -170,7 +170,7 @@ func TestCredentialStore_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, tt.args.vaultToken, tt.args.opts...)
+			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, tt.args.token, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

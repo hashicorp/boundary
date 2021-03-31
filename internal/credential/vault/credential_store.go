@@ -18,7 +18,7 @@ type CredentialStore struct {
 // Name, description, CA cert, namespace, TLS server name, and TLS skip
 // verify are the only valid options.
 // All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, vaultToken string, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, token string, opt ...Option) (*CredentialStore, error) {
 	const op = "vault.NewCredentialStore"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
@@ -26,11 +26,11 @@ func NewCredentialStore(scopeId string, vaultAddress string, vaultToken string, 
 	if vaultAddress == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault address")
 	}
-	if vaultToken == "" {
+	if token == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
 
-	// TODO(mgaffney) 03/2021: handle vaultToken
+	// TODO(mgaffney) 03/2021: handle token
 
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
@@ -77,7 +77,7 @@ func (cs *CredentialStore) SetTableName(n string) {
 func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{cs.PublicId},
-		"resource-type":      []string{"credential-store"},
+		"resource-type":      []string{"credential-vault-store"},
 		"op-type":            []string{op.String()},
 	}
 	if cs.ScopeId != "" {
