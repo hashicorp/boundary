@@ -48,7 +48,7 @@ func TestAccount_Create(t *testing.T) {
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				subjectId:    "alice",
-				opts:         []Option{WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
+				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
@@ -62,7 +62,7 @@ func TestAccount_Create(t *testing.T) {
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				subjectId:    "alice",
-				opts:         []Option{WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
+				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
 			want: func() *Account {
@@ -72,6 +72,22 @@ func TestAccount_Create(t *testing.T) {
 			}(),
 			wantCreateErr:   true,
 			wantCreateIsErr: errors.NotUnique,
+		},
+		{
+			name: "mismatch issuer",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				subjectId:    "newsubject",
+				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0])},
+			},
+			create: true,
+			want: func() *Account {
+				want, err := NewAccount(testAuthMethod.PublicId, "newsubject", WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0]))
+				require.NoError(t, err)
+				return want
+			}(),
+			wantCreateErr:   true,
+			wantCreateIsErr: errors.Exception,
 		},
 		{
 			name: "empty-auth-method",
@@ -118,8 +134,14 @@ func TestAccount_Create(t *testing.T) {
 				subjectId:    "alice",
 				opts:         []Option{WithIssuer(&url.URL{})},
 			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
+			create: true,
+			want: func() *Account {
+				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(&url.URL{}))
+				require.NoError(t, err)
+				return want
+			}(),
+			wantCreateErr:   true,
+			wantCreateIsErr: errors.CheckConstraint,
 		},
 	}
 	for _, tt := range tests {
@@ -141,7 +163,7 @@ func TestAccount_Create(t *testing.T) {
 				err = rw.Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
-					assert.True(errors.Match(errors.T(tt.wantCreateIsErr), err))
+					assert.True(errors.Match(errors.T(tt.wantCreateIsErr), err), err)
 					return
 				} else {
 					assert.NoError(err)
@@ -154,6 +176,29 @@ func TestAccount_Create(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("account issuer stays when auth method discovery url changes", func(t *testing.T) {
+		am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://discovery.com")[0], "client", "secret")
+		a, err := NewAccount(am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetDiscoveryUrl())[0]))
+		require.NoError(t, err)
+		id, err := newAccountId(am.GetPublicId(), am.GetDiscoveryUrl(), a.GetSubjectId())
+		require.NoError(t, err)
+		a.PublicId = id
+		ctx := context.Background()
+		require.NoError(t, rw.Create(ctx, a))
+		assert.Equal(t, am.GetDiscoveryUrl(), a.GetIssuerId())
+
+		discoUrl := am.GetDiscoveryUrl()
+		newDiscoUrl := "https://changed.com"
+		am.DiscoveryUrl = newDiscoUrl
+		n, err := rw.Update(ctx, am, []string{"DiscoveryUrl"}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+		assert.Equal(t, newDiscoUrl, am.GetDiscoveryUrl())
+
+		require.NoError(t, rw.LookupById(ctx, a))
+		assert.Equal(t, discoUrl, a.GetIssuerId())
+	})
 }
 
 func TestAccount_Delete(t *testing.T) {
@@ -179,7 +224,9 @@ func TestAccount_Delete(t *testing.T) {
 			"my-dogs-name")
 
 	testResource := func(authMethodId string, subject string) *Account {
-		a, err := NewAccount(authMethodId, subject)
+		u, err := url.Parse(testAuthMethod.GetDiscoveryUrl())
+		require.NoError(t, err)
+		a, err := NewAccount(authMethodId, subject, WithIssuer(u))
 		require.NoError(t, err)
 		id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetDiscoveryUrl(), subject)
 		require.NoError(t, err)

@@ -144,8 +144,7 @@ func TestGet(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	issuerId := oidc.TestConvertToUrls(t, oidcAm.DiscoveryUrl)[0]
-	oidcA := oidc.TestAccount(t, conn, oidcAm, issuerId, "test-subject")
+	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 	oidcWireAccount := pb.Account{
 		Id:           oidcA.GetPublicId(),
 		AuthMethodId: oidcA.GetAuthMethodId(),
@@ -155,7 +154,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer_id":  structpb.NewStringValue(issuerId.String()),
+			"issuer_id":  structpb.NewStringValue(oidcAm.GetDiscoveryUrl()),
 			"subject_id": structpb.NewStringValue("test-subject"),
 		}},
 		AuthorizedActions: oidcAuthorizedActions,
@@ -376,9 +375,8 @@ func TestListOidc(t *testing.T) {
 
 	var wantSomeAccounts []*pb.Account
 	for i := 0; i < 3; i++ {
-		issuerId := oidc.TestConvertToUrls(t, amSomeAccounts.DiscoveryUrl)[0]
 		subId := fmt.Sprintf("test-subject%d", i)
-		aa := oidc.TestAccount(t, conn, amSomeAccounts, issuerId, subId)
+		aa := oidc.TestAccount(t, conn, amSomeAccounts, subId)
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
 			Id:           aa.GetPublicId(),
 			AuthMethodId: aa.GetAuthMethodId(),
@@ -388,7 +386,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id":  structpb.NewStringValue(issuerId.String()),
+				"issuer_id":  structpb.NewStringValue(amSomeAccounts.DiscoveryUrl),
 				"subject_id": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -397,9 +395,8 @@ func TestListOidc(t *testing.T) {
 
 	var wantOtherAccounts []*pb.Account
 	for i := 0; i < 3; i++ {
-		issuerId := oidc.TestConvertToUrls(t, amOtherAccounts.DiscoveryUrl)[0]
 		subId := fmt.Sprintf("test-subject%d", i)
-		aa := oidc.TestAccount(t, conn, amOtherAccounts, issuerId, subId)
+		aa := oidc.TestAccount(t, conn, amOtherAccounts, subId)
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
 			Id:           aa.GetPublicId(),
 			AuthMethodId: aa.GetAuthMethodId(),
@@ -409,7 +406,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id":  structpb.NewStringValue(issuerId.String()),
+				"issuer_id":  structpb.NewStringValue(amOtherAccounts.DiscoveryUrl),
 				"subject_id": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -516,8 +513,7 @@ func TestDelete(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	issuerId := oidc.TestConvertToUrls(t, oidcAm.DiscoveryUrl)[0]
-	oidcA := oidc.TestAccount(t, conn, oidcAm, issuerId, "test-subject")
+	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -1389,7 +1385,6 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	issuerId := oidc.TestConvertToUrls(t, am.DiscoveryUrl)[0]
 
 	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")

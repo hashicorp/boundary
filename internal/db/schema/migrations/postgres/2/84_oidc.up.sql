@@ -143,13 +143,8 @@ create table auth_oidc_account (
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
-    constraint auth_oidc_method_issuer_id_fkey
-        foreign key (scope_id, auth_method_id, issuer_id)
-            references auth_oidc_method (scope_id, public_id, discovery_url)
-            on delete no action
-            on update no action,
-    subject_id text not null -- case-senstive string that maps to an id_token's sub claim
+    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
+    subject_id text not null -- case-sensitive string that maps to an id_token's sub claim
       constraint subject_id_must_not_be_empty 
       check (
         length(trim(subject_id)) > 0
@@ -375,17 +370,17 @@ create or replace function
     returns trigger
 as $$
 begin
-    select auth_oidc_method.discovery_url
-    into new.issuer_id
+    perform
     from auth_oidc_method
-    where auth_oidc_method.public_id = new.auth_method_id;
+    where auth_oidc_method.public_id = new.auth_method_id
+    and auth_oidc_method.discovery_url = new.issuer_id;
 
-    if new.issuer_id == "" then
-        raise exception 'oidc account can only be created for oidc auth methods with a discovery_url set.';
+    if not found then
+        raise exception 'oidc account must match the auth method discovery url';
     end if;
 
     return new;
-end;
+end
 $$ language plpgsql;
 
 create trigger

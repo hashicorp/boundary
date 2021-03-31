@@ -158,7 +158,7 @@ func Test_Callback(t *testing.T) {
 		{
 			name: "inactive-valid",
 			setup: func() {
-				acct := TestAccount(t, conn, testAuthMethod2, TestConvertToUrls(t, tp.Addr())[0], "inactive-valid@example.com")
+				acct := TestAccount(t, conn, testAuthMethod2, "inactive-valid@example.com")
 				_ = iam.TestUser(t, iamRepo, org2.PublicId, iam.WithAccountIds(acct.PublicId))
 			},
 			oidcRepoFn:        repoFn,

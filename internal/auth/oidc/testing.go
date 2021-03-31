@@ -151,6 +151,9 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subjectId string, 
 	rw := db.New(conn)
 	ctx := context.Background()
 
+	u, err := url.Parse(am.GetDiscoveryUrl())
+	require.NoError(err)
+	opt = append(opt, WithIssuer(u))
 	a, err := NewAccount(am.PublicId, subjectId, opt...)
 	require.NoError(err)
 

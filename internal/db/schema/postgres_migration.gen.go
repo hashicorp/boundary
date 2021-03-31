@@ -5103,7 +5103,9 @@ create table auth_oidc_method (
   constraint auth_oidc_method_scope_id_public_id_uq
     unique(scope_id, public_id),
   constraint auth_oidc_method_scope_id_discover_url_client_id_unique
-    unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
+    unique(scope_id, discovery_url, client_id), -- a client_id must be unique for a provider within a scope.
+  constraint auth_oidc_method_scope_id_public_id_discover_url_unique
+    unique(scope_id, public_id, discovery_url) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
 'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
@@ -5199,7 +5201,7 @@ create table auth_oidc_account (
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
+    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
     subject_id text not null -- case-senstive string that maps to an id_token's sub claim
       constraint subject_id_must_not_be_empty 
       check (
@@ -5418,6 +5420,32 @@ create trigger
 before insert on auth_oidc_account
   for each row execute procedure insert_auth_oidc_account_subtype();
 
+-- insert_auth_oidc_account_issuer is intended as a before insert
+-- trigger on auth_oidc_account. Its purpose is to add the auth
+-- method's discovery_url to the account's issuer_id.
+create or replace function
+    insert_auth_oidc_account_issuer()
+    returns trigger
+as $$
+begin
+    perform
+    from auth_oidc_method
+    where auth_oidc_method.public_id = new.auth_method_id
+    and auth_oidc_method.discovery_url = new.issuer_id;
+
+    if not found then
+        raise exception 'oidc account must match the auth method discovery url';
+    end if;
+
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger
+    insert_auth_oidc_account_issuer
+    before insert on auth_oidc_account
+    for each row execute procedure insert_auth_oidc_account_issuer();
+
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
 -- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg
 
@@ -5454,9 +5482,9 @@ declare cb_cnt int;
     if am_state != inactive then
       case 
         when alg_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no signing algorithms'; 
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no signing algorithms';
         when cb_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no callback URLs';
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no callback URLs';
       end case;
     end if; 
   

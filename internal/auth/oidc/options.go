@@ -37,7 +37,7 @@ type options struct {
 	withPublicId            string
 	withRoundtripPayload    string
 	withKeyId               string
-	withIssuer *url.URL
+	withIssuer              *url.URL
 }
 
 func getDefaultOptions() options {

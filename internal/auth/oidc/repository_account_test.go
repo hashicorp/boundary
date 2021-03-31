@@ -73,7 +73,6 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					PublicId:     "hcst_OOOOOOOOOO",
-					IssuerId:     "https://allice.com",
 					SubjectId:    "invalid public id set",
 				},
 			},
@@ -85,29 +84,16 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).CreateAccount: missing subject id: parameter violation: error #100",
 		},
 		{
-			name: "invalid-no-issuer",
-			in: &Account{
-				Account: &store.Account{
-					AuthMethodId: authMethod.PublicId,
-					SubjectId:    "invalid-no-issuer",
-				},
-			},
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing issuer id: parameter violation: error #100",
-		},
-		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
 					SubjectId:    "valid-no-options",
 				},
 			},
@@ -124,7 +110,6 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
 					SubjectId:    "valid-with-name",
 					Name:         "test-name-repo",
 				},
@@ -143,7 +128,6 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
 					SubjectId:    "valid-with-description",
 					Description:  ("test-description-repo"),
 				},
@@ -217,7 +201,6 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
 				Name:         "test-name-repo",
-				IssuerId:     "https://allice.com",
 				SubjectId:    "subject",
 			},
 		}
@@ -263,7 +246,6 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		in := &Account{
 			Account: &store.Account{
 				Name:      "test-name-repo",
-				IssuerId:  "https://allice.com",
 				SubjectId: "subject1",
 			},
 		}
@@ -311,7 +293,6 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		in := &Account{
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
-				IssuerId:     "https://allice.com",
 				SubjectId:    "subject1",
 			},
 		}
@@ -356,7 +337,6 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		)
 		in := &Account{
 			Account: &store.Account{
-				IssuerId:  "https://allice.com",
 				SubjectId: "subject1",
 			},
 		}
@@ -371,7 +351,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(in.SubjectId, got.SubjectId)
-		assert.Equal(in.IssuerId, got.IssuerId)
+		assert.Equal(authMethoda.GetDiscoveryUrl(), got.IssuerId)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.AuthMethodId = authMethodb.GetPublicId()
@@ -383,7 +363,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(in2.SubjectId, got2.SubjectId)
-		assert.Equal(in2.IssuerId, got2.IssuerId)
+		assert.Equal(authMethodb.GetDiscoveryUrl(), got2.IssuerId)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 
@@ -407,12 +387,10 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		in := &Account{
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
-				IssuerId:     "https://allice.com",
 				SubjectId:    "subject1",
 			},
 		}
 		in2 := in.Clone()
-		in2.IssuerId = "https://somethingelse.com"
 
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
@@ -422,8 +400,12 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(in.SubjectId, got.SubjectId)
-		assert.Equal(in.IssuerId, got.IssuerId)
+		assert.Equal(authMethod.DiscoveryUrl, got.IssuerId)
 		assert.Equal(got.CreateTime, got.UpdateTime)
+
+		authMethod.DiscoveryUrl = "https://somethingelse.com"
+		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{"DiscoveryUrl"}, WithForce())
+		require.NoError(err)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
@@ -433,7 +415,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(in2.SubjectId, got2.SubjectId)
-		assert.Equal(in2.IssuerId, got2.IssuerId)
+		assert.Equal(authMethod.DiscoveryUrl, got2.IssuerId)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 }
@@ -458,10 +440,9 @@ func TestRepository_LookupAccount(t *testing.T) {
 		WithSigningAlgs(RS256),
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
-	account := TestAccount(t, conn, authMethod, issuerId, "test-subject")
+	account := TestAccount(t, conn, authMethod, "test-subject")
 
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), issuerId.String(), "random-id")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.DiscoveryUrl, "random-id")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -524,10 +505,8 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		WithSigningAlgs(RS256),
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	issuerId := TestConvertToUrls(t, authMethod.DiscoveryUrl)[0]
-	account := TestAccount(t, conn, authMethod, issuerId, "create-success")
-
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), issuerId.String(), "random-subject")
+	account := TestAccount(t, conn, authMethod, "create-success")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.DiscoveryUrl, "random-subject")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -617,14 +596,14 @@ func TestRepository_ListAccounts(t *testing.T) {
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	accounts1 := []*Account{
-		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success"),
-		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success2"),
-		TestAccount(t, conn, authMethod1, TestConvertToUrls(t, authMethod1.DiscoveryUrl)[0], "create-success3"),
+		TestAccount(t, conn, authMethod1, "create-success"),
+		TestAccount(t, conn, authMethod1, "create-success2"),
+		TestAccount(t, conn, authMethod1, "create-success3"),
 	}
 	accounts2 := []*Account{
-		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success"),
-		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success2"),
-		TestAccount(t, conn, authMethod2, TestConvertToUrls(t, authMethod2.DiscoveryUrl)[0], "create-success3"),
+		TestAccount(t, conn, authMethod2, "create-success"),
+		TestAccount(t, conn, authMethod2, "create-success2"),
+		TestAccount(t, conn, authMethod2, "create-success3"),
 	}
 	_ = accounts2
 
@@ -699,7 +678,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 
 	accountCount := 10
 	for i := 0; i < accountCount; i++ {
-		TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], fmt.Sprintf("create-success-%d", i))
+		TestAccount(t, conn, am, fmt.Sprintf("create-success-%d", i))
 	}
 
 	tests := []struct {
@@ -1171,8 +1150,8 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success1")
-		ab := TestAccount(t, conn, am, TestConvertToUrls(t, am.DiscoveryUrl)[0], "create-success2")
+		aa := TestAccount(t, conn, am, "create-success1")
+		ab := TestAccount(t, conn, am, "create-success2")
 
 		aa.Name = name
 		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
@@ -1247,7 +1226,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		aa := TestAccount(t, conn, ama, TestConvertToUrls(t, ama.DiscoveryUrl)[0], "create-success1")
+		aa := TestAccount(t, conn, ama, "create-success1")
 
 		amb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
@@ -1256,7 +1235,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 			WithSigningAlgs(RS256),
 			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
-		ab := TestAccount(t, conn, amb, TestConvertToUrls(t, amb.DiscoveryUrl)[0], "create-success2")
+		ab := TestAccount(t, conn, amb, "create-success2")
 
 		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
 		orig := aa.Clone()
