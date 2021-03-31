@@ -37,8 +37,8 @@ const (
 	currentPasswordField = "current_password"
 
 	// oidc field names
-	issuerIdField   = "attributes.issuer_id"
-	subjectIdField  = "attributes.subject_id"
+	issuerField     = "attributes.issuer"
+	subjectField    = "attributes.subject"
 	nameClaimField  = "attributes.full_name"
 	emailClaimField = "attributes.email"
 )
@@ -337,7 +337,7 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
-	a, err := oidc.NewAccount(authMethodId, attrs.GetSubjectId(), opts...)
+	a, err := oidc.NewAccount(authMethodId, attrs.GetSubject(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -685,8 +685,8 @@ func toProto(in auth.Account) (*pb.Account, error) {
 	case *oidc.Account:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAccountAttributes{
-			IssuerId:  i.GetIssuerId(),
-			SubjectId: i.GetSubjectId(),
+			Issuer:  i.GetIssuerId(),
+			Subject: i.GetSubjectId(),
 			FullName:  i.GetFullName(),
 			Email:     i.GetEmail(),
 		}
@@ -771,16 +771,16 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-			if attrs.GetIssuerId() == "" {
-				badFields[issuerIdField] = "This is a required field for this type."
+			if attrs.GetIssuer() == "" {
+				badFields[issuerField] = "This is a required field for this type."
 			} else {
-				_, err := url.Parse(attrs.GetIssuerId())
+				_, err := url.Parse(attrs.GetIssuer())
 				if err != nil {
-					badFields[issuerIdField] = fmt.Sprintf("Could not parse %q as a url.", attrs.GetIssuerId())
+					badFields[issuerField] = fmt.Sprintf("Could not parse %q as a url.", attrs.GetIssuer())
 				}
 			}
-			if attrs.GetSubjectId() == "" {
-				badFields[subjectIdField] = "This is a required field for this type."
+			if attrs.GetSubject() == "" {
+				badFields[subjectField] = "This is a required field for this type."
 			}
 			if attrs.GetFullName() != "" {
 				badFields[nameClaimField] = "This is a read only field."
@@ -819,11 +819,11 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerIdField) {
-				badFields[issuerIdField] = "Field cannot be updated."
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
+				badFields[issuerField] = "Field cannot be updated."
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectIdField) {
-				badFields[subjectIdField] = "Field cannot be updated."
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
+				badFields[subjectField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
 				badFields[emailClaimField] = "Field is read only."

@@ -96,26 +96,26 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithOidcAccountIssuerId(inIssuerId string) Option {
+func WithOidcAccountIssuer(inIssuer string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["issuer_id"] = inIssuerId
+		val["issuer"] = inIssuer
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultOidcAccountIssuerId() Option {
+func DefaultOidcAccountIssuer() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["issuer_id"] = nil
+		val["issuer"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -180,26 +180,26 @@ func DefaultPasswordAccountPassword() Option {
 	}
 }
 
-func WithOidcAccountSubjectId(inSubjectId string) Option {
+func WithOidcAccountSubject(inSubject string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["subject_id"] = inSubjectId
+		val["subject"] = inSubject
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultOidcAccountSubjectId() Option {
+func DefaultOidcAccountSubject() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["subject_id"] = nil
+		val["subject"] = nil
 		o.postMap["attributes"] = val
 	}
 }

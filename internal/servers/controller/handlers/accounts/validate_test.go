@@ -58,7 +58,7 @@ func TestValidateCreateRequest(t *testing.T) {
 					"issuer_id": structpb.NewStringValue("https://www.alice.com"),
 				}},
 			},
-			errContains: fieldError(subjectIdField, "This is a required field for this type."),
+			errContains: fieldError(subjectField, "This is a required field for this type."),
 		},
 		{
 			name: "missing oidc issuer id",
@@ -69,7 +69,7 @@ func TestValidateCreateRequest(t *testing.T) {
 					"subject_id": structpb.NewStringValue("something"),
 				}},
 			},
-			errContains: fieldError(issuerIdField, "This is a required field for this type."),
+			errContains: fieldError(issuerField, "This is a required field for this type."),
 		},
 		{
 			name: "read only name claim field",
@@ -240,8 +240,8 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc write only at create fields", func(t *testing.T) {
 		readOnlyFields := []string{
-			issuerIdField,
-			subjectIdField,
+			issuerField,
+			subjectField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
 			Id:         oidc.AccountPrefix + "1234567890",

@@ -154,8 +154,8 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer_id":  structpb.NewStringValue(oidcAm.GetDiscoveryUrl()),
-			"subject_id": structpb.NewStringValue("test-subject"),
+			"issuer":  structpb.NewStringValue(oidcAm.GetDiscoveryUrl()),
+			"subject": structpb.NewStringValue("test-subject"),
 		}},
 		AuthorizedActions: oidcAuthorizedActions,
 	}
@@ -386,8 +386,8 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id":  structpb.NewStringValue(amSomeAccounts.DiscoveryUrl),
-				"subject_id": structpb.NewStringValue(subId),
+				"issuer":  structpb.NewStringValue(amSomeAccounts.DiscoveryUrl),
+				"subject": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
@@ -406,8 +406,8 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer_id":  structpb.NewStringValue(amOtherAccounts.DiscoveryUrl),
-				"subject_id": structpb.NewStringValue(subId),
+				"issuer":  structpb.NewStringValue(amOtherAccounts.DiscoveryUrl),
+				"subject": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
@@ -443,7 +443,7 @@ func TestListOidc(t *testing.T) {
 			name: "Filter Some Accounts",
 			req: &pbs.ListAccountsRequest{
 				AuthMethodId: amSomeAccounts.GetPublicId(),
-				Filter:       fmt.Sprintf(`"/item/attributes/subject_id"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject_id"]),
+				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject"]),
 			},
 			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
 		},
@@ -476,8 +476,8 @@ func TestListOidc(t *testing.T) {
 				require.NoError(gErr)
 			}
 			sort.Slice(got.Items, func(i, j int) bool {
-				return strings.Compare(got.Items[i].GetAttributes().GetFields()["subject_id"].GetStringValue(),
-					got.Items[j].GetAttributes().GetFields()["subject_id"].GetStringValue()) < 0
+				return strings.Compare(got.Items[i].GetAttributes().GetFields()["subject"].GetStringValue(),
+					got.Items[j].GetAttributes().GetFields()["subject"].GetStringValue()) < 0
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -838,7 +838,7 @@ func TestCreateOidc(t *testing.T) {
 	)
 
 	createAttr := func(iid, sid string) *structpb.Struct {
-		attr := &pb.OidcAccountAttributes{IssuerId: iid, SubjectId: sid}
+		attr := &pb.OidcAccountAttributes{Issuer: iid, Subject: sid}
 		ret, err := handlers.ProtoToStruct(attr)
 		require.NoError(t, err, "Error converting proto to struct.")
 		return ret
@@ -1391,12 +1391,12 @@ func TestUpdateOidc(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer_id":  structpb.NewStringValue("https://www.alice.com"),
-		"subject_id": structpb.NewStringValue("test-subject"),
+		"issuer":  structpb.NewStringValue("https://www.alice.com"),
+		"subject": structpb.NewStringValue("test-subject"),
 	}}
 	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer_id":  structpb.NewStringValue("https://www.changed.com"),
-		"subject_id": structpb.NewStringValue("changed"),
+		"issuer":  structpb.NewStringValue("https://www.changed.com"),
+		"subject": structpb.NewStringValue("changed"),
 	}}
 
 	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
@@ -1670,7 +1670,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Update Issuer Id",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.issuer_id"},
+					Paths: []string{"attributes.issuer"},
 				},
 				Item: &pb.Account{
 					Name:       &wrapperspb.StringValue{Value: "ignored"},
@@ -1683,7 +1683,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Update Subject Id",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.subject_id"},
+					Paths: []string{"attributes.subject"},
 				},
 				Item: &pb.Account{
 					Name:       &wrapperspb.StringValue{Value: "ignored"},
