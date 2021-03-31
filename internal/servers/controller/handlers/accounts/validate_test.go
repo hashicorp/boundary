@@ -50,7 +50,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
 		},
 		{
-			name: "missing oidc subject id",
+			name: "missing oidc subject",
 			item: &pb.Account{
 				Type:         auth.OidcSubtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",

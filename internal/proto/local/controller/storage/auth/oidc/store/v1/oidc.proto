@@ -48,9 +48,9 @@ message AuthMethod {
   // @inject_tag: `gorm:"not_null"`
   bool disable_discovered_config_validation = 89;
 
-  // discovery_url is the OIDC Discovery URL without any .well-known component
+  // issuer is the OIDC Discovery URL without any .well-known component
   // @inject_tag: `gorm:"default:null"`
-  string discovery_url = 90 [(custom_options.v1.mask_mapping) = { this: "DiscoveryUrl" that: "attributes.issuer" }];
+  string issuer = 90 [(custom_options.v1.mask_mapping) = { this: "Issuer" that: "attributes.issuer" }];
 
   // client_id is the OIDC client identifier
   // @inject_tag: `gorm:"not_null"`
@@ -139,13 +139,13 @@ message Account {
   // @inject_tag: `gorm:"not_null"`
   string auth_method_id = 70;
 
-  // issuer_id is a case sensitive URL that maps to the OIDC iss claim
+  // issuer is a case sensitive URL that maps to the OIDC iss claim
   // @inject_tag: `gorm:"not_null"`
-  string issuer_id = 80;
+  string issuer = 80;
 
-  // subject_id is a case sensitive string that maps to the OIDC sub claim.
+  // subject is a case sensitive string that maps to the OIDC sub claim.
   // @inject_tag: `gorm:"not_null"`
-  string subject_id = 90;
+  string subject = 90;
 
   // full_name is a string that maps to the OIDC name claim
   // @inject_tag: `gorm:"default:null"`

@@ -678,7 +678,7 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 			authMethod: func() *AuthMethod {
 				cp := testAuthMethod.Clone()
 				port := testutil.TestFreePort(t)
-				cp.DiscoveryUrl = fmt.Sprintf("http://localhost:%d", port)
+				cp.Issuer = fmt.Sprintf("http://localhost:%d", port)
 				return cp
 			}(),
 			withAuthMethod:  true,
@@ -1001,7 +1001,7 @@ func Test_validateFieldMask(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"DiscoveryUrl",
+				"Issuer",
 				"ClientId",
 				"ClientSecret",
 				"MaxAge",
@@ -1046,7 +1046,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "new-name",
 					Description:      "new-description",
 					OperationalState: string(ActivePublicState),
-					DiscoveryUrl:     "new-discovery-url",
+					Issuer:           "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
@@ -1061,7 +1061,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "orig-name",
 					Description:      "orig-description",
 					OperationalState: string(InactiveState),
-					DiscoveryUrl:     "orig-discovery-url",
+					Issuer:           "orig-discovery-url",
 					ClientId:         "orig-client-id",
 					ClientSecret:     "orig-client-secret",
 					MaxAge:           100,
@@ -1076,7 +1076,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "new-name",
 					Description:      "new-description",
 					OperationalState: string(InactiveState),
-					DiscoveryUrl:     "new-discovery-url",
+					Issuer:           "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
@@ -1089,7 +1089,7 @@ func Test_applyUpdate(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"DiscoveryUrl",
+				"Issuer",
 				"ClientId",
 				"ClientSecret",
 				"MaxAge",
@@ -1106,7 +1106,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "new-name",
 					Description:      "new-description",
 					OperationalState: string(ActivePublicState),
-					DiscoveryUrl:     "new-discovery-url",
+					Issuer:           "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
@@ -1117,7 +1117,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "orig-name",
 					Description:      "orig-description",
 					OperationalState: string(InactiveState),
-					DiscoveryUrl:     "orig-discovery-url",
+					Issuer:           "orig-discovery-url",
 					ClientId:         "orig-client-id",
 					ClientSecret:     "orig-client-secret",
 					MaxAge:           100,
@@ -1132,7 +1132,7 @@ func Test_applyUpdate(t *testing.T) {
 					Name:             "new-name",
 					Description:      "new-description",
 					OperationalState: string(InactiveState),
-					DiscoveryUrl:     "new-discovery-url",
+					Issuer:           "new-discovery-url",
 					ClientId:         "new-client-id",
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
@@ -1141,7 +1141,7 @@ func Test_applyUpdate(t *testing.T) {
 			fieldMask: []string{
 				"Name",
 				"Description",
-				"DiscoveryUrl",
+				"Issuer",
 				"ClientId",
 				"ClientSecret",
 				"MaxAge",

@@ -59,7 +59,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = -1
@@ -69,7 +69,7 @@ func TestAuthMethod_Create(t *testing.T) {
 			}(),
 		},
 		{
-			name: "dup", // must follow "valid" test. combination of ScopeId, DiscoveryUrl and ClientId must be unique.
+			name: "dup", // must follow "valid" test. combination of ScopeId, Issuer and ClientId must be unique.
 			args: args{
 				scopeId:      org.PublicId,
 				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
@@ -82,7 +82,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = -1
@@ -106,7 +106,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "eve_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = 0
@@ -138,7 +138,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = ""
+				a.Issuer = ""
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = 0
@@ -157,7 +157,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = ""
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = 0
@@ -176,7 +176,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = ""
 				a.MaxAge = 0
@@ -233,8 +233,8 @@ func TestAuthMethod_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testResource := func(discoveryUrl string, clientId, clientSecret string) *AuthMethod {
-		got, err := NewAuthMethod(org.PublicId, TestConvertToUrls(t, discoveryUrl)[0], clientId, ClientSecret(clientSecret))
+	testResource := func(issuer string, clientId, clientSecret string) *AuthMethod {
+		got, err := NewAuthMethod(org.PublicId, TestConvertToUrls(t, issuer)[0], clientId, ClientSecret(clientSecret))
 		require.NoError(t, err)
 		id, err := newAuthMethodId()
 		require.NoError(t, err)

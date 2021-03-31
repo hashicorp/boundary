@@ -69,7 +69,7 @@ message OidcAuthMethodAttributes {
 	// strip off "/.well-known/openid-configuration" if present. This will be
 	// used for configuration discovery as well as for validation of the "iss"
 	// claim.
-	google.protobuf.StringValue issuer = 20 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.issuer" that:"DiscoveryUrl"}];
+	google.protobuf.StringValue issuer = 20 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.issuer" that:"Issuer"}];
 
 	// An OAuth 2.0 Client Identifier valid at the Authorization Server.
 	google.protobuf.StringValue client_id = 30 [json_name="client_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.client_id" that:"ClientId"}];

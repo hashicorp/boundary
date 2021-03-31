@@ -55,8 +55,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-defaults",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-defaults",
 			}},
 		},
 		{
@@ -66,8 +66,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{"name": "alice eve-smith", "email": "alice@alice.com"},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-atTk-full-name-and-email",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-atTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},
@@ -79,8 +79,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-idTk-full-name-and-email",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-idTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},

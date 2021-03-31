@@ -114,7 +114,7 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 		cbs = append(cbs, fmt.Sprintf(CallbackEndpoint, c, am.PublicId))
 	}
 	c, err := oidc.NewConfig(
-		am.DiscoveryUrl,
+		am.Issuer,
 		am.ClientId,
 		oidc.ClientSecret(am.ClientSecret),
 		algs,

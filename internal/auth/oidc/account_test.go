@@ -30,7 +30,7 @@ func TestAccount_Create(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		subjectId    string
+		subject    string
 		opts         []Option
 	}
 	tests := []struct {
@@ -47,7 +47,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:    "alice",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
@@ -61,7 +61,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "dup", // must follow "valid" test.
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:    "alice",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithEmail("alice@alice.com"), WithFullName("Alice Eve Smith"), WithName("alice's restuarant"), WithDescription("A good place to eat")},
 			},
 			create: true,
@@ -77,7 +77,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "mismatch issuer",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "newsubject",
+				subject:    "newsubject",
 				opts:         []Option{WithIssuer(TestConvertToUrls(t, "https://somethingelse.com")[0])},
 			},
 			create: true,
@@ -93,7 +93,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-auth-method",
 			args: args{
 				authMethodId: "",
-				subjectId:    "alice",
+				subject:    "alice",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -102,7 +102,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-subject",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "",
+				subject:    "",
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
@@ -111,7 +111,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "email-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:    "alice",
 				opts:         []Option{WithEmail(strings.Repeat("a", 500) + "@alice.com")},
 			},
 			wantErr:   true,
@@ -121,7 +121,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "name-too-long",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:    "alice",
 				opts:         []Option{WithFullName(strings.Repeat("a", 750))},
 			},
 			wantErr:   true,
@@ -131,7 +131,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "empty-issuer-url",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:    "alice",
 				opts:         []Option{WithIssuer(&url.URL{})},
 			},
 			create: true,
@@ -147,7 +147,7 @@ func TestAccount_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(tt.args.authMethodId, tt.args.subjectId, tt.args.opts...)
+			got, err := NewAccount(tt.args.authMethodId, tt.args.subject, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -157,7 +157,7 @@ func TestAccount_Create(t *testing.T) {
 			assert.Equal(tt.want, got)
 			if tt.create {
 				ctx := context.Background()
-				id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetDiscoveryUrl(), tt.args.subjectId)
+				id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), tt.args.subject)
 				require.NoError(err)
 				got.PublicId = id
 				err = rw.Create(ctx, got)
@@ -179,25 +179,25 @@ func TestAccount_Create(t *testing.T) {
 
 	t.Run("account issuer stays when auth method discovery url changes", func(t *testing.T) {
 		am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://discovery.com")[0], "client", "secret")
-		a, err := NewAccount(am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetDiscoveryUrl())[0]))
+		a, err := NewAccount(am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetIssuer())[0]))
 		require.NoError(t, err)
-		id, err := newAccountId(am.GetPublicId(), am.GetDiscoveryUrl(), a.GetSubjectId())
+		id, err := newAccountId(am.GetPublicId(), am.GetIssuer(), a.GetSubject())
 		require.NoError(t, err)
 		a.PublicId = id
 		ctx := context.Background()
 		require.NoError(t, rw.Create(ctx, a))
-		assert.Equal(t, am.GetDiscoveryUrl(), a.GetIssuerId())
+		assert.Equal(t, am.GetIssuer(), a.GetIssuer())
 
-		discoUrl := am.GetDiscoveryUrl()
+		discoUrl := am.GetIssuer()
 		newDiscoUrl := "https://changed.com"
-		am.DiscoveryUrl = newDiscoUrl
-		n, err := rw.Update(ctx, am, []string{"DiscoveryUrl"}, nil)
+		am.Issuer = newDiscoUrl
+		n, err := rw.Update(ctx, am, []string{"Issuer"}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
-		assert.Equal(t, newDiscoUrl, am.GetDiscoveryUrl())
+		assert.Equal(t, newDiscoUrl, am.GetIssuer())
 
 		require.NoError(t, rw.LookupById(ctx, a))
-		assert.Equal(t, discoUrl, a.GetIssuerId())
+		assert.Equal(t, discoUrl, a.GetIssuer())
 	})
 }
 
@@ -224,11 +224,11 @@ func TestAccount_Delete(t *testing.T) {
 			"my-dogs-name")
 
 	testResource := func(authMethodId string, subject string) *Account {
-		u, err := url.Parse(testAuthMethod.GetDiscoveryUrl())
+		u, err := url.Parse(testAuthMethod.GetIssuer())
 		require.NoError(t, err)
 		a, err := NewAccount(authMethodId, subject, WithIssuer(u))
 		require.NoError(t, err)
-		id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetDiscoveryUrl(), subject)
+		id, err := newAccountId(testAuthMethod.GetPublicId(), testAuthMethod.GetIssuer(), subject)
 		require.NoError(t, err)
 		a.PublicId = id
 		return a

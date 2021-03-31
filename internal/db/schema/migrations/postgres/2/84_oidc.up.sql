@@ -18,7 +18,7 @@ create table auth_oidc_method (
       on delete restrict
       on update cascade,
   disable_discovered_config_validation bool not null default false,
-  discovery_url wt_url, -- oidc discovery URL without any .well-known component
+  issuer wt_url, -- oidc issuer without any .well-known component
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
     check(length(trim(client_id)) > 0), 
@@ -48,7 +48,7 @@ create table auth_oidc_method (
   constraint auth_oidc_method_scope_id_public_id_uq
     unique(scope_id, public_id),
   constraint auth_oidc_method_scope_id_discover_url_client_id_unique
-    unique(scope_id, discovery_url, client_id) -- a client_id must be unique for a provider within a scope.
+    unique(scope_id, issuer, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
 'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
@@ -144,15 +144,15 @@ create table auth_oidc_account (
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
-    subject_id text not null -- case-sensitive string that maps to an id_token's sub claim
-      constraint subject_id_must_not_be_empty 
+    issuer wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
+    subject text not null -- case-sensitive string that maps to an id_token's sub claim
+      constraint subject_must_not_be_empty
       check (
-        length(trim(subject_id)) > 0
+        length(trim(subject)) > 0
       )
-      constraint subject_id_must_be_less_than_256_chars 
+      constraint subject_must_be_less_than_256_chars
       check(
-        length(trim(subject_id)) <= 255 -- length limit per OIDC spec
+        length(trim(subject)) <= 255 -- length limit per OIDC spec
       ),
     full_name wt_full_name, -- may be null and maps to an id_token's name claim
     email wt_email, -- may be null and maps to the id_token's email claim
@@ -172,8 +172,8 @@ create table auth_oidc_account (
     -- any change to this constraints name must be aligned with the 
     -- acctUpsertQuery const in internal/auth/oidc/query.go
     -- ###############################################################
-    constraint auth_oidc_account_auth_method_id_issuer_id_subject_id_uq
-      unique(auth_method_id, issuer_id, subject_id), -- subject must be unique for a provider within specific auth method
+    constraint auth_oidc_account_auth_method_id_issuer_subject_uq
+      unique(auth_method_id, issuer, subject), -- subject must be unique for a provider within specific auth method
     constraint auth_oidc_account_auth_method_id_public_id_uq
       unique(auth_method_id, public_id)
 );
@@ -229,15 +229,15 @@ as $$
       if not found then 
         raise exception 'an incomplete oidc auth method must remain inactive';
       end if;
-      -- validate discovery_url
+      -- validate issuer
       case 
-        when new.discovery_url != old.discovery_url then
-          if length(trim(new.discovery_url)) = 0 then
-            raise exception 'empty discovery_url: an incomplete oidc auth method must remain inactive';
+        when new.issuer != old.issuer then
+          if length(trim(new.issuer)) = 0 then
+            raise exception 'empty issuer: an incomplete oidc auth method must remain inactive';
           end if;
-        when new.discovery_url = old.discovery_url then
-          if length(trim(old.discovery_url)) = 0 then
-            raise exception 'empty discovery_url: an incomplete oidc auth method must remain inactive';
+        when new.issuer = old.issuer then
+          if length(trim(old.issuer)) = 0 then
+            raise exception 'empty issuer: an incomplete oidc auth method must remain inactive';
           end if;
         else
       end case;
@@ -316,7 +316,7 @@ create trigger
   immutable_columns
 before
 update on auth_oidc_account
-  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer_id', 'subject_id');
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer', 'subject');
 
 create trigger
   default_create_time_column
@@ -367,7 +367,7 @@ before insert on auth_oidc_account
 -- requires that a new auth_oidc_account's issuer matches disovery_url
 -- of its auth_oidc_method.  A not null constraint on the issuer
 -- requires that it is set.  Together there is an implicit requirement
--- that an auth_oidc_method has the discovery_url set before a record
+-- that an auth_oidc_method has the issuer set before a record
 -- can be added to auth_oidc_account for that auth_oidc_method.
 create or replace function
     auth_oidc_account_issuer_matches_auth_oidc_method_display_url()
@@ -377,10 +377,10 @@ begin
     perform
     from auth_oidc_method
     where auth_oidc_method.public_id = new.auth_method_id
-    and auth_oidc_method.discovery_url = new.issuer_id;
+    and auth_oidc_method.issuer = new.issuer;
 
     if not found then
-        raise exception 'oidc account must match the auth method discovery url';
+        raise exception 'oidc account must match the auth method issuer';
     end if;
     return new;
 end;
@@ -499,7 +499,7 @@ select
   am.version,
   am.state,
   am.disable_discovered_config_validation,
-  am.discovery_url,
+  am.issuer,
   am.client_id,
   am.client_secret,
   am.client_secret_hmac,

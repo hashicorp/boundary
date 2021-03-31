@@ -40,7 +40,7 @@ type AuthMethod struct {
 // parameter when creating new AuthMethod's since it must be Inactive for all
 // new AuthMethods.
 //
-// DiscoveryUrl equals a URL where the OIDC provider's configuration can be
+// Issuer equals a URL where the OIDC provider's configuration can be
 // retrieved. The OIDC Discovery Specification requires the URL end in
 // /.well-known/openid-configuration. However, Boundary will strip off
 // anything beyond scheme, host and port
@@ -63,14 +63,14 @@ type AuthMethod struct {
 //
 // Supports the options of WithMaxAge, WithSigningAlgs, WithAudClaims,
 // WithCallbackUrls and WithCertificates and all other options are ignored.
-func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(scopeId string, issuer *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
 	var u string
 	switch {
-	case discoveryUrl != nil:
+	case issuer != nil:
 		// trim off anything beyond scheme, host and port
-		u = strings.TrimSuffix(discoveryUrl.String(), "/")
+		u = strings.TrimSuffix(issuer.String(), "/")
 	}
 
 	opts := getOpts(opt...)
@@ -80,7 +80,7 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 			Name:             opts.withName,
 			Description:      opts.withDescription,
 			OperationalState: string(InactiveState),
-			DiscoveryUrl:     u,
+			Issuer:           u,
 			ClientId:         clientId,
 			ClientSecret:     string(clientSecret),
 			MaxAge:           int32(opts.withMaxAge),
@@ -139,8 +139,8 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	if !validState(a.OperationalState) {
 		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
 	}
-	if a.DiscoveryUrl != "" {
-		if _, err := url.Parse(a.DiscoveryUrl); err != nil {
+	if a.Issuer != "" {
+		if _, err := url.Parse(a.Issuer); err != nil {
 			return errors.New(errors.InvalidParameter, caller, "not a valid discovery URL", errors.WithWrap(err))
 		}
 	}
@@ -245,7 +245,7 @@ func (am *AuthMethod) isComplete() error {
 	if err := am.validate(op); err != nil {
 		result = multierror.Append(result, errors.Wrap(err, op))
 	}
-	if am.DiscoveryUrl == "" {
+	if am.Issuer == "" {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing discovery URL"))
 	}
 	if am.ClientId == "" {

@@ -43,7 +43,7 @@ func TestAuthMethod(
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
 	state AuthMethodState,
-	discoveryUrl *url.URL,
+	issuer *url.URL,
 	clientId string,
 	clientSecret ClientSecret,
 	opt ...Option) *AuthMethod {
@@ -53,7 +53,7 @@ func TestAuthMethod(
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
+	authMethod, err := NewAuthMethod(scopeId, issuer, clientId, clientSecret, opt...)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -145,19 +145,19 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 }
 
 // TestAccount creates a test oidc auth account.
-func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subjectId string, opt ...Option) *Account {
+func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, opt ...Option) *Account {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	u, err := url.Parse(am.GetDiscoveryUrl())
+	u, err := url.Parse(am.GetIssuer())
 	require.NoError(err)
 	opt = append(opt, WithIssuer(u))
-	a, err := NewAccount(am.PublicId, subjectId, opt...)
+	a, err := NewAccount(am.PublicId, subject, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId(am.GetPublicId(), am.DiscoveryUrl, subjectId)
+	id, err := newAccountId(am.GetPublicId(), am.Issuer, subject)
 	require.NoError(err)
 	a.PublicId = id
 

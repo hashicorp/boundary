@@ -484,22 +484,22 @@ func TestAccount_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"AuthMethodId"},
 		},
 		{
-			name: "issuer-id",
+			name: "issuer",
 			update: func() *Account {
 				cp := new.Clone()
-				cp.IssuerId = "bob.com"
+				cp.Issuer = "bob.com"
 				return cp
 			}(),
-			fieldMask: []string{"IssuerId"},
+			fieldMask: []string{"Issuer"},
 		},
 		{
-			name: "subject-id",
+			name: "subject",
 			update: func() *Account {
 				cp := new.Clone()
-				cp.SubjectId = "bob"
+				cp.Subject = "bob"
 				return cp
 			}(),
-			fieldMask: []string{"SubjectId"},
+			fieldMask: []string{"Subject"},
 		},
 	}
 	for _, tt := range tests {

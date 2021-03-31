@@ -619,8 +619,8 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
 		}
-		if i.GetDiscoveryUrl() != "" {
-			attrs.Issuer = wrapperspb.String(i.DiscoveryUrl)
+		if i.GetIssuer() != "" {
+			attrs.Issuer = wrapperspb.String(i.Issuer)
 		}
 		if len(i.GetCallbackUrls()) > 0 {
 			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])

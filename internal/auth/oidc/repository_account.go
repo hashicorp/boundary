@@ -15,11 +15,11 @@ import (
 // CreateAccount inserts a into the repository and returns a new Account
 // containing the account's PublicId. a is not changed. a must contain a
 // valid AuthMethodId. a must not contain a PublicId. The PublicId is
-// generated and assigned by this method. a must not contain an IssuerId.
-// The IssuerId is retrieved from the auth method. If it does not contain an
-// IssuerId an error is returned.
+// generated and assigned by this method. a must not contain an Issuer.
+// The Issuer is retrieved from the auth method. If it does not contain an
+// Issuer an error is returned.
 //
-// a must contain a valid SubjectId. a.SubjectId must be unique for an
+// a must contain a valid Subject. a.Subject must be unique for an
 // a.AuthMethod/Issuer pair.
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
@@ -35,14 +35,14 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.AuthMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
-	if a.SubjectId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing subject id")
+	if a.Subject == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing subject")
 	}
 	if a.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
 	}
-	if a.IssuerId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "issuer id must be empty")
+	if a.Issuer != "" {
+		return nil, errors.New(errors.InvalidParameter, op, "issuer must be empty")
 	}
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
@@ -54,11 +54,11 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
 	}
-	if am.GetDiscoveryUrl() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no issuer id on auth method")
+	if am.GetIssuer() == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no issuer on auth method")
 	}
-	a.IssuerId = am.GetDiscoveryUrl()
-	id, err := newAccountId(a.AuthMethodId, a.IssuerId, a.SubjectId)
+	a.Issuer = am.GetIssuer()
+	id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -83,7 +83,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q already exists or subject %q already exists for issuer %q",
-				a.AuthMethodId, a.Name, a.SubjectId, a.IssuerId))
+				a.AuthMethodId, a.Name, a.Subject, a.Issuer))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
 	}

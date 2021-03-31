@@ -31,7 +31,7 @@ import (
 //
 // fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a
-// zero value and included in fieldMask. Name, Description, DiscoveryUrl,
+// zero value and included in fieldMask. Name, Description, Issuer,
 // ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
 // Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
 // also updatable. if no updatable fields are included in the fieldMaskPaths,
@@ -73,7 +73,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		map[string]interface{}{
 			"Name":         am.Name,
 			"Description":  am.Description,
-			"DiscoveryUrl": am.DiscoveryUrl,
+			"Issuer":       am.Issuer,
 			"ClientId":     am.ClientId,
 			"ClientSecret": am.ClientSecret,
 			"MaxAge":       am.MaxAge,
@@ -474,7 +474,7 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		switch {
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
-		case strings.EqualFold("DiscoveryUrl", f):
+		case strings.EqualFold("Issuer", f):
 		case strings.EqualFold("ClientId", f):
 		case strings.EqualFold("ClientSecret", f):
 		case strings.EqualFold("MaxAge", f):
@@ -498,8 +498,8 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			cp.Name = new.Name
 		case "Description":
 			cp.Description = new.Description
-		case "DiscoveryUrl":
-			cp.DiscoveryUrl = new.DiscoveryUrl
+		case "Issuer":
+			cp.Issuer = new.Issuer
 		case "ClientId":
 			cp.ClientId = new.ClientId
 		case "ClientSecret":
@@ -592,9 +592,9 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 	}
 
 	var result *multierror.Error
-	if info.Issuer != am.DiscoveryUrl {
+	if info.Issuer != am.Issuer {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op,
-			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.DiscoveryUrl, info.Issuer)))
+			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.Issuer, info.Issuer)))
 	}
 	for _, a := range am.SigningAlgs {
 		if !strutil.StrListContains(info.IdTokenSigningAlgsSupported, a) {

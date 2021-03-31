@@ -73,7 +73,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					PublicId:     "hcst_OOOOOOOOOO",
-					SubjectId:    "invalid public id set",
+					Subject:      "invalid public id set",
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
@@ -87,21 +87,21 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing subject id: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).CreateAccount: missing subject: parameter violation: error #100",
 		},
 		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					SubjectId:    "valid-no-options",
+					Subject:      "valid-no-options",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
-					SubjectId:    "valid-no-options",
+					Issuer:       "https://allice.com",
+					Subject:      "valid-no-options",
 				},
 			},
 		},
@@ -110,15 +110,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					SubjectId:    "valid-with-name",
+					Subject:      "valid-with-name",
 					Name:         "test-name-repo",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
-					SubjectId:    "valid-with-name",
+					Issuer:       "https://allice.com",
+					Subject:      "valid-with-name",
 					Name:         "test-name-repo",
 				},
 			},
@@ -128,15 +128,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					SubjectId:    "valid-with-description",
+					Subject:      "valid-with-description",
 					Description:  ("test-description-repo"),
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://allice.com",
-					SubjectId:    "valid-with-description",
+					Issuer:       "https://allice.com",
+					Subject:      "valid-with-description",
 					Description:  ("test-description-repo"),
 				},
 			},
@@ -201,7 +201,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
 				Name:         "test-name-repo",
-				SubjectId:    "subject",
+				Subject:      "subject",
 			},
 		}
 
@@ -245,8 +245,8 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		)
 		in := &Account{
 			Account: &store.Account{
-				Name:      "test-name-repo",
-				SubjectId: "subject1",
+				Name:    "test-name-repo",
+				Subject: "subject1",
 			},
 		}
 		in2 := in.Clone()
@@ -272,7 +272,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 
-	t.Run("invalid-duplicate-subject-ids", func(t *testing.T) {
+	t.Run("invalid-duplicate-subjects", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kmsCache)
 		assert.NoError(err)
@@ -293,7 +293,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		in := &Account{
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
-				SubjectId:    "subject1",
+				Subject:      "subject1",
 			},
 		}
 
@@ -311,7 +311,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Nil(got2)
 	})
 
-	t.Run("valid-duplicate-subject-id-diff-authmethod", func(t *testing.T) {
+	t.Run("valid-duplicate-subject-diff-authmethod", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kmsCache)
 		assert.NoError(err)
@@ -337,7 +337,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		)
 		in := &Account{
 			Account: &store.Account{
-				SubjectId: "subject1",
+				Subject: "subject1",
 			},
 		}
 		in2 := in.Clone()
@@ -350,8 +350,8 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
-		assert.Equal(in.SubjectId, got.SubjectId)
-		assert.Equal(authMethoda.GetDiscoveryUrl(), got.IssuerId)
+		assert.Equal(in.Subject, got.Subject)
+		assert.Equal(authMethoda.GetIssuer(), got.Issuer)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.AuthMethodId = authMethodb.GetPublicId()
@@ -362,12 +362,12 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(in2.SubjectId, got2.SubjectId)
-		assert.Equal(authMethodb.GetDiscoveryUrl(), got2.IssuerId)
+		assert.Equal(in2.Subject, got2.Subject)
+		assert.Equal(authMethodb.GetIssuer(), got2.Issuer)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 
-	t.Run("valid-duplicate-subject-id-diff-issuer", func(t *testing.T) {
+	t.Run("valid-duplicate-subject-diff-issuer", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kmsCache)
 		assert.NoError(err)
@@ -387,7 +387,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		in := &Account{
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
-				SubjectId:    "subject1",
+				Subject:      "subject1",
 			},
 		}
 		in2 := in.Clone()
@@ -399,12 +399,12 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
-		assert.Equal(in.SubjectId, got.SubjectId)
-		assert.Equal(authMethod.DiscoveryUrl, got.IssuerId)
+		assert.Equal(in.Subject, got.Subject)
+		assert.Equal(authMethod.Issuer, got.Issuer)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		authMethod.DiscoveryUrl = "https://somethingelse.com"
-		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{"DiscoveryUrl"}, WithForce())
+		authMethod.Issuer = "https://somethingelse.com"
+		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{"Issuer"}, WithForce())
 		require.NoError(err)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
@@ -414,8 +414,8 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(in2.SubjectId, got2.SubjectId)
-		assert.Equal(authMethod.DiscoveryUrl, got2.IssuerId)
+		assert.Equal(in2.Subject, got2.Subject)
+		assert.Equal(authMethod.Issuer, got2.Issuer)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 }
@@ -442,7 +442,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	)
 	account := TestAccount(t, conn, authMethod, "test-subject")
 
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.DiscoveryUrl, "random-id")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-id")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -506,7 +506,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	account := TestAccount(t, conn, authMethod, "create-success")
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.DiscoveryUrl, "random-subject")
+	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-subject")
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -648,7 +648,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 			require.NoError(err)
 
 			sort.Slice(got, func(i, j int) bool {
-				return strings.Compare(got[i].SubjectId, got[j].SubjectId) < 0
+				return strings.Compare(got[i].Subject, got[j].Subject) < 0
 			})
 			assert.EqualValues(tt.want, got)
 		})

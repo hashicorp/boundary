@@ -135,7 +135,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.Version = agg.Version
 		am.OperationalState = agg.State
 		am.DisableDiscoveredConfigValidation = agg.DisableDiscoveredConfigValidation
-		am.DiscoveryUrl = agg.DiscoveryUrl
+		am.Issuer = agg.Issuer
 		am.ClientId = agg.ClientId
 		am.CtClientSecret = agg.CtClientSecret
 		am.ClientSecret = agg.ClientSecret
@@ -171,7 +171,7 @@ type authMethodAgg struct {
 	Version                           uint32
 	State                             string
 	DisableDiscoveredConfigValidation bool
-	DiscoveryUrl                      string
+	Issuer                            string
 	ClientId                          string
 	CtClientSecret                    []byte `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
 	ClientSecret                      string `gorm:"-" wrapping:"pt,client_secret"`

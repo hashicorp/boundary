@@ -154,7 +154,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer":  structpb.NewStringValue(oidcAm.GetDiscoveryUrl()),
+			"issuer":  structpb.NewStringValue(oidcAm.GetIssuer()),
 			"subject": structpb.NewStringValue("test-subject"),
 		}},
 		AuthorizedActions: oidcAuthorizedActions,
@@ -386,7 +386,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer":  structpb.NewStringValue(amSomeAccounts.DiscoveryUrl),
+				"issuer":  structpb.NewStringValue(amSomeAccounts.GetIssuer()),
 				"subject": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -406,7 +406,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"issuer":  structpb.NewStringValue(amOtherAccounts.DiscoveryUrl),
+				"issuer":  structpb.NewStringValue(amOtherAccounts.GetIssuer()),
 				"subject": structpb.NewStringValue(subId),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
@@ -864,15 +864,15 @@ func TestCreateOidc(t *testing.T) {
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId:      am.GetPublicId(),
-					Name:              &wrapperspb.StringValue{Value: "name"},
-					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:           1,
-					Type:              auth.OidcSubtype.String(),
-					Attributes:        func() *structpb.Struct {
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
 						a := createAttr("valid-account")
-						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
 						return a
 					}(),
 					AuthorizedActions: oidcAuthorizedActions,
@@ -890,13 +890,13 @@ func TestCreateOidc(t *testing.T) {
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId:      am.GetPublicId(),
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:           1,
-					Type:              auth.OidcSubtype.String(),
-					Attributes:        func() *structpb.Struct {
+					AuthMethodId: am.GetPublicId(),
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
 						a := createAttr("no type defined")
-						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
 						return a
 					}(),
 					AuthorizedActions: oidcAuthorizedActions,
@@ -909,7 +909,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Type:         auth.PasswordSubtype.String(),
-					Attributes:   createAttr( ""),
+					Attributes:   createAttr(""),
 				},
 			},
 			res: nil,
@@ -955,7 +955,7 @@ func TestCreateOidc(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Must specify issuer id",
+			name: "Must specify issuer",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
@@ -966,7 +966,7 @@ func TestCreateOidc(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Must specify subject id",
+			name: "Must specify subject",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
@@ -1675,7 +1675,7 @@ func TestUpdateOidc(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Update Issuer Id",
+			name: "Update Issuer",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.issuer"},
@@ -1688,7 +1688,7 @@ func TestUpdateOidc(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Update Subject Id",
+			name: "Update Subject",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.subject"},
