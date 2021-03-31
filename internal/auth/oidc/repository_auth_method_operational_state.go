@@ -106,6 +106,9 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			case err == nil && rowsUpdated > 1:
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			case err == nil && rowsUpdated == 0:
+				// this is different than how "no rows updated" is handled in
+				// the typical update pattern since we are not returning the
+				// number of rows updated, we need to raise an error here.
 				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			default:
 			}
