@@ -136,6 +136,13 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.
 }
 
 func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidc"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
 	switch req.GetCommand() {
 	case startCommand:
 		return s.authenticateOidcStart(ctx, req, authResults)
@@ -160,6 +167,12 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 
 func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcStart"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
 	var opts []oidc.Option
 	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
 		if val, ok := req.GetAttributes().GetFields()[roundtripPayloadField]; ok {
