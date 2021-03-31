@@ -250,9 +250,9 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				).PublicId
 			}(),
-			version:           111111,
-			wantNoRowsUpdated: true,
-			wantNoOplog:       true,
+			version:         111111,
+			wantErrMatch:    errors.T(errors.RecordNotFound),
+			wantErrContains: "updated auth method and 0 rows updated",
 		},
 		{
 			name:            "missing-auth-method-id",
