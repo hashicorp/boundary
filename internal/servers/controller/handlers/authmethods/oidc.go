@@ -25,10 +25,12 @@ const (
 	callbackCommand = "callback"
 	tokenCommand    = "token"
 
-	// start response fields
-	authUrlField  = "auth_url"
-	tokenUrlField = "token_url"
-	tokenIdField  = "token_id"
+	// start request/response fields
+	authUrlField                = "auth_url"
+	tokenUrlField               = "token_url"
+	tokenIdField                = "token_id"
+	roundtripPayloadField       = "roundtrip_payload"
+	cachedRoundtripPayloadField = "__cached_roundtrip_payload__"
 
 	// field names
 	issuerField                            = "attributes.issuer"
@@ -42,7 +44,7 @@ const (
 	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
-	roundtripPayloadField                  = "attributes.roundtrip_payload"
+	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -167,17 +169,8 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 
 	var opts []oidc.Option
 	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
-		if val, ok := req.GetAttributes().GetFields()[roundtripPayloadField]; ok {
-			structVal := val.GetStructValue()
-			if structVal != nil {
-				m, err := json.Marshal(structVal)
-				if err != nil {
-					// We don't know what's in this payload so we swallow the
-					// error, as it could be something sensitive.
-					return nil, errors.New(errors.InvalidParameter, op, "Unable to marshal attrs.roundtrip_payload as JSON")
-				}
-				opts = append(opts, oidc.WithRoundtripPayload(string(m)))
-			}
+		if val, ok := req.GetAttributes().GetFields()[cachedRoundtripPayloadField]; ok {
+			opts = append(opts, oidc.WithRoundtripPayload(val.GetStringValue()))
 		}
 	}
 
@@ -206,6 +199,23 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 
 	switch req.GetCommand() {
 	case startCommand:
+		if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
+			fields := req.GetAttributes().GetFields()
+			if val, ok := fields[roundtripPayloadField]; ok {
+				structVal := val.GetStructValue()
+				if structVal != nil {
+					m, err := json.Marshal(structVal)
+					if err != nil {
+						// We don't know what's in this payload so we swallow the
+						// error, as it could be something sensitive.
+						badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
+					} else {
+						// Cache for later
+						fields[cachedRoundtripPayloadField] = structpb.NewStringValue(string(m))
+					}
+				}
+			}
+		}
 	case callbackCommand:
 	case tokenCommand:
 		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
