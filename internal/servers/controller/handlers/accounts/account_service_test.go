@@ -864,13 +864,13 @@ func TestCreateOidc(t *testing.T) {
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId:      am.GetPublicId(),
-					Name:              &wrapperspb.StringValue{Value: "name"},
-					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:           1,
-					Type:              auth.OidcSubtype.String(),
-					Attributes:        func() *structpb.Struct {
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
 						a := createAttr("valid-account")
 						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
 						return a
@@ -890,11 +890,11 @@ func TestCreateOidc(t *testing.T) {
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId:      am.GetPublicId(),
-					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:           1,
-					Type:              auth.OidcSubtype.String(),
-					Attributes:        func() *structpb.Struct {
+					AuthMethodId: am.GetPublicId(),
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
 						a := createAttr("no type defined")
 						a.Fields["issuer"] = structpb.NewStringValue(am.GetDiscoveryUrl())
 						return a
@@ -909,7 +909,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Type:         auth.PasswordSubtype.String(),
-					Attributes:   createAttr( ""),
+					Attributes:   createAttr(""),
 				},
 			},
 			res: nil,

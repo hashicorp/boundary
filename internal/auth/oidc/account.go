@@ -20,16 +20,16 @@ type Account struct {
 }
 
 // NewAccount creates a new in memory Account assigned to OIDC AuthMethod.
-// WithFullName, WithEmail, WithName and WithDescription are the only valid
-// options. All other options are ignored.
-//
-// IssuerId equals the Verifiable Identifier for an Issuer. An Issuer
-// Identifier is a case sensitive URL using the https scheme that contains
-// scheme, host, and optionally, port number and path components and no query or
-// fragment components.
+// WithIssuer, WithFullName, WithEmail, WithName and WithDescription are
+// the only valid options. All other options are ignored.
 //
 // SubjectId equals the locally unique and never reassigned identifier within
 // the Issuer for the End-User, which is intended to be consumed by the Client.
+//
+// Issuer equals the Verifiable Identifier for an Issuer. An Issuer
+// Identifier is a case sensitive URL using the https scheme that contains
+// scheme, host, and optionally, port number and path components and no query or
+// fragment components.
 //
 // FullName equals the End-User's full name in displayable form including all name
 // parts, possibly including titles and suffixes, ordered according to the

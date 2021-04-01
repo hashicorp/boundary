@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateAccount inserts a into the repository and returns a new Account
-// containing the account's PublicId. a is not changed. a must contain a
+// CreateAccount inserts an Account, a, into the repository and returns a
+// new Account containing its PublicId. a is not changed. a must contain a
 // valid AuthMethodId. a must not contain a PublicId. The PublicId is
 // generated and assigned by this method. a must not contain an IssuerId.
 // The IssuerId is retrieved from the auth method. If it does not contain an
