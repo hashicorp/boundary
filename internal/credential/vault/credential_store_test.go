@@ -170,7 +170,7 @@ func TestCredentialStore_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, tt.args.token, tt.args.opts...)
+			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, []byte(tt.args.token), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

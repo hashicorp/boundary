@@ -18,7 +18,7 @@ type CredentialStore struct {
 // Name, description, CA cert, namespace, TLS server name, and TLS skip
 // verify are the only valid options.
 // All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, token string, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
 	const op = "vault.NewCredentialStore"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
@@ -26,7 +26,7 @@ func NewCredentialStore(scopeId string, vaultAddress string, token string, opt .
 	if vaultAddress == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault address")
 	}
-	if token == "" {
+	if len(token) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
 
