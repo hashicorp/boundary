@@ -13,11 +13,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -27,6 +24,11 @@ const (
 	startCommand    = "start"
 	callbackCommand = "callback"
 	tokenCommand    = "token"
+
+	// start response fields
+	authUrlField  = "auth_url"
+	tokenUrlField = "token_url"
+	tokenIdField  = "token_id"
 
 	// field names
 	issuerField                            = "attributes.issuer"
@@ -147,22 +149,11 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 	case startCommand:
 		return s.authenticateOidcStart(ctx, req, authResults)
 	}
-	reqAttrs := req.GetAttributes().GetFields()
-	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
-	if err != nil {
-		return nil, err
-	}
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthToken,
-	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
-	retAttrs, err := handlers.ProtoToStruct(tok)
-	if err != nil {
-		return nil, err
-	}
-	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+
+	// Default is tokenCommand -- note we've already checked that it's one of
+	// these three in the validation function
+	// TODO
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: nil}, nil
 }
 
 func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -173,6 +164,7 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	if authResults == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
 	}
+
 	var opts []oidc.Option
 	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
 		if val, ok := req.GetAttributes().GetFields()[roundtripPayloadField]; ok {
@@ -188,7 +180,25 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 			}
 		}
 	}
-	return nil, nil
+
+	authUrl, tokenUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
+	if err != nil {
+		// TODO: Log something
+		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow.")
+	}
+
+	attrsMap := map[string]interface{}{
+		authUrlField:  authUrl.String(),
+		tokenUrlField: tokenUrl.String(),
+		tokenIdField:  tokenId,
+	}
+
+	attrs, err := structpb.NewStruct(attrsMap)
+	if err != nil {
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+	}
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: attrs}, nil
 }
 
 func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
