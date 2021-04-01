@@ -27,9 +27,8 @@ var (
 )
 
 var (
-	envPassword     = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
-	envLoginName    = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
-	envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
+	envPassword  = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
+	envLoginName = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
 )
 
 type PasswordCommand struct {
@@ -91,6 +90,21 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
+type dummyGenericResponse struct {
+	item     interface{}
+	response *api.Response
+}
+
+var _ api.GenericResult = (*dummyGenericResponse)(nil)
+
+func (d *dummyGenericResponse) GetItem() interface{} {
+	return d.item
+}
+
+func (d *dummyGenericResponse) GetResponse() *api.Response {
+	return d.response
+}
+
 func (c *PasswordCommand) Run(args []string) int {
 	f := c.Flags()
 
@@ -142,7 +156,12 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	token := result.GetItem().(*authtokens.AuthToken)
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		c.PrintCliError(fmt.Errorf("Error trying to decode response as an auth token: %w", err))
+		return base.CommandCliError
+	}
+
 	switch base.Format(c.UI) {
 	case "table":
 		c.UI.Output(base.WrapForHelpText([]string{
@@ -156,7 +175,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, token); !ok {
+		if ok := c.PrintJsonItem(&dummyGenericResponse{
+			item:     token,
+			response: result.GetResponse(),
+		}, token); !ok {
 			return base.CommandCliError
 		}
 		return base.CommandSuccess

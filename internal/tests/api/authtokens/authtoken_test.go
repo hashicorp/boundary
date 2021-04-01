@@ -1,6 +1,7 @@
 package authtokens_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -66,18 +67,22 @@ func TestList(t *testing.T) {
 	var expected []*authtokens.AuthToken
 	methods := authmethods.NewClient(client)
 
-	at, err := methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
-	expected = append(expected, at.Item)
+	token = new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+	expected = append(expected, token)
 
 	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 
 	for i := 1; i < 10; i++ {
-		at, err = methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+		result, err = methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 		require.NoError(err)
-		expected = append(expected, at.Item)
+		token = new(authtokens.AuthToken)
+		require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+		expected = append(expected, token)
 	}
 	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
@@ -125,12 +130,14 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	want, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
+	wantToken := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), wantToken))
 
-	at, err := tokens.Read(tc.Context(), want.Item.Id)
+	at, err := tokens.Read(tc.Context(), wantToken.Id)
 	require.NoError(err)
-	assert.EqualValues(comparableResource(want.Item), comparableResource(at.Item))
+	assert.EqualValues(comparableResource(wantToken), comparableResource(at.Item))
 
 	_, err = tokens.Delete(tc.Context(), at.Item.Id)
 	require.NoError(err)

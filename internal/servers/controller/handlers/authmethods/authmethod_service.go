@@ -33,10 +33,12 @@ import (
 
 const (
 	// general auth method field names
-	versionField    = "version"
-	scopeIdField    = "scope_id"
-	typeField       = "type"
-	attributesField = "attributes"
+	versionField      = "version"
+	scopeIdField      = "scope_id"
+	typeField         = "type"
+	attributesField   = "attributes"
+	authMethodIdField = "auth_method_id"
+	tokenTypeField    = "token_type"
 )
 
 var (
@@ -279,23 +281,23 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
 	}
+
+	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	case auth.PasswordSubtype:
+		if err := validateAuthenticatePasswordRequest(req); err != nil {
+			return nil, err
+		}
+	}
+
 	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	attrs := req.GetAttributes().GetFields()
+
 	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
 	case auth.PasswordSubtype:
-		tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), attrs[loginNameField].GetStringValue(), attrs[passwordField].GetStringValue())
-		if err != nil {
-			return nil, err
-		}
-		res := &perms.Resource{
-			ScopeId: authResults.Scope.Id,
-			Type:    resource.AuthToken,
-		}
-		tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
-		return &pbs.AuthenticateResponse{Item: tok, TokenType: req.GetTokenType()}, nil
+		return s.authenticatePassword(ctx, req, &authResults)
+
 	case auth.OidcSubtype:
 		return &pbs.AuthenticateResponse{}, nil
 	}
@@ -890,16 +892,17 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
 
-	// In some cases in this function we hort-circuit checking other fields and
-	// return early with current badFields to return the right error, since
-	// there are some switches on types, and since some parameters we need to
-	// exit early if they're nil (like attributes and attribute fields...unlike
-	// other getters for e.g. StringValue these can return nil values).
 	badFields := make(map[string]string)
 
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
-		badFields["auth_method_id"] = "This is a required field."
-		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+		badFields[authMethodIdField] = "This is a required field."
+	} else {
+		st := auth.SubtypeFromId(req.GetAuthMethodId())
+		switch st {
+		case auth.PasswordSubtype, auth.OidcSubtype:
+		default:
+			badFields[authMethodIdField] = "Unknown auth method type."
+		}
 	}
 
 	if req.GetAttributes() == nil && req.GetCredentials() != nil {
@@ -907,42 +910,13 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		req.Attributes = req.Credentials
 	}
 	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
-		badFields["attributes"] = "This is a required field."
-		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
-	}
-
-	attrs := req.GetAttributes().GetFields()
-
-	st := auth.SubtypeFromId(req.GetAuthMethodId())
-	switch st {
-	case auth.PasswordSubtype:
-		if _, ok := attrs[loginNameField]; !ok {
-			badFields["attributes.login_name"] = "This is a required field."
-		}
-		if _, ok := attrs[passwordField]; !ok {
-			badFields["attributes.password"] = "This is a required field."
-		}
-		if req.GetCommand() == "" {
-			// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
-			req.Command = "login"
-		}
-		if req.Command != "login" {
-			badFields["command"] = "Invalid command for this auth method type."
-		}
-		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
-		if tType != "" && tType != "token" && tType != "cookie" {
-			badFields["token_type"] = `The only accepted types are "token" and "cookie".`
-		}
-
-	case auth.OidcSubtype:
-
-	default:
-		return handlers.NotFoundErrorf("This endpoint/command is not available for the %q Auth Method type.", st.String())
+		badFields[attributesField] = "This is a required field."
 	}
 
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
+
 	return nil
 }
 
@@ -957,9 +931,9 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	}
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
-		badFields["auth_method_id"] = "This is a required field."
+		badFields[authMethodIdField] = "This is a required field."
 	} else if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix) {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
+		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if req.GetCredentials() == nil {
 		badFields["credentials"] = "This is a required field."
@@ -973,7 +947,7 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields["token_type"] = `The only accepted types are "token" and "cookie".`
+		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
