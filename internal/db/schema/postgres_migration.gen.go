@@ -5357,10 +5357,12 @@ create table credential_vault_store (
         references credential_vault_store (public_id)
         on delete cascade
         on update cascade,
-    certificate text not null -- PEM encoded certificate
+    certificate bytea not null -- PEM encoded certificate
       constraint certificate_must_not_be_empty
-        check(length(trim(certificate)) > 0),
-    certificate_key bytea not null, -- encrypted PEM encoded private key for certificate
+        check(length(certificate) > 0),
+    certificate_key bytea not null -- encrypted PEM encoded private key for certificate
+      constraint certificate_key_must_not_be_empty
+        check(length(certificate_key) > 0),
     key_id text not null
       constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
