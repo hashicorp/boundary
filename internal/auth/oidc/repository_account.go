@@ -41,23 +41,32 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
 	}
-	if a.IssuerId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "issuer id must be empty")
-	}
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	a = a.Clone()
 
-	am, err := r.LookupAuthMethod(ctx, a.AuthMethodId)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
+	// If the account doesn't provide an issuer, default to the one provided by
+	// the auth method. While this potentially creates a race condition between
+	// modifying the auth method's discovery url and setting the it on the account
+	// the value set on the account is reported back to the requester by the api
+	// and setting an issuer on an account that doesn't match the auth method is
+	// perfectly valid and allows an operator to provision accounts prior to
+	// configuring the auth method to specify discovery_url.
+	if a.IssuerId == "" {
+		am, err := r.LookupAuthMethod(ctx, a.AuthMethodId)
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
+		}
+		if am.GetDiscoveryUrl() == "" {
+			return nil, errors.New(errors.InvalidParameter, op, "no issuer id on auth method")
+		}
+		a.IssuerId = am.GetDiscoveryUrl()
 	}
-	if am.GetDiscoveryUrl() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no issuer id on auth method")
+	if a.IssuerId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no issuer provided or defined in auth method")
 	}
-	a.IssuerId = am.GetDiscoveryUrl()
 	id, err := newAccountId(a.AuthMethodId, a.IssuerId, a.SubjectId)
 	if err != nil {
 		return nil, errors.Wrap(err, op)

@@ -3,6 +3,8 @@ package accounts
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -335,6 +337,13 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
+	}
+	if attrs.GetIssuer() != "" {
+		u, err := url.Parse(attrs.GetIssuer())
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
+		}
+		opts = append(opts, oidc.WithIssuer(u))
 	}
 	a, err := oidc.NewAccount(am.GetPublicId(), attrs.GetSubject(), opts...)
 	if err != nil {
@@ -774,7 +783,13 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[subjectField] = "This is a required field for this type."
 			}
 			if attrs.GetIssuer() != "" {
-				badFields[issuerField] = "This is a read only field."
+				du, err := url.Parse(attrs.GetIssuer())
+				if err != nil {
+					badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				}
+				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+					badFields[issuerField] = "The path segment of the url should be empty."
+				}
 			}
 			if attrs.GetFullName() != "" {
 				badFields[nameClaimField] = "This is a read only field."
@@ -817,7 +832,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 				badFields[subjectField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				badFields[issuerField] = "Field is read only."
+				badFields[issuerField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
 				badFields[emailClaimField] = "Field is read only."
