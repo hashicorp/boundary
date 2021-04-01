@@ -108,7 +108,8 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 	return r.lookupAuthMethod(ctx, publicId)
 }
 
-// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit and
+// WithOrder options are the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "password.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
@@ -312,6 +313,10 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		limit = opts.withLimit
 	}
 	dbArgs = append(dbArgs, db.WithLimit(limit))
+
+	if opts.withOrderClause != "" {
+		dbArgs = append(dbArgs, db.WithOrder(opts.withOrderClause))
+	}
 
 	var args []interface{}
 	var where []string

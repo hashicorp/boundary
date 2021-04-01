@@ -22,6 +22,7 @@ type options struct {
 	withPublicId    string
 	password        string
 	withPassword    bool
+	withOrderClause string
 }
 
 func getDefaultOptions() options {
@@ -79,5 +80,12 @@ func WithPassword(password string) Option {
 func WithConfiguration(config Configuration) Option {
 	return func(o *options) {
 		o.withConfig = config
+	}
+}
+
+// WithOrder provides an optional with order clause.
+func WithOrder(orderClause string) Option {
+	return func(o *options) {
+		o.withOrderClause = orderClause
 	}
 }
