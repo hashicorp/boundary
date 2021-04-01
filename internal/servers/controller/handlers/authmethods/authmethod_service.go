@@ -925,9 +925,6 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	if st := auth.SubtypeFromId(req.GetAuthMethodId()); st != auth.PasswordSubtype {
-		return handlers.NotFoundErrorf("This endpoint is not available for the %q Auth Method type.", st.String())
-	}
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields[authMethodIdField] = "This is a required field."
