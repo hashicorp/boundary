@@ -7,6 +7,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const defaultAuthPasswordMethodTableName = "auth_password_method_with_is_primary"
+
 // A AuthMethod contains accounts and password configurations. It is owned
 // by a scope.
 type AuthMethod struct {
@@ -74,4 +76,20 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["scope-id"] = []string{a.ScopeId}
 	}
 	return metadata
+}
+
+// authMethodView provides a simple way to read an AuthMethod with its
+// IsPrimaryAuthMethod field set.  By definition, it's used only for reading
+// AuthMethods.
+type authMethodView struct {
+	*store.AuthMethod
+	tableName string
+}
+
+// TableName returns the view name.
+func (a *authMethodView) TableName() string {
+	if a.tableName != "" {
+		return a.tableName
+	}
+	return "auth_password_method_with_is_primary"
 }

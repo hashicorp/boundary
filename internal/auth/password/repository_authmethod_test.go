@@ -411,7 +411,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		{
 			name: "Scope with no auth methods",
 			in:   []string{noAuthMethodOrg.GetPublicId()},
-			want: []*AuthMethod{},
+			want: nil,
 		},
 		{
 			name: "With populated scope id",
