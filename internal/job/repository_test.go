@@ -16,10 +16,9 @@ func TestRepository_New(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r    db.Reader
-		w    db.Writer
-		kms  *kms.Kms
-		opts []Option
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 
 	tests := []struct {
@@ -31,35 +30,16 @@ func TestRepository_New(t *testing.T) {
 		wantErrMsg  string
 	}{
 		{
-			name: "valid default limit",
-			args: args{
-				r:    rw,
-				w:    rw,
-				kms:  kmsCache,
-				opts: []Option{},
-			},
-			want: &Repository{
-				reader: rw,
-				writer: rw,
-				kms:    kmsCache,
-				limit:  db.DefaultLimit,
-			},
-		},
-		{
-			name: "valid new limit",
+			name: "valid",
 			args: args{
 				r:   rw,
 				w:   rw,
 				kms: kmsCache,
-				opts: []Option{
-					WithLimit(5),
-				},
 			},
 			want: &Repository{
 				reader: rw,
 				writer: rw,
 				kms:    kmsCache,
-				limit:  5,
 			},
 		},
 		{
@@ -115,7 +95,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())

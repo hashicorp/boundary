@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -17,8 +18,8 @@ import (
 )
 
 var (
-	zeroTime   = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{}}
-	futureTime = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
+	testZeroTime   = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{}}
+	testFutureTime = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 )
 
 func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ...Option) *Job {
@@ -38,15 +39,23 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ..
 	return job
 }
 
-func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, opt ...Option) *JobRun {
+func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, status string) *JobRun {
 	t.Helper()
 	require := require.New(t)
 
 	rw := db.New(conn)
 
-	run, err := NewJobRun(jId, cId, opt...)
-	require.NoError(err)
+	run := &JobRun{
+		JobRun: &store.JobRun{
+			JobId:    jId,
+			ServerId: cId,
+			Status:   status,
+		},
+	}
 
+	id, err := newJobRunId()
+	require.NoError(err)
+	run.PrivateId = id
 	err = rw.Create(context.Background(), run)
 	require.NoError(err)
 

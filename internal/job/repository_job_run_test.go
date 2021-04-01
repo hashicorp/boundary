@@ -2,12 +2,9 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -15,154 +12,154 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestRepository_CreateJobRun(t *testing.T) {
+func TestRepository_FetchWork(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
-	job := testJob(t, conn, "name", "code", "description")
 
 	tests := []struct {
 		name        string
-		in          *JobRun
-		want        *JobRun
+		serverId    string
+		job         *Job
+		wantRun     bool
 		wantErr     bool
 		wantErrCode errors.Code
 		wantErrMsg  string
 	}{
 		{
-			name:        "nil-job-run",
+			name:        "missing-server-id",
+			serverId:    "",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJobRun: missing job run: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).FetchWork: missing server id: parameter violation: error #100",
 		},
 		{
-			name:        "nil-embedded-job-run",
-			in:          &JobRun{},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJobRun: missing embedded job run: parameter violation: error #100",
+			name:     "no-work",
+			serverId: server.PrivateId,
+			wantRun:  false,
+			wantErr:  false,
 		},
 		{
-			name: "missing-job-id",
-			in: &JobRun{
-				JobRun: &store.JobRun{},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJobRun: missing job id: parameter violation: error #100",
-		},
-		{
-			name: "missing-server-id",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId: job.PrivateId,
+			name:     "valid",
+			serverId: server.PrivateId,
+			job: &Job{
+				Job: &store.Job{
+					Name:        "valid-test",
+					Code:        "code",
+					Description: "description",
 				},
 			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJobRun: missing server id: parameter violation: error #100",
+			wantRun: true,
 		},
 		{
-			name: "invalid-id",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Id:       1,
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJobRun: id must not be set: parameter violation: error #100",
-		},
-		{
-			name: "invalid-job-id",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    "test-job-id",
-					ServerId: server.PrivateId,
+			name:     "fake-server-id",
+			serverId: "fake-server-id",
+			job: &Job{
+				Job: &store.Job{
+					Name:        "fake-server-id-test",
+					Code:        "code",
+					Description: "description",
 				},
 			},
 			wantErr:     true,
 			wantErrCode: errors.NotSpecificIntegrity,
-			wantErrMsg:  "job.(Repository).CreateJobRun: db.DoTx: job.(Repository).CreateJobRun: db.Create: create failed: insert or update on table \"job_run\" violates foreign key constraint \"job_fkey\": integrity violation: error #1003",
-		},
-		{
-			name: "invalid-server-id",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: "test-server-id",
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.NotSpecificIntegrity,
-			wantErrMsg:  "job.(Repository).CreateJobRun: db.DoTx: job.(Repository).CreateJobRun: db.Create: create failed: insert or update on table \"job_run\" violates foreign key constraint \"server_fkey\": integrity violation: error #1003",
-		},
-		{
-			name: "invalid-status",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   "bad",
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.NotSpecificIntegrity,
-			wantErrMsg:  "job.(Repository).CreateJobRun: db.DoTx: job.(Repository).CreateJobRun: db.Create: create failed: insert or update on table \"job_run\" violates foreign key constraint \"job_run_status_enm_fkey\": integrity violation: error #1003",
-		},
-		{
-			name: "valid",
-			in: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Running),
-				},
-			},
-			want: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Running),
-				},
-			},
+			wantErrMsg:  "job.(Repository).FetchWork: db.DoTx: job.(Repository).FetchWork: db.Create: create failed: insert or update on table \"job_run\" violates foreign key constraint \"server_fkey\": integrity violation: error #1003",
 		},
 	}
-
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			var jId string
+			if tt.job != nil {
+				job := testJob(t, conn, tt.job.Name, tt.job.Code, tt.job.Description)
+				jId = job.PrivateId
+			}
+
 			repo, err := NewRepository(rw, rw, kms)
-			require.NoError(err)
+			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateJobRun(context.Background(), tt.in)
+
+			got, err := repo.FetchWork(context.Background(), tt.serverId)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
 			require.NoError(err)
-			require.NotNil(got)
-			assert.NotSame(tt.in, got)
-			assert.Equal(tt.want.JobId, got.JobId)
-			assert.Equal(tt.want.ServerId, got.ServerId)
-			assert.Equal(tt.want.Status, got.Status)
-			assert.NotEmpty(got.CreateTime)
+
+			if !tt.wantRun {
+				assert.Nil(got)
+				return
+			}
+
+			assert.NotNil(got)
+			assert.Equal(jId, got.JobId)
 		})
 	}
 }
 
-func TestRepository_UpdateJobRun(t *testing.T) {
+func TestRepository_FetchWorkOrder(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	server := testController(t, conn, wrapper)
+	assert, require := assert.New(t), require.New(t)
+
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	time24Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-24 * time.Hour))}
+	time12Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-12 * time.Hour))}
+	time6Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-6 * time.Hour))}
+	time1Hour := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-1 * time.Hour))}
+
+	// Regardless of order of adding jobs, fetching work should be based on order of earliest scheduled time
+	lastJob := testJob(t, conn, "future", "code", "description", WithNextScheduledRun(time1Hour))
+	firstJob := testJob(t, conn, "past", "code", "description", WithNextScheduledRun(time24Hours))
+	middleJob := testJob(t, conn, "current", "code", "description", WithNextScheduledRun(time12Hours))
+
+	got, err := repo.FetchWork(context.Background(), server.PrivateId)
+	require.NoError(err)
+	require.NotNil(got)
+	assert.Equal(got.JobId, firstJob.PrivateId)
+
+	// End first job with time between last and middle
+	err = repo.EndJobRun(context.Background(), got.PrivateId, Completed, time6Hours)
+	require.NoError(err)
+
+	got, err = repo.FetchWork(context.Background(), server.PrivateId)
+	require.NoError(err)
+	require.NotNil(got)
+	assert.Equal(got.JobId, middleJob.PrivateId)
+
+	// firstJob should be up again, as it is scheduled before lastJob
+	got, err = repo.FetchWork(context.Background(), server.PrivateId)
+	require.NoError(err)
+	require.NotNil(got)
+	assert.Equal(got.JobId, firstJob.PrivateId)
+
+	got, err = repo.FetchWork(context.Background(), server.PrivateId)
+	require.NoError(err)
+	require.NotNil(got)
+	assert.Equal(got.JobId, lastJob.PrivateId)
+
+	// All jobs are running no work should be returned
+	got, err = repo.FetchWork(context.Background(), server.PrivateId)
+	require.NoError(err)
+	require.Nil(got)
+}
+
+func TestRepository_CheckpointJobRun(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -170,22 +167,6 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "code", "description")
-	ts := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
-	newTs := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(2 * time.Hour))}
-
-	changeStatus := func(s RunStatus) func(*JobRun) *JobRun {
-		return func(r *JobRun) *JobRun {
-			r.Status = string(s)
-			return r
-		}
-	}
-
-	changeEndtime := func(t *timestamp.Timestamp) func(*JobRun) *JobRun {
-		return func(r *JobRun) *JobRun {
-			r.EndTime = t
-			return r
-		}
-	}
 
 	changeCompleted := func(i uint32) func(*JobRun) *JobRun {
 		return func(r *JobRun) *JobRun {
@@ -215,14 +196,14 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 
 	deleteId := func() func(*JobRun) *JobRun {
 		return func(r *JobRun) *JobRun {
-			r.Id = 0
+			r.PrivateId = ""
 			return r
 		}
 	}
 
 	nonExistentId := func() func(*JobRun) *JobRun {
 		return func(r *JobRun) *JobRun {
-			r.Id = 1000
+			r.PrivateId = JobRunPrefix + "_1234567890"
 			return r
 		}
 	}
@@ -253,13 +234,13 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
 			chgFn:       makeNil(),
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: missing job run: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: missing job run: parameter violation: error #100",
 		},
 		{
 			name: "nil-embedded-job",
@@ -267,13 +248,13 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
 			chgFn:       makeEmbeddedNil(),
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: missing embedded job run: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: missing embedded job run: parameter violation: error #100",
 		},
 		{
 			name: "no-id",
@@ -281,13 +262,13 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
 			chgFn:       deleteId(),
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: missing id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: missing private id: parameter violation: error #100",
 		},
 		{
 			name: "updating-non-existent-job",
@@ -295,14 +276,14 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
-			chgFn:       combine(nonExistentId(), changeStatus(Failed)),
-			masks:       []string{"Status"},
+			chgFn:       combine(nonExistentId(), changeTotal(10)),
+			masks:       []string{"TotalCount"},
 			wantErr:     true,
 			wantErrCode: errors.RecordNotFound,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: db.DoTx: job.(Repository).UpdateJobRun: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: db.DoTx: job.(Repository).CheckpointJobRun: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name: "empty-field-mask",
@@ -310,13 +291,13 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
-			chgFn:       changeStatus(Failed),
+			chgFn:       changeTotal(10),
 			wantErr:     true,
 			wantErrCode: errors.EmptyFieldMask,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: empty field mask: parameter violation: error #104",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: empty field mask: parameter violation: error #104",
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -324,14 +305,14 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
-			chgFn:       changeStatus(Failed),
-			masks:       []string{"Id", "JobId", "ServerId", "CreateTime", "UpdateTime"},
+			chgFn:       changeTotal(10),
+			masks:       []string{"PrivateId", "Status", "EndTime", "JobId", "ServerId", "CreateTime", "UpdateTime"},
 			wantErr:     true,
 			wantErrCode: errors.InvalidFieldMask,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: invalid field mask: Id: parameter violation: error #103",
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: invalid field mask: PrivateId: parameter violation: error #103",
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -339,56 +320,14 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   string(Completed),
+					Status:   Running,
 				},
 			},
-			chgFn:       changeStatus(Failed),
+			chgFn:       changeTotal(10),
 			masks:       []string{"Bilbo"},
 			wantErr:     true,
 			wantErrCode: errors.InvalidFieldMask,
-			wantErrMsg:  "job.(Repository).UpdateJobRun: invalid field mask: Bilbo: parameter violation: error #103",
-		},
-		{
-			name: "change-status",
-			orig: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Completed),
-				},
-			},
-			chgFn: changeStatus(Failed),
-			masks: []string{"Status"},
-			want: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Failed),
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "change-end-time",
-			orig: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Completed),
-					EndTime:  ts,
-				},
-			},
-			chgFn: changeEndtime(newTs),
-			masks: []string{"EndTime"},
-			want: &JobRun{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   string(Completed),
-					EndTime:  newTs,
-				},
-			},
-			wantCount: 1,
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: invalid field mask: Bilbo: parameter violation: error #103",
 		},
 		{
 			name: "change-completed-count",
@@ -396,7 +335,7 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -407,7 +346,7 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 50,
 					TotalCount:     100,
 				},
@@ -420,7 +359,7 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -431,7 +370,7 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 0,
 					TotalCount:     200,
 				},
@@ -444,7 +383,7 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -455,12 +394,57 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         string(Completed),
+					Status:         Running,
 					CompletedCount: 50,
 					TotalCount:     200,
 				},
 			},
 			wantCount: 1,
+		},
+		{
+			name: "invalid-change-run-completed",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Completed,
+				},
+			},
+			masks:       []string{"TotalCount"},
+			chgFn:       changeTotal(10),
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: db.DoTx: job.(Repository).CheckpointJobRun: job run is already in a final run state: integrity violation: error #115",
+		},
+		{
+			name: "invalid-change-run-failed",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Failed,
+				},
+			},
+			masks:       []string{"TotalCount"},
+			chgFn:       changeTotal(10),
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: db.DoTx: job.(Repository).CheckpointJobRun: job run is already in a final run state: integrity violation: error #115",
+		},
+		{
+			name: "invalid-change-run-interrupted",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Interrupted,
+				},
+			},
+			masks:       []string{"TotalCount"},
+			chgFn:       changeTotal(10),
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CheckpointJobRun: db.DoTx: job.(Repository).CheckpointJobRun: job run is already in a final run state: integrity violation: error #115",
 		},
 	}
 
@@ -472,25 +456,32 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			orig, err := repo.CreateJobRun(context.Background(), tt.orig)
+			orig := tt.orig.clone()
+			id, err := newJobRunId()
 			assert.NoError(err)
-			require.NotNil(orig)
+			orig.PrivateId = id
+			err = rw.Create(context.Background(), orig)
+			assert.NoError(err)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
 
-			got, gotCount, err := repo.UpdateJobRun(context.Background(), orig, tt.masks)
+			got, gotCount, err := repo.CheckpointJobRun(context.Background(), orig, tt.masks)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
+
+				// Delete job run so it does not clash with future runs
+				_, err = repo.deleteJobRun(context.Background(), id)
+				assert.NoError(err)
 				return
 			}
 
 			assert.NoError(err)
-			assert.Empty(tt.orig.Id)
+			assert.Empty(tt.orig.PrivateId)
 			require.NotNil(got)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
@@ -500,43 +491,255 @@ func TestRepository_UpdateJobRun(t *testing.T) {
 			assert.Equal(tt.want.CompletedCount, got.CompletedCount)
 			assert.Equal(tt.want.TotalCount, got.TotalCount)
 			assert.Equal(tt.want.EndTime, got.EndTime)
+
+			// Delete job run so it does not clash with future runs
+			_, err = repo.deleteJobRun(context.Background(), id)
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_EndJobRun(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	server := testController(t, conn, wrapper)
+	job := testJob(t, conn, "name", "code", "description")
+
+	type args struct {
+		status           string
+		nextScheduledRun *timestamp.Timestamp
+	}
+
+	tests := []struct {
+		name        string
+		orig        *JobRun
+		args        args
+		wantErr     bool
+		wantErrCode errors.Code
+		wantErrMsg  string
+	}{
+		{
+			name:        "no-private-id",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "job.(Repository).EndJobRun: missing private id: parameter violation: error #100",
+		},
+		{
+			name: "no-status",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Running,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "job.(Repository).EndJobRun: run status must be a final status (completed, failed or interrupted): parameter violation: error #100",
+		},
+		{
+			name: "invalid-status",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Running,
+				},
+			},
+			args: args{
+				status: "fake-status",
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "job.(Repository).EndJobRun: run status must be a final status (completed, failed or interrupted): parameter violation: error #100",
+		},
+		{
+			name: "running-status",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Running,
+				},
+			},
+			args: args{
+				status: Running,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "job.(Repository).EndJobRun: run status must be a final status (completed, failed or interrupted): parameter violation: error #100",
+		},
+		{
+			name: "invalid-next-run",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Running,
+				},
+			},
+			args: args{
+				status: Completed,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "job.(Repository).EndJobRun: missing next scheduled run: parameter violation: error #100",
+		},
+		{
+			name: "run-status-already-final",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Interrupted,
+				},
+			},
+			args: args{
+				status:           Completed,
+				nextScheduledRun: testFutureTime,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).EndJobRun: db.DoTx: job.(Repository).EndJobRun: job run is already in a final run state: integrity violation: error #115",
+		},
+		{
+			name: "valid",
+			orig: &JobRun{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Running,
+				},
+			},
+			args: args{
+				status:           Completed,
+				nextScheduledRun: testFutureTime,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			var privateId string
+			if tt.orig != nil {
+				privateId, err = newJobRunId()
+				assert.NoError(err)
+				tt.orig.PrivateId = privateId
+				err = rw.Create(context.Background(), tt.orig)
+				assert.NoError(err)
+				assert.Empty(tt.orig.EndTime)
+			}
+
+			err = repo.EndJobRun(context.Background(), privateId, tt.args.status, tt.args.nextScheduledRun)
+			if tt.wantErr {
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+
+				if privateId != "" {
+					// Delete job run so it does not clash with future runs
+					_, err = repo.deleteJobRun(context.Background(), privateId)
+					assert.NoError(err)
+				}
+
+				return
+			}
+			assert.NoError(err)
+
+			updatedRun, err := repo.LookupJobRun(context.Background(), privateId)
+			assert.NoError(err)
+			require.NotNil(updatedRun)
+			assert.NotEmpty(updatedRun.EndTime)
+			assert.Equal(tt.args.status, updatedRun.Status)
+
+			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobId)
+			assert.NoError(err)
+			require.NotNil(updatedJob)
+			assert.Equal(tt.args.nextScheduledRun, updatedJob.NextScheduledRun)
+
+			// Delete job run so it does not clash with future runs
+			_, err = repo.deleteJobRun(context.Background(), privateId)
+			assert.NoError(err)
 		})
 	}
 
-	t.Run("duplicate-job-run", func(t *testing.T) {
+	t.Run("job-run-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		run, err := NewJobRun(job.PrivateId, server.PrivateId)
-		require.NoError(err)
-		require.NotNil(run)
-
-		dbRun, err := repo.CreateJobRun(context.Background(), run)
-		require.NoError(err)
-		require.NotNil(dbRun)
-		assert.NotEmpty(dbRun.Id)
-
-		// Attempting to create the same job run must fail since previous run is still active
-		assert.Empty(run.Id)
-		newDbRun, err := repo.CreateJobRun(context.Background(), run)
+		err = repo.EndJobRun(context.Background(), "fake-run-id", Completed, testFutureTime)
 		require.Error(err)
-		require.Nil(newDbRun)
-		assert.Contains(err.Error(), fmt.Sprintf("job.(Repository).CreateJobRun: job %v already running", job.PrivateId))
-
-		// Update previous run to be complete
-		dbRun.Status = string(Completed)
-		dbRun, count, err := repo.UpdateJobRun(context.Background(), dbRun, []string{"Status"})
-		require.NoError(err)
-		assert.Equal(1, count)
-
-		// Attempting to create the same job run should succeed since previous run is complete
-		assert.Empty(run.Id)
-		newDbRun, err = repo.CreateJobRun(context.Background(), run)
-		require.NoError(err)
-		require.NotNil(newDbRun)
+		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
+		assert.Equal("job.(Repository).EndJobRun: job run \"fake-run-id\" not found: db.LookupById: record not found, search issue: error #1100", err.Error())
 	})
+}
+
+func TestRepository_DuplicateJobRun(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	server := testController(t, conn, wrapper)
+
+	job1 := testJob(t, conn, "job1", "code1", "description")
+	require.NotNil(job1)
+
+	run := &JobRun{
+		JobRun: &store.JobRun{
+			JobId:    job1.PrivateId,
+			ServerId: server.PrivateId,
+			Status:   Running,
+		},
+	}
+
+	id, err := newJobRunId()
+	require.NoError(err)
+	run.PrivateId = id
+	err = rw.Create(context.Background(), run)
+	assert.NoError(err)
+
+	// Inserting the same job run with a different private id should still conflict on jobId and status
+	id, err = newJobRunId()
+	require.NoError(err)
+	run.PrivateId = id
+	err = rw.Create(context.Background(), run)
+	assert.Error(err)
+	assert.Equal("db.Create: create failed: duplicate key value violates unique constraint \"job_run_status_constraint\": unique constraint violation: integrity violation: error #1002", err.Error())
+
+	// Creating a new job with a different name, the associated run should not conflict with the previous run
+	job2 := testJob(t, conn, "job2", "code1", "description")
+	require.NotNil(job1)
+
+	run.JobId = job2.PrivateId
+
+	id, err = newJobRunId()
+	require.NoError(err)
+	run.PrivateId = id
+	err = rw.Create(context.Background(), run)
+	assert.NoError(err)
+
+	// Creating a new job with same name and different code should not conflict
+	job1withCode := testJob(t, conn, "job1", "code2", "description")
+	require.NotNil(job1)
+
+	run.JobId = job1withCode.PrivateId
+
+	id, err = newJobRunId()
+	require.NoError(err)
+	run.PrivateId = id
+	err = rw.Create(context.Background(), run)
+	assert.NoError(err)
 }
 
 func TestRepository_LookupJobRun(t *testing.T) {
@@ -547,12 +750,12 @@ func TestRepository_LookupJobRun(t *testing.T) {
 
 	job := testJob(t, conn, "name", "code", "description")
 	server := testController(t, conn, wrapper)
-	run := testJobRun(t, conn, job.PrivateId, server.PrivateId)
-	var fakeId int64 = 100
+	run := testJobRun(t, conn, job.PrivateId, server.PrivateId, Running)
+	fakeId := JobRunPrefix + "_1234567890"
 
 	tests := []struct {
 		name        string
-		in          int64
+		in          string
 		want        *JobRun
 		wantErr     bool
 		wantErrCode errors.Code
@@ -562,7 +765,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 			name:        "with-no-id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).LookupJobRun: missing id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).LookupJobRun: missing private id: parameter violation: error #100",
 		},
 		{
 			name: "with-non-existing-id",
@@ -570,7 +773,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 		},
 		{
 			name: "with-existing-id",
-			in:   run.Id,
+			in:   run.PrivateId,
 			want: run,
 		},
 	}
@@ -595,149 +798,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 	}
 }
 
-func TestRepository_ListJobRuns(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	job1 := testJob(t, conn, "job1", "code", "description")
-	job2 := testJob(t, conn, "job2", "code", "description")
-	server := testController(t, conn, wrapper)
-
-	run1 := testJobRun(t, conn, job1.PrivateId, server.PrivateId, WithJobRunStatus(Completed))
-	run2 := testJobRun(t, conn, job1.PrivateId, server.PrivateId, WithJobRunStatus(Completed))
-	run3 := testJobRun(t, conn, job2.PrivateId, server.PrivateId, WithJobRunStatus(Completed))
-
-	tests := []struct {
-		name        string
-		in          string
-		opts        []Option
-		want        []*JobRun
-		wantErr     bool
-		wantErrCode errors.Code
-		wantErrMsg  string
-	}{
-		{
-			name:        "with-no-job_id",
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).ListJobRuns: missing job id: parameter violation: error #100",
-		},
-		{
-			name: "with-job1-id",
-			in:   job1.PrivateId,
-			want: []*JobRun{run1, run2},
-		},
-		{
-			name: "with-job2-id",
-			in:   job2.PrivateId,
-			want: []*JobRun{run3},
-		},
-		{
-			name: "with-fake-job-id",
-			in:   "job_1234567890",
-			want: []*JobRun{},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListJobRuns(context.Background(), tt.in, tt.opts...)
-			if tt.wantErr {
-				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
-				return
-			}
-			require.NoError(err)
-			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *Job) bool { return x.PrivateId < y.PrivateId }),
-				protocmp.Transform(),
-			}
-			assert.Empty(cmp.Diff(tt.want, got, opts...))
-		})
-	}
-}
-
-func TestRepository_ListJobRuns_Limits(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	job := testJob(t, conn, "job", "code", "description")
-	server := testController(t, conn, wrapper)
-
-	count := 10
-	runs := make([]*JobRun, count)
-	for i := range runs {
-		runs[i] = testJobRun(t, conn, job.PrivateId, server.PrivateId, WithJobRunStatus(Completed))
-	}
-
-	tests := []struct {
-		name     string
-		repoOpts []Option
-		listOpts []Option
-		wantLen  int
-	}{
-		{
-			name:    "With no limits",
-			wantLen: count,
-		},
-		{
-			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
-			wantLen:  6,
-		},
-		{
-			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
-			wantLen:  2,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListJobRuns(context.Background(), job.PrivateId, tt.listOpts...)
-			require.NoError(err)
-			assert.Len(got, tt.wantLen)
-		})
-	}
-}
-
-func TestRepository_DeleteJobRun(t *testing.T) {
+func TestRepository_deleteJobRun(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -746,12 +807,12 @@ func TestRepository_DeleteJobRun(t *testing.T) {
 	job := testJob(t, conn, "name", "code", "description")
 	server := testController(t, conn, wrapper)
 
-	run := testJobRun(t, conn, job.PrivateId, server.PrivateId)
-	var fakeRunId int64 = 100
+	run := testJobRun(t, conn, job.PrivateId, server.PrivateId, "running")
+	fakeRunId := JobRunPrefix + "_1234567890"
 
 	tests := []struct {
 		name        string
-		in          int64
+		in          string
 		want        int
 		wantErr     bool
 		wantErrCode errors.Code
@@ -761,7 +822,7 @@ func TestRepository_DeleteJobRun(t *testing.T) {
 			name:        "With no private id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).DeleteJobRun: missing id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).deleteJobRun: missing private id: parameter violation: error #100",
 		},
 		{
 			name: "With non existing job id",
@@ -770,7 +831,7 @@ func TestRepository_DeleteJobRun(t *testing.T) {
 		},
 		{
 			name: "With existing job id",
-			in:   run.Id,
+			in:   run.PrivateId,
 			want: 1,
 		},
 	}
@@ -782,7 +843,7 @@ func TestRepository_DeleteJobRun(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteJobRun(context.Background(), tt.in)
+			got, err := repo.deleteJobRun(context.Background(), tt.in)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())

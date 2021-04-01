@@ -34,7 +34,7 @@ func NewJobRun(jobId, serverId string, opt ...Option) (*JobRun, error) {
 
 	opts := getOpts(opt...)
 	runStatus := opts.withJobRunStatus
-	if !runStatus.IsValid() {
+	if !isValidRunStatus(runStatus) {
 		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid run status: %v", runStatus))
 	}
 
@@ -42,7 +42,7 @@ func NewJobRun(jobId, serverId string, opt ...Option) (*JobRun, error) {
 		JobRun: &store.JobRun{
 			JobId:    jobId,
 			ServerId: serverId,
-			Status:   string(runStatus),
+			Status:   runStatus,
 		},
 	}
 	return run, nil

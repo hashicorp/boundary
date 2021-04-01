@@ -15,18 +15,30 @@
 // created for each transaction. For example:
 //
 //  var wrapper wrapping.Wrapper
-//  ... init wrapper...
+//  ... init wrapper ...
 //
 //  // db implements both the reader and writer interfaces.
 //  db, _ := db.Open(db.Postgres, url)
 //
+//  var j *job.Job
+//  j, _ = job.NewJob("name", "code", "description")
+//
 //  var repo *job.Repository
-//
 //  repo, _ = job.NewRepository(db, db, wrapper)
-//  job, _ := repo.LookupJob(ctx, jobId)
 //
-//  Job.NextScheduledRun = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now())}
+//  // insert job into database
+//  _, _ = repo.CreateJob(context.Background(), j)
 //
-//  repo, _ = Job.NewRepository(db, db, wrapper)
-//  job, _ = repo.UpdateJob(ctx, job, []string{"NextScheduledRun"})
+//  var run *JobRun
+//  repo, _ = job.NewRepository(db, db, wrapper)
+//  run, _ = repo.FetchWork(context.Background(), "serverId")
+//
+//  ... run job ...
+//  repo, _ = job.NewRepository(db, db, wrapper)
+//  run, _ = repo.CheckpointJobRun(ctx, run, []string{"TotalCount", "CompletedCount"})
+//
+//  run.EndTime = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now())}
+//  run.Status = job.Completed
+//  repo, _ = job.NewRepository(db, db, wrapper)
+//  run, _ = repo.EndJobRun(ctx, run)
 package job

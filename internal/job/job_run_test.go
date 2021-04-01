@@ -1,7 +1,6 @@
 package job
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,9 +12,6 @@ import (
 
 func TestJobRun_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-
 	conn.LogMode(false)
 
 	type args struct {
@@ -113,53 +109,6 @@ func TestJobRun_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
-
-	t.Run("conflicting-job-run", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-
-		server := testController(t, conn, wrapper)
-
-		job1 := testJob(t, conn, "job1", "code1", "description")
-		require.NotNil(job1)
-
-		run, err := NewJobRun(job1.PrivateId, server.PrivateId)
-		require.NoError(err)
-		require.NotNil(run)
-
-		err = rw.Create(context.Background(), run)
-		assert.NoError(err)
-
-		// Insert same job run should conflict on jobId and status
-		run, err = NewJobRun(job1.PrivateId, server.PrivateId)
-		require.NoError(err)
-		require.NotNil(run)
-
-		err = rw.Create(context.Background(), run)
-		assert.Error(err)
-		assert.Equal("db.Create: create failed: duplicate key value violates unique constraint \"job_run_status_constraint\": unique constraint violation: integrity violation: error #1002", err.Error())
-
-		// Creating a new job with a different name and the run should not conflict
-		job2 := testJob(t, conn, "job2", "code1", "description")
-		require.NotNil(job1)
-
-		run, err = NewJobRun(job2.PrivateId, server.PrivateId)
-		require.NoError(err)
-		require.NotNil(run)
-
-		err = rw.Create(context.Background(), run)
-		assert.NoError(err)
-
-		// Creating a new job with same name and different code should not conflict
-		job1withCode := testJob(t, conn, "job1", "code2", "description")
-		require.NotNil(job1)
-
-		run, err = NewJobRun(job1withCode.PrivateId, server.PrivateId)
-		require.NoError(err)
-		require.NotNil(run)
-
-		err = rw.Create(context.Background(), run)
-		assert.NoError(err)
-	})
 }
 
 func TestJobRun_SetTableName(t *testing.T) {

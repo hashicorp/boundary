@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	JobPrefix = "job"
+	JobPrefix    = "job"
+	JobRunPrefix = "jobrun"
 )
 
 func newJobId(name, code string) (string, error) {
@@ -19,6 +20,15 @@ func newJobId(name, code string) (string, error) {
 	}
 
 	id, err := db.NewPrivateId(JobPrefix, db.WithPrngValues([]string{name, code}))
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return id, nil
+}
+
+func newJobRunId() (string, error) {
+	const op = "job.newJobRunId"
+	id, err := db.NewPrivateId(JobRunPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

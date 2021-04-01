@@ -76,6 +76,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "account already associated with another user",
 		Kind:    Parameter,
 	},
+	InvalidJobRunState: {
+		Message: "job run is already in a final run state",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,

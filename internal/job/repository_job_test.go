@@ -2,13 +2,10 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -16,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -565,142 +561,7 @@ func TestRepository_LookupJob(t *testing.T) {
 	}
 }
 
-func TestRepository_ListJobs(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	job1 := testJob(t, conn, "sameName", "code", "description")
-	job2 := testJob(t, conn, "sameName", "differentCode", "description")
-	job3 := testJob(t, conn, "differentName", "code", "description")
-
-	tests := []struct {
-		name        string
-		in          string
-		opts        []Option
-		want        []*Job
-		wantErr     bool
-		wantErrCode errors.Code
-		wantErrMsg  string
-	}{
-		{
-			name:        "with-no-name",
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).ListJobs: missing name: parameter violation: error #100",
-		},
-		{
-			name: "with-same-name",
-			in:   "sameName",
-			want: []*Job{job1, job2},
-		},
-		{
-			name: "with-different-name",
-			in:   "differentName",
-			want: []*Job{job3},
-		},
-		{
-			name: "with-fake-name",
-			in:   "fakeName",
-			want: []*Job{},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListJobs(context.Background(), tt.in, tt.opts...)
-			if tt.wantErr {
-				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
-				return
-			}
-			require.NoError(err)
-			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *Job) bool { return x.PrivateId < y.PrivateId }),
-				protocmp.Transform(),
-			}
-			assert.Empty(cmp.Diff(tt.want, got, opts...))
-		})
-	}
-}
-
-func TestRepository_ListJobs_Limits(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	count := 10
-	jobs := make([]*Job, count)
-	for i := range jobs {
-		jobs[i] = testJob(t, conn, "name", fmt.Sprintf("code-%d", i), "description")
-	}
-
-	tests := []struct {
-		name     string
-		repoOpts []Option
-		listOpts []Option
-		wantLen  int
-	}{
-		{
-			name:    "With no limits",
-			wantLen: count,
-		},
-		{
-			name:     "With repo limit",
-			repoOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "With negative repo limit",
-			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "With List limit",
-			listOpts: []Option{WithLimit(3)},
-			wantLen:  3,
-		},
-		{
-			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1)},
-			wantLen:  count,
-		},
-		{
-			name:     "With repo smaller than list limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
-			wantLen:  6,
-		},
-		{
-			name:     "With repo larger than list limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
-			wantLen:  2,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
-			assert.NoError(err)
-			require.NotNil(repo)
-			got, err := repo.ListJobs(context.Background(), "name", tt.listOpts...)
-			require.NoError(err)
-			assert.Len(got, tt.wantLen)
-		})
-	}
-}
-
-func TestRepository_DeleteJob(t *testing.T) {
+func TestRepository_deleteJob(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -742,7 +603,7 @@ func TestRepository_DeleteJob(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteJob(context.Background(), tt.in)
+			got, err := repo.deleteJob(context.Background(), tt.in)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())

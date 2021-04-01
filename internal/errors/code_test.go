@@ -103,6 +103,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: AccountAlreadyAssociated,
 		},
 		{
+			name: "InvalidJobRunState",
+			c:    InvalidJobRunState,
+			want: InvalidJobRunState,
+		},
+		{
 			name: "InternalError",
 			c:    Internal,
 			want: Internal,

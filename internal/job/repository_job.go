@@ -14,9 +14,12 @@ import (
 // containing the job's PrivateId, j is not changed. j must not contain
 // a PrivateId as the PrivateId is generated and assigned by this method.
 //
-// j.Name must be provided and is the user-friendly name of the job.
-// j.Description must be provided and is the user-friendly description of the job.
-// j.Code is optional, if it is provided the combination of name and code must be unique.
+// * j.Name must be provided and is the user-friendly name of the job.
+//
+// * j.Code must be provided and is used to uniquely distinguish the same
+// base job (job with the same name)
+//
+// *j.Description must be provided and is the user-friendly description of the job.
 //
 // All options are ignored.
 func (r *Repository) CreateJob(ctx context.Context, j *Job, _ ...Option) (*Job, error) {
@@ -42,7 +45,6 @@ func (r *Repository) CreateJob(ctx context.Context, j *Job, _ ...Option) (*Job, 
 
 	// Clone job so we do not modify the input
 	j = j.clone()
-
 	id, err := newJobId(j.Name, j.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
@@ -135,12 +137,15 @@ func (r *Repository) UpdateJob(ctx context.Context, j *Job, fieldMaskPaths []str
 // LookupJob will look up a job in the repository. If the job is not
 // found, it will return nil, nil.
 //
+// privateId is required.
+//
 // All options are ignored.
 func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).LookupJob"
 	if privateId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
 	}
+
 	j := allocJob()
 	j.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, j); err != nil {
@@ -152,33 +157,12 @@ func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Optio
 	return j, nil
 }
 
-// ListJobs returns a slice of Jobs for the name.
-// WithLimit is the only option supported.
-func (r *Repository) ListJobs(ctx context.Context, name string, opt ...Option) ([]*Job, error) {
-	const op = "job.(Repository).ListJobs"
-	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
-	}
-	opts := getOpts(opt...)
-	limit := r.limit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var jobs []*Job
-	err := r.reader.SearchWhere(ctx, &jobs, "name = ?", []interface{}{name}, db.WithLimit(limit))
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	return jobs, nil
-}
-
-// DeleteJob deletes the job for the provided id from the repository
+// deleteJob deletes the job for the provided id from the repository
 // returning a count of the number of records deleted.
 //
 // All options are ignored.
-func (r *Repository) DeleteJob(ctx context.Context, privateId string, _ ...Option) (int, error) {
-	const op = "job.(Repository).DeleteJob"
+func (r *Repository) deleteJob(ctx context.Context, privateId string, _ ...Option) (int, error) {
+	const op = "job.(Repository).deleteJob"
 	if privateId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
 	}

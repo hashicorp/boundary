@@ -19,25 +19,14 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit            int
 	withNextScheduledRun *timestamp.Timestamp
-	withJobRunStatus     RunStatus
+	withJobRunStatus     string
 }
 
 func getDefaultOptions() options {
 	return options{
-		withLimit:            0,
 		withNextScheduledRun: &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{}},
 		withJobRunStatus:     Running,
-	}
-}
-
-// WithLimit provides an option to provide a limit.  Intentionally allowing
-// negative integers.   If WithLimit < 0, then unlimited results are returned.
-// If WithLimit == 0, then default limits are used for results.
-func WithLimit(limit int) Option {
-	return func(o *options) {
-		o.withLimit = limit
 	}
 }
 
@@ -49,7 +38,7 @@ func WithNextScheduledRun(ts *timestamp.Timestamp) Option {
 }
 
 // WithJobRunStatus provides an option to provide the run status for the job run.
-func WithJobRunStatus(s RunStatus) Option {
+func WithJobRunStatus(s string) Option {
 	return func(o *options) {
 		o.withJobRunStatus = s
 	}

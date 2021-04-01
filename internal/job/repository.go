@@ -12,15 +12,12 @@ type Repository struct {
 	reader db.Reader
 	writer db.Writer
 	kms    *kms.Kms
-	limit  int
 }
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
-// routines to access it. WithLimit option is used as a repo wide default
-// limit applied to all ListX methods.
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, _ ...Option) (*Repository, error) {
 	const op = "job.NewRepository"
 	switch {
 	case r == nil:
@@ -31,16 +28,9 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
 
-	opts := getOpts(opt...)
-	if opts.withLimit == 0 {
-		// zero signals the boundary defaults should be used.
-		opts.withLimit = db.DefaultLimit
-	}
-
 	return &Repository{
 		reader: r,
 		writer: w,
 		kms:    kms,
-		limit:  opts.withLimit,
 	}, nil
 }
