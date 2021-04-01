@@ -16,10 +16,10 @@ import (
 )
 
 // FetchWork queries the job repository for available work and returns a JobRun
-// of a job that needs to be run, if there are not jobs that need to be run nil, nil
+// of a job that needs to be run, if there are not jobs that need to be run `nil, nil`
 // will be returned.
 //
-// serverId is required and is the private_id of the server that will run the job.
+// • serverId is required and is the private_id of the server that will run the job.
 //
 // All options are ignored.
 func (r *Repository) FetchWork(ctx context.Context, serverId string, _ ...Option) (*JobRun, error) {

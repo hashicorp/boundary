@@ -19,8 +19,10 @@ type JobRun struct {
 }
 
 // NewJobRun creates a new in memory JobRun.
-// jobId is the private_id of the job to run.
-// serverId is the private_id of the server running the job.
+//
+// • jobId is the private_id of the job to run.
+//
+// • serverId is the private_id of the server running the job.
 //
 // WithJobRunStatus() is the only valid option, if not provided
 // the run defaults to a status of running.

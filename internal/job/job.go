@@ -18,15 +18,15 @@ type Job struct {
 
 // NewJob creates a new in memory Job.
 //
-// * Name is the human-friendly name of the job.
+// • Name is the human-friendly name of the job.
 //
-// * Code is not user facing and should be used to distinguish unique jobs of
+// • Code is not user facing and should be used to distinguish unique jobs of
 // the same type that can run in parallel.
 //
-// * Description is the human-friendly description of the job.
+// • Description is the human-friendly description of the job.
 //
 // WithNextScheduledRun() is the only valid option.  If this option is not
-// provided the NextScheduledRun will default to zero time, and be scheduled
+// provided the NextScheduledRun of the job will default to zero time, and be available
 // to run immediately.
 func NewJob(name, code, description string, opt ...Option) (*Job, error) {
 	const op = "job.NewJob"

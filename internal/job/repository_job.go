@@ -17,12 +17,12 @@ import (
 // containing the job's PrivateId, j is not changed. j must not contain
 // a PrivateId as the PrivateId is generated and assigned by this method.
 //
-// * j.Name must be provided and is the user-friendly name of the job.
+// • j.Name must be provided and is the user-friendly name of the job.
 //
-// * j.Code must be provided and is used to uniquely distinguish the same
+// • j.Code must be provided and is used to uniquely distinguish the same
 // base job (job with the same name)
 //
-// *j.Description must be provided and is the user-friendly description of the job.
+// • j.Description must be provided and is the user-friendly description of the job.
 //
 // All options are ignored.
 func (r *Repository) CreateJob(ctx context.Context, j *Job, _ ...Option) (*Job, error) {
@@ -147,10 +147,8 @@ func (r *Repository) UpdateJob(ctx context.Context, j *Job, fieldMaskPaths []str
 	return j, rowsUpdated, nil
 }
 
-// LookupJob will look up a job in the repository. If the job is not
+// LookupJob will look up a job in the repository using the privateId. If the job is not
 // found, it will return nil, nil.
-//
-// privateId is required.
 //
 // All options are ignored.
 func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Option) (*Job, error) {
