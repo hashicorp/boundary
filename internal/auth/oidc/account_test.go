@@ -86,8 +86,6 @@ func TestAccount_Create(t *testing.T) {
 				require.NoError(t, err)
 				return want
 			}(),
-			wantCreateErr:   true,
-			wantCreateIsErr: errors.Exception,
 		},
 		{
 			name: "empty-auth-method",
@@ -128,7 +126,7 @@ func TestAccount_Create(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "empty-issuer-url",
+			name: "empty-issuer",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
 				subject:      "alice",
@@ -137,6 +135,21 @@ func TestAccount_Create(t *testing.T) {
 			create: true,
 			want: func() *Account {
 				want, err := NewAccount(testAuthMethod.PublicId, "alice", WithIssuer(&url.URL{}))
+				require.NoError(t, err)
+				return want
+			}(),
+			wantCreateErr:   true,
+			wantCreateIsErr: errors.CheckConstraint,
+		},
+		{
+			name: "nil-issuer",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				subjectId:    "alice",
+			},
+			create: true,
+			want: func() *Account {
+				want, err := NewAccount(testAuthMethod.PublicId, "alice")
 				require.NoError(t, err)
 				return want
 			}(),

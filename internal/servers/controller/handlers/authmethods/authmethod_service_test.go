@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
+	authtokenpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -851,7 +852,7 @@ func TestCreate(t *testing.T) {
 					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":     structpb.NewStringValue("someclientid"),
 					"client_secret": structpb.NewStringValue("secret"),
-					"certificates": func() *structpb.Value {
+					"ca_certs": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"unparseable"})
 						return structpb.NewListValue(lv)
 					}(),
@@ -2375,7 +2376,8 @@ func TestAuthenticate(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			aToken := resp.GetItem()
+			aToken := &authtokenpb.AuthToken{}
+			require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
 			assert.NotEmpty(aToken.GetId())
 			assert.NotEmpty(aToken.GetToken())
 			assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
@@ -2384,7 +2386,7 @@ func TestAuthenticate(t *testing.T) {
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
 			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
 			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
-			assert.Equal(tc.wantType, resp.GetTokenType())
+			assert.Equal(tc.wantType, resp.GetAttributes().GetFields()["token_type"].GetStringValue())
 		})
 	}
 }
@@ -2608,7 +2610,8 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	})
 	require.NoError(err)
 
-	aToken := resp.GetItem()
+	aToken := &authtokenpb.AuthToken{}
+	require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
 	assert.Equal(iamUser.GetPublicId(), aToken.GetUserId())
 	assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
 	assert.Equal(acct.GetPublicId(), aToken.GetAccountId())

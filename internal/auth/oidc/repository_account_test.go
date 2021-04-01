@@ -40,6 +40,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
+	noIssuerAm := TestAuthMethod(
+		t, conn, databaseWrapper, org.GetPublicId(), InactiveState,
+		nil,
+		"client", "fido",
+		WithSigningAlgs(RS256),
+		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	tests := []struct {
 		name       string
 		in         *Account
@@ -90,6 +98,34 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).CreateAccount: missing subject: parameter violation: error #100",
 		},
 		{
+			name: "invalid-no-issuer-authmethod-no-issuer",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: noIssuerAm.PublicId,
+					SubjectId:    "invalid no issuer authmethod no issuer",
+				},
+			},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).CreateAccount: no issuer id on auth method: parameter violation: error #100",
+		},
+		{
+			name: "valid-provide-issuer-authmethod-no-issuer",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: noIssuerAm.PublicId,
+					SubjectId:    "valid provide issuer authmethod no issuer",
+					IssuerId:     "https://overwrite.com",
+				},
+			},
+			want: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					IssuerId:     "https://overwrite.com",
+					SubjectId:    "valid provide issuer authmethod no issuer",
+				},
+			},
+		},
+		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{
@@ -100,7 +136,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://allice.com",
+					Issuer:       "https://www.alice.com",
 					Subject:      "valid-no-options",
 				},
 			},
@@ -117,7 +153,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://allice.com",
+					Issuer:       "https://www.alice.com",
 					Subject:      "valid-with-name",
 					Name:         "test-name-repo",
 				},
@@ -135,9 +171,26 @@ func TestRepository_CreateAccount(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://allice.com",
+					Issuer:       "https://www.alice.com",
 					Subject:      "valid-with-description",
 					Description:  ("test-description-repo"),
+				},
+			},
+		},
+		{
+			name: "valid-overwrite-issuer",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					Subject:    "valid-overwrite-issuer",
+					Issuer:     "https://overwrite.com",
+				},
+			},
+			want: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					Issuer:     "https://overwrite.com",
+					Subject:    "valid-overwrite-issuer",
 				},
 			},
 		},
@@ -163,6 +216,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(tt.want.Subject, got.Subject)
+			assert.Equal(tt.want.Issuer, got.Issuer)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))

@@ -3,6 +3,8 @@ package accounts
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -165,7 +167,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.createInRepo(ctx, authMeth.GetPublicId(), authResults.Scope.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, authMeth, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +281,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	return toProto(acct)
 }
 
-func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*password.Account, error) {
+func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
 	const op = "account_service.(Serivce).createPwInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil item")
@@ -296,7 +298,7 @@ func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId strin
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	a, err := password.NewAccount(authMethodId, opts...)
+	a, err := password.NewAccount(am.GetPublicId(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -309,7 +311,7 @@ func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId strin
 	if pwAttrs.GetPassword() != nil {
 		createOpts = append(createOpts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
 	}
-	out, err := repo.CreateAccount(ctx, scopeId, a, createOpts...)
+	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a, createOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create user: %w", err)
 	}
@@ -319,7 +321,7 @@ func (s Service) createPwInRepo(ctx context.Context, authMethodId, scopeId strin
 	return out, nil
 }
 
-func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*oidc.Account, error) {
+func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*oidc.Account, error) {
 	const op = "account_service.(Service).createOidcInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil item")
@@ -336,7 +338,14 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{"attributes": "Attribute fields do not match the expected format."})
 	}
-	a, err := oidc.NewAccount(authMethodId, attrs.GetSubject(), opts...)
+	if attrs.GetIssuer() != "" {
+		u, err := url.Parse(attrs.GetIssuer())
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
+		}
+		opts = append(opts, oidc.WithIssuer(u))
+	}
+	a, err := oidc.NewAccount(am.GetPublicId(), attrs.GetSubject(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -345,7 +354,7 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 		return nil, err
 	}
 
-	out, err := repo.CreateAccount(ctx, scopeId, a)
+	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create user"))
 	}
@@ -355,15 +364,15 @@ func (s Service) createOidcInRepo(ctx context.Context, authMethodId, scopeId str
 	return out, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
+func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*pb.Account, error) {
 	const op = "account_service.(Service).createInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil item")
 	}
 	var out auth.Account
-	switch auth.SubtypeFromId(authMethodId) {
+	switch auth.SubtypeFromId(am.GetPublicId()) {
 	case auth.PasswordSubtype:
-		am, err := s.createPwInRepo(ctx, authMethodId, scopeId, item)
+		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +381,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 		}
 		out = am
 	case auth.OidcSubtype:
-		am, err := s.createOidcInRepo(ctx, authMethodId, scopeId, item)
+		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
 			return nil, err
 		}
@@ -774,7 +783,13 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[subjectField] = "This is a required field for this type."
 			}
 			if attrs.GetIssuer() != "" {
-				badFields[issuerField] = "This is a read only field."
+				du, err := url.Parse(attrs.GetIssuer())
+				if err != nil {
+					badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				}
+				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+					badFields[issuerField] = "The path segment of the url should be empty."
+				}
 			}
 			if attrs.GetFullName() != "" {
 				badFields[nameClaimField] = "This is a read only field."
@@ -817,7 +832,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 				badFields[subjectField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				badFields[issuerField] = "Field is read only."
+				badFields[issuerField] = "Field cannot be updated."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), emailClaimField) {
 				badFields[emailClaimField] = "Field is read only."

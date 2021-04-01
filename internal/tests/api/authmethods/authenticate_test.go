@@ -1,6 +1,7 @@
 package authmethods_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -40,11 +41,12 @@ func TestAuthenticate(t *testing.T) {
 	resp, err := client.Do(req)
 	require.NoError(err)
 
-	target := new(authtokens.AuthTokenReadResult)
-	target.Item = new(authtokens.AuthToken)
-	apiErr, err = resp.Decode(target.Item)
+	result := new(authmethods.AuthenticateResult)
+	apiErr, err = resp.Decode(result)
 	require.NoError(err)
 	require.Nil(apiErr)
-	require.NotNil(target.GetItem())
-	require.NotEmpty(target.GetItem().(*authtokens.AuthToken).Token)
+
+	token := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+	require.NotEmpty(token.Token)
 }

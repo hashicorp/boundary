@@ -165,6 +165,7 @@ func (x *Account) GetAuthorizedActions() []string {
 	return nil
 }
 
+// Attributes associated only with Accounts with type "password".
 type PasswordAccountAttributes struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -222,6 +223,7 @@ func (x *PasswordAccountAttributes) GetPassword() *wrappers.StringValue {
 	return nil
 }
 
+// Attributes associated only with Accounts with type "oidc".
 type OidcAccountAttributes struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

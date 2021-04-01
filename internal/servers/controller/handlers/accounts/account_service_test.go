@@ -904,12 +904,43 @@ func TestCreateOidc(t *testing.T) {
 			},
 		},
 		{
+			name: "Create Account With Overwritten Issuer",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
+						a := createAttr("overwritten-issuer")
+						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
+						return a
+					}(),
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         auth.OidcSubtype.String(),
+					Attributes: func() *structpb.Struct {
+						a := createAttr("overwritten-issuer")
+						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
+						return a
+					}(),
+					AuthorizedActions: oidcAuthorizedActions,
+				},
+			},
+		},
+		{
 			name: "Cant specify mismatching type",
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Type:         auth.PasswordSubtype.String(),
-					Attributes:   createAttr(""),
+					Attributes:   createAttr("cant-specify-mismatching-type"),
 				},
 			},
 			res: nil,
@@ -922,7 +953,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Id:           oidc.AccountPrefix + "_notallowed",
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr(""),
+					Attributes:   createAttr("cant-specify-id"),
 				},
 			},
 			res: nil,
@@ -935,7 +966,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr(""),
+					Attributes:   createAttr("cant-specify-created-time"),
 				},
 			},
 			res: nil,
@@ -948,18 +979,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         auth.OidcSubtype.String(),
-					Attributes:   createAttr(""),
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Must specify issuer",
-			req: &pbs.CreateAccountRequest{
-				Item: &pb.Account{
-					AuthMethodId: am.GetPublicId(),
-					Type:         auth.OidcSubtype.String(),
+					Attributes:   createAttr("cant-specify-update-time"),
 				},
 			},
 			res: nil,

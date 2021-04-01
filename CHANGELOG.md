@@ -18,6 +18,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   to better match other types of resources. `credentials` will still work for
   now but will be removed in a few releases. Finally, in the Go SDK, the
   `Authenticate` function now requires a `command` value to be passed in.
+* Related to the above change, the output of an API
+  `auth-methods/<id>:authenticate` call will return the given `command` value
+  and a map of attributes that depend on the given command. On the SDK side, the
+  output of the `Authenticate` function returns a map, from which a concrete
+  type can be easily umarshaled (see the updated `authenticate password` command
+  for an example).
 
 ### New and Improved
 

@@ -47,6 +47,7 @@ message Account {
 	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }
 
+// Attributes associated only with Accounts with type "password".
 message PasswordAccountAttributes {
 	// The login name of this Account. This is unique per Auth Method.
 	string login_name = 10 [json_name="login_name", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "LoginName"}];
@@ -55,6 +56,7 @@ message PasswordAccountAttributes {
 	google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true];
 }
 
+// Attributes associated only with Accounts with type "oidc".
 message OidcAccountAttributes {
 	// Output only. issuer is a case sensitive URL that maps to the OIDC iss claim
 	string issuer = 80 [json_name="issuer"];

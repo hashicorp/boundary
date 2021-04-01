@@ -219,7 +219,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc read only fields", func(t *testing.T) {
 		readOnlyFields := []string{
-			issuerField,
 			emailClaimField,
 			nameClaimField,
 		}
@@ -237,6 +236,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc write only at create fields", func(t *testing.T) {
 		readOnlyFields := []string{
+			issuerField,
 			subjectField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
