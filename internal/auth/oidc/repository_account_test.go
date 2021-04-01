@@ -102,26 +102,26 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: noIssuerAm.PublicId,
-					SubjectId:    "invalid no issuer authmethod no issuer",
+					Subject:      "invalid no issuer authmethod no issuer",
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: no issuer id on auth method: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).CreateAccount: no issuer on auth method: parameter violation: error #100",
 		},
 		{
 			name: "valid-provide-issuer-authmethod-no-issuer",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: noIssuerAm.PublicId,
-					SubjectId:    "valid provide issuer authmethod no issuer",
-					IssuerId:     "https://overwrite.com",
+					Subject:      "valid provide issuer authmethod no issuer",
+					Issuer:       "https://overwrite.com",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					IssuerId:     "https://overwrite.com",
-					SubjectId:    "valid provide issuer authmethod no issuer",
+					Issuer:       "https://overwrite.com",
+					Subject:      "valid provide issuer authmethod no issuer",
 				},
 			},
 		},
@@ -182,15 +182,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Subject:    "valid-overwrite-issuer",
-					Issuer:     "https://overwrite.com",
+					Subject:      "valid-overwrite-issuer",
+					Issuer:       "https://overwrite.com",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:     "https://overwrite.com",
-					Subject:    "valid-overwrite-issuer",
+					Issuer:       "https://overwrite.com",
+					Subject:      "valid-overwrite-issuer",
 				},
 			},
 		},

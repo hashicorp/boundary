@@ -145,7 +145,7 @@ func TestAccount_Create(t *testing.T) {
 			name: "nil-issuer",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				subjectId:    "alice",
+				subject:      "alice",
 			},
 			create: true,
 			want: func() *Account {
