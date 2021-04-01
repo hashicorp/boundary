@@ -82,8 +82,9 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q already exists or subject %q already exists for issuer %q",
-				a.AuthMethodId, a.Name, a.SubjectId, a.IssuerId))
+			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf(
+				"in auth method %s: name %q already exists or subject %q already exists for issuer %q in scope %s",
+				a.AuthMethodId, a.Name, a.SubjectId, a.IssuerId, scopeId))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
 	}
