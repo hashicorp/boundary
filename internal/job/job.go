@@ -3,6 +3,7 @@ package job
 import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/job/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -77,4 +78,13 @@ func (j *Job) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (j *Job) SetTableName(n string) {
 	j.tableName = n
+}
+
+func (j *Job) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{j.PrivateId},
+		"resource-type":      []string{"job"},
+		"op-type":            []string{op.String()},
+	}
+	return metadata
 }

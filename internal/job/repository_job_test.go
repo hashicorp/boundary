@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/iam"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -21,6 +23,7 @@ func TestRepository_CreateJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	ts := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 	tests := []struct {
@@ -231,6 +234,7 @@ func TestRepository_UpdateJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	ts := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 	newTs := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(2 * time.Hour))}
@@ -512,6 +516,7 @@ func TestRepository_LookupJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	job := testJob(t, conn, "name", "code", "description")
 	fakeJobId := "job_1234567890"
@@ -566,6 +571,7 @@ func TestRepository_deleteJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	job := testJob(t, conn, "name", "code", "description")
 	fakeJobId := "job_1234567890"

@@ -5,11 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/iam"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,6 +23,7 @@ func TestRepository_FetchWork(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 
@@ -110,6 +114,7 @@ func TestRepository_FetchWorkOrder(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 	assert, require := assert.New(t), require.New(t)
@@ -164,6 +169,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "code", "description")
@@ -504,6 +510,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 	job := testJob(t, conn, "name", "code", "description")
@@ -668,6 +675,12 @@ func TestRepository_EndJobRun(t *testing.T) {
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteJobRun(context.Background(), privateId)
 			assert.NoError(err)
+
+			// Verify JobRun has oplog entry
+			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+
+			// Verify Job has oplog entry
+			assert.NoError(db.TestVerifyOplog(t, rw, job.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 
@@ -689,6 +702,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 
@@ -747,6 +761,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	job := testJob(t, conn, "name", "code", "description")
 	server := testController(t, conn, wrapper)
@@ -803,6 +818,7 @@ func TestRepository_deleteJobRun(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	job := testJob(t, conn, "name", "code", "description")
 	server := testController(t, conn, wrapper)

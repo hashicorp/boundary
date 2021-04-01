@@ -8,6 +8,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // CreateJob inserts j into the repository and returns a new Job
@@ -51,9 +54,14 @@ func (r *Repository) CreateJob(ctx context.Context, j *Job, _ ...Option) (*Job, 
 	}
 	j.PrivateId = id
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			err := w.Create(ctx, j)
+			err := w.Create(ctx, j, db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -112,12 +120,17 @@ func (r *Repository) UpdateJob(ctx context.Context, j *Job, fieldMaskPaths []str
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	var rowsUpdated int
 	j = j.clone()
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Update(ctx, j, dbMask, nullFields)
+			rowsUpdated, err = w.Update(ctx, j, dbMask, nullFields, db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -169,11 +182,16 @@ func (r *Repository) deleteJob(ctx context.Context, privateId string, _ ...Optio
 	j := allocJob()
 	j.PrivateId = privateId
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, j)
+			rowsDeleted, err = w.Delete(ctx, j, db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}

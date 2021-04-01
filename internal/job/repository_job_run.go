@@ -9,6 +9,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	"google.golang.org/protobuf/proto"
 )
 
 // FetchWork queries the job repository for available work and returns a JobRun
@@ -24,27 +28,37 @@ func (r *Repository) FetchWork(ctx context.Context, serverId string, _ ...Option
 		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	var run *JobRun
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, fetchWorkQuery, nil)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
 
-			if !rows.Next() {
+			j := allocJob()
+			var rowCnt int
+			for rows.Next() {
+				rowCnt += 1
+				err = r.ScanRows(rows, j)
+				if err != nil {
+					_ = rows.Close()
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+				}
+			}
+			_ = rows.Close()
+			if rowCnt == 0 {
 				// No jobs need to be run
-				_ = rows.Close()
 				return nil
 			}
-
-			j := allocJob()
-			if err := r.ScanRows(rows, j); err != nil {
-				return errors.Wrap(err, op)
+			if rowCnt > 1 {
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
-
-			// FetchWork only gets a single job, close rows after first read
-			_ = rows.Close()
 
 			run, err = NewJobRun(j.PrivateId, serverId)
 			if err != nil {
@@ -57,7 +71,7 @@ func (r *Repository) FetchWork(ctx context.Context, serverId string, _ ...Option
 			}
 			run.PrivateId = id
 
-			err = w.Create(ctx, run)
+			err = w.Create(ctx, run, db.WithOplog(oplogWrapper, run.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -114,12 +128,19 @@ func (r *Repository) CheckpointJobRun(ctx context.Context, run *JobRun, fieldMas
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	var rowsUpdated int
 	run = run.clone()
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			var err error
-			rowsUpdated, err = w.Update(ctx, run, dbMask, nullFields, db.WithWhere("status = ?", []interface{}{Running}))
+			rowsUpdated, err = w.Update(ctx, run, dbMask, nullFields,
+				db.WithWhere("status = ?", []interface{}{Running}),
+				db.WithOplog(oplogWrapper, run.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -170,7 +191,12 @@ func (r *Repository) EndJobRun(ctx context.Context, privateId, status string, ne
 		return errors.Wrap(err, op)
 	}
 
-	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			var err error
 			rowsUpdated, err := w.Exec(ctx, endJobRunQuery, []interface{}{status, privateId})
@@ -184,7 +210,25 @@ func (r *Repository) EndJobRun(ctx context.Context, privateId, status string, ne
 				return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 			}
 
-			rowsAffected, err := w.Exec(ctx, setNextScheduleRunQuery, []interface{}{nextScheduledRun, run.JobId})
+			// Write JobRun update to oplog
+			ticket, err := w.GetTicket(run)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			}
+			msg := oplog.Message{
+				Message:        interface{}(run).(proto.Message),
+				TypeName:       run.TableName(),
+				OpType:         oplog.OpType_OP_TYPE_UPDATE,
+				FieldMaskPaths: []string{"Status"},
+			}
+			err = w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, run.oplog(oplog.OpType_OP_TYPE_UPDATE), []*oplog.Message{&msg})
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+
+			job := allocJob()
+			job.PrivateId = run.JobId
+			rowsAffected, err := w.Exec(ctx, setNextScheduleRunQuery, []interface{}{nextScheduledRun, job.PrivateId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
 			}
@@ -194,6 +238,23 @@ func (r *Repository) EndJobRun(ctx context.Context, privateId, status string, ne
 			if rowsAffected > 1 {
 				return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
 			}
+
+			// Write Job update to oplog
+			ticket, err = w.GetTicket(job)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			}
+			msg = oplog.Message{
+				Message:        interface{}(job).(proto.Message),
+				TypeName:       job.TableName(),
+				OpType:         oplog.OpType_OP_TYPE_UPDATE,
+				FieldMaskPaths: []string{"NextScheduledRun"},
+			}
+			err = w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, job.oplog(oplog.OpType_OP_TYPE_UPDATE), []*oplog.Message{&msg})
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+
 			return nil
 		},
 	)
@@ -235,13 +296,18 @@ func (r *Repository) deleteJobRun(ctx context.Context, privateId string, _ ...Op
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	run := allocJobRun()
 	run.PrivateId = privateId
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, run)
+			rowsDeleted, err = w.Delete(ctx, run, db.WithOplog(oplogWrapper, run.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
