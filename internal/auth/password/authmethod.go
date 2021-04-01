@@ -7,8 +7,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const defaultAuthPasswordMethodTableName = "auth_password_method_with_is_primary"
-
 // A AuthMethod contains accounts and password configurations. It is owned
 // by a scope.
 type AuthMethod struct {
