@@ -139,9 +139,7 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 			return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 		}
 	}
-	if strings.TrimSpace(a.ApiUrl) == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing api url")
-	} else {
+	if a.ApiUrl != "" {
 		if _, err := url.Parse(a.ApiUrl); err != nil {
 			return errors.New(errors.InvalidParameter, caller, "not a valid api url", errors.WithWrap(err))
 		}
