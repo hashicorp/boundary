@@ -35,7 +35,7 @@ import (
 )
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
-// WithMaxAge, WithCallbackUrls, WithCertificates, WithAudClaims, and
+// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
 // WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
@@ -43,7 +43,6 @@ func TestAuthMethod(
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
 	state AuthMethodState,
-	issuer *url.URL,
 	clientId string,
 	clientSecret ClientSecret,
 	opt ...Option) *AuthMethod {
@@ -53,7 +52,7 @@ func TestAuthMethod(
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	authMethod, err := NewAuthMethod(scopeId, issuer, clientId, clientSecret, opt...)
+	authMethod, err := NewAuthMethod(scopeId, clientId, clientSecret, opt...)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -63,17 +62,6 @@ func TestAuthMethod(
 	err = rw.Create(ctx, authMethod)
 	require.NoError(err)
 
-	if len(opts.withCallbackUrls) > 0 {
-		newCallbacks := make([]interface{}, 0, len(opts.withCallbackUrls))
-		for _, c := range opts.withCallbackUrls {
-			callback, err := NewCallbackUrl(authMethod.PublicId, c)
-			require.NoError(err)
-			newCallbacks = append(newCallbacks, callback)
-		}
-		err := rw.CreateItems(ctx, newCallbacks)
-		require.NoError(err)
-		require.Equal(len(opts.withCallbackUrls), len(authMethod.CallbackUrls))
-	}
 	if len(opts.withAudClaims) > 0 {
 		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
@@ -134,9 +122,6 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 		})
 		sort.Slice(am.AudClaims, func(a, b int) bool {
 			return am.AudClaims[a] < am.AudClaims[b]
-		})
-		sort.Slice(am.CallbackUrls, func(a, b int) bool {
-			return am.CallbackUrls[a] < am.CallbackUrls[b]
 		})
 		sort.Slice(am.Certificates, func(a, b int) bool {
 			return am.Certificates[a] < am.Certificates[b]

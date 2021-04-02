@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -147,10 +148,10 @@ func Callback(
 	if len(am.AudClaims) > 0 {
 		opts = append(opts, oidc.WithAudiences(am.AudClaims...))
 	}
-	if len(am.CallbackUrls) != 1 {
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("expected 1 callback URL and got: %d", len(am.CallbackUrls)))
+	if strings.TrimSpace(am.ApiUrl) == "" {
+		return "", errors.New(errors.InvalidParameter, op, "empty api URL")
 	}
-	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, am.CallbackUrls[0], am.PublicId), opts...)
+	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, am.ApiUrl, am.PublicId), opts...)
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to create oidc request for token exchange", errors.WithWrap(err))
 	}

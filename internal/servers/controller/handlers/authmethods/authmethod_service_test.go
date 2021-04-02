@@ -111,7 +111,7 @@ func TestGet(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]))
 
 	wantOidc := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
@@ -225,7 +225,7 @@ func TestList(t *testing.T) {
 	var wantSomeAuthMethods []*pb.AuthMethod
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]))
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -381,7 +381,7 @@ func TestDelete(t *testing.T) {
 	pwam := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name", oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -2042,11 +2042,11 @@ func TestChangeState(t *testing.T) {
 	_, _, tpAlg, _ := tp.SigningKeys()
 	tpCert, err := oidc.ParseCertificates(tp.CACert())
 
-	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], tpClientId, oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
-	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], "different_client_id", oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "client id", "secret", oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")

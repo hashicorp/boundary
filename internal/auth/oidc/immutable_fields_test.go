@@ -27,7 +27,8 @@ func TestAuthMethod_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	new := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	new := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	tests := []struct {
 		name      string
@@ -100,15 +101,8 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	am := TestAuthMethod(
-		t,
-		conn,
-		databaseWrapper,
-		org.PublicId,
-		InactiveState,
-		TestConvertToUrls(t, "https://alice.com")[0],
-		"alice_rp", "my-dogs-name",
-		WithAudClaims("alice.com"))
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com"))
 
 	new := AllocAudClaim()
 	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", am.PublicId, "alice.com"))
@@ -171,88 +165,6 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 	}
 }
 
-func TestCallbackUrl_ImmutableFields(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	rw := db.New(conn)
-	ctx := context.Background()
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-	require.NoError(t, err)
-
-	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-
-	am := TestAuthMethod(
-		t, conn, databaseWrapper,
-		org.PublicId,
-		InactiveState,
-		TestConvertToUrls(t, "https://alice.com")[0],
-		"alice_rp", "my-dogs-name",
-		WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback")[0]))
-
-	new := AllocCallbackUrl()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and callback_url = ?", am.PublicId, "https://alice.com/callback"))
-
-	tests := []struct {
-		name      string
-		update    *CallbackUrl
-		fieldMask []string
-	}{
-		{
-			name: "oidc_method_id",
-			update: func() *CallbackUrl {
-				cp := new.Clone()
-				cp.OidcMethodId = "p_thisIsNotAValidId"
-				return cp
-			}(),
-			fieldMask: []string{"PublicId"},
-		},
-		{
-			name: "create time",
-			update: func() *CallbackUrl {
-				cp := new.Clone()
-				cp.CreateTime = &ts
-				return cp
-			}(),
-			fieldMask: []string{"CreateTime"},
-		},
-		{
-			name: "callback",
-			update: func() *CallbackUrl {
-				cp := new.Clone()
-				cp.Url = "https://thisIsNotAValidId.com/callback"
-				return cp
-			}(),
-			fieldMask: []string{"Url"},
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-
-			orig := new.Clone()
-			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and callback_url = ?", orig.OidcMethodId, orig.Url))
-
-			require.NoError(err)
-
-			tt.update.SetTableName(defaultAuthMethodTableName)
-			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
-			require.Error(err)
-			assert.Equal(0, rowsUpdated)
-
-			after := new.Clone()
-			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and callback_url = ?", after.OidcMethodId, after.Url))
-
-			assert.True(proto.Equal(orig, after))
-		})
-	}
-}
-
 func TestCertificate_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -270,13 +182,8 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 
 	_, pem2 := testGenerateCA(t, "www.bob.com")
 
-	am := TestAuthMethod(
-		t, conn, databaseWrapper,
-		org.PublicId,
-		InactiveState,
-		TestConvertToUrls(t, "https://alice.com")[0],
-		"alice_rp", "my-dogs-name",
-		WithCertificates(x509))
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithCertificates(x509))
 
 	new := AllocCertificate()
 	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", am.PublicId, pem))
@@ -352,15 +259,8 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	am := TestAuthMethod(
-		t,
-		conn,
-		databaseWrapper,
-		org.PublicId,
-		InactiveState,
-		TestConvertToUrls(t, "https://alice.com")[0],
-		"alice_rp", "my-dogs-name",
-		WithSigningAlgs(RS256))
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithSigningAlgs(RS256))
 
 	new := AllocSigningAlg()
 	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", am.PublicId, RS256))
@@ -438,7 +338,8 @@ func TestAccount_ImmutableFields(t *testing.T) {
 
 	u := TestConvertToUrls(t, "https://alice.com")[0]
 
-	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, u, "alice_rp", "my-dogs-name")
+	am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(u), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	new := TestAccount(t, conn, am, "alice", WithName("Alice"), WithDescription("alice's account"), WithFullName("Alice Smith"), WithEmail("alice@alice.com"))
 

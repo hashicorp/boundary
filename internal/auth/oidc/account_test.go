@@ -26,7 +26,8 @@ func TestAccount_Create(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp",
+		"my-dogs-name", WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	type args struct {
 		authMethodId string
@@ -191,7 +192,8 @@ func TestAccount_Create(t *testing.T) {
 	}
 
 	t.Run("account issuer stays when auth method discovery url changes", func(t *testing.T) {
-		am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://discovery.com")[0], "client", "secret")
+		am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "client", "secret",
+			WithIssuer(TestConvertToUrls(t, "https://discovery.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		a, err := NewAccount(am.GetPublicId(), "subject", WithIssuer(TestConvertToUrls(t, am.GetIssuer())[0]))
 		require.NoError(t, err)
 		id, err := newAccountId(am.GetPublicId(), am.GetIssuer(), a.GetSubject())
@@ -232,9 +234,10 @@ func TestAccount_Delete(t *testing.T) {
 			databaseWrapper,
 			org.PublicId,
 			InactiveState,
-			TestConvertToUrls(t, "https://alice.com")[0],
 			"alice_rp",
-			"my-dogs-name")
+			"my-dogs-name",
+			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]))
 
 	testResource := func(authMethodId string, subject string) *Account {
 		u, err := url.Parse(testAuthMethod.GetIssuer())
@@ -313,7 +316,8 @@ func TestAccount_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
 		cp := orig.Clone()
@@ -324,7 +328,8 @@ func TestAccount_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewAccount(m.PublicId, "alice", WithFullName("Alice Eve Smith"), WithEmail("alice@alice.com"))
 		require.NoError(err)
 		orig2, err := NewAccount(m.PublicId, "bob", WithFullName("Bob Eve Smith"), WithEmail("bob@alice.com"))

@@ -44,18 +44,18 @@ func Test_StartAuth(t *testing.T) {
 	require.NoError(t, err)
 	testAuthMethod := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePublicState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		"test-rp", "fido",
-		WithCallbackUrls(TestConvertToUrls(t, testController.URL)...),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCertificates(tpCert...),
 	)
 
 	testAuthMethodInactive := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, InactiveState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		"test-rp2", "fido",
-		WithCallbackUrls(TestConvertToUrls(t, testController.URL)...),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCertificates(tpCert...),
 	)
@@ -64,13 +64,6 @@ func Test_StartAuth(t *testing.T) {
 		// update the allowed redirects for the TestProvider
 		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL, am.PublicId)
 		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
-		allowedCallback, err := NewCallbackUrl(am.PublicId, TestConvertToUrls(t, tpAllowedRedirect)[0])
-		require.NoError(t, err)
-		err = rw.Create(ctx, allowedCallback)
-		if err != nil && !errors.Match(errors.T(errors.NotUnique), err) {
-			// ignore dup errors, but raise all others as an invalid test setup
-			require.NoError(t, err)
-		}
 		r, err := repoFn()
 		require.NoError(t, err)
 		// update the test's auth method, now that we've added a new callback

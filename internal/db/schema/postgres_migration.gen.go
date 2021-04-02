@@ -5112,7 +5112,7 @@ create table auth_oidc_method (
   scope_id wt_scope_id
     not null,
   name wt_name,
-  description wt_description, 
+  description wt_description,
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
@@ -5122,6 +5122,7 @@ create table auth_oidc_method (
       on delete restrict
       on update cascade,
   disable_discovered_config_validation bool not null default false,
+  api_url wt_url, -- an address prefix at which the boundary api is reachable.
   issuer wt_url,
   client_id text  -- oidc client identifier issued by the oidc provider.
     constraint client_id_not_empty
@@ -5175,22 +5176,6 @@ create table auth_oidc_signing_alg (
 );
 comment on table auth_oidc_signing_alg is
 'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
-
--- auth_oidc_callback_url entries are the callback URLs allowed for a specific
--- oidc auth method.  There must be at least one callback url for each oidc auth
--- method. 
-create table auth_oidc_callback_url (
-  create_time wt_timestamp,
-  oidc_method_id wt_public_id 
-    constraint auth_oidc_method_fkey
-    references auth_oidc_method(public_id)
-    on delete cascade
-    on update cascade,
-  callback_url wt_url not null,
-  primary key(oidc_method_id, callback_url)
-);
-comment on table auth_oidc_callback_url is
-'auth_oidc_callback_url entries are the callback URLs allowed for a specific oidc auth method.  There must be at least one callback url for each oidc auth method.';
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
@@ -5321,12 +5306,11 @@ create or replace function
   returns trigger
 as $$
   begin
-    -- validate callback and signing alg
+    -- validate signing alg
     if old.state = 'inactive' and new.state != 'inactive' then
       perform 
       from 
         auth_oidc_method am
-       join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
        join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
       where
         new.public_id = am.public_id;
@@ -5389,7 +5373,7 @@ update on auth_oidc_method
 -- only allow "inactive" auth methods to be inserted.  Why? there's no way
 -- you can insert an entry that's anything but incomplete, since we have a 
 -- chicken/egg problem: you need the auth method id to create the required
--- signing algs and callback URL value objects.
+-- signing algs value objects.
 create or replace function
   new_auth_oidc_method_must_be_inactive()
   returns trigger 
@@ -5468,33 +5452,30 @@ before insert on auth_oidc_account
   for each row execute procedure insert_auth_oidc_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
--- auth_oidc_callback_url, auth_oidc_certificate, auth_oidc_signing_alg
+-- auth_oidc_certificate, auth_oidc_signing_alg
 
 
 -- on_delete_active_auth_oidc_method_must_be_complete() defines a function
--- to be used in an "after delete" trigger for auth_oidc_callback_url and
--- auth_oidc_signing_alg Its intent: prevent deletes that would result in
--- an "active" oidc auth method which is incomplete.
+-- to be used in an "after delete" trigger for auth_oidc_signing_alg
+-- Its intent: prevent deletes that would result in an "active" oidc
+-- auth method which is incomplete.
 create or replace function
   on_delete_active_auth_oidc_method_must_be_complete()
   returns trigger
 as $$
 declare am_state text;
 declare alg_cnt int;
-declare cb_cnt int;
   begin
     select 
       am.state,
-      count(alg.oidc_method_id) as alg_cnt,
-      count(cb.oidc_method_id) as cb_cnt
+      count(alg.oidc_method_id) as alg_cnt
     from 
       auth_oidc_method am
       left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
-      left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
     where
       new.oidc_method_id = am.public_id
     group by am.public_id
-    into am_state, alg_cnt, cb_cnt;
+    into am_state, alg_cnt;
     
     if not found then 
       return new; -- auth method was deleted, so we're done
@@ -5504,8 +5485,6 @@ declare cb_cnt int;
       case 
         when alg_cnt = 0 then
           raise exception 'delete would have resulted in an incomplete active oidc auth method with no signing algorithms';
-        when cb_cnt = 0 then
-          raise exception 'delete would have resulted in an incomplete active oidc auth method with no callback URLs';
       end case;
     end if; 
   
@@ -5513,25 +5492,13 @@ declare cb_cnt int;
   end;
 $$ language plpgsql;
 comment on function on_delete_active_auth_oidc_method_must_be_complete() is
-'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs or callbacks';
+'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs';
 
 create trigger
   default_create_time_column
 before
 insert on auth_oidc_aud_claim
   for each row execute procedure default_create_time();
-
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_callback_url
-  for each row execute procedure default_create_time();
-
-create trigger 
-  on_delete_active_auth_oidc_method_must_be_complete
-after
-delete on auth_oidc_callback_url
-  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
 
 create trigger
   default_create_time_column
@@ -5558,7 +5525,7 @@ values
 
 
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
--- with its associated value objects (algs, callbacks, auds, certs) as columns
+-- with its associated value objects (algs, auds, certs) as columns
 -- with | delimited values.  The use of the postgres string_agg(...) to
 -- aggregate the value objects into a column works because we are only pulling
 -- in one column from the associated tables and that value is part of the
@@ -5574,6 +5541,7 @@ select
   am.update_time,
   am.version,
   am.state,
+  am.api_url,
   am.disable_discovered_config_validation,
   am.issuer,
   am.client_id,
@@ -5583,18 +5551,16 @@ select
   am.max_age,
   -- the string_agg(..) column will be null if there are no associated value objects
   string_agg(distinct alg.signing_alg_name, '|') as algs, 
-  string_agg(distinct cb.callback_url, '|') as callbacks, 
-  string_agg(distinct aud.aud_claim, '|') as auds, 
+  string_agg(distinct aud.aud_claim, '|') as auds,
   string_agg(distinct cert.certificate, '|') as certs
 from 	
 	auth_oidc_method am 
   left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
-  left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
-  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id 
+  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id
   left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
 group by am.public_id;
 comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
+'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
 `),
 			2085: []byte(`
 -- auth_token_status_enm entries define the possible auth token

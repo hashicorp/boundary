@@ -34,18 +34,17 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 	authMethod := TestAuthMethod(
 		t, conn, databaseWrapper, org.GetPublicId(), ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	noIssuerAm := TestAuthMethod(
 		t, conn, databaseWrapper, org.GetPublicId(), InactiveState,
-		nil,
 		"client", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	tests := []struct {
@@ -246,10 +245,10 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 		authMethod := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice.com")[0],
 			"alice-rp", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 
 		in := &Account{
@@ -286,17 +285,17 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 		authMethoda := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice1.com")[0],
 			"alice-rp1", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		authMethodb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice2.com")[0],
 			"alice-rp2", "fido",
+			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		in := &Account{
 			Account: &store.Account{
@@ -339,10 +338,10 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 		authMethod := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice.com")[0],
 			"alice-rp", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 
 		in := &Account{
@@ -378,17 +377,17 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 		authMethoda := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice1.com")[0],
 			"alice-rp1", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		authMethodb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice2.com")[0],
 			"alice-rp2", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		in := &Account{
 			Account: &store.Account{
@@ -434,10 +433,10 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 
 		authMethod := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice1.com")[0],
 			"alice-rp1", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		in := &Account{
 			Account: &store.Account{
@@ -490,10 +489,10 @@ func TestRepository_LookupAccount(t *testing.T) {
 
 	authMethod := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	account := TestAccount(t, conn, authMethod, "test-subject")
 
@@ -555,10 +554,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	require.NoError(t, err)
 	authMethod := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	account := TestAccount(t, conn, authMethod, "create-success")
 	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-subject")
@@ -631,24 +630,24 @@ func TestRepository_ListAccounts(t *testing.T) {
 	require.NoError(t, err)
 	authMethod1 := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice1.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	authMethod2 := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice2.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	authMethod3 := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice3.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice3.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	accounts1 := []*Account{
 		TestAccount(t, conn, authMethod1, "create-success"),
@@ -725,10 +724,10 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 
 	am := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice1.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	accountCount := 10
@@ -807,10 +806,10 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	require.NoError(t, err)
 	am := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	changeName := func(s string) func(*Account) *Account {
@@ -1200,10 +1199,10 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 		am := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice.com")[0],
 			"alice-rp", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		aa := TestAccount(t, conn, am, "create-success1")
 		ab := TestAccount(t, conn, am, "create-success2")
@@ -1238,19 +1237,19 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 		ama := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice.com")[0],
 			"alice-rp", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		aa := TestAccount(t, conn, ama, "create-success1", WithName("test-name-aa"))
 
 		amb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice2.com")[0],
 			"alice-rp", "fido2",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		ab := TestAccount(t, conn, amb, "create-success2", WithName("test-name-ab"))
 
@@ -1276,19 +1275,19 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 		ama := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice.com")[0],
 			"alice-rp", "fido",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		aa := TestAccount(t, conn, ama, "create-success1")
 
 		amb := TestAuthMethod(
 			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			TestConvertToUrls(t, "https://www.alice2.com")[0],
 			"alice-rp", "fido2",
 			WithSigningAlgs(RS256),
-			WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 		)
 		ab := TestAccount(t, conn, amb, "create-success2")
 

@@ -83,17 +83,16 @@ message AuthMethod {
   // @inject_tag: `gorm:"default:null"`
   int32 max_age = 150 [(custom_options.v1.mask_mapping) = { this: "MaxAge" that: "attributes.max_age" }];
 
+  // api_url is the URLs prefix at which the boundary api is reachable. This value
+  // is used by the auth method in the different steps of the auth flow.
+  // @inject_tag: `gorm:"not_null"`
+  string api_url = 160 [(custom_options.v1.mask_mapping) = { this: "ApiUrl" that: "attributes.api_url_prefix" }];
+
   // signing_algs are the signing algorithms allowed for an oidc auth method.
   // These are Value Objects that will be stored as SigningAlg messages, and are
   // operated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string signing_algs = 160 [(custom_options.v1.mask_mapping) = { this: "SigningAlgs" that: "attributes.signing_algorithms" }];
-
-  // callback_urls are the callback URLs allowed for a specific oidc auth
-  // method. These are Value Objects that will be stored as CallbackUrl messages,
-  // and are operatated on as a complete set.
-  // @inject_tag: `gorm:"-"`
-  repeated string callback_urls = 170 [(custom_options.v1.mask_mapping) = { this: "CallbackUrls" that: "attributes.api_url_prefix" }];
+  repeated string signing_algs = 170 [(custom_options.v1.mask_mapping) = { this: "SigningAlgs" that: "attributes.signing_algorithms" }];
 
   // aud_claims are the audience claims for a specific oidc auth method. These
   // are Value Objects that will be stored as AudClaim messages, and are
@@ -164,20 +163,6 @@ message SigningAlg {
   // alg is an enum from the auth_oidc_signing_alg_enm table
   // @inject_tag: `gorm:"primary_key;column:signing_alg_name"`
   string alg = 20;
-
-  // The create_time is set by the database.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 30;
-}
-
-// CallbackUrl entries are the callback URLs allowed for a specific oidc auth method.
-message CallbackUrl {
-  // @inject_tag: `gorm:"primary_key"`
-  string oidc_method_id = 10;
-
-  // url is an allowed callback URL configured within the OIDC provider
-  // @inject_tag: `gorm:"column:callback_url;primary_key"`
-  string url = 20;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`

@@ -70,11 +70,11 @@ func Test_Callback(t *testing.T) {
 
 	// a reusable test authmethod for the unit tests
 	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		"alice-rp", "fido",
 		WithCertificates(tpCert...),
 		WithSigningAlgs(Alg(tpAlg)),
-		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]))
 
 	// set this as the primary so users will be created on first login
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, testAuthMethod.PublicId)
@@ -100,13 +100,13 @@ func Test_Callback(t *testing.T) {
 	databaseWrapper2, err := kmsCache.GetWrapper(ctx, org2.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	testAuthMethod2 := TestAuthMethod(t, conn, databaseWrapper2, org2.PublicId, InactiveState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		"alice-rp", "fido",
 		WithAudClaims("foo"),
 		WithMaxAge(-1), // oidc library has a 1 min leeway
 		WithCertificates(tpCert...),
 		WithSigningAlgs(Alg(tpAlg)),
-		WithCallbackUrls(TestConvertToUrls(t, testController.URL)[0]))
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]))
 	// define a second test provider based on the inactive test auth method
 	testProvider2, err := convertToProvider(ctx, testAuthMethod2)
 	require.NoError(t, err)
@@ -313,13 +313,7 @@ func Test_Callback(t *testing.T) {
 			tp.SetExpectedAuthNonce(testNonce)
 			if tt.am != nil {
 				tp.SetClientCreds(tt.am.ClientId, tt.am.ClientSecret)
-				var callbackUrl string
-				if len(tt.am.CallbackUrls) > 0 {
-					callbackUrl = tt.am.CallbackUrls[0]
-				} else {
-					callbackUrl = ""
-				}
-				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, callbackUrl, tt.am.PublicId)
+				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.am.ApiUrl, tt.am.PublicId)
 				tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 			}
 			if tt.code != "" {
@@ -548,11 +542,11 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		_, _, tpAlg, _ := tp.SigningKeys()
 
 		endToEndAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
-			TestConvertToUrls(t, tp.Addr())[0],
 			"end-to-end-rp", "fido",
 			WithCertificates(tpCert...),
 			WithSigningAlgs(Alg(tpAlg)),
-			WithCallbackUrls(TestConvertToUrls(t, controller.Addr())[0]))
+			WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+			WithApiUrl(TestConvertToUrls(t, controller.Addr())[0]))
 
 		// need the updated org version, so we can set the primary auth method id
 		org, _ = iamRepo.LookupScope(ctx, org.PublicId)

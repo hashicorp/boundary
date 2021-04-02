@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -78,7 +77,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			"ClientSecret": am.ClientSecret,
 			"MaxAge":       am.MaxAge,
 			"SigningAlgs":  am.SigningAlgs,
-			"CallbackUrls": am.CallbackUrls,
+			"ApiUrl":       am.ApiUrl,
 			"AudClaims":    am.AudClaims,
 			"Certificates": am.Certificates,
 		},
@@ -135,11 +134,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	addCallbacks, deleteCallbacks, err := valueObjectChanges(origAm.PublicId, CallbackUrlVO, am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	}
-
 	addAuds, deleteAuds, err := valueObjectChanges(origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
@@ -170,8 +164,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(deleteAlgs) == 0 &&
 		len(addCerts) == 0 &&
 		len(deleteCerts) == 0 &&
-		len(addCallbacks) == 0 &&
-		len(deleteCallbacks) == 0 &&
 		len(addAuds) == 0 &&
 		len(deleteAuds) == 0 {
 		return origAm, db.NoRowsAffected, nil
@@ -200,7 +192,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, Callbacks*2, Audiences*2
+			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, ApiUrl*2, Audiences*2
 			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
@@ -270,25 +262,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				msgs = append(msgs, addCertsOplogMsgs...)
 			}
 
-			if len(deleteCallbacks) > 0 {
-				deleteCallbackOplogMsgs := make([]*oplog.Message, 0, len(deleteCallbacks))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteCallbacks, db.NewOplogMsgs(&deleteCallbackOplogMsgs))
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete callback URLs"))
-				}
-				if rowsDeleted != len(deleteCallbacks) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("callback URLs deleted %d did not match request for %d", rowsDeleted, len(deleteCallbacks)))
-				}
-				msgs = append(msgs, deleteCallbackOplogMsgs...)
-			}
-			if len(addCallbacks) > 0 {
-				addCallbackOplogMsgs := make([]*oplog.Message, 0, len(addCallbacks))
-				if err := w.CreateItems(ctx, addCallbacks, db.NewOplogMsgs(&addCallbackOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add callback URLs"))
-				}
-				msgs = append(msgs, addCallbackOplogMsgs...)
-			}
-
 			if len(deleteAuds) > 0 {
 				deleteAudsOplogMsgs := make([]*oplog.Message, 0, len(deleteAuds))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteAudsOplogMsgs))
@@ -344,7 +317,6 @@ type voName string
 
 const (
 	SigningAlgVO  voName = "SigningAlgs"
-	CallbackUrlVO voName = "CallbackUrls"
 	CertificateVO voName = "Certificates"
 	AudClaimVO    voName = "AudClaims"
 )
@@ -352,7 +324,7 @@ const (
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CallbackUrlVO, CertificateVO, AudClaimVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO:
 		return true
 	default:
 		return false
@@ -375,13 +347,6 @@ var supportedFactories = map[voName]factoryFunc{
 	AudClaimVO: func(publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(publicId, str)
-	},
-	CallbackUrlVO: func(publicId string, i interface{}) (interface{}, error) {
-		u, err := url.Parse(fmt.Sprintf("%s", i))
-		if err != nil {
-			return nil, err
-		}
-		return NewCallbackUrl(publicId, u)
 	},
 }
 
@@ -479,7 +444,7 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		case strings.EqualFold("ClientSecret", f):
 		case strings.EqualFold("MaxAge", f):
 		case strings.EqualFold("SigningAlgs", f):
-		case strings.EqualFold("CallbackUrls", f):
+		case strings.EqualFold("ApiUrl", f):
 		case strings.EqualFold("AudClaims", f):
 		case strings.EqualFold("Certificates", f):
 		default:
@@ -506,6 +471,8 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			cp.ClientSecret = new.ClientSecret
 		case "MaxAge":
 			cp.MaxAge = new.MaxAge
+		case "ApiUrl":
+			cp.ApiUrl = new.ApiUrl
 		case "SigningAlgs":
 			switch {
 			case len(new.SigningAlgs) == 0:
@@ -513,14 +480,6 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			default:
 				cp.SigningAlgs = make([]string, 0, len(new.SigningAlgs))
 				cp.SigningAlgs = append(cp.SigningAlgs, new.SigningAlgs...)
-			}
-		case "CallbackUrls":
-			switch {
-			case len(new.CallbackUrls) == 0:
-				cp.CallbackUrls = nil
-			default:
-				cp.CallbackUrls = make([]string, 0, len(new.CallbackUrls))
-				cp.CallbackUrls = append(cp.CallbackUrls, new.CallbackUrls...)
 			}
 		case "AudClaims":
 			switch {

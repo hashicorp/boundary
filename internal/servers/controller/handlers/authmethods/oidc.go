@@ -144,8 +144,8 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	var issuer *url.URL
 	if ds := attrs.GetIssuer().GetValue(); ds != "" {
+		var issuer *url.URL
 		var err error
 		if issuer, err = url.Parse(ds); err != nil {
 			return nil, false, err
@@ -154,6 +154,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		if issuer, err = issuer.Parse("/"); err != nil {
 			return nil, false, err
 		}
+		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 
 	if attrs.GetMaxAge() != nil {
@@ -181,7 +182,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
 				map[string]string{apiUrlPrefixeField: "Unparsable url"})
 		}
-		opts = append(opts, oidc.WithCallbackUrls(apiU))
+		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
 	if len(attrs.GetCaCerts()) > 0 {
@@ -192,7 +193,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
-	u, err := oidc.NewAuthMethod(scopeId, issuer, clientId, clientSecret, opts...)
+	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
 	if err != nil {
 		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}

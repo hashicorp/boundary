@@ -624,9 +624,9 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		if i.GetIssuer() != "" {
 			attrs.Issuer = wrapperspb.String(i.Issuer)
 		}
-		if len(i.GetCallbackUrls()) > 0 {
-			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
-			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetCallbackUrls()[0], i.GetPublicId())
+		if len(i.GetApiUrl()) > 0 {
+			attrs.ApiUrlPrefix = wrapperspb.String(i.GetApiUrl())
+			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetApiUrl(), i.GetPublicId())
 		}
 		switch i.GetMaxAge() {
 		case 0:

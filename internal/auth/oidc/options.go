@@ -23,7 +23,7 @@ type options struct {
 	withDescription         string
 	withLimit               int
 	withMaxAge              int
-	withCallbackUrls        []*url.URL
+	withApiUrl              *url.URL
 	withCertificates        []*x509.Certificate
 	withAudClaims           []string
 	withSigningAlgs         []Alg
@@ -80,13 +80,10 @@ func WithMaxAge(max int) Option {
 	}
 }
 
-// WithCallbackUrls provides optional callback URLs.
-//
-// see redirect_uri:
-// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
-func WithCallbackUrls(urls ...*url.URL) Option {
+// WithApiUrl provides optional api URL to use in the various
+func WithApiUrl(urls *url.URL) Option {
 	return func(o *options) {
-		o.withCallbackUrls = urls
+		o.withApiUrl = urls
 	}
 }
 

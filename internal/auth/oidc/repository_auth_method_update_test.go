@@ -64,11 +64,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					conn, databaseWrapper,
 					org.PublicId,
 					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -99,12 +98,11 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					conn, databaseWrapper,
 					org.PublicId,
 					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -113,21 +111,21 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.PublicId = orig.PublicId
 				am.Name = "alice's restaurant"
 				am.Description = "the best place to eat"
+				am.ApiUrl = "https://www.bob.com/callback"
 				am.AudClaims = []string{"www.alice.com/admin"}
-				am.CallbackUrls = []string{"https://www.bob.com/callback"}
 				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				am.Certificates = []string{pem}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "CallbackUrls", "SigningAlgs", "Certificates"},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl", "SigningAlgs", "Certificates"},
 			version:    1,
 			opt:        []Option{WithForce()},
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
 				am.Name = updateWith.Name
 				am.Description = updateWith.Description
+				am.ApiUrl = updateWith.ApiUrl
 				am.AudClaims = updateWith.AudClaims
-				am.CallbackUrls = updateWith.CallbackUrls
 				am.SigningAlgs = updateWith.SigningAlgs
 				am.Certificates = updateWith.Certificates
 				am.DisableDiscoveredConfigValidation = true
@@ -140,18 +138,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithName("alice's restaurant"),
-					WithDescription("the best place to eat"),
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithName("alice's restaurant"), WithDescription("the best place to eat"), WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -175,16 +162,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -205,28 +183,19 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
 				am.PublicId = orig.PublicId
-				am.CallbackUrls = []string{"https://www.updated.com/callback"}
+				am.ApiUrl = "https://www.updated.com/callback"
 				return &am
 			},
-			fieldMasks: []string{"CallbackUrls"},
+			fieldMasks: []string{"ApiUrl"},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
-				am.CallbackUrls = updateWith.CallbackUrls
+				am.ApiUrl = updateWith.ApiUrl
 				return am
 			},
 		},
@@ -236,16 +205,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -267,15 +227,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithCertificates(tpCert[0]),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -305,12 +257,12 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					conn, databaseWrapper,
 					org.PublicId,
 					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+					WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -319,11 +271,11 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Name = "alice's restaurant"
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com/admin"}
-				am.CallbackUrls = []string{"https://www.bob.com/callback"}
+				am.ApiUrl = "https://www.bob.com/callback"
 				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "CallbackUrls", "SigningAlgs"},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl", "SigningAlgs"},
 			version:    1,
 			opt:        []Option{WithDryRun()},
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -331,7 +283,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Name = updateWith.Name
 				am.Description = updateWith.Description
 				am.AudClaims = updateWith.AudClaims
-				am.CallbackUrls = updateWith.CallbackUrls
+				am.ApiUrl = updateWith.ApiUrl
 				am.SigningAlgs = updateWith.SigningAlgs
 				return am
 			},
@@ -405,17 +357,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithAudClaims("www.alice.com"),
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithAudClaims("www.alice.com"), WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -437,12 +379,12 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					conn, databaseWrapper,
 					org.PublicId,
 					InactiveState,
-					TestConvertToUrls(t, tp.Addr())[0],
 					"alice-rp", "alice-secret",
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+					WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -463,16 +405,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t,
-					conn, databaseWrapper,
-					org.PublicId,
-					ActivePublicState,
-					TestConvertToUrls(t, tp.Addr())[0],
-					"alice-rp", "alice-secret",
-					WithCertificates(tpCert[0]),
-					WithSigningAlgs(Alg(tpAlg)),
-					WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-				)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -568,12 +501,12 @@ func Test_DisableDiscoveredConfigValidation(t *testing.T) {
 		conn, databaseWrapper,
 		org.PublicId,
 		InactiveState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		"alice-rp", "alice-secret",
 		WithAudClaims("www.alice.com"),
 		WithCertificates(tpCert[0]),
 		WithSigningAlgs(Alg(tpAlg)),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	updateWith := am.Clone()
@@ -635,11 +568,11 @@ func Test_ValidateDiscoveryInfo(t *testing.T) {
 		conn, databaseWrapper,
 		org.PublicId,
 		ActivePrivateState,
-		TestConvertToUrls(t, tp.Addr())[0],
 		tpClientId, ClientSecret(tpClientSecret),
 		WithCertificates(tpCert[0]),
 		WithSigningAlgs(Alg(tpAlg)),
-		WithCallbackUrls(testAuthMethodCallback),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(testAuthMethodCallback),
 	)
 	tests := []struct {
 		name            string
@@ -808,40 +741,6 @@ func Test_valueObjectChanges(t *testing.T) {
 				return []interface{}{a, a2, a3}
 			}(),
 		},
-		{
-			name:   string(CallbackUrlVO),
-			id:     "am-public-id",
-			voName: CallbackUrlVO,
-			new:    []string{"http://new-1.com/callback", "http://new-2.com/callback"},
-			old:    []string{"http://old-1.com/callback", "http://old-2.com/callback", "http://old-3.com/callback"},
-			dbMask: []string{string(CallbackUrlVO)},
-			wantAdd: func() []interface{} {
-				u, err := url.Parse("http://new-1.com/callback")
-				require.NoError(t, err)
-				c, err := NewCallbackUrl("am-public-id", u)
-				require.NoError(t, err)
-				u2, err := url.Parse("http://new-2.com/callback")
-				require.NoError(t, err)
-				c2, err := NewCallbackUrl("am-public-id", u2)
-				require.NoError(t, err)
-				return []interface{}{c, c2}
-			}(),
-			wantDel: func() []interface{} {
-				u, err := url.Parse("http://old-1.com/callback")
-				require.NoError(t, err)
-				c, err := NewCallbackUrl("am-public-id", u)
-				require.NoError(t, err)
-				u2, err := url.Parse("http://old-2.com/callback")
-				require.NoError(t, err)
-				c2, err := NewCallbackUrl("am-public-id", u2)
-				require.NoError(t, err)
-				u3, err := url.Parse("http://old-3.com/callback")
-				require.NoError(t, err)
-				c3, err := NewCallbackUrl("am-public-id", u3)
-				require.NoError(t, err)
-				return []interface{}{c, c2, c3}
-			}(),
-		},
 
 		{
 			name:       string(AudClaimVO) + "-null-fields",
@@ -971,12 +870,6 @@ func Test_valueObjectChanges(t *testing.T) {
 					bb := gotDel[b]
 					return aa.(*SigningAlg).Alg < bb.(*SigningAlg).Alg
 				})
-			case CallbackUrlVO:
-				sort.Slice(gotDel, func(a, b int) bool {
-					aa := gotDel[a]
-					bb := gotDel[b]
-					return aa.(*CallbackUrl).Url < bb.(*CallbackUrl).Url
-				})
 			case AudClaimVO:
 				sort.Slice(gotDel, func(a, b int) bool {
 					aa := gotDel[a]
@@ -1006,7 +899,7 @@ func Test_validateFieldMask(t *testing.T) {
 				"ClientSecret",
 				"MaxAge",
 				"SigningAlgs",
-				"CallbackUrls",
+				"ApiUrl",
 				"AudClaims",
 				"Certificates",
 			},
@@ -1051,7 +944,7 @@ func Test_applyUpdate(t *testing.T) {
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
 					SigningAlgs:      []string{"new-alg1", "new-alg2"},
-					CallbackUrls:     []string{"new-callback-1", "new-callback-2"},
+					ApiUrl:           "new-callback-1",
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 				},
@@ -1066,7 +959,7 @@ func Test_applyUpdate(t *testing.T) {
 					ClientSecret:     "orig-client-secret",
 					MaxAge:           100,
 					SigningAlgs:      []string{"orig-alg1", "orig-alg2"},
-					CallbackUrls:     []string{"orig-callback-1", "orig-callback-2"},
+					ApiUrl:           "orig-callback-1",
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 				},
@@ -1081,7 +974,7 @@ func Test_applyUpdate(t *testing.T) {
 					ClientSecret:     "new-client-secret",
 					MaxAge:           100,
 					SigningAlgs:      []string{"new-alg1", "new-alg2"},
-					CallbackUrls:     []string{"new-callback-1", "new-callback-2"},
+					ApiUrl:           "new-callback-1",
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
 				},
@@ -1094,7 +987,7 @@ func Test_applyUpdate(t *testing.T) {
 				"ClientSecret",
 				"MaxAge",
 				"SigningAlgs",
-				"CallbackUrls",
+				"ApiUrl",
 				"AudClaims",
 				"Certificates",
 			},
@@ -1122,7 +1015,7 @@ func Test_applyUpdate(t *testing.T) {
 					ClientSecret:     "orig-client-secret",
 					MaxAge:           100,
 					SigningAlgs:      []string{"orig-alg1", "orig-alg2"},
-					CallbackUrls:     []string{"orig-callback-1", "orig-callback-2"},
+					ApiUrl:           "orig-callback-1",
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
 				},
@@ -1146,7 +1039,7 @@ func Test_applyUpdate(t *testing.T) {
 				"ClientSecret",
 				"MaxAge",
 				"SigningAlgs",
-				"CallbackUrls",
+				"ApiUrl",
 				"AudClaims",
 				"Certificates",
 			},

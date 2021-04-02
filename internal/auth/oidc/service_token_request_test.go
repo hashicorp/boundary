@@ -43,10 +43,10 @@ func Test_TokenRequest(t *testing.T) {
 
 	// a reusable test authmethod for the unit tests
 	testAuthMethod := TestAuthMethod(t, conn, orgDatabaseWrapper, org.PublicId, ActivePublicState,
-		TestConvertToUrls(t, "https://alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(Alg(RS256)),
-		WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback")[0]))
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://alice.com/callback")[0]))
 
 	testAcct := TestAccount(t, conn, testAuthMethod, "alice")
 	testUser := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(testAcct.PublicId))

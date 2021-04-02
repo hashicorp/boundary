@@ -51,12 +51,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withMaxAge = 1000
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithCallbackUrls", func(t *testing.T) {
+	t.Run("WithApiUrl", func(t *testing.T) {
 		assert := assert.New(t)
-		u := TestConvertToUrls(t, "https://alice.com?callback", "http://localhost:8080?callback")
-		opts := getOpts(WithCallbackUrls(u...))
+		u := TestConvertToUrls(t, "https://alice.com")[0]
+		opts := getOpts(WithApiUrl(u))
 		testOpts := getDefaultOptions()
-		testOpts.withCallbackUrls = u
+		testOpts.withApiUrl = u
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCertificates", func(t *testing.T) {

@@ -142,11 +142,9 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.ClientSecretHmac = agg.ClientSecretHmac
 		am.KeyId = agg.KeyId
 		am.MaxAge = int32(agg.MaxAge)
+		am.ApiUrl = agg.ApiUrl
 		if agg.Algs != "" {
 			am.SigningAlgs = strings.Split(agg.Algs, aggregateDelimiter)
-		}
-		if agg.Callbacks != "" {
-			am.CallbackUrls = strings.Split(agg.Callbacks, aggregateDelimiter)
 		}
 		if agg.Auds != "" {
 			am.AudClaims = strings.Split(agg.Auds, aggregateDelimiter)
@@ -179,7 +177,7 @@ type authMethodAgg struct {
 	KeyId                             string
 	MaxAge                            int
 	Algs                              string
-	Callbacks                         string
+	ApiUrl                            string
 	Auds                              string
 	Certs                             string
 }

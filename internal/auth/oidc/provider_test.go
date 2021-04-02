@@ -27,12 +27,13 @@ func Test_ProviderCaching(t *testing.T) {
 	secret := authMethodId
 	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider needs the complete callback URL
 
-	testAm, err := NewAuthMethod("fake-org", issuer, id, ClientSecret(secret))
+	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
+		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
 	require.NoError(t, err)
 
 	testAm.PublicId = authMethodId
 	testAm.SigningAlgs = []string{string(signingAlg)}
-	testAm.CallbackUrls = []string{allowedRedirect}
+	testAm.ApiUrl = allowedRedirect
 	testAm.Certificates = []string{tp.CACert()}
 
 	t.Run("get-equal-providers", func(t *testing.T) {
@@ -94,12 +95,13 @@ func Test_convertToProvider(t *testing.T) {
 	id := authMethodId
 	secret := authMethodId
 	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider callback needs the complete URL
-	testAm, err := NewAuthMethod("fake-org", issuer, id, ClientSecret(secret))
+	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
+		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
 	require.NoError(t, err)
 
 	testAm.PublicId = authMethodId
 	testAm.SigningAlgs = []string{string(signingAlg)}
-	testAm.CallbackUrls = []string{allowedRedirect}
+	testAm.ApiUrl = allowedRedirect
 	testAm.Certificates = []string{tp.CACert()}
 
 	type args struct{}
@@ -115,7 +117,7 @@ func Test_convertToProvider(t *testing.T) {
 		{"missing-client-id", func() *AuthMethod { cp := testAm.Clone(); cp.ClientId = ""; return cp }(), nil, true, errors.InvalidParameter},
 		{"missing-client-secret", func() *AuthMethod { cp := testAm.Clone(); cp.ClientSecret = ""; return cp }(), nil, true, errors.InvalidParameter},
 		{"missing-algs", func() *AuthMethod { cp := testAm.Clone(); cp.SigningAlgs = nil; return cp }(), nil, true, errors.InvalidParameter},
-		{"missing-callbacks", func() *AuthMethod { cp := testAm.Clone(); cp.CallbackUrls = nil; return cp }(), nil, true, errors.InvalidParameter},
+		{"missing-api-url", func() *AuthMethod { cp := testAm.Clone(); cp.ApiUrl = ""; return cp }(), nil, true, errors.InvalidParameter},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

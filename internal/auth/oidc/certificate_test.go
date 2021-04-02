@@ -24,7 +24,8 @@ func TestCertificate_Create(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	_, pem := testGenerateCA(t, "localhost")
 	type args struct {
@@ -131,16 +132,7 @@ func TestCertificate_Delete(t *testing.T) {
 	cert, _ := testGenerateCA(t, "localhost")
 
 	testAuthMethod :=
-		TestAuthMethod(
-			t,
-			conn,
-			databaseWrapper,
-			org.PublicId,
-			InactiveState,
-			TestConvertToUrls(t, "https://alice.com")[0],
-			"alice_rp",
-			"my-dogs-name",
-			WithCertificates(cert)) // seed an extra callback url to just make sure the delete only gets the right num of rows
+		TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name", WithApiUrl(TestConvertToUrls(t, "https://apiurl.com")[0]), WithCertificates(cert)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	// make another test cert
 	_, pem2 := testGenerateCA(t, "localhost")
@@ -222,7 +214,8 @@ func TestCertificate_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewCertificate(m.PublicId, pem)
 		require.NoError(err)
 		cp := orig.Clone()
@@ -233,7 +226,8 @@ func TestCertificate_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewCertificate(m.PublicId, pem)
 		require.NoError(err)
 		orig2, err := NewCertificate(m.PublicId, pem2)
