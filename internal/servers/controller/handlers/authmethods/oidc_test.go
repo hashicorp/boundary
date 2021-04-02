@@ -107,23 +107,15 @@ func getSetup(t *testing.T) setup {
 
 	ret.authMethod = oidc.TestAuthMethod(
 		t, ret.conn, ret.databaseWrapper, ret.org.PublicId, oidc.ActivePublicState,
-		oidc.TestConvertToUrls(t, ret.testProvider.Addr())[0],
 		"test-rp", "fido",
-		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, ret.testController.URL)...),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, ret.testProvider.Addr())[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, ret.testController.URL)[0]),
 		oidc.WithSigningAlgs(oidc.Alg(ret.testProviderAlg)),
 		oidc.WithCertificates(ret.testProviderCaCert...),
 	)
 
 	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL, ret.authMethod.PublicId)
 	ret.testProvider.SetAllowedRedirectURIs([]string{ret.testProviderAllowedRedirect})
-
-	allowedCallback, err := oidc.NewCallbackUrl(ret.authMethod.PublicId, oidc.TestConvertToUrls(t, ret.testProviderAllowedRedirect)[0])
-	require.NoError(err)
-	err = ret.rw.Create(ret.ctx, allowedCallback)
-	if err != nil && !errors.Match(errors.T(errors.NotUnique), err) {
-		// ignore dup errors, but raise all others as an invalid test setup
-		require.NoError(err)
-	}
 
 	r, err := ret.oidcRepoFn()
 	require.NoError(err)
@@ -615,6 +607,18 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Unset Api Url Prefix",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.api_url_prefix"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "Change Api Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -861,11 +865,12 @@ func TestChangeState_OIDC(t *testing.T) {
 	tpCert, err := oidc.ParseCertificates(tp.CACert())
 	require.NoError(t, err)
 
-	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], tpClientId, oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
-	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], "different_client_id", oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "client id", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -889,7 +894,7 @@ func TestChangeState_OIDC(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer":             structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),

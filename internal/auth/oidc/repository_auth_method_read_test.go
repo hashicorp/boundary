@@ -23,12 +23,12 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	amInactive := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "alices-dogs-name",
-	WithIssuer(TestConvertToUrls(t, "https://alice-inactive.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+		WithIssuer(TestConvertToUrls(t, "https://alice-inactive.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 	amActivePriv := TestAuthMethod(
 		t,
 		conn, databaseWrapper, org.PublicId, ActivePrivateState,
 		"alice_rp", "alices-dogs-name",
-		 WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
 		WithSigningAlgs(RS256))
 	amActivePub := TestAuthMethod(
 		t,

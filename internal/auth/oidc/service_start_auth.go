@@ -53,21 +53,15 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 		return nil, nil, "", errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
 
-	callbackUrls := am.GetCallbackUrls()
-	if len(callbackUrls) == 0 {
-		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing api callback url in auth method configuration")
-	}
-	apiAddr := callbackUrls[0]
-
 	// get the provider from the cache (if possible)
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, op)
 	}
-	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetCallbackUrls()[0], authMethodId)
+	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl(), authMethodId)
 
 	opts := getOpts(opt...)
-	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, apiAddr)
+	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, am.GetApiUrl())
 	if opts.withRoundtripPayload != "" {
 		u := make(url.Values)
 		u.Add("roundtrip_payload", opts.withRoundtripPayload)
@@ -134,7 +128,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, op)
 	}
-	tokenUrl, err = url.Parse(fmt.Sprintf(TokenEndpoint, apiAddr, authMethodId))
+	tokenUrl, err = url.Parse(fmt.Sprintf(TokenEndpoint, am.GetApiUrl(), authMethodId))
 	if err != nil {
 		return nil, nil, "", errors.New(errors.Unknown, op, "unable to generate token URL", errors.WithWrap(err))
 	}
