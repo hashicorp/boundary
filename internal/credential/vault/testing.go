@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -74,4 +76,43 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapp
 		libs = append(libs, lib)
 	}
 	return libs
+}
+
+func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	assert.NoError(err)
+	require.NotNil(databaseWrapper)
+
+	var tokens []*Token
+	for i := 0; i < count; i++ {
+		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%d", i)), 5*time.Minute)
+		assert.NoError(err)
+		require.NotNil(inToken)
+
+		if i > 0 {
+			// only one 'current' token is allowed
+			// mark additional tokens as maintaining
+			inToken.Status = string(StatusMaintaining)
+		}
+
+		require.NoError(inToken.encrypt(ctx, databaseWrapper))
+		query, queryValues := inToken.insertQuery()
+
+		rows, err2 := w.Exec(ctx, query, queryValues)
+		assert.Equal(1, rows)
+		require.NoError(err2)
+
+		outToken := allocToken()
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_sha256 = ?", inToken.TokenSha256))
+		require.NoError(outToken.decrypt(ctx, databaseWrapper))
+
+		tokens = append(tokens, outToken)
+	}
+	return tokens
 }
