@@ -5011,33 +5011,6 @@ from
   left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
 comment on view auth_password_method_with_is_primary is
 'password auth method with an is_primary_auth_method bool';
-
-create rule auth_password_method_ins as on insert to auth_password_method_with_is_primary
-  do instead
-  insert into auth_password_method (
-      public_id,
-      scope_id,
-      password_conf_id,
-      name,
-      description,
-      create_time,
-      update_time,
-      version,
-      min_login_name_length,
-      min_password_length
-  )
-  values (
-      new.public_id,
-      new.scope_id,
-      new.password_conf_id,
-      new.name,
-      new.description,
-      new.create_time,
-      new.update_time,
-      new.version,
-      new.min_login_name_length,
-      new.min_password_length
-  );
 `),
 			2080: []byte(`
 -- log_migration entries represent logs generated during migrations

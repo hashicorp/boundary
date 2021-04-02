@@ -196,6 +196,14 @@ message PasswordLoginAttributes {
   string password = 2;
 }
 
+// The layout of the struct for "attributes" field in AuthenticateRequest for a oidc type's start command. This message isn't directly referenced anywhere but is used here to define the expected field names and types.
+message OidcStartAttributes {
+  // An object which will be marshaled as JSON and roundtripped in the token command call.
+  google.protobuf.Struct roundtrip_payload = 1 [json_name="roundtrip_payload"];
+  // Cached marshaled payload. This is not ingressed from the client; anything found will be thrown out.
+  string cached_roundtrip_payload = 2;
+}
+
 message AuthenticateRequest {
   // The ID of the Auth Method in the system that should be used for authentication.
   string auth_method_id = 1 [json_name="auth_method_id"];
