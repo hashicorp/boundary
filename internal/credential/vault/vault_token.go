@@ -129,3 +129,19 @@ func (t *Token) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	}
 	return nil
 }
+
+func (t *Token) insertQuery() (query string, queryValues []interface{}) {
+	query = insertTokenQuery
+
+	exp := int(t.expiration.Round(time.Second).Seconds())
+	queryValues = []interface{}{
+		t.TokenSha256,
+		t.CtToken,
+		t.StoreId,
+		t.KeyId,
+		t.Status,
+		"now()",
+		exp,
+	}
+	return
+}
