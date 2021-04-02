@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
@@ -18,14 +19,14 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit          int
-	withOrder          string
-	withScopeIds       []string
-	withUserId         string
-	withExpirationTime *timestamp.Timestamp
-	withTestTofu       []byte
-	withListingConvert bool
-	withSessionIds     []string
+	withLimit             int
+	withOrderByCreateTime db.OrderBy
+	withScopeIds          []string
+	withUserId            string
+	withExpirationTime    *timestamp.Timestamp
+	withTestTofu          []byte
+	withListingConvert    bool
+	withSessionIds        []string
 }
 
 func getDefaultOptions() options {
@@ -41,10 +42,11 @@ func WithLimit(limit int) Option {
 	}
 }
 
-// WithOrder allows specifying an order for returned values
-func WithOrder(order string) Option {
+// WithOrderByCreateTime provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByCreateTime(orderBy db.OrderBy) Option {
 	return func(o *options) {
-		o.withOrder = order
+		o.withOrderByCreateTime = orderBy
 	}
 }
 
