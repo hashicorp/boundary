@@ -24,7 +24,7 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal("testJob", got.Name)
 	assert.Equal("testDescription", got.Description)
 	assert.Equal("testCode", got.Code)
-	assert.Equal(testZeroTime.Timestamp, got.NextScheduledRun.Timestamp)
+	assert.Equal(testZeroTime, got.NextScheduledRun)
 
 	job1 := testJob(t, conn, "testJob1", "testCode1", "testDescription1", WithNextScheduledRun(testFutureTime))
 	require.NotNil(job1)
@@ -35,7 +35,7 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal("testJob1", got1.Name)
 	assert.Equal("testDescription1", got1.Description)
 	assert.Equal("testCode1", got1.Code)
-	assert.Equal(testFutureTime.Timestamp, got1.NextScheduledRun.Timestamp)
+	assert.Equal(testFutureTime, got1.NextScheduledRun)
 }
 
 func Test_TestJobRun(t *testing.T) {
