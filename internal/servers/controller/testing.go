@@ -131,7 +131,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 	}
 	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
-		tc.b.DevAuthMethodId,
+		tc.b.DevPasswordAuthMethodId,
 		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
@@ -157,7 +157,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 	}
 	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
-		tc.b.DevAuthMethodId,
+		tc.b.DevPasswordAuthMethodId,
 		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevUnprivilegedLoginName,
@@ -395,9 +395,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	if opts.DefaultAuthMethodId != "" {
-		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+		tc.b.DevPasswordAuthMethodId = opts.DefaultAuthMethodId
 	} else {
-		tc.b.DevAuthMethodId = DefaultTestAuthMethodId
+		tc.b.DevPasswordAuthMethodId = DefaultTestAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
@@ -439,7 +439,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.InitialResourcesSuffix != "" {
 		suffix := opts.InitialResourcesSuffix
-		tc.b.DevAuthMethodId = "ampw_" + suffix
+		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
 		tc.b.DevHostCatalogId = "hcst_" + suffix
 		tc.b.DevHostId = "hst_" + suffix
 		tc.b.DevHostSetId = "hsst_" + suffix
@@ -497,7 +497,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 					t.Fatal(err)
 				}
 				if !opts.DisableAuthMethodCreation {
-					if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
 					if !opts.DisableScopesCreation {
@@ -558,7 +558,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 	}
 	nextOpts := &TestControllerOpts{
 		DatabaseUrl:               tc.c.conf.DatabaseUrl,
-		DefaultAuthMethodId:       tc.c.conf.DevAuthMethodId,
+		DefaultAuthMethodId:       tc.c.conf.DevPasswordAuthMethodId,
 		RootKms:                   tc.c.conf.RootKms,
 		WorkerAuthKms:             tc.c.conf.WorkerAuthKms,
 		RecoveryKms:               tc.c.conf.RecoveryKms,

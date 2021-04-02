@@ -79,7 +79,7 @@ func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clien
 			ScopeId:          scopeId,
 			Name:             opts.withName,
 			Description:      opts.withDescription,
-			OperationalState: string(InactiveState),
+			OperationalState: string(opts.withOperationalState),
 			DiscoveryUrl:     u,
 			ClientId:         clientId,
 			ClientSecret:     string(clientSecret),

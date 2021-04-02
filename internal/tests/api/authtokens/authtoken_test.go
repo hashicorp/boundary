@@ -130,7 +130,7 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	result, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	wantToken := new(authtokens.AuthToken)
 	require.NoError(json.Unmarshal(result.GetRawAttributes(), wantToken))

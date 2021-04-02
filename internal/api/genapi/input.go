@@ -250,6 +250,11 @@ var inputStructs = []*structInfo{
 		subtypeName: "OidcAuthMethod",
 	},
 	{
+		inProto:     &authmethods.OidcAuthMethodAuthenticateStartResponse{},
+		outFile:     "authmethods/oidc_auth_method_authenticate_start_response.gen.go",
+		subtypeName: "OidcAuthMethod",
+	},
+	{
 		inProto: &authmethods.AuthMethod{},
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{

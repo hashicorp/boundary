@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/textproto"
 	"os"
 	"strings"
 	"time"
@@ -396,7 +397,11 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 					}
 				}
 			}
-			req.Body = ioutil.NopCloser(bytes.NewReader(attrBytes))
+			bytesReader := bytes.NewReader(attrBytes)
+			req.Body = ioutil.NopCloser(bytesReader)
+			req.ContentLength = int64(bytesReader.Len())
+			req.Header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "application/json")
+			req.Method = http.MethodPost
 		}
 
 		h.ServeHTTP(w, req)
