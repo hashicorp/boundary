@@ -54,19 +54,17 @@ func TestFetchWorkQuery(t *testing.T) {
 	count, _ := testFetchWork(nil, nil, w)
 	assert.Equal(0, count)
 
-	// Let the first transaction exit
+	// Let the transactions exit
 	wait1 <- struct{}{}
-
-	// FetchWork should return work now that the transaction row lock has been released
-	w = db.New(conn)
-	count, _ = testFetchWork(nil, nil, w)
-	assert.Equal(1, count)
-
-	// Release second transaction
 	wait2 <- struct{}{}
 
 	// Wait for above goroutines to verify test results
 	wg.Wait()
+
+	// FetchWork should return work again now that the transaction row locks have been released
+	w = db.New(conn)
+	count, _ = testFetchWork(nil, nil, w)
+	assert.Equal(1, count)
 }
 
 func testFetchWork(wait <-chan struct{}, ready chan<- struct{}, w *db.Db) (int, error) {

@@ -495,7 +495,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 			assert.Equal(tt.want.Status, got.Status)
 			assert.Equal(tt.want.CompletedCount, got.CompletedCount)
 			assert.Equal(tt.want.TotalCount, got.TotalCount)
-			assert.Equal(tt.want.EndTime, got.EndTime)
+			assert.Equal(tt.want.EndTime.Timestamp.GetSeconds(), got.EndTime.Timestamp.GetSeconds())
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteJobRun(context.Background(), id)
@@ -669,7 +669,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobId)
 			assert.NoError(err)
 			require.NotNil(updatedJob)
-			assert.Equal(tt.args.nextScheduledRun, updatedJob.NextScheduledRun)
+			assert.Equal(tt.args.nextScheduledRun.Timestamp.GetSeconds(), updatedJob.NextScheduledRun.Timestamp.GetSeconds())
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteJobRun(context.Background(), privateId)

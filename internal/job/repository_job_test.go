@@ -152,7 +152,7 @@ func TestRepository_CreateJob(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(tt.want.Code, got.Code)
-			assert.Equal(tt.want.NextScheduledRun.Timestamp, got.NextScheduledRun.Timestamp)
+			assert.Equal(tt.want.NextScheduledRun.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
 		})
 	}
 
@@ -505,7 +505,7 @@ func TestRepository_UpdateJob(t *testing.T) {
 			assert.NotSame(tt.orig, got)
 
 			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(tt.want.NextScheduledRun.Timestamp, got.NextScheduledRun.Timestamp)
+			assert.Equal(tt.want.NextScheduledRun.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
 		})
 	}
 }
@@ -587,7 +587,7 @@ func TestRepository_deleteJob(t *testing.T) {
 			name:        "With no private id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).DeleteJob: missing private id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).deleteJob: missing private id: parameter violation: error #100",
 		},
 		{
 			name: "With non existing job id",

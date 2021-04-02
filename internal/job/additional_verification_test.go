@@ -58,7 +58,7 @@ func TestJobWorkflow(t *testing.T) {
 	job, err = repo.LookupJob(context.Background(), job.PrivateId)
 	assert.NoError(err)
 	require.NotNil(job)
-	assert.Equal(testFutureTime, job.NextScheduledRun)
+	assert.Equal(testFutureTime.Timestamp.GetSeconds(), job.NextScheduledRun.Timestamp.GetSeconds())
 
 	// The only available job has a next run in the future, a request for work should return nil
 	newRun, err = repo.FetchWork(context.Background(), server.PrivateId)
