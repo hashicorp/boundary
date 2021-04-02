@@ -43,3 +43,35 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 	}
 	return css
 }
+
+// TestCredentialLibraries creates count number of vault credential
+// libraries in the provided DB with the provided store id. If any errors
+// are encountered during the creation of the credential libraries, the
+// test will fail.
+func TestCredentialLibraries(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	var libs []*CredentialLibrary
+
+	for i := 0; i < count; i++ {
+		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i))
+		assert.NoError(err)
+		require.NotNil(lib)
+		id, err := newCredentialLibraryId()
+		assert.NoError(err)
+		require.NotEmpty(id)
+		lib.PublicId = id
+
+		ctx := context.Background()
+		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, lib)
+			},
+		)
+
+		require.NoError(err2)
+		libs = append(libs, lib)
+	}
+	return libs
+}
