@@ -11,7 +11,6 @@ import (
 )
 
 func Test_TestRootKey(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -23,7 +22,6 @@ func Test_TestRootKey(t *testing.T) {
 }
 
 func Test_TestRootKeyVersion(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -36,7 +34,6 @@ func Test_TestRootKeyVersion(t *testing.T) {
 }
 
 func Test_TestDatabaseKey(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -52,7 +49,6 @@ func Test_TestDatabaseKey(t *testing.T) {
 }
 
 func Test_TestDatabaseKeyVersion(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	kmsWrapper := db.TestWrapper(t)
@@ -67,7 +63,6 @@ func Test_TestDatabaseKeyVersion(t *testing.T) {
 }
 
 func Test_TestOplogKey(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -83,7 +78,6 @@ func Test_TestOplogKey(t *testing.T) {
 }
 
 func Test_TestOplogKeyVersion(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	kmsWrapper := db.TestWrapper(t)
@@ -98,7 +92,6 @@ func Test_TestOplogKeyVersion(t *testing.T) {
 }
 
 func Test_TestTokenKey(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -114,7 +107,6 @@ func Test_TestTokenKey(t *testing.T) {
 }
 
 func Test_TestTokenKeyVersion(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	kmsWrapper := db.TestWrapper(t)
@@ -129,7 +121,6 @@ func Test_TestTokenKeyVersion(t *testing.T) {
 }
 
 func Test_TestSessionKey(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -145,7 +136,6 @@ func Test_TestSessionKey(t *testing.T) {
 }
 
 func Test_TestSessionKeyVersion(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	kmsWrapper := db.TestWrapper(t)
