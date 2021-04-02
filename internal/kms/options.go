@@ -25,7 +25,8 @@ type options struct {
 	withWorkerAuthWrapper wrapping.Wrapper
 	withRecoveryWrapper   wrapping.Wrapper
 	withRepository        *Repository
-	withOrder             string
+	withOrderByVersion    bool
+	ascending             bool
 	withKeyId             string
 }
 
@@ -79,10 +80,12 @@ func WithRepository(repo *Repository) Option {
 	}
 }
 
-// WithOrder allows specifying an order for returned values
-func WithOrder(order string) Option {
+// WithOrderByVersion provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByVersion(ascending bool) Option {
 	return func(o *options) {
-		o.withOrder = order
+		o.withOrderByVersion = true
+		o.ascending = ascending
 	}
 }
 
