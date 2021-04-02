@@ -23,7 +23,6 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
 
-		// cs, err := NewAccount(authMethodId, WithLoginName(fmt.Sprintf("token%d", i)))
 		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("token%d", i)))
 		assert.NoError(err)
 		require.NotNil(cs)
@@ -35,7 +34,6 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
-				// require.NoError(iw.Create(ctx, conf))
 				return iw.Create(ctx, cs)
 			},
 		)
