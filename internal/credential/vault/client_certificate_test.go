@@ -48,7 +48,6 @@ func TestClientCertificate_New(t *testing.T) {
 		storeId     string
 		certificate []byte
 		key         []byte
-		opts        []Option
 	}
 
 	tests := []struct {
