@@ -6,11 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/iam"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"

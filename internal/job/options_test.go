@@ -21,4 +21,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNextScheduledRun = ts
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithJobRunStatus", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithJobRunStatus(Completed))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withJobRunStatus = Completed
+		assert.Equal(opts, testOpts)
+	})
 }
