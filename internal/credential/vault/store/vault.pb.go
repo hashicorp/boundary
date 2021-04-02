@@ -589,8 +589,8 @@ type Lease struct {
 	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" gorm:"not_null"`
 	// token_sha256 is the SHA-256 value of the token used to acquire the
 	// secret.
-	// @inject_tag: `gorm:"primary_key"`
-	TokenSha256 []byte `protobuf:"bytes,4,opt,name=token_sha256,json=tokenSha256,proto3" json:"token_sha256,omitempty" gorm:"primary_key"`
+	// @inject_tag: `gorm:"not_null"`
+	TokenSha256 []byte `protobuf:"bytes,4,opt,name=token_sha256,json=tokenSha256,proto3" json:"token_sha256,omitempty" gorm:"not_null"`
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,5,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
