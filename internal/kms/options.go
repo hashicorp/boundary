@@ -1,6 +1,7 @@
 package kms
 
 import (
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
@@ -14,11 +15,6 @@ func getOpts(opt ...Option) options {
 	return opts
 }
 
-type withOrder struct {
-	enable    bool
-	ascending bool
-}
-
 // Option - how Options are passed as arguments
 type Option func(*options)
 
@@ -30,7 +26,7 @@ type options struct {
 	withWorkerAuthWrapper wrapping.Wrapper
 	withRecoveryWrapper   wrapping.Wrapper
 	withRepository        *Repository
-	withOrderByVersion    withOrder
+	withOrderByVersion    db.OrderBy
 	withKeyId             string
 }
 
@@ -86,11 +82,10 @@ func WithRepository(repo *Repository) Option {
 
 // WithOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
-func WithOrderByVersion(ascending bool) Option {
+func WithOrderByVersion(orderBy db.OrderBy) Option {
 	const col = "version"
 	return func(o *options) {
-		o.withOrderByVersion.enable = true
-		o.withOrderByVersion.ascending = ascending
+		o.withOrderByVersion = orderBy
 	}
 }
 
