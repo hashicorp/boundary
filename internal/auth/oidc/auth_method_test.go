@@ -133,6 +133,7 @@ func TestAuthMethod_Create(t *testing.T) {
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
 			},
+			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId

@@ -38,6 +38,7 @@ type options struct {
 	withPublicId            string
 	withRoundtripPayload    string
 	withKeyId               string
+	withIssuer              *url.URL
 }
 
 func getDefaultOptions() options {
@@ -185,5 +186,12 @@ func WithRoundtripPayload(payload string) Option {
 func WithKeyId(id string) Option {
 	return func(o *options) {
 		o.withKeyId = id
+	}
+}
+
+// WithIssuer provides an option for specifying an issuer.
+func WithIssuer(iss *url.URL) Option {
+	return func(o *options) {
+		o.withIssuer = iss
 	}
 }

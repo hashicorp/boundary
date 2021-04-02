@@ -503,16 +503,6 @@ func TestUpdate_OIDC(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Unset Discovery URL",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.discovery_url"},
-				},
-				Item: &pb.AuthMethod{},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name: "Unset Client Id",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -625,7 +615,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
-			name: "Change Callback Url Prefix",
+			name: "Change Api Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"attributes.api_url_prefix"},
@@ -699,6 +689,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "Unset Issuer Is Incomplete",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{},
+			},
+			wantErr: true,
 		},
 		{
 			name: "Unsupported Signing Algorithms",

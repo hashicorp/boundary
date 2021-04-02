@@ -48,7 +48,7 @@ func Test_TokenRequest(t *testing.T) {
 		WithSigningAlgs(Alg(RS256)),
 		WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback")[0]))
 
-	testAcct := TestAccount(t, conn, testAuthMethod, TestConvertToUrls(t, "https://alice.com")[0], "alice")
+	testAcct := TestAccount(t, conn, testAuthMethod, "alice")
 	testUser := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(testAcct.PublicId))
 
 	testRequestWrapper, err := requestWrappingWrapper(ctx, kmsCache, testAuthMethod.ScopeId, testAuthMethod.PublicId)

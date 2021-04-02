@@ -20,16 +20,16 @@ type Account struct {
 }
 
 // NewAccount creates a new in memory Account assigned to OIDC AuthMethod.
-// WithFullName, WithEmail, WithName and WithDescription are the only valid
-// options. All other options are ignored.
-//
-// IssuerId equals the Verifiable Identifier for an Issuer. An Issuer
-// Identifier is a case sensitive URL using the https scheme that contains
-// scheme, host, and optionally, port number and path components and no query or
-// fragment components.
+// WithIssuer, WithFullName, WithEmail, WithName and WithDescription are
+// the only valid options. All other options are ignored.
 //
 // SubjectId equals the locally unique and never reassigned identifier within
 // the Issuer for the End-User, which is intended to be consumed by the Client.
+//
+// Issuer equals the Verifiable Identifier for an Issuer. An Issuer
+// Identifier is a case sensitive URL using the https scheme that contains
+// scheme, host, and optionally, port number and path components and no query or
+// fragment components.
 //
 // FullName equals the End-User's full name in displayable form including all name
 // parts, possibly including titles and suffixes, ordered according to the
@@ -40,24 +40,21 @@ type Account struct {
 // value being unique
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
-func NewAccount(authMethodId string, issuerId *url.URL, subjectId string, opt ...Option) (*Account, error) {
+func NewAccount(authMethodId string, subjectId string, opt ...Option) (*Account, error) {
 	const op = "oidc.NewAccount"
-
-	if issuerId == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing issuer id")
-	}
-
 	opts := getOpts(opt...)
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			IssuerId:     issuerId.String(),
 			SubjectId:    subjectId,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 			FullName:     opts.withFullName,
 			Email:        opts.withEmail,
 		},
+	}
+	if opts.withIssuer != nil {
+		a.IssuerId = opts.withIssuer.String()
 	}
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
@@ -74,10 +71,7 @@ func (a *Account) validate(caller errors.Op) error {
 	if a.SubjectId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing subject id")
 	}
-	if a.IssuerId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing issuer id")
-	}
-	if _, err := url.Parse(a.IssuerId); err != nil {
+	if _, err := url.Parse(a.IssuerId); a.IssuerId != "" && err != nil {
 		return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 	}
 	if a.Email != "" && len(a.Email) > 320 {

@@ -2,9 +2,11 @@ package oidc
 
 import (
 	"crypto/x509"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -155,6 +157,15 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithKeyId("specific_id"))
 		testOpts := getDefaultOptions()
 		testOpts.withKeyId = "specific_id"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithIssuer", func(t *testing.T) {
+		assert := assert.New(t)
+		u, err := url.Parse("http://test.com")
+		require.NoError(t, err)
+		opts := getOpts(WithIssuer(u))
+		testOpts := getDefaultOptions()
+		testOpts.withIssuer = u
 		assert.Equal(opts, testOpts)
 	})
 }

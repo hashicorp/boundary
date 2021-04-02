@@ -65,8 +65,8 @@ type AuthMethod struct {
 	// @inject_tag: `gorm:"not_null"`
 	DisableDiscoveredConfigValidation bool `protobuf:"varint,89,opt,name=disable_discovered_config_validation,json=disableDiscoveredConfigValidation,proto3" json:"disable_discovered_config_validation,omitempty" gorm:"not_null"`
 	// discovery_url is the OIDC Discovery URL without any .well-known component
-	// @inject_tag: `gorm:"not_null"`
-	DiscoveryUrl string `protobuf:"bytes,90,opt,name=discovery_url,json=discoveryUrl,proto3" json:"discovery_url,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	DiscoveryUrl string `protobuf:"bytes,90,opt,name=discovery_url,json=discoveryUrl,proto3" json:"discovery_url,omitempty" gorm:"default:null"`
 	// client_id is the OIDC client identifier
 	// @inject_tag: `gorm:"not_null"`
 	ClientId string `protobuf:"bytes,100,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty" gorm:"not_null"`

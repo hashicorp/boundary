@@ -34,19 +34,50 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(authMethodIdField, "Unknown auth method type from ID."),
 		},
 		{
-			name: "oidc authmethod prefix",
-			item: &pb.Account{
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-			},
-			errContains: fieldError(authMethodIdField, "Unable to create accounts for this auth method type."),
-		},
-		{
-			name: "mismatched authmethod type",
+			name: "mismatched pw authmethod oidc type",
 			item: &pb.Account{
 				Type:         auth.OidcSubtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
+		},
+		{
+			name: "mismatched oidc authmethod pw type",
+			item: &pb.Account{
+				Type:         auth.PasswordSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
+		},
+		{
+			name: "missing oidc subject id",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(subjectField, "This is a required field for this type."),
+		},
+		{
+			name: "read only name claim field",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"full_name": structpb.NewStringValue("something"),
+				}},
+			},
+			errContains: fieldError(nameClaimField, "This is a read only field."),
+		},
+		{
+			name: "read only email claim field",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"email": structpb.NewStringValue("something"),
+				}},
+			},
+			errContains: fieldError(emailClaimField, "This is a read only field."),
 		},
 		{
 			name: "missing login name for password type",
@@ -57,10 +88,21 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(loginNameKey, "This is a required field for this type."),
 		},
 		{
-			name: "bad attributes",
+			name: "bad pw attributes",
 			item: &pb.Account{
 				Type:         auth.PasswordSubtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"test": structpb.NewStringValue("something"),
+				}},
+			},
+			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+		},
+		{
+			name: "bad oidc attributes",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"test": structpb.NewStringValue("something"),
 				}},
@@ -74,6 +116,16 @@ func TestValidateCreateRequest(t *testing.T) {
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					loginNameKey: structpb.NewStringValue("something"),
+				}},
+			},
+		},
+		{
+			name: "no oidc errors",
+			item: &pb.Account{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"subject": structpb.NewStringValue("no oidc errors"),
 				}},
 			},
 		},
@@ -167,8 +219,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 	t.Run("oidc read only fields", func(t *testing.T) {
 		readOnlyFields := []string{
-			issuerIdField,
-			subjectIdField,
 			emailClaimField,
 			nameClaimField,
 		}
@@ -179,6 +229,23 @@ func TestValidateUpdateRequest(t *testing.T) {
 
 		for _, f := range readOnlyFields {
 			expected := fieldError(f, "Field is read only.")
+			assert.True(t, strings.Contains(err.Error(), expected),
+				"%q wasn't contained in %q", expected, err.Error())
+		}
+	})
+
+	t.Run("oidc write only at create fields", func(t *testing.T) {
+		readOnlyFields := []string{
+			issuerField,
+			subjectField,
+		}
+		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
+			Id:         oidc.AccountPrefix + "1234567890",
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
+		})
+
+		for _, f := range readOnlyFields {
+			expected := fieldError(f, "Field cannot be updated.")
 			assert.True(t, strings.Contains(err.Error(), expected),
 				"%q wasn't contained in %q", expected, err.Error())
 		}

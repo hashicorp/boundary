@@ -155,3 +155,27 @@ func DefaultPasswordAccountPassword() Option {
 		o.postMap["attributes"] = val
 	}
 }
+
+func WithOidcAccountSubject(inSubject string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject"] = inSubject
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountSubject() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["subject"] = nil
+		o.postMap["attributes"] = val
+	}
+}

@@ -619,13 +619,15 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAuthMethodAttributes{
-			Issuer:            wrapperspb.String(i.DiscoveryUrl),
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
 			CaCerts:           i.GetCertificates(),
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
+		}
+		if i.GetDiscoveryUrl() != "" {
+			attrs.Issuer = wrapperspb.String(i.DiscoveryUrl)
 		}
 		if len(i.GetCallbackUrls()) > 0 {
 			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
@@ -697,9 +699,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			} else {
-				if attrs.GetIssuer().GetValue() == "" {
-					badFields[issuerField] = "Field required for creating an OIDC auth method."
-				} else {
+				if attrs.GetIssuer().GetValue() != "" {
 					du, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
@@ -779,9 +779,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				if attrs.GetIssuer().GetValue() == "" {
-					badFields[issuerField] = "Field required and cannot be set to empty."
-				} else {
+				if attrs.GetIssuer().GetValue() != "" {
 					du, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
@@ -831,7 +829,6 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
-
 		default:
 			badFields["id"] = "Incorrectly formatted identifier."
 		}

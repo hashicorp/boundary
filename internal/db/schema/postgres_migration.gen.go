@@ -5011,33 +5011,6 @@ from
   left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
 comment on view auth_password_method_with_is_primary is
 'password auth method with an is_primary_auth_method bool';
-
-create rule auth_password_method_ins as on insert to auth_password_method_with_is_primary
-  do instead
-  insert into auth_password_method (
-      public_id,
-      scope_id,
-      password_conf_id,
-      name,
-      description,
-      create_time,
-      update_time,
-      version,
-      min_login_name_length,
-      min_password_length
-  )
-  values (
-      new.public_id,
-      new.scope_id,
-      new.password_conf_id,
-      new.name,
-      new.description,
-      new.create_time,
-      new.update_time,
-      new.version,
-      new.min_login_name_length,
-      new.min_password_length
-  );
 `),
 			2080: []byte(`
 -- log_migration entries represent logs generated during migrations
@@ -5300,8 +5273,8 @@ create table auth_oidc_account (
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim
-    subject_id text not null -- case-senstive string that maps to an id_token's sub claim
+    issuer_id wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
+    subject_id text not null -- case-sensitive string that maps to an id_token's sub claim
       constraint subject_id_must_not_be_empty 
       check (
         length(trim(subject_id)) > 0
@@ -5555,9 +5528,9 @@ declare cb_cnt int;
     if am_state != inactive then
       case 
         when alg_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no signing algorithms'; 
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no signing algorithms';
         when cb_cnt = 0 then
-          raise exception 'delete wouild have resulted in an incomplete active oidc auth method with no callback URLs';
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no callback URLs';
       end case;
     end if; 
   
