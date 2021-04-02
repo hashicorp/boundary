@@ -31,7 +31,12 @@ func Test_upsertAccount(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	amActivePriv := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, "alice_rp", "fido", WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]), WithSigningAlgs(RS256))
+	amActivePriv := TestAuthMethod(
+		t,
+		conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice_rp", "fido",
+		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+		WithSigningAlgs(RS256))
 
 	tests := []struct {
 		name            string
