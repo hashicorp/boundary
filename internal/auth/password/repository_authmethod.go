@@ -290,8 +290,9 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
 // its id or search for a set AuthMethods within a set of scopes.  Passing both
-// scopeIds and a authMethodId is an error. The WithLimit option is supported
-// and all other options are ignored.
+// scopeIds and a authMethodId is an error. The WithLimit and
+// WithOrderByCreateTime options are supported and all other options are
+// ignored.
 //
 // The AuthMethod returned has its IsPrimaryAuthMethod bool set.
 //
@@ -314,8 +315,12 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 	dbArgs = append(dbArgs, db.WithLimit(limit))
 
-	if opts.withOrderClause != "" {
-		dbArgs = append(dbArgs, db.WithOrder(opts.withOrderClause))
+	if opts.withOrderByCreateTime {
+		if opts.ascending {
+			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
+		} else {
+			dbArgs = append(dbArgs, db.WithOrder("create_time"))
+		}
 	}
 
 	var args []interface{}

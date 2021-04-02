@@ -14,15 +14,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLoginName   string
-	withLimit       int
-	withConfig      Configuration
-	withPublicId    string
-	password        string
-	withPassword    bool
-	withOrderClause string
+	withName              string
+	withDescription       string
+	withLoginName         string
+	withLimit             int
+	withConfig            Configuration
+	withPublicId          string
+	password              string
+	withPassword          bool
+	withOrderByCreateTime bool
+	ascending             bool
 }
 
 func getDefaultOptions() options {
@@ -83,9 +84,10 @@ func WithConfiguration(config Configuration) Option {
 	}
 }
 
-// WithOrder provides an optional with order clause.
-func WithOrder(orderClause string) Option {
+// WithOrderByCreateTime provides an optional with order clause.
+func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) {
-		o.withOrderClause = orderClause
+		o.withOrderByCreateTime = true
+		o.ascending = ascending
 	}
 }

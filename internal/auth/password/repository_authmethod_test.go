@@ -460,7 +460,7 @@ func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
 		iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, ams[0].PublicId)
 		total += numPerScope
 	}
-	got, err := repo.ListAuthMethods(context.Background(), scopeIds, WithOrder("create_time asc"))
+	got, err := repo.ListAuthMethods(context.Background(), scopeIds, WithOrderByCreateTime(true))
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 	found := map[string]struct{}{}
@@ -498,12 +498,12 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		{
 			name:     "With no limits",
 			wantLen:  authMethodCount,
-			listOpts: []Option{WithOrder("create_time asc")},
+			listOpts: []Option{WithOrderByCreateTime(true)},
 		},
 		{
 			name:     "With repo limit",
 			repoOpts: []Option{WithLimit(3)},
-			listOpts: []Option{WithOrder("create_time asc")},
+			listOpts: []Option{WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
@@ -513,24 +513,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3), WithOrder("create_time asc")},
+			listOpts: []Option{WithLimit(3), WithOrderByCreateTime(true)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1), WithOrder("create_time asc")},
+			listOpts: []Option{WithLimit(-1), WithOrderByCreateTime(true)},
 			wantLen:  authMethodCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6), WithOrder("create_time asc")},
+			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2), WithOrder("create_time asc")},
+			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
 			wantLen:  2,
 		},
 	}
