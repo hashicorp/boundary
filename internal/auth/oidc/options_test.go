@@ -97,11 +97,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withFullName = "Bob Eve Alice"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithOrder", func(t *testing.T) {
+	t.Run("WithOrderByCreateTime", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithOrder("public_id asc"))
+		opts := getOpts(WithOrderByCreateTime(true))
 		testOpts := getDefaultOptions()
-		testOpts.withOrderClause = "public_id asc"
+		testOpts.withOrderByCreateTime = true
+		testOpts.ascending = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithUnauthenticatedUser", func(t *testing.T) {

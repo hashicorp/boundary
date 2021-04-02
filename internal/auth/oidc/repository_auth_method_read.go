@@ -90,8 +90,12 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 	dbArgs = append(dbArgs, db.WithLimit(limit))
 
-	if opts.withOrderClause != "" {
-		dbArgs = append(dbArgs, db.WithOrder(opts.withOrderClause))
+	if opts.withOrderByCreateTime {
+		if opts.ascending {
+			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
+		} else {
+			dbArgs = append(dbArgs, db.WithOrder("create_time"))
+		}
 	}
 
 	var args []interface{}

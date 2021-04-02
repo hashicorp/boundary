@@ -136,7 +136,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
 			},
-			opt: []Option{WithLimit(1), WithOrder("create_time asc")},
+			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
 		},
 		{
 			name: "no-search-criteria",
@@ -270,7 +270,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 
 				return "", []string{am1a.ScopeId}, []*AuthMethod{am1a}
 			},
-			opt: []Option{WithLimit(1), WithOrder("create_time asc")},
+			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
 		},
 		{
 			name: "unauthenticated-user",

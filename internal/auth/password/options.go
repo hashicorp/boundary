@@ -84,7 +84,8 @@ func WithConfiguration(config Configuration) Option {
 	}
 }
 
-// WithOrderByCreateTime provides an optional with order clause.
+// WithOrderByCreateTime provides an option to specify ordering by the
+// CreateTime field.
 func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) {
 		o.withOrderByCreateTime = true
