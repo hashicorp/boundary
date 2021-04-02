@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	authtokenpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -24,10 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	capoidc "github.com/hashicorp/cap/oidc"
-	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -381,6 +377,7 @@ func TestDelete(t *testing.T) {
 	pwam := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
@@ -911,6 +908,8 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+
+// TODO: remove everything under this.
 func TestUpdate_Password(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)

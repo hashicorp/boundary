@@ -29,7 +29,8 @@ type options struct {
 	withSigningAlgs         []Alg
 	withEmail               string
 	withFullName            string
-	withOrderClause         string
+	withOrderByCreateTime   bool
+	ascending               bool
 	withUnauthenticatedUser bool
 	withForce               bool
 	withDryRun              bool
@@ -125,10 +126,12 @@ func WithFullName(n string) Option {
 	}
 }
 
-// WithOrder provides an optional with order clause.
-func WithOrder(orderClause string) Option {
+// WithOrderByCreateTime provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) {
-		o.withOrderClause = orderClause
+		o.withOrderByCreateTime = true
+		o.ascending = ascending
 	}
 }
 

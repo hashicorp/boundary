@@ -102,7 +102,7 @@ func Test_StartAuth(t *testing.T) {
 			apiSrv:       testController,
 			authMethod:   testAuthMethod,
 			setup:        stdSetup,
-			roundTripper: "alice-says-hi-bob&eve-chuckles-&bob-says-hi-alice",
+			roundTripper: `{"alice": "hi bob", "eve": "chuckles says hi alice"}`,
 		},
 		{
 			name:            "inactive",
@@ -137,14 +137,6 @@ func Test_StartAuth(t *testing.T) {
 			wantErrMatch:    errors.T(errors.RecordNotFound),
 			wantErrContains: "auth method not-valid not found:",
 		},
-		{
-			name:            "bad-api-addr",
-			repoFn:          repoFn,
-			apiSrv:          nil,
-			authMethod:      testAuthMethod,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing api address",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -153,13 +145,9 @@ func Test_StartAuth(t *testing.T) {
 			if tt.setup != nil {
 				tt.authMethod, allowedRedirect = tt.setup(tt.authMethod, tt.repoFn, tt.apiSrv)
 			}
-			var apiAddr string
-			if tt.apiSrv != nil {
-				apiAddr = tt.apiSrv.URL
-			}
 
 			now := time.Now()
-			authUrl, tokenUrl, tokenId, err := StartAuth(ctx, tt.repoFn, apiAddr, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
+			authUrl, tokenUrl, tokenId, err := StartAuth(ctx, tt.repoFn, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(authUrl)
@@ -199,8 +187,10 @@ func Test_StartAuth(t *testing.T) {
 			assert.NotEmpty(reqState.FinalRedirectUrl)
 			switch tt.roundTripper != "" {
 			case true:
-				assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL)+"?"+tt.roundTripper, reqState.FinalRedirectUrl)
-				assert.Contains(reqState.FinalRedirectUrl, tt.roundTripper)
+				u := make(url.Values)
+				u.Add("roundtrip_payload", tt.roundTripper)
+				assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL)+"?"+u.Encode(), reqState.FinalRedirectUrl)
+				assert.Contains(reqState.FinalRedirectUrl, u.Encode())
 			default:
 				assert.Equal(fmt.Sprintf(FinalRedirectEndpoint, tt.apiSrv.URL), reqState.FinalRedirectUrl)
 			}

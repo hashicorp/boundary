@@ -27,6 +27,7 @@ const (
 	// password field names
 	loginNameField = "login_name"
 	passwordField  = "password"
+	loginCommand   = "login"
 )
 
 var pwMaskManager handlers.MaskManager
@@ -91,7 +92,6 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []
 	return out, nil
 }
 
-// Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) authenticatePassword(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
 	reqAttrs := req.GetAttributes().GetFields()
 	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
@@ -169,6 +169,16 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
+	if req.GetAttributes() == nil && req.GetCredentials() != nil {
+		// TODO: Eventually, remove this
+		req.Attributes = req.Credentials
+	}
+	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
+		badFields["attributes"] = "This is a required field."
+		// Return early because we need non-nil values in the rest of the check.
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+
 	attrs := req.GetAttributes().GetFields()
 	if _, ok := attrs[loginNameField]; !ok {
 		badFields["attributes.login_name"] = "This is a required field."
@@ -178,10 +188,10 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	}
 	if req.GetCommand() == "" {
 		// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
-		req.Command = "login"
+		req.Command = loginCommand
 	}
-	if req.Command != "login" {
-		badFields["command"] = "Invalid command for this auth method type."
+	if req.Command != loginCommand {
+		badFields[commandField] = "Invalid command for this auth method type."
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {

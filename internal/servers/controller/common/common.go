@@ -14,7 +14,7 @@ import (
 type (
 	AuthTokenRepoFactory    func() (*authtoken.Repository, error)
 	IamRepoFactory          func() (*iam.Repository, error)
-	OidcAuthRepoFactory     func() (*oidc.Repository, error)
+	OidcAuthRepoFactory     = oidc.OidcRepoFactory
 	PasswordAuthRepoFactory func() (*password.Repository, error)
 	ServersRepoFactory      func() (*servers.Repository, error)
 	StaticRepoFactory       func() (*static.Repository, error)
