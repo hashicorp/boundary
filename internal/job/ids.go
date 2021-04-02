@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	JobPrefix    = "job"
+	// JobPrefix is the prefix of all generated Job private ids
+	JobPrefix = "job"
+
+	// JobRunPrefix is the prefix of all generated JobRun private ids
 	JobRunPrefix = "jobrun"
 )
 

@@ -233,7 +233,7 @@ func (r *Repository) EndJobRun(ctx context.Context, privateId, status string, ne
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("unable to set next scheduled run time for job: %s", run.JobId))
+				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("unable to set next scheduled run time for job: %s", run.JobId))
 			}
 			if rowsAffected > 1 {
 				return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")

@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// DefaultJobTableName is the default name of the database table that is used to persist a Job
 	DefaultJobTableName = "job"
 )
 
