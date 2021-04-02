@@ -100,9 +100,6 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.EqualValues(tt.want, got)
-			if got != nil {
-				assert.Equal(tt.wantIsPrimary, got.IsPrimaryAuthMethod)
-			}
 		})
 	}
 }
