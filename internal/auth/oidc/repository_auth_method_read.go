@@ -66,7 +66,8 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 // ignored.
 //
 // The AuthMethod returned has its value objects populated (SigningAlgs,
-// CallbackUrls, AudClaims and Certificates)
+// CallbackUrls, AudClaims and Certificates).  The AuthMethod returned has its
+// IsPrimaryAuthMethod bool set.
 //
 // When no record is found it returns nil, nil
 func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
@@ -89,8 +90,12 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 	dbArgs = append(dbArgs, db.WithLimit(limit))
 
-	if opts.withOrderClause != "" {
-		dbArgs = append(dbArgs, db.WithOrder(opts.withOrderClause))
+	if opts.withOrderByCreateTime {
+		if opts.ascending {
+			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
+		} else {
+			dbArgs = append(dbArgs, db.WithOrder("create_time"))
+		}
 	}
 
 	var args []interface{}
@@ -128,6 +133,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am := AllocAuthMethod()
 		am.PublicId = agg.PublicId
 		am.ScopeId = agg.ScopeId
+		am.IsPrimaryAuthMethod = agg.IsPrimaryAuthMethod
 		am.Name = agg.Name
 		am.Description = agg.Description
 		am.CreateTime = agg.CreateTime
@@ -162,6 +168,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 type authMethodAgg struct {
 	PublicId                          string `gorm:"primary_key"`
 	ScopeId                           string
+	IsPrimaryAuthMethod               bool
 	Name                              string
 	Description                       string
 	CreateTime                        *timestamp.Timestamp

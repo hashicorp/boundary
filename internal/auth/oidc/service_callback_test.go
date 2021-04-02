@@ -557,7 +557,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		// it's suppose to operate on
 		controller.SetAuthMethodId(endToEndAuthMethod.PublicId)
 
-		authUrl, _, _, err := StartAuth(ctx, repoFn, controller.Addr(), endToEndAuthMethod.PublicId)
+		authUrl, _, _, err := StartAuth(ctx, repoFn, endToEndAuthMethod.PublicId)
 		require.NoError(err)
 
 		authParams, err := url.ParseQuery(authUrl.RawQuery)

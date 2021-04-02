@@ -57,4 +57,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withConfig = c
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithOrderByCreateTime", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithOrderByCreateTime(true))
+		testOpts := getDefaultOptions()
+		testOpts.withOrderByCreateTime = true
+		testOpts.ascending = true
+		assert.Equal(opts, testOpts)
+	})
 }

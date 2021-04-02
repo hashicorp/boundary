@@ -36,7 +36,12 @@ message AuthMethod {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 70;
 
-  // state is the current state of the auth_oidc_method (inactive,
+  // is_primary_auth_method is a read-only output field which indicates if the
+  // auth method is set as the scope's primary auth method.
+  // @inject_tag: `gorm:"-"`
+  bool is_primary_auth_method = 75;
+
+  // operational_state is the current state of the auth_oidc_method (inactive,
   // active-private, or active-public).
   // @inject_tag: `gorm:"column:state;not_null"`
   string operational_state = 80;

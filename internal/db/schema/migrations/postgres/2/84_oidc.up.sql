@@ -420,19 +420,21 @@ values
   ('auth_oidc_account', 1);
 
 
+--TODO: Remove under this after comparing the new view.
+
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
 -- with its associated value objects (algs, auds, certs) as columns
 -- with | delimited values.  The use of the postgres string_agg(...) to
 -- aggregate the value objects into a column works because we are only pulling
 -- in one column from the associated tables and that value is part of the
 -- primary key and unique.  This view will make things like recursive listing of
--- oidc auth methods fairly straightforward to implement but the oidc repo. 
+-- oidc auth methods fairly straightforward to implement but the oidc repo.
 create view oidc_auth_method_with_value_obj as
-select 
+select
   am.public_id,
   am.scope_id,
   am.name,
-  am.description, 
+  am.description,
   am.create_time,
   am.update_time,
   am.version,
@@ -446,14 +448,14 @@ select
   am.key_id,
   am.max_age,
   -- the string_agg(..) column will be null if there are no associated value objects
-  string_agg(distinct alg.signing_alg_name, '|') as algs, 
+  string_agg(distinct alg.signing_alg_name, '|') as algs,
   string_agg(distinct aud.aud_claim, '|') as auds,
   string_agg(distinct cert.certificate, '|') as certs
-from 	
-	auth_oidc_method am 
+from
+	auth_oidc_method am
   left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
   left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id
-  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
+  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id
 group by am.public_id;
 comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';

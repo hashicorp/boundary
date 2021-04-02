@@ -33,6 +33,7 @@ import (
 
 const (
 	// general auth method field names
+	commandField      = "command"
 	versionField      = "version"
 	scopeIdField      = "scope_id"
 	typeField         = "type"
@@ -287,6 +288,10 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		if err := validateAuthenticatePasswordRequest(req); err != nil {
 			return nil, err
 		}
+	case auth.OidcSubtype:
+		if err := validateAuthenticateOidcRequest(req); err != nil {
+			return nil, err
+		}
 	}
 
 	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
@@ -299,7 +304,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return s.authenticatePassword(ctx, req, &authResults)
 
 	case auth.OidcSubtype:
-		return &pbs.AuthenticateResponse{}, nil
+		return s.authenticateOidc(ctx, req, &authResults)
 	}
 	return nil, errors.New(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
@@ -488,7 +493,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 
 		attrs := &pbs.OidcChangeStateAttributes{}
 		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
 		}
 
 		var opts []oidc.Option
@@ -916,14 +921,6 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		}
 	}
 
-	if req.GetAttributes() == nil && req.GetCredentials() != nil {
-		// TODO: Eventually, remove this
-		req.Attributes = req.Credentials
-	}
-	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
-		badFields[attributesField] = "This is a required field."
-	}
-
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
@@ -936,9 +933,6 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	const op = "authmethod_service.validateAuthenticateLoginRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
-	}
-	if st := auth.SubtypeFromId(req.GetAuthMethodId()); st != auth.PasswordSubtype {
-		handlers.NotFoundErrorf("This endpoint is not available for the %q Auth Method type.", st.String())
 	}
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {

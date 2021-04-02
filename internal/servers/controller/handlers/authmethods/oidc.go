@@ -2,6 +2,7 @@ package authmethods
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -15,10 +16,23 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
-	// oidc field names
+	// commands
+	startCommand    = "start"
+	callbackCommand = "callback"
+	tokenCommand    = "token"
+
+	// start request/response fields
+	authUrlField                = "auth_url"
+	tokenUrlField               = "token_url"
+	tokenIdField                = "token_id"
+	roundtripPayloadField       = "roundtrip_payload"
+	cachedRoundtripPayloadField = "__cached_roundtrip_payload__"
+
+	// field names
 	issuerField                            = "attributes.issuer"
 	clientSecretField                      = "attributes.client_secret"
 	clientIdField                          = "attributes.client_id"
@@ -30,6 +44,7 @@ const (
 	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
+	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -122,6 +137,99 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
 	}
 	return out, nil
+}
+
+func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidc"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
+	switch req.GetCommand() {
+	case startCommand:
+		return s.authenticateOidcStart(ctx, req, authResults)
+	}
+
+	// Default is tokenCommand -- note we've already checked that it's one of
+	// these three in the validation function
+	// TODO
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: nil}, nil
+}
+
+func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidcStart"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
+
+	var opts []oidc.Option
+	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
+		if val, ok := req.GetAttributes().GetFields()[cachedRoundtripPayloadField]; ok {
+			opts = append(opts, oidc.WithRoundtripPayload(val.GetStringValue()))
+		}
+	}
+
+	authUrl, tokenUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
+	if err != nil {
+		// TODO: Log something
+		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow.")
+	}
+
+	attrsMap := map[string]interface{}{
+		authUrlField:  authUrl.String(),
+		tokenUrlField: tokenUrl.String(),
+		tokenIdField:  tokenId,
+	}
+
+	attrs, err := structpb.NewStruct(attrsMap)
+	if err != nil {
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+	}
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: attrs}, nil
+}
+
+func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+
+	switch req.GetCommand() {
+	case startCommand:
+		if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
+			fields := req.GetAttributes().GetFields()
+			if val, ok := fields[roundtripPayloadField]; ok {
+				structVal := val.GetStructValue()
+				if structVal != nil {
+					m, err := json.Marshal(structVal)
+					if err != nil {
+						// We don't know what's in this payload so we swallow the
+						// error, as it could be something sensitive.
+						badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
+					} else {
+						// Cache for later
+						fields[cachedRoundtripPayloadField] = structpb.NewStringValue(string(m))
+					}
+				}
+			}
+		}
+	case callbackCommand:
+	case tokenCommand:
+		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+		if tType != "" && tType != "token" && tType != "cookie" {
+			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+		}
+	default:
+		badFields[commandField] = "Invalid command for this auth method type."
+	}
+
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+	return nil
 }
 
 func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, forced bool, err error) {
