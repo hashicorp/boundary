@@ -57,7 +57,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		if opts.ascending {
 			dbOpts = append(dbOpts, db.WithOrder("version asc"))
 		} else {
-			dbOpts = append(dbOpts, db.WithOrder("version"))
+			dbOpts = append(dbOpts, db.WithOrder("version desc"))
 		}
 	}
 	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
