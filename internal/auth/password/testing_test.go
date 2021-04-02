@@ -26,7 +26,6 @@ func Test_TestAuthMethods(t *testing.T) {
 }
 
 func Test_TestAccounts(t *testing.T) {
-	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
