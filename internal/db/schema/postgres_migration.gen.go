@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2004,
+		binarySchemaVersion: 2005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5308,8 +5308,6 @@ create table credential_vault_store (
     token_sha256 bytea primary key, -- sha256 hash
     token bytea not null, -- encrypted value
     store_id wt_public_id not null
-      constraint credential_vault_token_store_id_uq
-        unique
       constraint credential_vault_store_fkey
         references credential_vault_store (public_id)
         on delete cascade
@@ -5326,14 +5324,20 @@ create table credential_vault_store (
         references kms_database_key_version (private_id)
         on delete restrict
         on update cascade,
-    token_status text not null
+    status text not null
       constraint credential_vault_token_status_enm_fkey
         references credential_vault_token_status_enm (name)
         on delete restrict
         on update cascade
   );
   comment on table credential_vault_token is
-    'credential_vault_token is a table where each row contains a Vault token for one Vault credential store.';
+    'credential_vault_token is a table where each row contains a Vault token for one Vault credential store. '
+    'A credential store can have only one vault token with the status of current';
+
+  -- https://www.postgresql.org/docs/current/indexes-partial.html
+  create unique index credential_vault_token_current_status_constraint
+    on credential_vault_token (store_id)
+    where status = 'current';
 
   create trigger update_version_column after update on credential_vault_token
     for each row execute procedure update_version_column();
@@ -5353,10 +5357,12 @@ create table credential_vault_store (
         references credential_vault_store (public_id)
         on delete cascade
         on update cascade,
-    certificate text not null -- PEM encoded certificate
+    certificate bytea not null -- PEM encoded certificate
       constraint certificate_must_not_be_empty
-        check(length(trim(certificate)) > 0),
-    certificate_key bytea not null, -- encrypted PEM encoded private key for certificate
+        check(length(certificate) > 0),
+    certificate_key bytea not null -- encrypted PEM encoded private key for certificate
+      constraint certificate_key_must_not_be_empty
+        check(length(certificate_key) > 0),
     key_id text not null
       constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
@@ -5567,6 +5573,27 @@ create table session_credential_library (
 
   create trigger immutable_columns before update on session_credential_library
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'credential_library_id', 'target_credential_purpose', 'create_time');
+`),
+			2005: []byte(`
+create function wt_add_seconds(sec integer, ts timestamp with time zone)
+    returns timestamp with time zone
+  as $$
+    select ts + sec * '1 second'::interval;
+  $$ language sql
+  stable
+  returns null on null input;
+  comment on function wt_add_seconds is
+  'wt_add_seconds returns ts + sec.';
+
+  create function wt_add_seconds_to_now(sec integer)
+    returns timestamp with time zone
+  as $$
+    select wt_add_seconds(sec, current_timestamp);
+  $$ language sql
+  stable
+  returns null on null input;
+  comment on function wt_add_seconds_to_now is
+  'wt_add_seconds_to_now returns current_timestamp + sec.';
 `),
 		},
 	}
