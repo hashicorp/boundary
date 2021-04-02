@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,10 +41,9 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithOrderByCreateTime", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithOrderByCreateTime(true))
+		opts := getOpts(WithOrderByCreateTime(db.AscendingOrderBy))
 		testOpts := getDefaultOptions()
-		testOpts.withOrderByCreateTime = true
-		testOpts.ascending = true
+		testOpts.withOrderByCreateTime = db.AscendingOrderBy
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithUserId", func(t *testing.T) {

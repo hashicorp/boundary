@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
@@ -19,8 +20,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit             int
-	withOrderByCreateTime bool
-	ascending             bool
+	withOrderByCreateTime db.OrderBy
 	withScopeIds          []string
 	withUserId            string
 	withExpirationTime    *timestamp.Timestamp
@@ -44,10 +44,9 @@ func WithLimit(limit int) Option {
 
 // WithOrderByCreateTime provides an option to specify ordering by the
 // CreateTime field.
-func WithOrderByCreateTime(ascending bool) Option {
+func WithOrderByCreateTime(orderBy db.OrderBy) Option {
 	return func(o *options) {
-		o.withOrderByCreateTime = true
-		o.ascending = ascending
+		o.withOrderByCreateTime = orderBy
 	}
 }
 

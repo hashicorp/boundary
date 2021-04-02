@@ -211,12 +211,11 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	}
 
 	var withOrder string
-	if opts.withOrderByCreateTime {
-		if opts.ascending {
-			withOrder = "order by create_time asc"
-		} else {
-			withOrder = "order by create_time"
-		}
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		withOrder = "order by create_time asc"
+	case db.DescendingOrderBy:
+		withOrder = "order by create_time"
 	}
 
 	var whereClause string
