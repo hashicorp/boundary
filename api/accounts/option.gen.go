@@ -96,6 +96,30 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithOidcAccountIssuer(inIssuer string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = inIssuer
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAccountIssuer() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["issuer"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

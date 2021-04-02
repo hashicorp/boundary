@@ -814,7 +814,7 @@ func TestCreateOidc(t *testing.T) {
 		"alice-rp", "fido",
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-     )
+	)
 
 	createAttr := func(sid string) *structpb.Struct {
 		attr := &pb.OidcAccountAttributes{Subject: sid}
