@@ -248,6 +248,9 @@ func (am *AuthMethod) isComplete() error {
 	if am.Issuer == "" {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing issuer"))
 	}
+	if am.ApiUrl == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing api url"))
+	}
 	if am.ClientId == "" {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client id"))
 	}

@@ -100,8 +100,14 @@ func TestAuthMethod_Create(t *testing.T) {
 				clientId:     "eve_rp",
 				clientSecret: ClientSecret("rp-secret"),
 			},
-			wantErr:   true,
-			wantIsErr: errors.InvalidParameter,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.OperationalState = string(InactiveState)
+				a.ClientId = "eve_rp"
+				a.ClientSecret = "rp-secret"
+				return &a
+			}(),
 		},
 		{
 			name: "empty-scope-id",
