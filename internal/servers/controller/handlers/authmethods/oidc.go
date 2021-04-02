@@ -223,7 +223,7 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 		}
 	default:
-		badFields["command"] = "Invalid command for this auth method type."
+		badFields[commandField] = "Invalid command for this auth method type."
 	}
 
 	if len(badFields) > 0 {

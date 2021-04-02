@@ -27,6 +27,7 @@ const (
 	// password field names
 	loginNameField = "login_name"
 	passwordField  = "password"
+	loginCommand   = "login"
 )
 
 var pwMaskManager handlers.MaskManager
@@ -187,10 +188,10 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	}
 	if req.GetCommand() == "" {
 		// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
-		req.Command = "login"
+		req.Command = loginCommand
 	}
-	if req.Command != "login" {
-		badFields["command"] = "Invalid command for this auth method type."
+	if req.Command != loginCommand {
+		badFields[commandField] = "Invalid command for this auth method type."
 	}
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {

@@ -33,6 +33,7 @@ import (
 
 const (
 	// general auth method field names
+	commandField      = "command"
 	versionField      = "version"
 	scopeIdField      = "scope_id"
 	typeField         = "type"
