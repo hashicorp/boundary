@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/iam"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +19,7 @@ func TestJobWorkflow(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
 
@@ -28,6 +31,7 @@ func TestJobWorkflow(t *testing.T) {
 
 	job, err = repo.CreateJob(context.Background(), job)
 	assert.NoError(err)
+	require.NotNil(job)
 	require.NotEmpty(job.PrivateId)
 
 	run, err := repo.FetchWork(context.Background(), server.PrivateId)
