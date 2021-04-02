@@ -114,7 +114,7 @@ func TestToken_New(t *testing.T) {
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
 
-			rows, err2 := rw.Exec(ctx, insertToken, got.valuesForInsert())
+			rows, err2 := rw.Exec(ctx, insertTokenQuery, got.valuesForInsert())
 			assert.Equal(1, rows)
 			assert.NoError(err2)
 

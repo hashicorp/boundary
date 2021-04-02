@@ -1,7 +1,7 @@
 package vault
 
 const (
-	insertToken = `
+	insertTokenQuery = `
 insert into credential_vault_token (
   token_sha256, -- $1
   token, -- $2
