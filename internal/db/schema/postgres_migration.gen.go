@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2090,
+		binarySchemaVersion: 2100,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,6 +4987,58 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
+			2100: []byte(`
+-- auth_password_method_with_is_primary is useful for reading a password auth
+-- method with a bool to determine if it's the scope's primary auth method.
+create view auth_password_method_with_is_primary as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,    
+  am.public_id,
+  am.scope_id,
+  am.password_conf_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.min_login_name_length,
+  am.min_password_length
+from 
+  auth_password_method am
+  left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
+comment on view auth_password_method_with_is_primary is
+'password auth method with an is_primary_auth_method bool';
+
+create rule auth_password_method_ins as on insert to auth_password_method_with_is_primary
+  do instead
+  insert into auth_password_method (
+      public_id,
+      scope_id,
+      password_conf_id,
+      name,
+      description,
+      create_time,
+      update_time,
+      version,
+      min_login_name_length,
+      min_password_length
+  )
+  values (
+      new.public_id,
+      new.scope_id,
+      new.password_conf_id,
+      new.name,
+      new.description,
+      new.create_time,
+      new.update_time,
+      new.version,
+      new.min_login_name_length,
+      new.min_password_length
+  );
+`),
 			2080: []byte(`
 -- log_migration entries represent logs generated during migrations
 create table log_migration(
@@ -5555,46 +5607,6 @@ insert into oplog_ticket (name, version)
 values
   ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
   ('auth_oidc_account', 1);
-
-
--- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
--- with its associated value objects (algs, callbacks, auds, certs) as columns
--- with | delimited values.  The use of the postgres string_agg(...) to
--- aggregate the value objects into a column works because we are only pulling
--- in one column from the associated tables and that value is part of the
--- primary key and unique.  This view will make things like recursive listing of
--- oidc auth methods fairly straightforward to implement but the oidc repo. 
-create view oidc_auth_method_with_value_obj as
-select 
-  am.public_id,
-  am.scope_id,
-  am.name,
-  am.description, 
-  am.create_time,
-  am.update_time,
-  am.version,
-  am.state,
-  am.disable_discovered_config_validation,
-  am.discovery_url,
-  am.client_id,
-  am.client_secret,
-  am.client_secret_hmac,
-  am.key_id,
-  am.max_age,
-  -- the string_agg(..) column will be null if there are no associated value objects
-  string_agg(distinct alg.signing_alg_name, '|') as algs, 
-  string_agg(distinct cb.callback_url, '|') as callbacks, 
-  string_agg(distinct aud.aud_claim, '|') as auds, 
-  string_agg(distinct cert.certificate, '|') as certs
-from 	
-	auth_oidc_method am 
-  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
-  left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
-  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id 
-  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
-group by am.public_id;
-comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
 `),
 			2085: []byte(`
 -- auth_token_status_enm entries define the possible auth token
@@ -5870,6 +5882,52 @@ create trigger
   delete_auth_method_subtype
 after delete on auth_password_method 
   for each row execute procedure delete_auth_method_subtype();
+`),
+			2095: []byte(`
+-- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
+-- with its associated value objects (algs, callbacks, auds, certs) as columns
+-- with | delimited values.  The use of the postgres string_agg(...) to
+-- aggregate the value objects into a column works because we are only pulling
+-- in one column from the associated tables and that value is part of the
+-- primary key and unique.  This view will make things like recursive listing of
+-- oidc auth methods fairly straightforward to implement for the oidc repo. 
+-- The view also includes an is_primary_auth_method bool
+create view oidc_auth_method_with_value_obj as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,
+  am.public_id,
+  am.scope_id,
+  am.name,
+  am.description, 
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.state,
+  am.disable_discovered_config_validation,
+  am.discovery_url,
+  am.client_id,
+  am.client_secret,
+  am.client_secret_hmac,
+  am.key_id,
+  am.max_age,
+  -- the string_agg(..) column will be null if there are no associated value objects
+  string_agg(distinct alg.signing_alg_name, '|') as algs, 
+  string_agg(distinct cb.callback_url, '|') as callbacks, 
+  string_agg(distinct aud.aud_claim, '|') as auds, 
+  string_agg(distinct cert.certificate, '|') as certs
+from 	
+  auth_oidc_method am 
+  left outer join iam_scope               s     on am.public_id = s.primary_auth_method_id 
+  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+  left outer join auth_oidc_callback_url  cb    on am.public_id = cb.oidc_method_id 
+  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id 
+  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id 
+group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
+comment on view oidc_auth_method_with_value_obj is
+'oidc auth method with its associated value objects (algs, callbacks, auds, certs) as columns with | delimited values';
 `),
 		},
 	}
