@@ -31,8 +31,8 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithOrderByVersion(true))
 		testOpts := getDefaultOptions()
-		testOpts.withOrderByVersion = true
-		testOpts.ascending = true
+		testOpts.withOrderByVersion.enable = true
+		testOpts.withOrderByVersion.ascending = true
 		assert.Equal(opts, testOpts)
 	})
 }

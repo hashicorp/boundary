@@ -53,8 +53,8 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrderByVersion {
-		if opts.ascending {
+	if opts.withOrderByVersion.enable {
+		if opts.withOrderByVersion.ascending {
 			dbOpts = append(dbOpts, db.WithOrder("version asc"))
 		} else {
 			dbOpts = append(dbOpts, db.WithOrder("version desc"))
