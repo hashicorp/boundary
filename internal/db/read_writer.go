@@ -24,6 +24,21 @@ const (
 	DefaultLimit = 10000
 )
 
+// OrderBy defines an enum type for declaring a column's order by criteria.
+type OrderBy int
+
+const (
+	// UnknownOrderBy would designate an unknown ordering of the column, which
+	// is the standard ordering for any select without an order by clause.
+	UnknownOrderBy = iota
+
+	// AscendingOrderBy would designate ordering the column in ascending order.
+	AscendingOrderBy
+
+	// DescendingOrderBy would designate ordering the column in decending order.
+	DescendingOrderBy
+)
+
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupById will lookup a resource by its primary key id, which must be
