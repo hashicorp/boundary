@@ -74,7 +74,7 @@ func (c *ClientCertificate) SetTableName(n string) {
 
 func (c *ClientCertificate) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-type": []string{"client-certificate"},
+		"resource-type": []string{"credential-vault-client-certificate"},
 		"op-type":       []string{op.String()},
 	}
 	if c.StoreId != "" {
