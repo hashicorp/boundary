@@ -6,7 +6,7 @@ const fetchWorkQuery = `
 	FROM
 	  job j
 	WHERE
-	  next_scheduled_run <= current_timestamp
+	  next_scheduled_run <= CURRENT_TIMESTAMP
 	  AND NOT EXISTS (
 		SELECT
 		FROM
