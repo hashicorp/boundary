@@ -35,9 +35,28 @@ func TestCredentialStore_New(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "blank-scope-id",
+			name: "missing-scope-id",
 			args: args{
-				scopeId: "",
+				vaultAddress: "https://vault.consul.service",
+				token:        "token",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "missing-vault-address",
+			args: args{
+				scopeId: scope.PublicId,
+				token:   "token",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "missing-vault-token",
+			args: args{
+				scopeId:      scope.PublicId,
+				vaultAddress: "https://vault.consul.service",
 			},
 			want:    nil,
 			wantErr: true,
