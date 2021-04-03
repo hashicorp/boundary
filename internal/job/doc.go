@@ -14,7 +14,7 @@
 // Repository
 //
 // A repository provides methods for creating, updating, retrieving, and
-// deleting Jobs, it also provides methods for fetching, checkpoint and ending JobRuns.
+// deleting Jobs. It also provides methods for fetching, checkpoint and ending JobRuns.
 // A new repository should be created for each transaction. For example:
 //
 //  var wrapper wrapping.Wrapper
