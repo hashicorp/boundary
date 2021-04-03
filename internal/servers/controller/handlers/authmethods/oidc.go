@@ -26,11 +26,9 @@ const (
 	tokenCommand    = "token"
 
 	// start request/response fields
-	authUrlField                = "auth_url"
-	tokenUrlField               = "token_url"
-	tokenIdField                = "token_id"
-	roundtripPayloadField       = "roundtrip_payload"
-	cachedRoundtripPayloadField = "__cached_roundtrip_payload__"
+	authUrlField  = "auth_url"
+	tokenUrlField = "token_url"
+	tokenIdField  = "token_id"
 
 	// field names
 	issuerField                            = "attributes.issuer"
@@ -168,9 +166,13 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	var opts []oidc.Option
-	if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
-		if val, ok := req.GetAttributes().GetFields()[cachedRoundtripPayloadField]; ok {
-			opts = append(opts, oidc.WithRoundtripPayload(val.GetStringValue()))
+	if req.GetAttributes() != nil {
+		attrs := new(pbs.OidcStartAttributes)
+		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+			return nil, errors.New(errors.InvalidParameter, op, "error parsing request attributes")
+		}
+		if attrs.GetCachedRoundtripPayload() != "" {
+			opts = append(opts, oidc.WithRoundtripPayload(attrs.GetCachedRoundtripPayload()))
 		}
 	}
 
@@ -199,20 +201,32 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 
 	switch req.GetCommand() {
 	case startCommand:
-		if req.GetAttributes() != nil && req.GetAttributes().GetFields() != nil {
-			fields := req.GetAttributes().GetFields()
-			if val, ok := fields[roundtripPayloadField]; ok {
-				structVal := val.GetStructValue()
-				if structVal != nil {
-					m, err := json.Marshal(structVal)
-					if err != nil {
-						// We don't know what's in this payload so we swallow the
-						// error, as it could be something sensitive.
-						badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
-					} else {
-						// Cache for later
-						fields[cachedRoundtripPayloadField] = structpb.NewStringValue(string(m))
-					}
+		if req.GetAttributes() != nil {
+			attrs := new(pbs.OidcStartAttributes)
+			if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+				badFields[attributesField] = "Could not be parsed, or contains invalid fields."
+				break
+			}
+
+			// Ensure we pay no attention to cache information provided by the client
+			attrs.CachedRoundtripPayload = ""
+
+			payload := attrs.GetRoundtripPayload()
+			if payload == nil {
+				break
+			}
+			m, err := json.Marshal(payload.AsMap())
+			if err != nil {
+				// We don't know what's in this payload so we swallow the
+				// error, as it could be something sensitive.
+				badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
+			} else {
+				// Cache for later
+				attrs.CachedRoundtripPayload = string(m)
+				req.Attributes, err = handlers.ProtoToStruct(attrs)
+				if err != nil {
+					// TODO: Logging, when we have a logger
+					return fmt.Errorf("unable to convert map back to proto")
 				}
 			}
 		}
