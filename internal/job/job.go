@@ -12,6 +12,8 @@ const (
 	DefaultJobTableName = "job"
 )
 
+// Job represents work that should be run at a predetermined time and needs to be synchronized
+// across servers to ensure that one and only one instance of a job is running at any given time.
 type Job struct {
 	*store.Job
 	tableName string `gorm:"-"`

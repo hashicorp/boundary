@@ -14,6 +14,7 @@ const (
 	DefaultJobRunTableName = "job_run"
 )
 
+// JobRun represents an instance of a job that is either actively running or has already completed.
 type JobRun struct {
 	*store.JobRun
 	tableName string `gorm:"-"`

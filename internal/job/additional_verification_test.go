@@ -68,7 +68,7 @@ func TestJobWorkflow(t *testing.T) {
 	job.NextScheduledRun = testZeroTime
 	job, count, err = repo.UpdateJob(context.Background(), job, []string{"NextScheduledRun"})
 
-	// Now that next scheduled time is in past request for work should return a JobRun
+	// Now that next scheduled time is in past, a request for work should return a JobRun
 	newRun, err = repo.FetchWork(context.Background(), server.PrivateId)
 	assert.NoError(err)
 	require.NotNil(newRun)
