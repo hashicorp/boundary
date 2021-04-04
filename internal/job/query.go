@@ -1,43 +1,43 @@
 package job
 
 const fetchWorkQuery = `
-	SELECT
+	select
 	  private_id
-	FROM
+	from
 	  job j
-	WHERE
-	  next_scheduled_run <= CURRENT_TIMESTAMP
-	  AND NOT EXISTS (
-		SELECT
-		FROM
+	where
+	  next_scheduled_run <= current_timestamp
+	  and not exists (
+		select
+		from
 		  job_run
-		WHERE
+		where
 		  job_id = j.private_id
-		  AND status = 'running'
+		  and status = 'running'
 	  )
-	ORDER BY
-	  next_scheduled_run ASC
-	LIMIT 1 
-	FOR UPDATE
-	SKIP LOCKED;
+	order by
+	  next_scheduled_run asc
+	limit 1 
+	for update
+	skip locked;
 `
 
 const setNextScheduleRunQuery = `
-	UPDATE
+	update
 	  job
-	SET
+	set
 	  next_scheduled_run = ?
-	WHERE
+	where
 	  private_id = ?;
 `
 
 const endJobRunQuery = `
-	UPDATE
+	update
 	  job_run
-	SET
+	set
 	  status = ?,
-	  end_time = CURRENT_TIMESTAMP
-	WHERE
+	  end_time = current_timestamp
+	where
 	  private_id = ?
-	  AND status = 'running';
+	  and status = 'running';
 `

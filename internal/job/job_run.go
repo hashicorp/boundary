@@ -26,7 +26,7 @@ type JobRun struct {
 //
 // • serverId is the private_id of the server running the job.
 //
-// WithJobRunStatus() is the only valid option, if not provided
+// WithStatus() is the only valid option, if not provided
 // the run defaults to a status of running.
 func NewJobRun(jobId, serverId string, opt ...Option) (*JobRun, error) {
 	const op = "job.NewJobRun"
@@ -38,16 +38,16 @@ func NewJobRun(jobId, serverId string, opt ...Option) (*JobRun, error) {
 	}
 
 	opts := getOpts(opt...)
-	runStatus := opts.withJobRunStatus
-	if !isValidRunStatus(runStatus) {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid run status: %v", runStatus))
+	status := opts.withStatus
+	if !status.isValidRunStatus() {
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid run status: %v", status))
 	}
 
 	run := &JobRun{
 		JobRun: &store.JobRun{
 			JobId:    jobId,
 			ServerId: serverId,
-			Status:   runStatus,
+			Status:   status.String(),
 		},
 	}
 	return run, nil

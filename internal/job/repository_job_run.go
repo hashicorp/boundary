@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -170,15 +170,15 @@ func (r *Repository) CheckpointJobRun(ctx context.Context, run *JobRun, fieldMas
 // or interrupted), any future calls to EndJobRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) EndJobRun(ctx context.Context, privateId, status string, nextScheduledRun *timestamp.Timestamp, _ ...Option) error {
+func (r *Repository) EndJobRun(ctx context.Context, privateId string, status Status, nextScheduledRun time.Time, _ ...Option) error {
 	const op = "job.(Repository).EndJobRun"
 	if privateId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing private id")
 	}
-	if !isFinalRunStatus(status) {
+	if !status.isFinalRunStatus() {
 		return errors.New(errors.InvalidParameter, op, "run status must be a final status (completed, failed or interrupted)")
 	}
-	if nextScheduledRun == nil || nextScheduledRun.Timestamp == nil {
+	if nextScheduledRun.IsZero() {
 		return errors.New(errors.InvalidParameter, op, "missing next scheduled run")
 	}
 

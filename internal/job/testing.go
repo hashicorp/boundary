@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -17,10 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var (
-	testZeroTime   = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{}}
-	testFutureTime = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
-)
+var testZeroTime = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ...Option) *Job {
 	t.Helper()
@@ -39,7 +35,7 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ..
 	return job
 }
 
-func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, status string) *JobRun {
+func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, status Status) *JobRun {
 	t.Helper()
 	require := require.New(t)
 
@@ -49,7 +45,7 @@ func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, status string) *Jo
 		JobRun: &store.JobRun{
 			JobId:    jId,
 			ServerId: cId,
-			Status:   status,
+			Status:   status.String(),
 		},
 	}
 

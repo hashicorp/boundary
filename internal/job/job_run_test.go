@@ -55,7 +55,7 @@ func TestJobRun_New(t *testing.T) {
 				serverId: "test-server",
 			},
 			opts: []Option{
-				WithJobRunStatus("bad-status"),
+				WithStatus("bad-status"),
 			},
 			want:        nil,
 			wantErr:     true,
@@ -72,7 +72,7 @@ func TestJobRun_New(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    "job_1234567890",
 					ServerId: "test-server",
-					Status:   string(Running),
+					Status:   Running.String(),
 				},
 			},
 		},
@@ -83,13 +83,13 @@ func TestJobRun_New(t *testing.T) {
 				serverId: "test-server",
 			},
 			opts: []Option{
-				WithJobRunStatus(Completed),
+				WithStatus(Completed),
 			},
 			want: &JobRun{
 				JobRun: &store.JobRun{
 					JobId:    "job_1234567890",
 					ServerId: "test-server",
-					Status:   string(Completed),
+					Status:   Completed.String(),
 				},
 			},
 		},

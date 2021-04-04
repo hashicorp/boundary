@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,8 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal("testCode", got.Code)
 	assert.Equal(testZeroTime.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
 
-	job1 := testJob(t, conn, "testJob1", "testCode1", "testDescription1", WithNextScheduledRun(testFutureTime))
+	nextRun := time.Now().Add(time.Hour)
+	job1 := testJob(t, conn, "testJob1", "testCode1", "testDescription1", WithNextScheduledRun(nextRun))
 	require.NotNil(job1)
 
 	var got1 Job
@@ -35,7 +37,7 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal("testJob1", got1.Name)
 	assert.Equal("testDescription1", got1.Description)
 	assert.Equal("testCode1", got1.Code)
-	assert.Equal(testFutureTime.Timestamp.GetSeconds(), got1.NextScheduledRun.Timestamp.GetSeconds())
+	assert.Equal(nextRun.Unix(), got1.NextScheduledRun.Timestamp.GetSeconds())
 }
 
 func Test_TestJobRun(t *testing.T) {
@@ -59,7 +61,7 @@ func Test_TestJobRun(t *testing.T) {
 	assert.Equal(server.PrivateId, got.ServerId)
 	assert.Equal(job.PrivateId, got.JobId)
 	assert.NotEmpty(got.CreateTime)
-	assert.Equal(Running, got.Status)
+	assert.Equal(Running.String(), got.Status)
 
 	run1 := testJobRun(t, conn, job.PrivateId, server.PrivateId, Completed)
 	require.NotNil(run1)
@@ -70,5 +72,5 @@ func Test_TestJobRun(t *testing.T) {
 	assert.Equal(server.PrivateId, got1.ServerId)
 	assert.Equal(job.PrivateId, got1.JobId)
 	assert.NotEmpty(got1.CreateTime)
-	assert.Equal(Completed, got1.Status)
+	assert.Equal(Completed.String(), got1.Status)
 }

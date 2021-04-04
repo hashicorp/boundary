@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -51,13 +52,14 @@ func TestJobWorkflow(t *testing.T) {
 	assert.NoError(err)
 	require.Nil(newRun)
 
-	err = repo.EndJobRun(context.Background(), run.PrivateId, Completed, testFutureTime)
+	nextRun := time.Now().Add(time.Hour)
+	err = repo.EndJobRun(context.Background(), run.PrivateId, Completed, nextRun)
 	assert.NoError(err)
 
 	job, err = repo.LookupJob(context.Background(), job.PrivateId)
 	assert.NoError(err)
 	require.NotNil(job)
-	assert.Equal(testFutureTime.Timestamp.GetSeconds(), job.NextScheduledRun.Timestamp.GetSeconds())
+	assert.Equal(nextRun.Unix(), job.NextScheduledRun.Timestamp.GetSeconds())
 
 	// The only available job has a next run in the future, a request for work should return nil
 	newRun, err = repo.FetchWork(context.Background(), server.PrivateId)

@@ -1,8 +1,7 @@
 package job
 
 import (
-	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -19,27 +18,27 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withNextScheduledRun *timestamp.Timestamp
-	withJobRunStatus     string
+	withNextScheduledRun time.Time
+	withStatus           Status
 }
 
 func getDefaultOptions() options {
 	return options{
-		withNextScheduledRun: &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{}},
-		withJobRunStatus:     Running,
+		withNextScheduledRun: time.Unix(0, 0),
+		withStatus:           Running,
 	}
 }
 
 // WithNextScheduledRun provides an option to provide the next scheduled run time for a job.
-func WithNextScheduledRun(ts *timestamp.Timestamp) Option {
+func WithNextScheduledRun(ts time.Time) Option {
 	return func(o *options) {
 		o.withNextScheduledRun = ts
 	}
 }
 
-// WithJobRunStatus provides an option to provide the run status for the job run.
-func WithJobRunStatus(s string) Option {
+// WithStatus provides an option to provide the run status for the job run.
+func WithStatus(s Status) Option {
 	return func(o *options) {
-		o.withJobRunStatus = s
+		o.withStatus = s
 	}
 }

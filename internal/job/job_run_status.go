@@ -1,21 +1,23 @@
 package job
 
+type Status string
+
 const (
 	// Running represents that the job run is actively running on a server
-	Running = "running"
+	Running Status = "running"
 
 	// Completed represents that the job run has successfully finished
-	Completed = "completed"
+	Completed Status = "completed"
 
 	// Failed represent that the job run had an error during execution
-	Failed = "failed"
+	Failed Status = "failed"
 
 	// Interrupted represents that the job run was interrupted by a server
 	// other than the server running the job.
-	Interrupted = "interrupted"
+	Interrupted Status = "interrupted"
 )
 
-func isValidRunStatus(s string) bool {
+func (s Status) isValidRunStatus() bool {
 	switch s {
 	case Running, Completed, Failed, Interrupted:
 		return true
@@ -23,10 +25,14 @@ func isValidRunStatus(s string) bool {
 	return false
 }
 
-func isFinalRunStatus(s string) bool {
+func (s Status) isFinalRunStatus() bool {
 	switch s {
 	case Completed, Failed, Interrupted:
 		return true
 	}
 	return false
+}
+
+func (s Status) String() string {
+	return string(s)
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/job/store"
@@ -14,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_FetchWork(t *testing.T) {
@@ -122,15 +120,10 @@ func TestRepository_FetchWorkOrder(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 
-	time24Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-24 * time.Hour))}
-	time12Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-12 * time.Hour))}
-	time6Hours := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-6 * time.Hour))}
-	time1Hour := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-1 * time.Hour))}
-
 	// Regardless of order of adding jobs, fetching work should be based on order of earliest scheduled time
-	lastJob := testJob(t, conn, "future", "code", "description", WithNextScheduledRun(time1Hour))
-	firstJob := testJob(t, conn, "past", "code", "description", WithNextScheduledRun(time24Hours))
-	middleJob := testJob(t, conn, "current", "code", "description", WithNextScheduledRun(time12Hours))
+	lastJob := testJob(t, conn, "future", "code", "description", WithNextScheduledRun(time.Now().Add(-1*time.Hour)))
+	firstJob := testJob(t, conn, "past", "code", "description", WithNextScheduledRun(time.Now().Add(-24*time.Hour)))
+	middleJob := testJob(t, conn, "current", "code", "description", WithNextScheduledRun(time.Now().Add(-12*time.Hour)))
 
 	got, err := repo.FetchWork(context.Background(), server.PrivateId)
 	require.NoError(err)
@@ -138,7 +131,7 @@ func TestRepository_FetchWorkOrder(t *testing.T) {
 	assert.Equal(got.JobId, firstJob.PrivateId)
 
 	// End first job with time between last and middle
-	err = repo.EndJobRun(context.Background(), got.PrivateId, Completed, time6Hours)
+	err = repo.EndJobRun(context.Background(), got.PrivateId, Completed, time.Now().Add(-6*time.Hour))
 	require.NoError(err)
 
 	got, err = repo.FetchWork(context.Background(), server.PrivateId)
@@ -239,7 +232,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       makeNil(),
@@ -253,7 +246,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       makeEmbeddedNil(),
@@ -267,7 +260,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       deleteId(),
@@ -281,7 +274,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       combine(nonExistentId(), changeTotal(10)),
@@ -296,7 +289,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       changeTotal(10),
@@ -310,7 +303,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       changeTotal(10),
@@ -325,7 +318,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			chgFn:       changeTotal(10),
@@ -340,7 +333,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -351,7 +344,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 50,
 					TotalCount:     100,
 				},
@@ -364,7 +357,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -375,7 +368,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 0,
 					TotalCount:     200,
 				},
@@ -388,7 +381,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 0,
 					TotalCount:     100,
 				},
@@ -399,7 +392,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:          job.PrivateId,
 					ServerId:       server.PrivateId,
-					Status:         Running,
+					Status:         Running.String(),
 					CompletedCount: 50,
 					TotalCount:     200,
 				},
@@ -412,7 +405,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Completed,
+					Status:   Completed.String(),
 				},
 			},
 			masks:       []string{"TotalCount"},
@@ -427,7 +420,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Failed,
+					Status:   Failed.String(),
 				},
 			},
 			masks:       []string{"TotalCount"},
@@ -442,7 +435,7 @@ func TestRepository_CheckpointJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Interrupted,
+					Status:   Interrupted.String(),
 				},
 			},
 			masks:       []string{"TotalCount"},
@@ -514,9 +507,11 @@ func TestRepository_EndJobRun(t *testing.T) {
 	job := testJob(t, conn, "name", "code", "description")
 
 	type args struct {
-		status           string
-		nextScheduledRun *timestamp.Timestamp
+		status           Status
+		nextScheduledRun time.Time
 	}
+
+	futureTime := time.Now().Add(time.Hour)
 
 	tests := []struct {
 		name        string
@@ -538,7 +533,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			wantErr:     true,
@@ -551,7 +546,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			args: args{
@@ -567,7 +562,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			args: args{
@@ -583,7 +578,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			args: args{
@@ -599,12 +594,12 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Interrupted,
+					Status:   Interrupted.String(),
 				},
 			},
 			args: args{
 				status:           Completed,
-				nextScheduledRun: testFutureTime,
+				nextScheduledRun: futureTime,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
@@ -616,12 +611,12 @@ func TestRepository_EndJobRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running,
+					Status:   Running.String(),
 				},
 			},
 			args: args{
 				status:           Completed,
-				nextScheduledRun: testFutureTime,
+				nextScheduledRun: futureTime,
 			},
 		},
 	}
@@ -663,12 +658,12 @@ func TestRepository_EndJobRun(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(updatedRun)
 			assert.NotEmpty(updatedRun.EndTime)
-			assert.Equal(tt.args.status, updatedRun.Status)
+			assert.Equal(tt.args.status.String(), updatedRun.Status)
 
 			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobId)
 			assert.NoError(err)
 			require.NotNil(updatedJob)
-			assert.Equal(tt.args.nextScheduledRun.Timestamp.GetSeconds(), updatedJob.NextScheduledRun.Timestamp.GetSeconds())
+			assert.Equal(tt.args.nextScheduledRun.Unix(), updatedJob.NextScheduledRun.Timestamp.GetSeconds())
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteJobRun(context.Background(), privateId)
@@ -688,7 +683,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		err = repo.EndJobRun(context.Background(), "fake-run-id", Completed, testFutureTime)
+		err = repo.EndJobRun(context.Background(), "fake-run-id", Completed, futureTime)
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
 		assert.Equal("job.(Repository).EndJobRun: job run \"fake-run-id\" not found: db.LookupById: record not found, search issue: error #1100", err.Error())
@@ -711,7 +706,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 		JobRun: &store.JobRun{
 			JobId:    job1.PrivateId,
 			ServerId: server.PrivateId,
-			Status:   Running,
+			Status:   Running.String(),
 		},
 	}
 

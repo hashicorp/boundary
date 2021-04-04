@@ -40,7 +40,7 @@
 //  repo, _ = job.NewRepository(db, db, wrapper)
 //  run, _ = repo.CheckpointJobRun(ctx, run, []string{"TotalCount", "CompletedCount"})
 //
-//  nextJobRun = &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now())}
+//  nextJobRun = time.Now().Add(time.Hour)
 //
 //  repo, _ = job.NewRepository(db, db, wrapper)
 //  run, _ = repo.EndJobRun(ctx, run.PrivateId, job.Completed, nextJobRun)

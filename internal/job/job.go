@@ -1,10 +1,12 @@
 package job
 
 import (
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -49,7 +51,7 @@ func NewJob(name, code, description string, opt ...Option) (*Job, error) {
 			Name:             name,
 			Description:      description,
 			Code:             code,
-			NextScheduledRun: opts.withNextScheduledRun,
+			NextScheduledRun: &timestamp.Timestamp{Timestamp: timestamppb.New(opts.withNextScheduledRun)},
 		},
 	}
 	return job, nil

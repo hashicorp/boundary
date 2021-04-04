@@ -3,12 +3,15 @@ package job
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestJob_New(t *testing.T) {
@@ -22,6 +25,8 @@ func TestJob_New(t *testing.T) {
 		privateId   string
 		opts        []Option
 	}
+
+	futureTime := time.Now().Add(time.Hour)
 
 	tests := []struct {
 		name              string
@@ -137,7 +142,7 @@ func TestJob_New(t *testing.T) {
 				code:        "code",
 				description: "description",
 				opts: []Option{
-					WithNextScheduledRun(testFutureTime),
+					WithNextScheduledRun(futureTime),
 				},
 			},
 			want: &Job{
@@ -145,7 +150,7 @@ func TestJob_New(t *testing.T) {
 					Name:             "next-run-test",
 					Code:             "code",
 					Description:      "description",
-					NextScheduledRun: testFutureTime,
+					NextScheduledRun: &timestamp.Timestamp{Timestamp: timestamppb.New(futureTime)},
 				},
 			},
 		},
