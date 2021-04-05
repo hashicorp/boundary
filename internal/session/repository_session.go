@@ -210,8 +210,12 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		limit = fmt.Sprintf("limit %d", opts.withLimit)
 	}
 
-	if opts.withOrder != "" {
-		opts.withOrder = fmt.Sprintf("order by %s", opts.withOrder)
+	var withOrder string
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		withOrder = "order by create_time asc"
+	case db.DescendingOrderBy:
+		withOrder = "order by create_time"
 	}
 
 	var whereClause string
@@ -219,7 +223,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		whereClause = " and " + strings.Join(where, " and ")
 	}
 	q := sessionList
-	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
+	query := fmt.Sprintf(q, limit, whereClause, withOrder)
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {

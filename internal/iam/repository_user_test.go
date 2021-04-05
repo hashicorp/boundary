@@ -718,13 +718,13 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 		opt []Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		want      *User
-		want1     *authAccount
-		wantErr   bool
-		wantErrIs errors.Code
-		wantAssoc bool
+		name        string
+		args        args
+		want        *User
+		want1       *authAccount
+		wantErr     bool
+		wantErrCode errors.Code
+		wantAssoc   bool
 	}{
 		{
 			name: "simple",
@@ -746,8 +746,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{user: id}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -757,8 +757,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{accts: []string{id}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "already-properly-assoc",
@@ -781,8 +781,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "assoc-with-diff-user-withDisassociateOption",
@@ -794,8 +794,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-acct-id",
@@ -806,8 +806,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{id}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.RecordNotFound,
+			wantErr:     true,
+			wantErrCode: errors.RecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -830,7 +830,8 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 					return Ids{user: id, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 	}
 	for _, tt := range tests {
@@ -839,7 +840,7 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 			err := associateUserWithAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
 				return
 			}
 			require.NoError(err)
@@ -873,12 +874,12 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 		opt []Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		want      *User
-		want1     *authAccount
-		wantErr   bool
-		wantErrIs errors.Code
+		name        string
+		args        args
+		want        *User
+		want1       *authAccount
+		wantErr     bool
+		wantErrCode errors.Code
 	}{
 		{
 			name: "simple",
@@ -900,8 +901,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: id}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "missing-userId",
@@ -911,8 +912,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{accts: []string{id}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "already-properly-disassoc",
@@ -923,8 +924,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "assoc-with-diff-user",
@@ -936,8 +937,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-acct-id",
@@ -948,8 +949,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: u.PublicId, accts: []string{id}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.RecordNotFound,
+			wantErr:     true,
+			wantErrCode: errors.RecordNotFound,
 		},
 		{
 			name: "bad-user-id-not-associated-account",
@@ -960,8 +961,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: id, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr:   true,
-			wantErrIs: errors.InvalidParameter,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-user-id",
@@ -973,7 +974,8 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 					return Ids{user: id, accts: []string{a.PublicId}}
 				}(),
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 	}
 	for _, tt := range tests {
@@ -983,7 +985,7 @@ func TestRepository_dissociateUserWithAccount(t *testing.T) {
 			err := dissociateUserFromAccounts(context.Background(), kms, rw, rw, tt.args.Ids.user, tt.args.Ids.accts, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
 				return
 			}
 			require.NoError(err)
@@ -1023,10 +1025,10 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 		opt                 []Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		wantErr   bool
-		wantErrIs error
+		name        string
+		args        args
+		wantErr     bool
+		wantErrCode errors.Code
 	}{
 		{
 			name: "valid",
@@ -1061,7 +1063,8 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 					return ids
 				},
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-version",
@@ -1073,7 +1076,8 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: createAccountsFn,
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.MultipleRecords,
 		},
 		{
 			name: "zero-version",
@@ -1085,7 +1089,8 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: createAccountsFn,
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "no-accounts",
@@ -1093,7 +1098,8 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: func() []string { return nil },
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1113,9 +1119,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 			got, err := repo.AddUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
 				return
 			}
 			require.NoError(err)
@@ -1167,10 +1171,10 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 		opt                 []Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		wantErr   bool
-		wantErrIs error
+		name        string
+		args        args
+		wantErr     bool
+		wantErrCode errors.Code
 	}{
 		{
 			name: "valid",
@@ -1192,7 +1196,8 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 					return ids
 				},
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-version",
@@ -1204,7 +1209,8 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: createAccountsFn,
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.MultipleRecords,
 		},
 		{
 			name: "zero-version",
@@ -1216,7 +1222,8 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: createAccountsFn,
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "no-accounts",
@@ -1224,7 +1231,8 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 				userId:       user.PublicId,
 				accountIdsFn: func() []string { return nil },
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1243,9 +1251,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 			got, err := repo.DeleteUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
 				return
 			}
 			require.NoError(err)
@@ -1294,10 +1300,10 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 		opt                 []Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		wantErr   bool
-		wantErrIs error
+		name        string
+		args        args
+		wantErr     bool
+		wantErrCode errors.Code
 	}{
 		{
 			name: "valid",
@@ -1366,7 +1372,8 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 					return ids, ids
 				},
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
 		},
 		{
 			name: "bad-version",
@@ -1381,7 +1388,8 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 					return ids, ids
 				},
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.MultipleRecords,
 		},
 		{
 			name: "zero-version",
@@ -1396,7 +1404,8 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 					return ids, ids
 				},
 			},
-			wantErr: true,
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "no-accounts-no-changes",
@@ -1424,9 +1433,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			got, err := repo.SetUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrIs != nil {
-					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
-				}
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
 				return
 			}
 			require.NoError(err)

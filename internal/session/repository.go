@@ -61,8 +61,11 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrder != "" {
-		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
+	case db.DescendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time"))
 	}
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
 		return errors.Wrap(err, op)

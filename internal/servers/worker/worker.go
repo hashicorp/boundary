@@ -25,7 +25,7 @@ type Worker struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
-	started     ua.Bool
+	started     *ua.Bool
 
 	controllerStatusConn *atomic.Value
 	lastStatusSuccess    *atomic.Value
@@ -48,6 +48,7 @@ func New(conf *Config) (*Worker, error) {
 	w := &Worker{
 		conf:                  conf,
 		logger:                conf.Logger.Named("worker"),
+		started:               ua.NewBool(false),
 		controllerStatusConn:  new(atomic.Value),
 		lastStatusSuccess:     new(atomic.Value),
 		controllerResolver:    new(atomic.Value),

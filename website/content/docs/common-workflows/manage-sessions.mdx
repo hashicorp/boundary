@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Manage Sessions
-sidebar_title: Manage Sessions
 description: How to manage Boundary sessions
 ---
 
@@ -35,7 +34,6 @@ For more information regarding different ways to connect to a target behind Boun
 
 <Tabs>
 <Tab heading="CLI">
-
 
 View all sessions which Boundary has for the project `p_1234567890` by listing them.
 
@@ -90,7 +88,6 @@ Session information:
 </Tab>
 <Tab heading="Admin Console">
 
-
 1.  Navigate to a project, then to sessions.
 1.  View the session information provided there.
 
@@ -103,13 +100,11 @@ Session information:
 </Tab>
 </Tabs>
 
-
 ## Cancel a Session
 
 <Tabs>
 <Tab heading="CLI">
 To send a request to Boundary to cancel a session:
-
 
 ```bash
 $ boundary sessions cancel -id s_h7vBIhH5SZ
@@ -153,7 +148,6 @@ Boundary then cancels the session and move it into a "Terminated" state.
 </Tab>
 <Tab heading="Admin Console">
 
-
 1. Navigate to a project, then to sessions.
 1. Choose a session and its **Cancel** button.
 1. View the session status update from _canceling_ to _terminated_.
@@ -166,7 +160,6 @@ Boundary then cancels the session and move it into a "Terminated" state.
 </video>
 </Tab>
 </Tabs>
-
 
 ## Advanced Session Establishment
 
