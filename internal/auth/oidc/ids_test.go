@@ -4,14 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSetup(t *testing.T) {
-	docker.StartDbInDocker("postgres")
-}
 
 func Test_Ids(t *testing.T) {
 	t.Parallel()
