@@ -115,7 +115,7 @@ func TestRepository_ListConnection(t *testing.T) {
 				2222,
 			)
 		}
-		got, err := repo.ListConnections(context.Background(), session.PublicId, WithOrder("create_time asc"))
+		got, err := repo.ListConnections(context.Background(), session.PublicId, WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(wantCnt, len(got))
 
