@@ -330,7 +330,7 @@ func Test_Callback(t *testing.T) {
 			}
 			tp.SetExpectedSubject(tt.wantSubject)
 
-			info := map[string]string{}
+			info := map[string]interface{}{}
 			if tt.wantSubject != "" {
 				info["sub"] = tt.wantSubject
 			}
@@ -466,7 +466,7 @@ func Test_Callback(t *testing.T) {
 		wantSubject := "replay-attack-with-dup-state@example.com"
 		tp.SetExpectedSubject(wantSubject)
 
-		tp.SetUserInfoReply(map[string]string{"sub": wantSubject})
+		tp.SetUserInfoReply(map[string]interface{}{"sub": wantSubject})
 		tp.SetExpectedAuthNonce(testNonce)
 
 		// the first request should succeed.
