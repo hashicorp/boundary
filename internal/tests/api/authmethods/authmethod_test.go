@@ -58,6 +58,7 @@ func TestCrud(t *testing.T) {
 	// OIDC auth methods
 	u, err = amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
