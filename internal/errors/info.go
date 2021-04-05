@@ -80,6 +80,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "authentication attempt has expired",
 		Kind:    State,
 	},
+	AccountAlreadyAssociated: {
+		Message: "account already associated with another user",
+		Kind:    Parameter,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
