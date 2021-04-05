@@ -348,7 +348,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	out, err := repo.CreateAuthMethod(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create auth method"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -394,7 +394,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)

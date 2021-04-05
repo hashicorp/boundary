@@ -679,7 +679,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete target"))
 	}
 	return rows > 0, nil
 }
@@ -734,7 +734,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")

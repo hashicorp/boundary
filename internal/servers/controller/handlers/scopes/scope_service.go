@@ -362,7 +362,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	}
 	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to dlete scope"))
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete scope"))
 	}
 	return rows > 0, nil
 }

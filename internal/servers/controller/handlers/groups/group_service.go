@@ -325,7 +325,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete group"))
 	}
 	return rows > 0, nil
 }

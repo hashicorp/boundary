@@ -275,7 +275,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host catalog for creation: %v.", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for creation"))
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
