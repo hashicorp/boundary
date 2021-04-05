@@ -140,6 +140,7 @@ func TestGet(t *testing.T) {
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
@@ -350,9 +351,12 @@ func TestListOidc(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	amNoAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "noAccounts", "fido", oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
-	amSomeAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "someAccounts", "fido", oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
-	amOtherAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "otherAccounts", "fido", oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+	amNoAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "noAccounts", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.noaccounts.com")[0]), oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+	amSomeAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "someAccounts", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.someaccounts.com")[0]), oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+	amOtherAccounts := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "otherAccounts", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.otheraccounts.com")[0]), oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
 	var wantSomeAccounts []*pb.Account
 	for i := 0; i < 3; i++ {
@@ -490,6 +494,7 @@ func TestDelete(t *testing.T) {
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
@@ -812,6 +817,7 @@ func TestCreateOidc(t *testing.T) {
 	am := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
@@ -1388,6 +1394,7 @@ func TestUpdateOidc(t *testing.T) {
 	am := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 

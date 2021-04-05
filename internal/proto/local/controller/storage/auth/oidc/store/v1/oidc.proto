@@ -90,7 +90,7 @@ message AuthMethod {
 
   // api_url is the URLs prefix at which the boundary api is reachable. This value
   // is used by the auth method in the different steps of the auth flow.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"default:null"`
   string api_url = 160 [(custom_options.v1.mask_mapping) = { this: "ApiUrl" that: "attributes.api_url_prefix" }];
 
   // signing_algs are the signing algorithms allowed for an oidc auth method.

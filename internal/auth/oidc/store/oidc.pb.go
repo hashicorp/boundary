@@ -94,8 +94,8 @@ type AuthMethod struct {
 	MaxAge int32 `protobuf:"varint,150,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty" gorm:"default:null"`
 	// api_url is the URLs prefix at which the boundary api is reachable. This value
 	// is used by the auth method in the different steps of the auth flow.
-	// @inject_tag: `gorm:"not_null"`
-	ApiUrl string `protobuf:"bytes,160,opt,name=api_url,json=apiUrl,proto3" json:"api_url,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	ApiUrl string `protobuf:"bytes,160,opt,name=api_url,json=apiUrl,proto3" json:"api_url,omitempty" gorm:"default:null"`
 	// signing_algs are the signing algorithms allowed for an oidc auth method.
 	// These are Value Objects that will be stored as SigningAlg messages, and are
 	// operated on as a complete set.

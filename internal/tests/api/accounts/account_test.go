@@ -82,6 +82,7 @@ func TestListOidc(t *testing.T) {
 
 	amResult, err := amClient.Create(tc.Context(), "oidc", org.PublicId,
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
@@ -188,6 +189,7 @@ func TestCrudOidc(t *testing.T) {
 	amClient := authmethods.NewClient(client)
 	amResult, err := amClient.Create(tc.Context(), "oidc", "global",
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
@@ -327,6 +329,7 @@ func TestErrorsOidc(t *testing.T) {
 	amClient := authmethods.NewClient(client)
 	amResult, err := amClient.Create(tc.Context(), "oidc", "global",
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
