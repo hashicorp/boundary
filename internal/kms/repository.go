@@ -53,9 +53,13 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrder != "" {
-		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	switch opts.withOrderByVersion {
+	case db.AscendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("version asc"))
+	case db.DescendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("version desc"))
 	}
+
 	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
 }
 
