@@ -75,8 +75,9 @@ func (l *Lease) SetTableName(n string) {
 
 func (l *Lease) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-type": []string{"credential-vault-lease"},
-		"op-type":       []string{op.String()},
+		"resource-public-id": []string{l.PublicId},
+		"resource-type":      []string{"credential-vault-lease"},
+		"op-type":            []string{op.String()},
 	}
 	if l.LibraryId != "" {
 		metadata["library-id"] = []string{l.LibraryId}
