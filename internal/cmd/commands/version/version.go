@@ -51,10 +51,10 @@ func (c *Command) Run(args []string) int {
 		b, err := base.JsonFormatter{}.Format(verInfo)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
-			return 1
+			return base.CommandApiError
 		}
 		c.UI.Output(string(b))
-		return 0
+		return base.CommandSuccess
 	}
 
 	nonAttributeMap := map[string]interface{}{}
@@ -79,5 +79,5 @@ func (c *Command) Run(args []string) int {
 
 	c.UI.Output(base.WrapForHelpText(ret))
 
-	return 0
+	return base.CommandSuccess
 }

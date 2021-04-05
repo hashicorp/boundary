@@ -63,10 +63,11 @@ type RequestInfo struct {
 }
 
 type VerifyResults struct {
-	UserId      string
-	AuthTokenId string
-	Error       error
-	Scope       *scopes.ScopeInfo
+	UserId        string
+	AuthTokenId   string
+	Error         error
+	Scope         *scopes.ScopeInfo
+	Authenticated bool
 
 	// RoundTripValue can be set to allow the function performing authentication
 	// (often accompanied by lookup(s)) to return a result of that lookup to the
@@ -132,18 +133,50 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	opts := getOpts(opt...)
 
 	ret.Scope = new(scopes.ScopeInfo)
+
+	// In tests we often simply disable auth so we can test the service handlers
+	// without fuss
 	if v.requestInfo.DisableAuthEntirely {
+		const op = "auth.(disabled).lookupScope"
 		ret.Scope.Id = v.requestInfo.scopeIdOverride
 		if ret.Scope.Id == "" {
 			ret.Scope.Id = opts.withScopeId
 		}
-		switch {
-		case ret.Scope.Id == "global":
-			ret.Scope.Type = "global"
-		case strings.HasPrefix(ret.Scope.Id, scope.Org.Prefix()):
-			ret.Scope.Type = scope.Org.String()
-		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
-			ret.Scope.Type = scope.Project.String()
+		// Look up scope details to return. We can skip a lookup when using the
+		// global scope
+		switch ret.Scope.Id {
+		case "global":
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scope.Global.String(),
+				Type:          scope.Global.String(),
+				Name:          scope.Global.String(),
+				Description:   "Global Scope",
+				ParentScopeId: "",
+			}
+
+		default:
+			iamRepo, err := v.iamRepoFn()
+			if err != nil {
+				ret.Error = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+				return
+			}
+
+			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
+			if err != nil {
+				ret.Error = errors.Wrap(err, op)
+				return
+			}
+			if scp == nil {
+				ret.Error = errors.New(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
+				return
+			}
+			ret.Scope = &scopes.ScopeInfo{
+				Id:            scp.GetPublicId(),
+				Type:          scp.GetType(),
+				Name:          scp.GetName(),
+				Description:   scp.GetDescription(),
+				ParentScopeId: scp.GetParentId(),
+			}
 		}
 		ret.UserId = v.requestInfo.userIdOverride
 		ret.Error = nil
@@ -175,7 +208,8 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	ret.AuthTokenId = v.requestInfo.PublicId
-	if !authResults.Allowed {
+	ret.Authenticated = authResults.Authenticated
+	if !authResults.Authorized {
 		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil
 			// TODO: Decide whether to remove this
@@ -407,7 +441,8 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	// At this point we don't need to look up grants since it's automatically allowed
 	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
-		aclResults.Allowed = true
+		aclResults.Authenticated = true
+		aclResults.Authorized = true
 		retErr = nil
 		return
 	}
@@ -442,6 +477,11 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	retAcl = perms.NewACL(parsedGrants...)
 	aclResults = retAcl.Allowed(*v.res, v.act)
+	// We don't set authenticated above because setting this but not authorized
+	// is used for further permissions checks, such as during recursive listing.
+	// So we want to make sure any code relying on that has the full set of
+	// grants successfully loaded.
+	aclResults.Authenticated = true
 	retErr = nil
 	return
 }
@@ -469,9 +509,11 @@ func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resourc
 
 	opts := getOpts(opt...)
 	res := opts.withResource
+	// If not passed in, use what's already been populated through verification
 	if res == nil {
 		res = r.v.res
 	}
+	// If this is being called directly we may not have a resource yet
 	if res == nil {
 		res = new(perms.Resource)
 	}
@@ -484,7 +526,7 @@ func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resourc
 
 	ret := make(action.ActionSet, 0, len(availableActions))
 	for _, act := range availableActions {
-		if r.v.acl.Allowed(*res, act).Allowed {
+		if r.v.acl.Allowed(*res, act).Authorized {
 			ret = append(ret, act)
 		}
 	}

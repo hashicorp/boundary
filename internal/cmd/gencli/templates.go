@@ -183,7 +183,7 @@ var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
-	"list": { "{{ kebabCase $input.Container }}-id" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
+	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
 	{{ end }}
 	{{ end }}
 }
@@ -208,7 +208,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if .HasExampleCliOutput }}
 	if os.Getenv("BOUNDARY_EXAMPLE_CLI_OUTPUT") != "" {
 		c.UI.Output(exampleOutput())
-		return 0
+		return base.CommandSuccess
 	}
 	{{ end }}
 
@@ -231,13 +231,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 
 	{{ if .HasId }}
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") && c.FlagId == "" {
 			c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-			return 1
+			return base.CommandUserError
 	}
 	{{ end }}
 
@@ -249,14 +249,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		case "create":
 			if c.Flag{{ .Container }}Id == "" {
 				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
-				return 1
+				return base.CommandUserError
 			}
 		{{ end }}
 		{{ if hasAction .StdActions "list" }}
 		case "list":
 			if c.Flag{{ .Container }}Id == "" {
 				c.PrintCliError(errors.New("{{ .Container }} ID must be passed in via -{{ kebabCase .Container }}-id or BOUNDARY_{{ envCase .Container }}_ID"))
-				return 1
+				return base.CommandUserError
 			}
 		{{ end }}
 		}
@@ -265,7 +265,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	{{ .Pkg }}Client := {{ .Pkg }}.NewClient(client)
 
@@ -296,6 +296,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, {{ .Pkg }}.WithFilter(c.FlagFilter))
+	}
+
 	{{ if .HasScopeName }}
 	switch c.FlagScopeName {
 	case "":
@@ -319,8 +323,8 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
-	if ret := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, &opts); !ok {
+		return base.CommandUserError
 	}
 
 	{{ if hasAction .StdActions "delete" }}
@@ -365,19 +369,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -399,7 +403,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			c.UI.Output(output)
 		}
 
-		return 0
+		return base.CommandSuccess
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
@@ -416,14 +420,16 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 				for i, v := range listedItems {
 					items[i] = v
 				}
-				return c.PrintJsonItems(listResult, items)
+				if ok := c.PrintJsonItems(listResult, items); !ok {
+					return base.CommandCliError
+				}
 			}
 
 		case "table":
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
-		return 0
+		return base.CommandSuccess
 	{{ end }}
 	{{ end }}
 	}
@@ -434,10 +440,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return base.CommandCliError
+		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (
@@ -447,7 +455,7 @@ var (
 	extra{{ camelCase .SubActionPrefix }}ActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
-	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) int { return 0 }
+	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *[]{{ .Pkg }}.Option) bool { return true }
 	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

@@ -77,13 +77,25 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.Authenticated {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.User, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListUsersResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)

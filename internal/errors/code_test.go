@@ -98,6 +98,21 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: TooShort,
 		},
 		{
+			name: "AccountAlreadyAssociated",
+			c:    AccountAlreadyAssociated,
+			want: AccountAlreadyAssociated,
+		},
+		{
+			name: "InternalError",
+			c:    Internal,
+			want: Internal,
+		},
+		{
+			name: "Forbidden",
+			c:    Forbidden,
+			want: Forbidden,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,

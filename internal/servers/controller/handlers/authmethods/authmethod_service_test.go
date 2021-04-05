@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -25,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -76,8 +76,9 @@ func TestGet(t *testing.T) {
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
-			Id:   o.GetPublicId(),
-			Type: o.GetType(),
+			Id:            o.GetPublicId(),
+			Type:          o.GetType(),
+			ParentScopeId: scope.Global.String(),
 		},
 		AuthorizedActions:           []string{"read", "update", "delete", "authenticate"},
 		AuthorizedCollectionActions: authorizedCollectionActions,
@@ -125,7 +126,7 @@ func TestGet(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -162,7 +163,7 @@ func TestList(t *testing.T) {
 			ScopeId:     oWithAuthMethods.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -181,7 +182,7 @@ func TestList(t *testing.T) {
 			ScopeId:     oWithOtherAuthMethods.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -251,7 +252,7 @@ func TestList(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -316,7 +317,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -352,9 +353,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthMethodRequest{
 		Id: am.GetPublicId(),
 	}
-	_, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
+	_, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }
@@ -377,8 +378,7 @@ func TestCreate(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultCreated := defaultAm.GetCreateTime().GetTimestamp()
 
 	cases := []struct {
 		name string
@@ -403,7 +403,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()},
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -432,7 +432,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -458,7 +458,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -467,7 +467,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 				Type:        "password",
 			}},
 			res: nil,
@@ -477,7 +477,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 				Type:        "password",
 			}},
 			res: nil,
@@ -516,7 +516,7 @@ func TestCreate(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
-			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetItem().GetScopeId())), tc.req)
+			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -527,13 +527,11 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AuthMethodPrefix+"_"))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
 				// Verify it is a auth_method created after the test setup's default auth_method
-				assert.True(gotCreateTime.After(defaultCreated), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
-				assert.True(gotUpdateTime.After(defaultCreated), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				assert.True(gotCreateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -565,10 +563,10 @@ func TestUpdate(t *testing.T) {
 	tested, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
-	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
-		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				Name:        wrapperspb.String("default"),
@@ -578,7 +576,7 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -806,7 +804,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.AuthMethod{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -819,7 +817,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.AuthMethod{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -918,7 +916,7 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.CreatedTime = am.GetCreatedTime()
 			}
 
-			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -930,12 +928,9 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
 
-				created, err := ptypes.Timestamp(am.GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
-
+				created := am.GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
@@ -1092,7 +1087,7 @@ func TestAuthenticate(t *testing.T) {
 			s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.request)
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
@@ -1148,7 +1143,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 
 	s, err := authmethods.NewService(kms, pwRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(err)
-	resp, err := s.Authenticate(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.AuthenticateRequest{
+	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{

@@ -28,6 +28,13 @@ import (
 )
 
 const (
+	CommandSuccess int = iota
+	CommandApiError
+	CommandCliError
+	CommandUserError
+)
+
+const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
@@ -77,6 +84,7 @@ type Command struct {
 	FlagHostCatalogId string
 	FlagVersion       int
 	FlagRecursive     bool
+	FlagFilter        string
 
 	client *api.Client
 }

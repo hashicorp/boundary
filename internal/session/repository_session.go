@@ -76,6 +76,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
+	newSession.KeyId = sessionWrapper.KeyID()
 
 	var returnedSession *Session
 	_, err = r.writer.DoTx(
@@ -145,7 +146,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 		return nil, nil, errors.Wrap(err, op)
 	}
 	if len(session.CtTofuToken) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(session.KeyId))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -209,8 +210,12 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		limit = fmt.Sprintf("limit %d", opts.withLimit)
 	}
 
-	if opts.withOrder != "" {
-		opts.withOrder = fmt.Sprintf("order by %s", opts.withOrder)
+	var withOrder string
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		withOrder = "order by create_time asc"
+	case db.DescendingOrderBy:
+		withOrder = "order by create_time"
 	}
 
 	var whereClause string
@@ -218,7 +223,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		whereClause = " and " + strings.Join(where, " and ")
 	}
 	q := sessionList
-	query := fmt.Sprintf(q, limit, whereClause, opts.withOrder)
+	query := fmt.Sprintf(q, limit, whereClause, withOrder)
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
@@ -384,15 +389,15 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 // * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
 // and returns it, along with it's states.  If the authorization fails, it
-// an error of ErrInvalidStateForOperation.
+// an error with Code InvalidSessionState.
 func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).AuthorizeConnection"
 	if sessionId == "" {
-		return nil, nil, nil, status.Errorf(codes.FailedPrecondition, "authorize connection: missing session id: %v", errors.ErrInvalidParameter)
+		return nil, nil, nil, errors.Wrap(status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
 	}
 	connectionId, err := newConnectionId()
 	if err != nil {
-		return nil, nil, nil, status.Errorf(codes.Internal, "authorize connection: %v", err)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
 
 	connection := AllocConnection()
@@ -405,13 +410,13 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		func(reader db.Reader, w db.Writer) error {
 			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId})
 			if err != nil {
-				return status.Errorf(codes.Internal, "unable to authorize connection %s: %v", sessionId, err)
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return status.Errorf(codes.PermissionDenied, "authorize connection: session %s is not authorized (not active, expired or connection limit reached): %v", sessionId, ErrInvalidStateForOperation)
+				return errors.Wrap(status.Errorf(codes.PermissionDenied, "session %s is not authorized (not active, expired or connection limit reached)", sessionId), op, errors.WithCode(errors.InvalidSessionState))
 			}
 			if err := reader.LookupById(ctx, &connection); err != nil {
-				return status.Errorf(codes.Internal, "authorize connection: failed for session %s: %v", sessionId, err)
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
 			}
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
 			if err != nil {
@@ -693,7 +698,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
 			if len(updatedSession.CtTofuToken) > 0 {
-				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(updatedSession.KeyId))
+				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 				}

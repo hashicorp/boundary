@@ -78,10 +78,10 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 	}
 }
 
-func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Option) int {
+func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Option) bool {
 	if c.Func == "create" && c.flagLoginName == "" {
 		c.UI.Error("Login Name must be passed in via -login-name")
-		return 1
+		return false
 	}
 
 	switch c.flagLoginName {
@@ -100,18 +100,18 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Opt
 			fmt.Print("\n")
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-				return 2
+				return false
 			}
 			fmt.Print("Please enter it one more time for confirmation: ")
 			confirmation, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-				return 2
+				return false
 			}
 			if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
 				c.UI.Error("Entered password and confirmation value did not match.")
-				return 2
+				return false
 			}
 			*opts = append(*opts, accounts.WithPasswordAccountPassword(strings.TrimSpace(value)))
 		default:
@@ -119,5 +119,5 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Opt
 		}
 	}
 
-	return 0
+	return true
 }

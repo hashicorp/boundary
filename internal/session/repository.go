@@ -61,8 +61,11 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		limit = opts.withLimit
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if opts.withOrder != "" {
-		dbOpts = append(dbOpts, db.WithOrder(opts.withOrder))
+	switch opts.withOrderByCreateTime {
+	case db.AscendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
+	case db.DescendingOrderBy:
+		dbOpts = append(dbOpts, db.WithOrder("create_time"))
 	}
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
 		return errors.Wrap(err, op)
@@ -117,7 +120,7 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				workingSession.KeyId = ""        // KeyId should not be returned in lists
 			} else {
 				if len(workingSession.CtTofuToken) > 0 {
-					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(workingSession.KeyId))
+					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase)
 					if err != nil {
 						return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 					}

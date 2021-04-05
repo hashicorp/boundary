@@ -114,12 +114,12 @@ func (c *StaticCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 
 	if strutil.StrListContains(flagsStaticMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return 1
+		return base.CommandUserError
 	}
 
 	var opts []hostsets.Option
@@ -129,7 +129,7 @@ func (c *StaticCommand) Run(args []string) int {
 		case "create":
 			if c.FlagHostCatalogId == "" {
 				c.PrintCliError(errors.New("HostCatalog ID must be passed in via -host-catalog-id or BOUNDARY_HOST_CATALOG_ID"))
-				return 1
+				return base.CommandUserError
 			}
 		}
 	}
@@ -137,7 +137,7 @@ func (c *StaticCommand) Run(args []string) int {
 	client, err := c.Client()
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %s", err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 	hostsetsClient := hostsets.NewClient(client)
 
@@ -157,6 +157,10 @@ func (c *StaticCommand) Run(args []string) int {
 		opts = append(opts, hostsets.WithDescription(c.FlagDescription))
 	}
 
+	if c.FlagFilter != "" {
+		opts = append(opts, hostsets.WithFilter(c.FlagFilter))
+	}
+
 	var version uint32
 
 	switch c.Func {
@@ -169,8 +173,8 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
-	if ret := extraStaticFlagsHandlingFunc(c, &opts); ret != 0 {
-		return ret
+	if ok := extraStaticFlagsHandlingFunc(c, &opts); !ok {
+		return base.CommandUserError
 	}
 
 	var result api.GenericResult
@@ -190,19 +194,19 @@ func (c *StaticCommand) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return 2
+		return base.CommandCliError
 	}
 
 	output, err := printCustomStaticActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 	if output {
-		return 0
+		return base.CommandSuccess
 	}
 
 	switch c.Func {
@@ -214,17 +218,19 @@ func (c *StaticCommand) Run(args []string) int {
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		return c.PrintJsonItem(result, item)
+		if ok := c.PrintJsonItem(result, item); !ok {
+			return base.CommandCliError
+		}
 	}
 
-	return 0
+	return base.CommandSuccess
 }
 
 var (
 	extraStaticActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
-	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *[]hostsets.Option) int { return 0 }
+	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *[]hostsets.Option) bool { return true }
 	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

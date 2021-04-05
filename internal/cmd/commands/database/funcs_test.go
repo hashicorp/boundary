@@ -60,7 +60,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name:          "bad_url",
 			urlProvider:   func() string { return "badurl" },
-			expectedCode:  1,
+			expectedCode:  2,
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
 		},
 		{
@@ -82,7 +82,7 @@ func TestMigrateDatabase(t *testing.T) {
 
 				return u
 			},
-			expectedCode:  1,
+			expectedCode:  2,
 			expectedError: "Unable to capture a lock on the database.\n",
 		},
 		{
@@ -116,14 +116,14 @@ func TestMigrateDatabase(t *testing.T) {
 				require.NoError(t, err)
 				return u
 			},
-			expectedCode:  1,
-			expectedError: "Database has already been initialized.  Please use 'boundary database\nmigrate'.\n",
+			expectedCode:   -1,
+			expectedOutput: "Database has already been initialized. Please use 'boundary database migrate'\nfor any upgrade needs.\n",
 		},
 		{
 			name:          "bad_url_require_fresh",
 			requireFresh:  true,
 			urlProvider:   func() string { return "badurl" },
-			expectedCode:  1,
+			expectedCode:  2,
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
 		},
 		{
@@ -146,7 +146,7 @@ func TestMigrateDatabase(t *testing.T) {
 
 				return u
 			},
-			expectedCode:  1,
+			expectedCode:  2,
 			expectedError: "Unable to capture a lock on the database.\n",
 		},
 	}

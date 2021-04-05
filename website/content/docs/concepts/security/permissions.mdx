@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Permissions
-sidebar_title: Permissions
 description: |-
   Boundary's permissions model
 ---
@@ -36,13 +35,6 @@ level action infers being granted all subactions. Thus, if a grant conveys
 `read`, it also matches the API actions `read` and `read:self`. However, if a
 grant conveys `read:self`, it will match the API action `read:self` but will not
 match `read`.
-
-Note that not all API subactions are available for grants. As an example, auth
-methods require one or more steps to perform authentication. These are separated
-into separate API actions based on the required workflow for that authentication
-mechanism, e.g. `authenticate:login`. However, the grant system does not
-currently expose subactions for the `authenticate` top level action, as it
-generally does not make sense to allow only one step out of many.
 
 ## Applicable Resource Types
 

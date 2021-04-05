@@ -297,7 +297,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
 		switch {
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
@@ -356,10 +356,10 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 		switch {
 		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "Password is too short."})
-		case errors.Is(err, password.ErrPasswordsEqual):
+		case errors.Match(errors.T(errors.PasswordsEqual), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
@@ -382,7 +382,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 		switch {
 		case errors.IsNotFoundError(err):
 			return nil, handlers.NotFoundErrorf("Account not found.")
-		case errors.Is(err, password.ErrTooShort):
+		case errors.Match(errors.T(errors.PasswordTooShort), err):
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}

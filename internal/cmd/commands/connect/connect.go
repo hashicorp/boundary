@@ -97,7 +97,7 @@ type Command struct {
 	listener           *net.TCPListener
 	listenerAddr       *net.TCPAddr
 	connsLeftCh        chan int32
-	connectionsLeft    atomic.Int32
+	connectionsLeft    *atomic.Int32
 	expiration         time.Time
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
@@ -266,7 +266,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 3
+		return base.CommandUserError
 	}
 
 	switch {
@@ -274,22 +274,22 @@ func (c *Command) Run(args []string) (retCode int) {
 		switch {
 		case c.flagTargetId != "":
 			c.PrintCliError(errors.New(`-target-id and -authz-token cannot both be specified`))
-			return 3
+			return base.CommandUserError
 		case c.flagTargetName != "":
 			c.PrintCliError(errors.New(`-target-name and -authz-token cannot both be specified`))
-			return 3
+			return base.CommandUserError
 		}
 	default:
 		if c.flagTargetId == "" &&
 			(c.flagTargetName == "" ||
 				(c.FlagScopeId == "" && c.FlagScopeName == "")) {
 			c.PrintCliError(errors.New("Target ID was not passed in, but no combination of target name and scope ID/name was passed in either"))
-			return 3
+			return base.CommandUserError
 		}
 		if c.flagTargetId != "" &&
 			(c.flagTargetName != "" || c.FlagScopeId != "" || c.FlagScopeName != "") {
 			c.PrintCliError(errors.New("Cannot specify a target ID and also other lookup parameters"))
-			return 3
+			return base.CommandUserError
 		}
 	}
 
@@ -311,9 +311,10 @@ func (c *Command) Run(args []string) (retCode int) {
 	tofuToken, err := base62.Random(20)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Could not derive random bytes for tofu token: %w", err))
-		return 2
+		return base.CommandCliError
 	}
 
+	c.connectionsLeft = atomic.NewInt32(0)
 	c.connsLeftCh = make(chan int32)
 
 	if c.flagListenAddr == "" {
@@ -322,7 +323,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	listenAddr := net.ParseIP(c.flagListenAddr)
 	if listenAddr == nil {
 		c.PrintCliError(fmt.Errorf("Could not successfully parse listen address of %s", c.flagListenAddr))
-		return 3
+		return base.CommandUserError
 	}
 
 	authzString := c.flagAuthzToken
@@ -332,18 +333,18 @@ func (c *Command) Run(args []string) (retCode int) {
 			authBytes, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("No authorization string was provided and encountered the following error attempting to read it from stdin: %w", err))
-				return 3
+				return base.CommandUserError
 			}
 			if len(authBytes) == 0 {
 				c.PrintCliError(errors.New("No authorization data read from stdin"))
-				return 3
+				return base.CommandUserError
 			}
 			authzString = string(authBytes)
 		}
 
 		if authzString == "" {
 			c.PrintCliError(errors.New("Authorization data was empty"))
-			return 3
+			return base.CommandUserError
 		}
 
 		if authzString[0] == '{' {
@@ -359,7 +360,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		client, err := c.Client()
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error creating API client: %s", err))
-			return 2
+			return base.CommandCliError
 		}
 		targetClient := targets.NewClient(client)
 
@@ -381,10 +382,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		if err != nil {
 			if apiErr := api.AsServerError(err); apiErr != nil {
 				c.PrintApiError(apiErr, "Error from controller when performing authorize-session action against given target")
-				return 1
+				return base.CommandApiError
 			}
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
-			return 2
+			return base.CommandCliError
 		}
 		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	}
@@ -392,22 +393,22 @@ func (c *Command) Run(args []string) (retCode int) {
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Unable to base58-decode authorization data: %w", err))
-		return 3
+		return base.CommandUserError
 	}
 	if len(marshaled) == 0 {
 		c.PrintCliError(errors.New("Zero length authorization information after decoding"))
-		return 3
+		return base.CommandUserError
 	}
 
 	c.sessionAuthzData = new(targetspb.SessionAuthorizationData)
 	if err := proto.Unmarshal(marshaled, c.sessionAuthzData); err != nil {
 		c.PrintCliError(fmt.Errorf("Unable to proto-decode authorization data: %w", err))
-		return 3
+		return base.CommandUserError
 	}
 
 	if len(c.sessionAuthzData.GetWorkerInfo()) == 0 {
 		c.PrintCliError(errors.New("No workers found in authorization string"))
-		return 3
+		return base.CommandUserError
 	}
 
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
@@ -416,12 +417,12 @@ func (c *Command) Run(args []string) (retCode int) {
 	parsedCert, err := x509.ParseCertificate(c.sessionAuthzData.Certificate)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Unable to decode mTLS certificate: %w", err))
-		return 3
+		return base.CommandUserError
 	}
 
 	if len(parsedCert.DNSNames) != 1 {
 		c.PrintCliError(fmt.Errorf("mTLS certificate has invalid parameters: %w", err))
-		return 3
+		return base.CommandUserError
 	}
 
 	c.expiration = parsedCert.NotAfter
@@ -461,7 +462,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	})
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error starting listening port: %w", err))
-		return 2
+		return base.CommandCliError
 	}
 
 	listenerCloseFunc := func() {
@@ -497,7 +498,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			out, err := json.Marshal(&sessInfo)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
-				return 2
+				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
 		}
@@ -572,7 +573,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if c.flagExec != "" {
 		c.connWg.Add(1)
-		c.execCmdReturnValue = new(atomic.Int32)
+		c.execCmdReturnValue = atomic.NewInt32(0)
 		go c.handleExec(passthroughArgs)
 	}
 
@@ -623,7 +624,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			out, err := json.Marshal(&termInfo)
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error marshaling termination information: %w", err))
-				return 2
+				return base.CommandCliError
 			}
 			c.UI.Output(string(out))
 		}

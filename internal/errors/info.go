@@ -72,6 +72,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	AccountAlreadyAssociated: {
+		Message: "account already associated with another user",
+		Kind:    Parameter,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -111,6 +115,14 @@ var errorCodeInfo = map[Code]Info{
 	GenCert: {
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
+	},
+	Internal: {
+		Message: "internal error",
+		Kind:    Other,
+	},
+	Forbidden: {
+		Message: "forbidden",
+		Kind:    Other,
 	},
 	CheckConstraint: {
 		Message: "constraint check failed",

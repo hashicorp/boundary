@@ -2,28 +2,100 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next (Unreleased)
+## Next
+
+### Deprecations/Changes
+
+* authentication: The `auth-methods/<id>:authenticate:login` action is
+  deprecated and will be removed in a few releases. (Yes, this was meant to
+  deprecate the `authenticate` action; apologies for going back on this!) To
+  better support future auth methods, and especially the potential for plugins,
+  rather than defining custom actions on the URL path the `authenticate` action
+  will consume both a map of parameters but also a `command` parameter that
+  specifies the type of command. This allows workflows that require multiple
+  steps, such as OIDC, to not require custom subactions. Additionally, the
+  `credentials` map in the `authenticate` action has been renamed `attributes`
+  to better match other types of resources. `credentials` will still work for
+  now but will be removed in a few releases. Finally, in the Go SDK, the
+  `Authenticate` function now requires a `command` value to be passed in.
+
+### New and Improved
+
+* server: When performing recursive listing, `list` action is not longer
+  required to be granted to the calling user. Instead, the given scope acts as
+  the root point (so only results under that scope will be shown), and `list`
+  grant is evaluated per-scope.
+  [PR](https://github.com/hashicorp/boundary/pull/1016)
+* database init: If the database is already initialized, return 0 as the exit
+  code. This matches how the `database migrate` command works.
+  [PR](https://github.com/hashicorp/boundary/pull/1033)
+
+### Bug Fixes
+
+* server: Roles for auto generated scopes are now generated at database init.
+  [PR](https://github.com/hashicorp/boundary/pull/996)
+
+## 0.1.8 (2021/03/10)
+
+### Known Issues
+
+These are specific known issues in the release that we feel are impactful enough
+to call out in this changelog. The full set of open issues is on GitHub.
+
+* cli: When authenticating, changing a password, or a couple of other specific
+  actions on the CLI, if the output format is specified as `json`, the command
+  will panic (after the API call executes). This is due to a preexisting bug
+  that was exposed by the JSON changes described in the changes section below.
+  Although most of our CLI-level tests operate on `json`-format output, because
+  our CLI-level tests use the token helper during execution, the authentication
+  test was using the normal table output since the output was ignored anyways.
+  As a result, our CLI tests did not catch this panic. Our apologies, and we
+  will fix this in the next release.
+* Initially Created Scopes: Starting in 0.1.6, When initial scopes are created
+  when executing `boundary database init`, the associated admin roles aren't
+  created. The intended behavior is to have a role which granted the auto
+  created admin the grant `"id=*;type=*;actions=*"` for each auto generated
+  scope.  To set your data to the intended state you can add a role for the
+  admin user in the generated scopes.  An outline of the steps to do this can
+  be found in this
+  [gist](https://gist.github.com/talanknight/98492dc68d894f67742086eb41fdb506).
+  This will be fixed in the next release.
 
 ### Changes/Deprecations
 
-All of these changes are from [PR
-962](https://github.com/hashicorp/boundary/pull/962):
-
-* api: A few functions have changed places. Notably, instead of `ResponseMap()`
-  and `ResponseBody()`, resources simply expose `Response()`. This higher-level
-  response object contains the map and body, and also exposes `StatusCode()` in
-  place of indivdidual resources.
+* sdk (Go API library): A few functions have changed places. Notably, instead of
+  `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
+  This higher-level response object contains the map and body, and also exposes
+  `StatusCode()` in place of indivdidual resources.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
+  [PR](https://github.com/hashicorp/boundary/pull/962)
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
+  [PR](https://github.com/hashicorp/boundary/pull/962)
+* cli: Error return codes have been standardized across CLI commands. An error
+  code of `1` indicates an error generated from the actual controller API; an
+  error code of `2` is an error encountered due to the CLI command's logic; and
+  an error code of `3` indicates an error that was caused due to user input to
+  the command. (There is some nuance sometimes whether an error is really due to
+  user input or not, but we attempt to be consistent.)
+  [PR](https://github.com/hashicorp/boundary/pull/976)
 
 ### New and Improved
 
+* list filtering: Listing now supports filtering results before being returned
+  to the user. The filtering takes place server side and uses boolean
+  expressions against the JSON representation of returned items. See [the
+  documentation](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing)
+  for more details. ([PR 1](https://github.com/hashicorp/boundary/pull/952))
+  ([PR 2](https://github.com/hashicorp/boundary/pull/957))
+  ([PR 3](https://github.com/hashicorp/boundary/pull/967))
 * server: Officially support reloading TLS parameters on `SIGHUP`. (This likely
   worked before but wasn't fully tested.)
   ([PR](https://github.com/hashicorp/boundary/pull/959))
@@ -31,10 +103,14 @@ All of these changes are from [PR
   tags](https://www.boundaryproject.io/docs/configuration/worker#tags) will be
   re-parsed and new values used
   ([PR](https://github.com/hashicorp/boundary/pull/959))
+* server: In addition to the existing `tls_min_version` listener configuration
+  value, `tls_max_version` is now supported. This should generally be left blank
+  but can be useful for situations where e.g. a load balancer has broken TLS 1.3
+  support, or does not support TLS 1.3 and flags it as a disallowed value.
 
 ## 0.1.7 (2021/02/16)
 
-*Note* This release fixes an upgrade issue affecting users on Postgres 11
+*Note:* This release fixes an upgrade issue affecting users on Postgres 11
 upgrading to 0.1.5 or 0.1.6 and makes a modification to the `boundary dev`
 environment. It is otherwise identical to 0.1.6; see the entry for that version
 for more details.

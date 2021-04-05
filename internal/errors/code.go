@@ -21,20 +21,21 @@ const (
 	Unknown Code = 0 // Unknown will be equal to a zero value for Codes
 
 	// General function errors are reserved Codes 100-999
-	InvalidParameter      Code = 100 // InvalidParameter represents an invalid parameter for an operation.
-	InvalidAddress        Code = 101 // InvalidAddress represents an invalid host address for an operation
-	InvalidPublicId       Code = 102 // InvalidPublicId represents an invalid public Id for an operation
-	InvalidFieldMask      Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
-	EmptyFieldMask        Code = 104 // EmptyFieldMask represents an empty field mask for an operation
-	KeyNotFound           Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
-	TicketAlreadyRedeemed Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
-	TicketNotFound        Code = 107 // TicketNotFound represents that the ticket was not found
-	Io                    Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
-	InvalidTimeStamp      Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
-	SessionNotFound       Code = 110 // SessionNotFound represents that the session was not found
-	InvalidSessionState   Code = 111 // InvalidSessionState represents that the session was in an invalid state
-	TokenMismatch         Code = 112 // TokenMismatch represents that there was a token mismatch
-	TooShort              Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
+	InvalidParameter         Code = 100 // InvalidParameter represents an invalid parameter for an operation.
+	InvalidAddress           Code = 101 // InvalidAddress represents an invalid host address for an operation
+	InvalidPublicId          Code = 102 // InvalidPublicId represents an invalid public Id for an operation
+	InvalidFieldMask         Code = 103 // InvalidFieldMask represents an invalid field mast for an operation
+	EmptyFieldMask           Code = 104 // EmptyFieldMask represents an empty field mask for an operation
+	KeyNotFound              Code = 105 // KeyNotFound represents that a key/version was not found in the KMS
+	TicketAlreadyRedeemed    Code = 106 // TicketAlreadyRedeemed represents that the ticket version has already been redeemed
+	TicketNotFound           Code = 107 // TicketNotFound represents that the ticket was not found
+	Io                       Code = 108 // Io represents that an io error occurred in an underlying call (i.e binary.Write)
+	InvalidTimeStamp         Code = 109 // InvalidTimeStamp represents an invalid time stamp for an operation
+	SessionNotFound          Code = 110 // SessionNotFound represents that the session was not found
+	InvalidSessionState      Code = 111 // InvalidSessionState represents that the session was in an invalid state
+	TokenMismatch            Code = 112 // TokenMismatch represents that there was a token mismatch
+	TooShort                 Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
+	AccountAlreadyAssociated Code = 114 // AccountAlreadyAssociated represents an attempt to associate an account failed since it was already associated.
 
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
@@ -57,6 +58,10 @@ const (
 	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
 	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
 	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
+
+	// General system errors are reserved Codes 400-599 and align with http client and server error codes
+	Forbidden Code = 403 // Forbidden represents the operation is forbidden
+	Internal  Code = 500 // InternalError represents the system encountered an unexpected condition.
 
 	// DB errors are reserved Codes from 1000-1999
 	CheckConstraint      Code = 1000 // CheckConstraint represents a check constraint error

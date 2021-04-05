@@ -96,16 +96,16 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return 1
+		return base.CommandUserError
 	}
 
 	switch {
 	case c.flagLoginName == "":
 		c.PrintCliError(errors.New("Login name must be provided via -login-name"))
-		return 1
+		return base.CommandUserError
 	case c.FlagAuthMethodId == "":
 		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
-		return 1
+		return base.CommandUserError
 	}
 
 	if c.flagPassword == "" {
@@ -114,7 +114,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return 2
+			return base.CommandUserError
 		}
 		c.flagPassword = strings.TrimSpace(value)
 	}
@@ -122,13 +122,13 @@ func (c *PasswordCommand) Run(args []string) int {
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
-		return 2
+		return base.CommandCliError
 	}
 
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId,
+	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "login",
 		map[string]interface{}{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
@@ -136,10 +136,10 @@ func (c *PasswordCommand) Run(args []string) int {
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, "Error from controller when performing authentication")
-			return 1
+			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to perform authentication: %w", err))
-		return 2
+		return base.CommandCliError
 	}
 
 	token := result.GetItem().(*authtokens.AuthToken)
@@ -156,7 +156,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 
 	case "json":
-		return c.PrintJsonItem(result, token)
+		if ok := c.PrintJsonItem(result, token); !ok {
+			return base.CommandCliError
+		}
+		return base.CommandSuccess
 	}
 
 	var gotErr bool
@@ -210,5 +213,5 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.")
 	}
 
-	return 0
+	return base.CommandSuccess
 }
