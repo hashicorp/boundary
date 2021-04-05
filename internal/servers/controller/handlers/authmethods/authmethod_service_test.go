@@ -879,7 +879,7 @@ func TestCreate(t *testing.T) {
 					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
 					"client_id":      structpb.NewStringValue("someclientid"),
 					"client_secret":  structpb.NewStringValue("secret"),
-					"ca_certs": func() *structpb.Value {
+					"idp_ca_certs": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"unparseable"})
 						return structpb.NewListValue(lv)
 					}(),

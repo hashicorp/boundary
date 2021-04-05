@@ -11,7 +11,7 @@ type OidcAuthMethodAttributes struct {
 	SigningAlgorithms                 []string `json:"signing_algorithms,omitempty"`
 	ApiUrlPrefix                      string   `json:"api_url_prefix,omitempty"`
 	CallbackUrl                       string   `json:"callback_url,omitempty"`
-	CaCerts                           []string `json:"ca_certs,omitempty"`
+	IdpCaCerts                        []string `json:"idp_ca_certs,omitempty"`
 	AllowedAudiences                  []string `json:"allowed_audiences,omitempty"`
 	DisableDiscoveredConfigValidation bool     `json:"disable_discovered_config_validation,omitempty"`
 }

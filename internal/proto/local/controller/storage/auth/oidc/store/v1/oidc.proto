@@ -110,7 +110,7 @@ message AuthMethod {
   // Objects that will be stored as Certificate messages, and are operatated on
   // as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.ca_certs" }];
+  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.idp_ca_certs" }];
 }
 
 // Account represents an OIDC account

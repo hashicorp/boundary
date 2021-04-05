@@ -5,6 +5,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+const (
+	subjectFlagName = "subject"
+	issuerFlagName  = "issuer"
+)
+
 func init() {
 	extraOidcActionsFlagsMapFunc = extraOidcActionsFlagsMapFuncImpl
 	extraOidcFlagsFunc = extraOidcFlagsFuncImpl
@@ -13,7 +18,7 @@ func init() {
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"issuer", "subject"},
+		"create": {subjectFlagName, issuerFlagName},
 	}
 }
 
@@ -55,15 +60,15 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, f *base.FlagSet)
 
 	for _, name := range flagsOidcMap[c.Func] {
 		switch name {
-		case "issuer":
+		case issuerFlagName:
 			f.StringVar(&base.StringVar{
-				Name:   "issuer",
+				Name:   issuerFlagName,
 				Target: &c.flagIssuer,
 				Usage:  "The issuer for the account.",
 			})
-		case "subject":
+		case subjectFlagName:
 			f.StringVar(&base.StringVar{
-				Name:   "subject",
+				Name:   subjectFlagName,
 				Target: &c.flagSubject,
 				Usage:  "The subject for this account on the OIDC provider.",
 			})

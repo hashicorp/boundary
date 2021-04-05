@@ -58,6 +58,7 @@ func TestCrud(t *testing.T) {
 	// OIDC auth methods
 	u, err = amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
@@ -103,7 +104,7 @@ func TestCustomMethods(t *testing.T) {
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"),
 		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string(tpAlg)}),
-		authmethods.WithOidcAuthMethodCaCerts([]string{tp.CACert()}))
+		authmethods.WithOidcAuthMethodIdpCaCerts([]string{tp.CACert()}))
 	require.NoError(t, err)
 
 	const newState = "active-private"
