@@ -500,7 +500,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
@@ -625,7 +625,7 @@ func TestRepository_EndJobRun(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -670,16 +670,16 @@ func TestRepository_EndJobRun(t *testing.T) {
 			assert.NoError(err)
 
 			// Verify JobRun has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 
 			// Verify Job has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, job.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			assert.NoError(db.TestVerifyOplog(t, rw, job.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 
 	t.Run("job-run-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 

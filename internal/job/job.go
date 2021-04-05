@@ -87,9 +87,9 @@ func (j *Job) SetTableName(n string) {
 
 func (j *Job) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{j.PrivateId},
-		"resource-type":      []string{"job"},
-		"op-type":            []string{op.String()},
+		"resource-private-id": []string{j.PrivateId},
+		"resource-type":       []string{"job"},
+		"op-type":             []string{op.String()},
 	}
 	return metadata
 }
