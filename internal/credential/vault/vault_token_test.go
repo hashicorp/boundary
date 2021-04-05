@@ -114,7 +114,9 @@ func TestToken_New(t *testing.T) {
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
 
-			rows, err2 := rw.Exec(ctx, insertToken, got.valuesForInsert())
+			query, queryValues := got.insertQuery()
+
+			rows, err2 := rw.Exec(ctx, query, queryValues)
 			assert.Equal(1, rows)
 			assert.NoError(err2)
 
@@ -135,19 +137,6 @@ func TestToken_New(t *testing.T) {
 				assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
 			*/
 		})
-	}
-}
-
-func (t *Token) valuesForInsert() []interface{} {
-	exp := int(t.expiration.Round(time.Second).Seconds())
-	return []interface{}{
-		t.TokenSha256,
-		t.CtToken,
-		t.StoreId,
-		t.KeyId,
-		t.Status,
-		"now()",
-		exp,
 	}
 }
 
