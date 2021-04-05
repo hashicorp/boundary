@@ -88,20 +88,21 @@ func NewService(
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory) (Service, error) {
+	const op = "targets.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil target repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing target repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if serversRepoFn == nil {
-		return Service{}, fmt.Errorf("nil servers repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing servers repository")
 	}
 	if sessionRepoFn == nil {
-		return Service{}, fmt.Errorf("nil session repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
 	}
 	if staticHostRepoFn == nil {
-		return Service{}, fmt.Errorf("nil static host repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing static host repository")
 	}
 	return Service{
 		repoFn:           repoFn,
@@ -283,6 +284,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
@@ -484,7 +486,7 @@ HostSetIterationLoop:
 	case host.StaticSubtype:
 		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
-			return nil, fmt.Errorf("error looking up host: %w", err)
+			return nil, errors.New(errors.InvalidParameter, op, "errors looking up host")
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
@@ -578,6 +580,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 }
 
 func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
+	const op = "targets.(Service).createInRepo"
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
@@ -608,7 +611,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create target: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
@@ -617,6 +620,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
+	const op = "targets.(Service).updateInRepo"
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, target.WithDescription(desc.GetValue()))
@@ -656,7 +660,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update target: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -665,6 +669,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "targets.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -674,7 +679,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete target: %w", err)
+		return false, errors.Wrap(err, op)
 	}
 	return rows > 0, nil
 }
@@ -716,6 +721,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 }
 
 func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+	const op = "targets.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -728,7 +734,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up target after setting host sets: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
@@ -737,6 +743,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 }
 
 func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+	const op = "targets.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -748,7 +755,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	}
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up target after removing host sets: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")

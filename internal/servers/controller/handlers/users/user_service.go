@@ -61,8 +61,9 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
+	const op = "users.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -254,6 +255,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) (*pb.User, error) {
+	const op = "users.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -271,7 +273,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	}
 	out, err := repo.CreateUser(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create user: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
@@ -280,6 +282,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 }
 
 func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
+	const op = "users.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -303,7 +306,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	}
 	out, accts, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update user: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
@@ -312,6 +315,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "users.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -321,7 +325,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete user: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
@@ -343,6 +347,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Use
 }
 
 func (s Service) addInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).addInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -353,7 +358,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after adding accounts: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
@@ -362,6 +367,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 }
 
 func (s Service) setInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -372,7 +378,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after setting accounts: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
@@ -381,6 +387,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 }
 
 func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -391,7 +398,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after removing accounts: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")

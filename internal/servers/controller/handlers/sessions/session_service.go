@@ -47,11 +47,12 @@ type Service struct {
 
 // NewService returns a session service which handles session related requests to boundary.
 func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "sessions.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil session repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -221,13 +222,14 @@ func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*p
 }
 
 func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*pb.Session, error) {
+	const op = "sessions.(Service).cancelInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update session: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update session"))
 	}
 	return toProto(out), nil
 }
