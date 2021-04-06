@@ -3814,7 +3814,7 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",
@@ -3842,7 +3842,7 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",

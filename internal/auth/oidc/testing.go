@@ -298,9 +298,9 @@ func testState(
 	return encodedEncryptedSt
 }
 
-// testTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
+// TestTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
 // the returned string can be used as a parameter for functions like: oidc.TokenRequest
-func testTokenRequestId(
+func TestTokenRequestId(
 	t *testing.T,
 	am *AuthMethod,
 	kms *kms.Kms,
@@ -327,8 +327,8 @@ func testTokenRequestId(
 	return encodedEncryptedReqTk
 }
 
-// testPendingToken will create a pending auth token for the tokenRequestId (aka public id)
-func testPendingToken(
+// TestPendingToken will create a pending auth token for the tokenRequestId (aka public id)
+func TestPendingToken(
 	t *testing.T,
 	tokenRepo *authtoken.Repository,
 	user *iam.User,
