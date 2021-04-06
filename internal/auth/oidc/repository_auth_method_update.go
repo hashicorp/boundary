@@ -192,7 +192,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, ApiUrl*2, Audiences*2
+			msgs := make([]*oplog.Message, 0, 7) // AuthMethod, Algs*2, Certs*2, Audiences*2
 			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
