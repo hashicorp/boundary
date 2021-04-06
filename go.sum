@@ -433,8 +433,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0/go.mod h1:d2gYTOTUQklu06xp0AJYY
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/boundary/sdk v0.0.4 h1:l3uuXOL5ZQwYc63Bm8sLY36XGUlIN/4Q2r2SqkmGTyw=
 github.com/hashicorp/boundary/sdk v0.0.4/go.mod h1:MQ8FJhseJrKpwvFDTn+AUAcJ1vdk1NKUxk7DxQgH7oQ=
-github.com/hashicorp/cap v0.0.0-20210405195511-935c659d2806 h1:ErYlbM7uA2bLlzDVK4WOZT0typ/7UTrxwN4CouMk8e0=
-github.com/hashicorp/cap v0.0.0-20210405195511-935c659d2806/go.mod h1:hjMYKmFvk9AOL69NbqrahCHoMPZHRWqvRcdr7ciPU7g=
+github.com/hashicorp/cap v0.0.0-20210406144452-17a80273f33d h1:Thru7NbW0SMuPbmy+J/+rNtEZ6oIcMtd7Ua8qAEkG7I=
+github.com/hashicorp/cap v0.0.0-20210406144452-17a80273f33d/go.mod h1:hjMYKmFvk9AOL69NbqrahCHoMPZHRWqvRcdr7ciPU7g=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
