@@ -223,22 +223,20 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 
 	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
 	if err != nil {
-		fmt.Println(err)
 		// TODO: Log something so we don't lose the error's context and entire msg...
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
 			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
 			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
-		case errors.Match(errors.T(errors.InvalidParameter), err):
-			return nil, errors.New(errors.Internal, op, "Error invalid parameters for OIDC token request.")
 		default:
-			return nil, errors.New(errors.Internal, op, "Error during OIDC token request.")
+			return nil, errors.Wrap(err, op)
 		}
 	}
 
 	attrsMap := map[string]interface{}{
-		tokenField: token,
+		tokenField:     token,
+		tokenTypeField: structpb.NewStringValue(req.GetTokenType()),
 	}
 
 	respAttrs, err := structpb.NewStruct(attrsMap)
