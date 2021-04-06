@@ -40,10 +40,8 @@ type AuthMethod struct {
 // parameter when creating new AuthMethod's since it must be Inactive for all
 // new AuthMethods.
 //
-// DiscoveryUrl equals a URL where the OIDC provider's configuration can be
-// retrieved. The OIDC Discovery Specification requires the URL end in
-// /.well-known/openid-configuration. However, Boundary will strip off
-// anything beyond scheme, host and port
+// Issuer equals a URL that identifies the OIDC provider.
+// Boundary will strip off anything beyond scheme, host and port
 //
 // ClientId equals an OAuth 2.0 Client Identifier valid at the Authorization
 // Server.
@@ -62,35 +60,32 @@ type AuthMethod struct {
 // See: https://openid.net/specs/openid-connect-core-1_0.html
 //
 // Supports the options of WithMaxAge, WithSigningAlgs, WithAudClaims,
-// WithCallbackUrls and WithCertificates and all other options are ignored.
-func NewAuthMethod(scopeId string, discoveryUrl *url.URL, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
+// WithApiUrl and WithCertificates and all other options are ignored.
+func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.NewAuthMethod"
 
+	opts := getOpts(opt...)
 	var u string
 	switch {
-	case discoveryUrl != nil:
+	case opts.withIssuer != nil:
 		// trim off anything beyond scheme, host and port
-		u = strings.TrimSuffix(discoveryUrl.String(), "/")
+		u = strings.TrimSuffix(strings.TrimSuffix(opts.withIssuer.String(), "/"), "/.well-known/openid-configuration")
 	}
 
-	opts := getOpts(opt...)
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			ScopeId:          scopeId,
 			Name:             opts.withName,
 			Description:      opts.withDescription,
 			OperationalState: string(InactiveState),
-			DiscoveryUrl:     u,
+			Issuer:           u,
 			ClientId:         clientId,
 			ClientSecret:     string(clientSecret),
 			MaxAge:           int32(opts.withMaxAge),
 		},
 	}
-	if len(opts.withCallbackUrls) > 0 {
-		a.CallbackUrls = make([]string, 0, len(opts.withCallbackUrls))
-		for _, c := range opts.withCallbackUrls {
-			a.CallbackUrls = append(a.CallbackUrls, c.String())
-		}
+	if opts.withApiUrl != nil {
+		a.ApiUrl = opts.withApiUrl.String()
 	}
 	if len(opts.withAudClaims) > 0 {
 		a.AudClaims = make([]string, 0, len(opts.withAudClaims))
@@ -139,9 +134,14 @@ func (a *AuthMethod) validate(caller errors.Op) error {
 	if !validState(a.OperationalState) {
 		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
 	}
-	if a.DiscoveryUrl != "" {
-		if _, err := url.Parse(a.DiscoveryUrl); err != nil {
-			return errors.New(errors.InvalidParameter, caller, "not a valid discovery URL", errors.WithWrap(err))
+	if a.Issuer != "" {
+		if _, err := url.Parse(a.Issuer); err != nil {
+			return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
+		}
+	}
+	if a.ApiUrl != "" {
+		if _, err := url.Parse(a.ApiUrl); err != nil {
+			return errors.New(errors.InvalidParameter, caller, "not a valid api url", errors.WithWrap(err))
 		}
 	}
 	if a.MaxAge < -1 {
@@ -245,8 +245,11 @@ func (am *AuthMethod) isComplete() error {
 	if err := am.validate(op); err != nil {
 		result = multierror.Append(result, errors.Wrap(err, op))
 	}
-	if am.DiscoveryUrl == "" {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing discovery URL"))
+	if am.Issuer == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing issuer"))
+	}
+	if am.ApiUrl == "" {
+		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing api url"))
 	}
 	if am.ClientId == "" {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client id"))
@@ -257,17 +260,13 @@ func (am *AuthMethod) isComplete() error {
 	if len(am.SigningAlgs) == 0 {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing signing algorithms"))
 	}
-	if len(am.CallbackUrls) == 0 {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing callback URLs"))
-	}
 	return result.ErrorOrNil()
 }
 
 type convertedValues struct {
-	Algs      []interface{}
-	Callbacks []interface{}
-	Auds      []interface{}
-	Certs     []interface{}
+	Algs  []interface{}
+	Auds  []interface{}
+	Certs []interface{}
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -278,11 +277,8 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addCallbacks, addAuds, addCerts []interface{}
+	var addAlgs, addAuds, addCerts []interface{}
 	if addAlgs, err = am.convertSigningAlgs(); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	if addCallbacks, err = am.convertCallbacks(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	if addAuds, err = am.convertAudClaims(); err != nil {
@@ -292,10 +288,9 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.Wrap(err, op)
 	}
 	return &convertedValues{
-		Algs:      addAlgs,
-		Callbacks: addCallbacks,
-		Auds:      addAuds,
-		Certs:     addCerts,
+		Algs:  addAlgs,
+		Auds:  addAuds,
+		Certs: addCerts,
 	}, nil
 }
 
@@ -329,29 +324,6 @@ func (am *AuthMethod) convertAudClaims() ([]interface{}, error) {
 	newInterfaces := make([]interface{}, 0, len(am.AudClaims))
 	for _, a := range am.AudClaims {
 		obj, err := NewAudClaim(am.PublicId, a)
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		newInterfaces = append(newInterfaces, obj)
-	}
-	return newInterfaces, nil
-}
-
-// convertCallbacks converts the embedded callback URLs from []string
-// to []interface{} where each slice element is a *CallbackUrl. It will return an
-// error if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertCallbacks() ([]interface{}, error) {
-	const op = "oidc.(AuthMethod).convertCallbacks"
-	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
-	}
-	newInterfaces := make([]interface{}, 0, len(am.CallbackUrls))
-	for _, u := range am.CallbackUrls {
-		newUrl, err := url.Parse(u)
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		obj, err := NewCallbackUrl(am.PublicId, newUrl)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}

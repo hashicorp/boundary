@@ -107,7 +107,8 @@ func TestGet(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 
 	wantOidc := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
@@ -120,6 +121,8 @@ func TestGet(t *testing.T) {
 			"client_id":          structpb.NewStringValue("alice_rp"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -221,7 +224,8 @@ func TestList(t *testing.T) {
 	var wantSomeAuthMethods []*pb.AuthMethod
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "secret")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -235,6 +239,8 @@ func TestList(t *testing.T) {
 			"client_id":          structpb.NewStringValue("alice_rp"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
 		}},
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
@@ -378,7 +384,8 @@ func TestDelete(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -607,9 +614,10 @@ func TestCreate(t *testing.T) {
 				ScopeId: scope.Global.String(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":        structpb.NewStringValue("https://example.discovery.url"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -624,6 +632,7 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 						"issuer":             structpb.NewStringValue("https://example.discovery.url"),
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
@@ -649,6 +658,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				CreatedTime: timestamppb.Now(),
+				Type:        auth.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -658,7 +668,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        "password",
+				Type:        auth.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -668,7 +678,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
-				Type:        "password",
+				Type:        auth.PasswordSubtype.String(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -719,8 +729,9 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
 				}},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
@@ -734,6 +745,7 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
@@ -744,13 +756,26 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "OIDC AuthMethod Requires ApiUrl",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "OIDC AuthMethod Requires Client Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":        structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_secret":  structpb.NewStringValue("secret"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -761,8 +786,9 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":    structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_id": structpb.NewStringValue("someclientid"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -773,6 +799,7 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 					"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
 					"client_id":          structpb.NewStringValue("someclientid"),
 					"client_secret":      structpb.NewStringValue("secret"),
@@ -787,10 +814,11 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":        structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
-					"state":         structpb.NewStringValue(string(oidc.InactiveState)),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"state":          structpb.NewStringValue(string(oidc.InactiveState)),
 				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -801,9 +829,10 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
 					"signing_algorithms": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{string(oidc.ES256), strings.ToLower(string(oidc.EdDSA))})
 						return structpb.NewListValue(lv)
@@ -846,9 +875,10 @@ func TestCreate(t *testing.T) {
 				ScopeId: o.GetPublicId(),
 				Type:    auth.OidcSubtype.String(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
-					"client_id":     structpb.NewStringValue("someclientid"),
-					"client_secret": structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
 					"ca_certs": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"unparseable"})
 						return structpb.NewListValue(lv)

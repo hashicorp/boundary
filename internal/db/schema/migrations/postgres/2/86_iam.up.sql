@@ -25,7 +25,7 @@ add constraint auth_method
 create view iam_acct_info as
 select 
     aa.iam_user_id,
-    oa.subject_id as login_name,
+    oa.subject as login_name,
     oa.full_name as full_name,
     oa.email as email
 from 	
@@ -41,7 +41,7 @@ select
     pa.login_name,
     '' as full_name,
     '' as email
-from 	
+from
     iam_scope s,
     auth_account aa,
     auth_password_account pa

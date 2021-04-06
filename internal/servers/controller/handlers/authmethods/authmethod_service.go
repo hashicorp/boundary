@@ -626,12 +626,12 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
 		}
-		if i.GetDiscoveryUrl() != "" {
-			attrs.Issuer = wrapperspb.String(i.DiscoveryUrl)
+		if i.GetIssuer() != "" {
+			attrs.Issuer = wrapperspb.String(i.Issuer)
 		}
-		if len(i.GetCallbackUrls()) > 0 {
-			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
-			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetCallbackUrls()[0], i.GetPublicId())
+		if len(i.GetApiUrl()) > 0 {
+			attrs.ApiUrlPrefix = wrapperspb.String(i.GetApiUrl())
+			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetApiUrl(), i.GetPublicId())
 		}
 		switch i.GetMaxAge() {
 		case 0:
@@ -734,10 +734,12 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						}
 					}
 				}
-				if attrs.GetApiUrlPrefix() != nil {
+				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+					// TODO: When we start accepting the address used in the request make this an optional field.
+					badFields[apiUrlPrefixField] = "This field is required."
+				} else {
 					if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-						badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
-						break
+						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					}
 				}
 				if len(attrs.GetCaCerts()) > 0 {
@@ -778,6 +780,15 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+				// TODO: When we start accepting the address used in the request make this an optional field.
+				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+					badFields[apiUrlPrefixField] = "This field should not be set to empty."
+				}
+				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
+					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+				}
+			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
 				if attrs.GetIssuer().GetValue() != "" {
 					du, err := url.Parse(attrs.GetIssuer().GetValue())
@@ -820,7 +831,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if attrs.GetApiUrlPrefix() != nil {
 				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					break
 				}
 			}

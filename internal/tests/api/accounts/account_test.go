@@ -82,6 +82,7 @@ func TestListOidc(t *testing.T) {
 
 	amResult, err := amClient.Create(tc.Context(), "oidc", org.PublicId,
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
@@ -96,15 +97,10 @@ func TestListOidc(t *testing.T) {
 	expected := lr.Items
 	assert.Len(expected, 0)
 
-	issuerKey := "issuer_id"
-	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{
-		issuerKey: "https://www.alice.com/",
-	}})
-
 	cr, err := accountClient.Create(tc.Context(), am.Id,
 		accounts.WithOidcAccountSubject("subject0"))
 	require.NoError(err)
-	expected[0] = cr.Item
+	expected = append(expected, cr.Item)
 
 	ulResult, err := accountClient.List(tc.Context(), am.Id)
 	require.NoError(err)
@@ -193,6 +189,7 @@ func TestCrudOidc(t *testing.T) {
 	amClient := authmethods.NewClient(client)
 	amResult, err := amClient.Create(tc.Context(), "oidc", "global",
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))
@@ -332,6 +329,7 @@ func TestErrorsOidc(t *testing.T) {
 	amClient := authmethods.NewClient(client)
 	amResult, err := amClient.Create(tc.Context(), "oidc", "global",
 		authmethods.WithName("foo"),
+		authmethods.WithOidcAuthMethodApiUrlPrefix("https://api.com"),
 		authmethods.WithOidcAuthMethodIssuer("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"))

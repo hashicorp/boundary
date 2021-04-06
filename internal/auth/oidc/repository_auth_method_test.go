@@ -34,9 +34,8 @@ func Test_upsertAccount(t *testing.T) {
 	amActivePriv := TestAuthMethod(
 		t,
 		conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://alice-active-priv.com")[0],
 		"alice_rp", "fido",
-		WithCallbackUrls(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
 		WithSigningAlgs(RS256))
 
 	tests := []struct {
@@ -55,8 +54,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-defaults",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-defaults",
 			}},
 		},
 		{
@@ -66,8 +65,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{"name": "alice eve-smith", "email": "alice@alice.com"},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-atTk-full-name-and-email",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-atTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},
@@ -79,8 +78,8 @@ func Test_upsertAccount(t *testing.T) {
 			atClaims: map[string]interface{}{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId: amActivePriv.PublicId,
-				IssuerId:     "https://alice-active-priv.com",
-				SubjectId:    "success-idTk-full-name-and-email",
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-idTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
 			}},
@@ -195,10 +194,10 @@ func Test_upsertOplog(t *testing.T) {
 
 	testAuthMethod := TestAuthMethod(
 		t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-		TestConvertToUrls(t, "https://www.alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(RS256),
-		WithCallbackUrls(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
 	tests := []struct {

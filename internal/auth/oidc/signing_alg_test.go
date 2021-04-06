@@ -24,7 +24,8 @@ func TestSigningAlg_Create(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	type args struct {
 		authMethodId string
@@ -145,9 +146,10 @@ func TestSigningAlg_Delete(t *testing.T) {
 			databaseWrapper,
 			org.PublicId,
 			InactiveState,
-			TestConvertToUrls(t, "https://alice.com")[0],
 			"alice_rp",
 			"my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
 			WithSigningAlgs(RS256)) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, signingAlg Alg) *SigningAlg {
@@ -223,7 +225,8 @@ func TestSigningAlg_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewSigningAlg(m.PublicId, RS256)
 		require.NoError(err)
 		cp := orig.Clone()
@@ -234,7 +237,8 @@ func TestSigningAlg_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewSigningAlg(m.PublicId, ES256)
 		require.NoError(err)
 		orig2, err := NewSigningAlg(m.PublicId, ES384)

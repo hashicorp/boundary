@@ -33,11 +33,7 @@ func Test_Repository_UpdateScope_AccountInfoAuthMethodId(t *testing.T) {
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
 
-		am := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePublicState,
-			oidc.TestConvertToUrls(t, "https://www.alice.com")[0],
-			"alice-rp", "fido",
-			oidc.WithSigningAlgs(oidc.RS256),
-			oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")...))
+		am := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePublicState, "alice-rp", "fido", oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
 		org.PrimaryAuthMethodId = am.PublicId
 		s, updatedRows, err := repo.UpdateScope(context.Background(), org, 1, []string{"PrimaryAuthMethodId"})

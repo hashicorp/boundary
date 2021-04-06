@@ -37,7 +37,7 @@ const (
 	clientSecretHmacField                  = "attributes.client_secret_hmac"
 	stateField                             = "attributes.state"
 	callbackUrlField                       = "attributes.callback_url"
-	apiUrlPrefixeField                     = "attributes.api_url_prefixes"
+	apiUrlPrefixField                      = "attributes.api_url_prefix"
 	caCertsField                           = "attributes.ca_certs"
 	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
@@ -267,16 +267,17 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	var discoveryUrl *url.URL
-	if ds := attrs.GetIssuer().GetValue(); ds != "" {
+	if iss := strings.TrimSpace(attrs.GetIssuer().GetValue()); iss != "" {
+		var issuer *url.URL
 		var err error
-		if discoveryUrl, err = url.Parse(ds); err != nil {
+		if issuer, err = url.Parse(iss); err != nil {
 			return nil, false, err
 		}
 		// remove everything except for protocol, hostname, and port.
-		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
+		if issuer, err = issuer.Parse("/"); err != nil {
 			return nil, false, err
 		}
+		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 
 	if attrs.GetMaxAge() != nil {
@@ -298,13 +299,13 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
 	}
 
-	if attrs.GetApiUrlPrefix().GetValue() != "" {
-		apiU, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
+	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
+		apiU, err := url.Parse(apiUrl)
 		if err != nil {
 			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{apiUrlPrefixeField: "Unparsable url"})
+				map[string]string{apiUrlPrefixField: "Unparsable url"})
 		}
-		opts = append(opts, oidc.WithCallbackUrls(apiU))
+		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
 	if len(attrs.GetCaCerts()) > 0 {
@@ -315,7 +316,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
-	u, err := oidc.NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opts...)
+	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
 	if err != nil {
 		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}

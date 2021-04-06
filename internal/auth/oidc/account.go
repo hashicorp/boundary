@@ -23,7 +23,7 @@ type Account struct {
 // WithIssuer, WithFullName, WithEmail, WithName and WithDescription are
 // the only valid options. All other options are ignored.
 //
-// SubjectId equals the locally unique and never reassigned identifier within
+// Subject equals the locally unique and never reassigned identifier within
 // the Issuer for the End-User, which is intended to be consumed by the Client.
 //
 // Issuer equals the Verifiable Identifier for an Issuer. An Issuer
@@ -40,13 +40,13 @@ type Account struct {
 // value being unique
 //
 // See: https://openid.net/specs/openid-connect-core-1_0.html
-func NewAccount(authMethodId string, subjectId string, opt ...Option) (*Account, error) {
+func NewAccount(authMethodId string, subject string, opt ...Option) (*Account, error) {
 	const op = "oidc.NewAccount"
 	opts := getOpts(opt...)
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			SubjectId:    subjectId,
+			Subject:      subject,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 			FullName:     opts.withFullName,
@@ -54,7 +54,7 @@ func NewAccount(authMethodId string, subjectId string, opt ...Option) (*Account,
 		},
 	}
 	if opts.withIssuer != nil {
-		a.IssuerId = opts.withIssuer.String()
+		a.Issuer = opts.withIssuer.String()
 	}
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
@@ -68,10 +68,10 @@ func (a *Account) validate(caller errors.Op) error {
 	if a.AuthMethodId == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing auth method id")
 	}
-	if a.SubjectId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing subject id")
+	if a.Subject == "" {
+		return errors.New(errors.InvalidParameter, caller, "missing subject")
 	}
-	if _, err := url.Parse(a.IssuerId); a.IssuerId != "" && err != nil {
+	if _, err := url.Parse(a.Issuer); a.Issuer != "" && err != nil {
 		return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 	}
 	if a.Email != "" && len(a.Email) > 320 {

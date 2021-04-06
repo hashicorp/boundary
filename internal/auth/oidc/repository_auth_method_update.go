@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -31,7 +30,7 @@ import (
 //
 // fieldMaskPaths provides field_mask.proto paths for fields that should
 // be updated.  Fields will be set to NULL if the field is a
-// zero value and included in fieldMask. Name, Description, DiscoveryUrl,
+// zero value and included in fieldMask. Name, Description, Issuer,
 // ClientId, ClientSecret, MaxAge are all updatable fields.  The AuthMethod's
 // Value Objects of SigningAlgs, CallbackUrls, AudClaims and Certificates are
 // also updatable. if no updatable fields are included in the fieldMaskPaths,
@@ -73,12 +72,12 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		map[string]interface{}{
 			"Name":         am.Name,
 			"Description":  am.Description,
-			"DiscoveryUrl": am.DiscoveryUrl,
+			"Issuer":       am.Issuer,
 			"ClientId":     am.ClientId,
 			"ClientSecret": am.ClientSecret,
 			"MaxAge":       am.MaxAge,
 			"SigningAlgs":  am.SigningAlgs,
-			"CallbackUrls": am.CallbackUrls,
+			"ApiUrl":       am.ApiUrl,
 			"AudClaims":    am.AudClaims,
 			"Certificates": am.Certificates,
 		},
@@ -135,11 +134,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
-	addCallbacks, deleteCallbacks, err := valueObjectChanges(origAm.PublicId, CallbackUrlVO, am.CallbackUrls, origAm.CallbackUrls, dbMask, nullFields)
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	}
-
 	addAuds, deleteAuds, err := valueObjectChanges(origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
@@ -170,8 +164,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(deleteAlgs) == 0 &&
 		len(addCerts) == 0 &&
 		len(deleteCerts) == 0 &&
-		len(addCallbacks) == 0 &&
-		len(deleteCallbacks) == 0 &&
 		len(addAuds) == 0 &&
 		len(deleteAuds) == 0 {
 		return origAm, db.NoRowsAffected, nil
@@ -200,7 +192,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 9) // AuthMethod, Algs*2, Certs*2, Callbacks*2, Audiences*2
+			msgs := make([]*oplog.Message, 0, 7) // AuthMethod, Algs*2, Certs*2, Audiences*2
 			ticket, err := w.GetTicket(am)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
@@ -270,25 +262,6 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				msgs = append(msgs, addCertsOplogMsgs...)
 			}
 
-			if len(deleteCallbacks) > 0 {
-				deleteCallbackOplogMsgs := make([]*oplog.Message, 0, len(deleteCallbacks))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteCallbacks, db.NewOplogMsgs(&deleteCallbackOplogMsgs))
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete callback URLs"))
-				}
-				if rowsDeleted != len(deleteCallbacks) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("callback URLs deleted %d did not match request for %d", rowsDeleted, len(deleteCallbacks)))
-				}
-				msgs = append(msgs, deleteCallbackOplogMsgs...)
-			}
-			if len(addCallbacks) > 0 {
-				addCallbackOplogMsgs := make([]*oplog.Message, 0, len(addCallbacks))
-				if err := w.CreateItems(ctx, addCallbacks, db.NewOplogMsgs(&addCallbackOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add callback URLs"))
-				}
-				msgs = append(msgs, addCallbackOplogMsgs...)
-			}
-
 			if len(deleteAuds) > 0 {
 				deleteAudsOplogMsgs := make([]*oplog.Message, 0, len(deleteAuds))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteAudsOplogMsgs))
@@ -344,7 +317,6 @@ type voName string
 
 const (
 	SigningAlgVO  voName = "SigningAlgs"
-	CallbackUrlVO voName = "CallbackUrls"
 	CertificateVO voName = "Certificates"
 	AudClaimVO    voName = "AudClaims"
 )
@@ -352,7 +324,7 @@ const (
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CallbackUrlVO, CertificateVO, AudClaimVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO:
 		return true
 	default:
 		return false
@@ -375,13 +347,6 @@ var supportedFactories = map[voName]factoryFunc{
 	AudClaimVO: func(publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(publicId, str)
-	},
-	CallbackUrlVO: func(publicId string, i interface{}) (interface{}, error) {
-		u, err := url.Parse(fmt.Sprintf("%s", i))
-		if err != nil {
-			return nil, err
-		}
-		return NewCallbackUrl(publicId, u)
 	},
 }
 
@@ -474,12 +439,12 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		switch {
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
-		case strings.EqualFold("DiscoveryUrl", f):
+		case strings.EqualFold("Issuer", f):
 		case strings.EqualFold("ClientId", f):
 		case strings.EqualFold("ClientSecret", f):
 		case strings.EqualFold("MaxAge", f):
 		case strings.EqualFold("SigningAlgs", f):
-		case strings.EqualFold("CallbackUrls", f):
+		case strings.EqualFold("ApiUrl", f):
 		case strings.EqualFold("AudClaims", f):
 		case strings.EqualFold("Certificates", f):
 		default:
@@ -498,14 +463,16 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			cp.Name = new.Name
 		case "Description":
 			cp.Description = new.Description
-		case "DiscoveryUrl":
-			cp.DiscoveryUrl = new.DiscoveryUrl
+		case "Issuer":
+			cp.Issuer = new.Issuer
 		case "ClientId":
 			cp.ClientId = new.ClientId
 		case "ClientSecret":
 			cp.ClientSecret = new.ClientSecret
 		case "MaxAge":
 			cp.MaxAge = new.MaxAge
+		case "ApiUrl":
+			cp.ApiUrl = new.ApiUrl
 		case "SigningAlgs":
 			switch {
 			case len(new.SigningAlgs) == 0:
@@ -513,14 +480,6 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			default:
 				cp.SigningAlgs = make([]string, 0, len(new.SigningAlgs))
 				cp.SigningAlgs = append(cp.SigningAlgs, new.SigningAlgs...)
-			}
-		case "CallbackUrls":
-			switch {
-			case len(new.CallbackUrls) == 0:
-				cp.CallbackUrls = nil
-			default:
-				cp.CallbackUrls = make([]string, 0, len(new.CallbackUrls))
-				cp.CallbackUrls = append(cp.CallbackUrls, new.CallbackUrls...)
 			}
 		case "AudClaims":
 			switch {
@@ -592,9 +551,9 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 	}
 
 	var result *multierror.Error
-	if info.Issuer != am.DiscoveryUrl {
+	if info.Issuer != am.Issuer {
 		result = multierror.Append(result, errors.New(errors.InvalidParameter, op,
-			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.DiscoveryUrl, info.Issuer)))
+			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.Issuer, info.Issuer)))
 	}
 	for _, a := range am.SigningAlgs {
 		if !strutil.StrListContains(info.IdTokenSigningAlgsSupported, a) {
