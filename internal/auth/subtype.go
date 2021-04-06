@@ -35,6 +35,7 @@ type AuthMethod interface {
 	GetDescription() string
 	GetScopeId() string
 	GetVersion() uint32
+	GetIsPrimaryAuthMethod() bool
 }
 
 var (
