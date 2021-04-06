@@ -5336,7 +5336,7 @@ as $$
       perform 
       from 
         auth_oidc_method am
-       join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+       join auth_oidc_signing_alg alg on am.public_id = alg.oidc_method_id
       where
         new.public_id = am.public_id;
       if not found then 
@@ -5494,9 +5494,9 @@ declare alg_cnt int;
     select 
       am.state,
       count(alg.oidc_method_id) as alg_cnt
-    from 
+    from
       auth_oidc_method am
-      left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+      left outer join auth_oidc_signing_alg alg on am.public_id = alg.oidc_method_id
     where
       new.oidc_method_id = am.public_id
     group by am.public_id
