@@ -901,7 +901,7 @@ func TestChangeState_OIDC(t *testing.T) {
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
-			"idp_ca_certs":           certs,
+			"idp_ca_certs":       certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
