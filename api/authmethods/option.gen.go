@@ -145,30 +145,6 @@ func DefaultAttributes() Option {
 	}
 }
 
-func WithOidcAuthMethodCaCerts(inCaCerts []string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["ca_certs"] = inCaCerts
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultOidcAuthMethodCaCerts() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["ca_certs"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithOidcAuthMethodClientId(inClientId string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -249,6 +225,30 @@ func DefaultOidcAuthMethodDisableDiscoveredConfigValidation() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["disable_discovered_config_validation"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithOidcAuthMethodIdpCaCerts(inIdpCaCerts []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["idp_ca_certs"] = inIdpCaCerts
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodIdpCaCerts() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["idp_ca_certs"] = nil
 		o.postMap["attributes"] = val
 	}
 }

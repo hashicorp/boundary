@@ -108,6 +108,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"accounts create oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"accounts update": func() (cli.Command, error) {
 			return &accountscmd.Command{
 				Command: base.NewCommand(ui),
@@ -116,6 +122,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"accounts update password": func() (cli.Command, error) {
 			return &accountscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"accounts update oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
@@ -156,6 +168,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"auth-methods create oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"auth-methods update": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
@@ -164,6 +182,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"auth-methods update password": func() (cli.Command, error) {
 			return &authmethodscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods update oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

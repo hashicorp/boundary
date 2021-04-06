@@ -308,8 +308,8 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
-	if len(attrs.GetCaCerts()) > 0 {
-		certs, err := oidc.ParseCertificates(attrs.GetCaCerts()...)
+	if len(attrs.GetIdpCaCerts()) > 0 {
+		certs, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...)
 		if err != nil {
 			return nil, false, err
 		}

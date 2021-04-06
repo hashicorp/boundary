@@ -163,7 +163,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"client_id":      structpb.NewStringValue("someclientid"),
 			"client_secret":  structpb.NewStringValue("secret"),
 			"api_url_prefix": structpb.NewStringValue("http://example.com"),
-			"ca_certs": func() *structpb.Value {
+			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -181,7 +181,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
-			"ca_certs": func() *structpb.Value {
+			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -901,7 +901,7 @@ func TestChangeState_OIDC(t *testing.T) {
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
-			"ca_certs":           certs,
+			"idp_ca_certs":       certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{

@@ -621,7 +621,7 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		attrs := &pb.OidcAuthMethodAttributes{
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
-			CaCerts:           i.GetCertificates(),
+			IdpCaCerts:        i.GetCertificates(),
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
@@ -742,8 +742,8 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					}
 				}
-				if len(attrs.GetCaCerts()) > 0 {
-					if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+				if len(attrs.GetIdpCaCerts()) > 0 {
+					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
 						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
@@ -835,8 +835,8 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					break
 				}
 			}
-			if len(attrs.GetCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+			if len(attrs.GetIdpCaCerts()) > 0 {
+				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
 					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}

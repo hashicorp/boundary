@@ -7,6 +7,10 @@ import (
 )
 
 func StructToProto(fields *structpb.Struct, p proto.Message, opt ...Option) error {
+	if fields == nil {
+		// If there is not struct, don't update the default proto message.
+		return nil
+	}
 	js, err := fields.MarshalJSON()
 	if err != nil {
 		return err

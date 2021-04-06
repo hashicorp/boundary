@@ -104,7 +104,7 @@ func TestCustomMethods(t *testing.T) {
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"),
 		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string(tpAlg)}),
-		authmethods.WithOidcAuthMethodCaCerts([]string{tp.CACert()}))
+		authmethods.WithOidcAuthMethodIdpCaCerts([]string{tp.CACert()}))
 	require.NoError(t, err)
 
 	const newState = "active-private"
