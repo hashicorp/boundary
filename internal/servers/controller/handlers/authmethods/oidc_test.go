@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -1138,4 +1139,136 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.NotEmpty(m["token_id"])
 		})
 	}
+}
+
+func TestAuthenticate_OIDC_Token(t *testing.T) {
+	s := getSetup(t)
+	testAtRepo, err := authtoken.NewRepository(s.rw, s.rw, s.kmsCache)
+	require.NoError(t, err)
+
+	// a reusable test authmethod for the unit tests
+	testAuthMethod := oidc.TestAuthMethod(t, s.conn, s.databaseWrapper, s.org.PublicId, oidc.ActivePublicState,
+		oidc.TestConvertToUrls(t, "https://alice.com")[0],
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.Alg(oidc.RS256)),
+		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://alice.com/callback")[0]))
+
+	testAcct := oidc.TestAccount(t, s.conn, testAuthMethod, "alice")
+	testUser := iam.TestUser(t, s.iamRepo, s.org.PublicId, iam.WithAccountIds(testAcct.PublicId))
+
+	cases := []struct {
+		name         string
+		request      *pbs.AuthenticateRequest
+		wantErr      error
+		wantErrMatch *errors.Template
+	}{
+		{
+			name: "no command",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "bad command",
+			request: &pbs.AuthenticateRequest{
+				Command:      "bad",
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no auth method id",
+			request: &pbs.AuthenticateRequest{
+				Command: "token",
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no attributes",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "success",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
+							tokenPublicId, err := authtoken.NewAuthTokenId()
+							require.NoError(t, err)
+							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, 200*time.Second, tokenPublicId)
+						}(),
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+		},
+		{
+			name: "expired",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
+							tokenPublicId, err := authtoken.NewAuthTokenId()
+							require.NoError(t, err)
+							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, -20*time.Second, tokenPublicId)
+						}(),
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+			wantErrMatch: errors.T(errors.AuthAttemptExpired),
+		},
+		{
+			name: "invalid-token-id-not-encoded-encrypted-proto",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": "bad-token-id",
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+			wantErrMatch: errors.T(errors.Unknown),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.request)
+			if tc.wantErr != nil {
+				require.Error(err)
+				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				return
+			}
+			if tc.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tc.wantErrMatch, err), "Got %#v, wanted %#v", err, tc.wantErrMatch.Code)
+				return
+			}
+			require.NoError(err)
+			require.Equal(got.GetCommand(), "token")
+			require.NotNil(got.GetAttributes())
+			m := got.GetAttributes().AsMap()
+			require.NotNil(m)
+			require.Contains(m, "token")
+			require.NotEmpty(m["token"])
+		})
+	}
+
 }

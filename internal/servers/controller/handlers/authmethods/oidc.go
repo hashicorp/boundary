@@ -30,6 +30,9 @@ const (
 	tokenUrlField = "token_url"
 	tokenIdField  = "token_id"
 
+	// token request/response fields
+	tokenField = "token"
+
 	// field names
 	issuerField                            = "attributes.issuer"
 	clientSecretField                      = "attributes.client_secret"
@@ -148,6 +151,8 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 	switch req.GetCommand() {
 	case startCommand:
 		return s.authenticateOidcStart(ctx, req, authResults)
+	case tokenCommand:
+		return s.authenticateOidcToken(ctx, req, authResults)
 	}
 
 	// Default is tokenCommand -- note we've already checked that it's one of
@@ -194,6 +199,52 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: attrs}, nil
+}
+
+func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidcToken"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
+	if req.GetAttributes() == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request attributes")
+	}
+
+	attrs := new(pbs.OidcTokenAttributes)
+	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "error parsing request attributes")
+	}
+	if attrs.TokenId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "empty token id request attributes")
+	}
+
+	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
+	if err != nil {
+		// TODO: Log something so we don't lose the error's context and entire msg...
+		switch {
+		case errors.Match(errors.T(errors.Forbidden), err):
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+		default:
+			return nil, errors.Wrap(err, op)
+		}
+	}
+
+	attrsMap := map[string]interface{}{
+		tokenField:     token,
+		tokenTypeField: req.GetTokenType(),
+	}
+
+	respAttrs, err := structpb.NewStruct(attrsMap)
+	if err != nil {
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+	}
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
 }
 
 func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
