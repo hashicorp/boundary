@@ -84,6 +84,7 @@ func TestGet(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, o, am.GetPublicId())
 
 	wantPw := &pb.AuthMethod{
 		Id:          am.GetPublicId(),
@@ -101,6 +102,7 @@ func TestGet(t *testing.T) {
 			Type:          o.GetType(),
 			ParentScopeId: scope.Global.String(),
 		},
+		IsPrimary:                   true,
 		AuthorizedActions:           pwAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
@@ -226,6 +228,8 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, oWithAuthMethods, oidcam.GetPublicId())
+
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -242,6 +246,7 @@ func TestList(t *testing.T) {
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
 		}},
+		IsPrimary:                   true,
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
@@ -669,6 +674,16 @@ func TestCreate(t *testing.T) {
 				ScopeId:     o.GetPublicId(),
 				UpdatedTime: timestamppb.Now(),
 				Type:        auth.PasswordSubtype.String(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify IsPrimary",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:   o.GetPublicId(),
+				Type:      auth.PasswordSubtype.String(),
+				IsPrimary: true,
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),

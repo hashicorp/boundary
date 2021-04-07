@@ -40,6 +40,7 @@ const (
 	attributesField   = "attributes"
 	authMethodIdField = "auth_method_id"
 	tokenTypeField    = "token_type"
+	isPrimaryField    = "is_primary"
 )
 
 var (
@@ -598,6 +599,7 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
+		IsPrimary:   in.GetIsPrimaryAuthMethod(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -688,6 +690,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields[scopeIdField] = "This field must be 'global' or a valid org scope id."
 		}
+		if req.GetItem().GetIsPrimary() {
+			badFields[isPrimaryField] = "This field is read only."
+		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
 			attrs := &pb.PasswordAuthMethodAttributes{}
@@ -762,6 +767,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), isPrimaryField) {
+			badFields[isPrimaryField] = "This field is read only."
+		}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {

@@ -2605,6 +2605,11 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific Auth Method type."
         },
+        "is_primary": {
+          "type": "boolean",
+          "description": "Output only. Whether this auth method is the primary auth method for it's scope.\nTo change this value update the primary_auth_method_id field on the scope.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
