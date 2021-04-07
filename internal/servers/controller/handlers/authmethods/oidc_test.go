@@ -1215,7 +1215,6 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					ret, err := structpb.NewStruct(map[string]interface{}{
 						"token_id": func() string {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
-							fmt.Println("id: ", tokenPublicId)
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, -20*time.Second, tokenPublicId)
@@ -1240,7 +1239,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 					return ret
 				}(),
 			},
-			wantErrMatch: errors.T(errors.Internal),
+			wantErrMatch: errors.T(errors.Unknown),
 		},
 	}
 	for _, tc := range cases {
