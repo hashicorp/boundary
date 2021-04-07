@@ -40,7 +40,7 @@ const (
 	attributesField   = "attributes"
 	authMethodIdField = "auth_method_id"
 	tokenTypeField    = "token_type"
-	isPrimaryField = "is_primary"
+	isPrimaryField    = "is_primary"
 )
 
 var (

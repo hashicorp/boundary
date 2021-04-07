@@ -102,7 +102,7 @@ func TestGet(t *testing.T) {
 			Type:          o.GetType(),
 			ParentScopeId: scope.Global.String(),
 		},
-		IsPrimary: true,
+		IsPrimary:                   true,
 		AuthorizedActions:           pwAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
@@ -246,7 +246,7 @@ func TestList(t *testing.T) {
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
 		}},
-		IsPrimary: true,
+		IsPrimary:                   true,
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	})
@@ -681,8 +681,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify IsPrimary",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				ScopeId:     o.GetPublicId(),
-				Type:        auth.PasswordSubtype.String(),
+				ScopeId:   o.GetPublicId(),
+				Type:      auth.PasswordSubtype.String(),
 				IsPrimary: true,
 			}},
 			res: nil,
