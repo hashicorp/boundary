@@ -30,6 +30,7 @@ type extraOidcCmdVars struct {
 }
 
 const (
+	idFlagName                                = "id"
 	issuerFlagName                            = "issuer"
 	clientIdFlagName                          = "client-id"
 	clientSecretFlagName                      = "client-secret"
@@ -55,6 +56,7 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			allowedAudienceFlagName,
 		},
 		"change-state": {
+			idFlagName,
 			stateFlagName,
 			disableDiscoveredConfigValidationFlagName,
 		},

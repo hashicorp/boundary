@@ -1280,5 +1280,4 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			require.NotEmpty(m["token"])
 		})
 	}
-
 }
