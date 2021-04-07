@@ -75,7 +75,10 @@ const (
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
 
-	// Migration setup errors are codes 2000-3000
+	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
 	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
+
+	// External system errors are reserved codes 3000-3999
+	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 )

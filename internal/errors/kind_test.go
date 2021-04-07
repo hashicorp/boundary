@@ -33,6 +33,11 @@ func TestKind_String(t *testing.T) {
 			e:    Search,
 			want: "search issue",
 		},
+		{
+			name: "External",
+			e:    External,
+			want: "external system issue",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
