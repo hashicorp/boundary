@@ -236,7 +236,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 
 	attrsMap := map[string]interface{}{
 		tokenField:     token,
-		tokenTypeField: structpb.NewStringValue(req.GetTokenType()),
+		tokenTypeField: req.GetTokenType(),
 	}
 
 	respAttrs, err := structpb.NewStruct(attrsMap)
