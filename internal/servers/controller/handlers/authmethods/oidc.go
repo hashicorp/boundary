@@ -214,7 +214,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		return nil, err
 	}
 
-	_, err := oidc.Callback(
+	finalRedirectUrl, err := oidc.Callback(
 		ctx,
 		s.oidcRepoFn,
 		oidc.IamRepoFactory(s.iamRepoFn),
@@ -224,10 +224,17 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		attrs.GetCode())
 	if err != nil {
 		// TODO: Log something more meaningful
-		return nil, errors.New(errors.InvalidParameter, op, "Callback validation failed.")
+		return nil, errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err))
 	}
 
-	return nil, handlers.ApiErrorWithCode(codes.Unimplemented)
+	respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
+		FinalRedirectUrl: finalRedirectUrl,
+	})
+	if err != nil {
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters")
+	}
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
 }
 
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {

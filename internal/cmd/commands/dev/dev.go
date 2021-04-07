@@ -684,7 +684,7 @@ func (c *Command) startDevOidcAuthMethod() error {
 					PubKey:  ed25519.PublicKey(c.oidcSetup.pubKey),
 					Alg:     capoidc.EdDSA,
 				},
-				AllowedRedirectURIs: []string{c.oidcSetup.callbackUrl.String()},
+				AllowedRedirectURIs: []string{fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", c.oidcSetup.callbackUrl.String(), c.DevOidcAuthMethodId)},
 				ClientID:            &c.oidcSetup.clientId,
 				ClientSecret:        &clientSecret,
 			}))
