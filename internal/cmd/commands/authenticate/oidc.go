@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/cap/util"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -96,7 +97,11 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	c.UI.Output(startResp.AuthUrl)
+	c.UI.Output("Opening returned authentication URL in your browser...")
+	if err := util.OpenURL(startResp.AuthUrl); err != nil {
+		c.PrintCliError(fmt.Errorf("Error opening authentication URL in browser: %w", err))
+		return base.CommandCliError
+	}
 
 	/*
 		// Leg 3: swap for the token
