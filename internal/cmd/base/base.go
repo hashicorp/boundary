@@ -221,7 +221,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	case c.FlagToken != "":
 		c.client.SetToken(c.FlagToken)
 
-	case c.client.Token() == "":
+	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
 			return nil, err
@@ -319,6 +319,9 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 	var err error
 
 	switch keyringType {
+	case "none":
+		return nil
+
 	case "wincred", "keychain":
 		token, err = zkeyring.Get("HashiCorp Boundary Auth Token", tokenName)
 		if err != nil {

@@ -170,7 +170,6 @@ func (c *PasswordCommand) Run(args []string) int {
 			fmt.Sprintf("  Account ID:      %s", token.AccountId),
 			fmt.Sprintf("  Auth Method ID:  %s", token.AuthMethodId),
 			fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC1123)),
-			fmt.Sprintf("  Token:           %s", token.Token),
 			fmt.Sprintf("  User ID:         %s", token.UserId),
 		}))
 
@@ -228,11 +227,20 @@ func (c *PasswordCommand) Run(args []string) int {
 					break
 				}
 			}
+
+			if !gotErr {
+				c.UI.Output("\nThe token was successfully stored in the chosen keyring and is not displayed here.")
+			}
 		}
 	}
 
-	if gotErr {
-		c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.")
+	switch {
+	case gotErr:
+		c.UI.Warn(fmt.Sprintf("The token was not successfully saved to a system keyring. The token is:\n\n%s\n\nIt must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.", token.Token))
+	case c.FlagKeyringType == "none":
+		c.UI.Warn("\nStoring the token in a keyring was disabled. The token is:")
+		c.UI.Output(token.Token)
+		c.UI.Warn("Please be sure to store it safely!")
 	}
 
 	return base.CommandSuccess
