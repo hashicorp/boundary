@@ -608,6 +608,55 @@ func (x *OidcAuthMethodAuthenticateCallbackResponse) GetFinalRedirectUrl() strin
 	return ""
 }
 
+// The structure of OIDC token request parameters
+type OidcAuthMethodAuthenticateTokenRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The ID of the pending token
+	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty"`
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) Reset() {
+	*x = OidcAuthMethodAuthenticateTokenRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcAuthMethodAuthenticateTokenRequest) ProtoMessage() {}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcAuthMethodAuthenticateTokenRequest.ProtoReflect.Descriptor instead.
+func (*OidcAuthMethodAuthenticateTokenRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
 var File_controller_api_resources_authmethods_v1_auth_method_proto protoreflect.FileDescriptor
 
 var file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = []byte{
@@ -790,13 +839,18 @@ var file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = []b
 	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2e, 0x0a, 0x12, 0x66, 0x69, 0x6e, 0x61, 0x6c,
 	0x5f, 0x72, 0x65, 0x64, 0x69, 0x72, 0x65, 0x63, 0x74, 0x5f, 0x75, 0x72, 0x6c, 0x18, 0x0a, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x12, 0x66, 0x69, 0x6e, 0x61, 0x6c, 0x5f, 0x72, 0x65, 0x64, 0x69, 0x72,
-	0x65, 0x63, 0x74, 0x5f, 0x75, 0x72, 0x6c, 0x42, 0x5d, 0x5a, 0x5b, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f,
-	0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x61,
-	0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x3b, 0x61, 0x75, 0x74, 0x68, 0x6d,
-	0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x63, 0x74, 0x5f, 0x75, 0x72, 0x6c, 0x22, 0x44, 0x0a, 0x26, 0x4f, 0x69, 0x64, 0x63, 0x41,
+	0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x41, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74,
+	0x69, 0x63, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x42, 0x5d, 0x5a,
+	0x5b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
+	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x73, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73,
+	0x3b, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -811,7 +865,7 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(
 	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescData
 }
 
-var file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_controller_api_resources_authmethods_v1_auth_method_proto_goTypes = []interface{}{
 	(*AuthMethod)(nil),                                 // 0: controller.api.resources.authmethods.v1.AuthMethod
 	(*PasswordAuthMethodAttributes)(nil),               // 1: controller.api.resources.authmethods.v1.PasswordAuthMethodAttributes
@@ -819,28 +873,29 @@ var file_controller_api_resources_authmethods_v1_auth_method_proto_goTypes = []i
 	(*OidcAuthMethodAuthenticateStartResponse)(nil),    // 3: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateStartResponse
 	(*OidcAuthMethodAuthenticateCallbackRequest)(nil),  // 4: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackRequest
 	(*OidcAuthMethodAuthenticateCallbackResponse)(nil), // 5: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackResponse
-	nil,                          // 6: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
-	(*scopes.ScopeInfo)(nil),     // 7: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrappers.StringValue)(nil), // 8: google.protobuf.StringValue
-	(*timestamp.Timestamp)(nil),  // 9: google.protobuf.Timestamp
-	(*_struct.Struct)(nil),       // 10: google.protobuf.Struct
-	(*wrappers.UInt32Value)(nil), // 11: google.protobuf.UInt32Value
-	(*_struct.ListValue)(nil),    // 12: google.protobuf.ListValue
+	(*OidcAuthMethodAuthenticateTokenRequest)(nil),     // 6: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenRequest
+	nil,                          // 7: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
+	(*scopes.ScopeInfo)(nil),     // 8: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 9: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 10: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),       // 11: google.protobuf.Struct
+	(*wrappers.UInt32Value)(nil), // 12: google.protobuf.UInt32Value
+	(*_struct.ListValue)(nil),    // 13: google.protobuf.ListValue
 }
 var file_controller_api_resources_authmethods_v1_auth_method_proto_depIdxs = []int32{
-	7,  // 0: controller.api.resources.authmethods.v1.AuthMethod.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	8,  // 1: controller.api.resources.authmethods.v1.AuthMethod.name:type_name -> google.protobuf.StringValue
-	8,  // 2: controller.api.resources.authmethods.v1.AuthMethod.description:type_name -> google.protobuf.StringValue
-	9,  // 3: controller.api.resources.authmethods.v1.AuthMethod.created_time:type_name -> google.protobuf.Timestamp
-	9,  // 4: controller.api.resources.authmethods.v1.AuthMethod.updated_time:type_name -> google.protobuf.Timestamp
-	10, // 5: controller.api.resources.authmethods.v1.AuthMethod.attributes:type_name -> google.protobuf.Struct
-	6,  // 6: controller.api.resources.authmethods.v1.AuthMethod.authorized_collection_actions:type_name -> controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
-	8,  // 7: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.issuer:type_name -> google.protobuf.StringValue
-	8,  // 8: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_id:type_name -> google.protobuf.StringValue
-	8,  // 9: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_secret:type_name -> google.protobuf.StringValue
-	11, // 10: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.max_age:type_name -> google.protobuf.UInt32Value
-	8,  // 11: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.api_url_prefix:type_name -> google.protobuf.StringValue
-	12, // 12: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
+	8,  // 0: controller.api.resources.authmethods.v1.AuthMethod.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	9,  // 1: controller.api.resources.authmethods.v1.AuthMethod.name:type_name -> google.protobuf.StringValue
+	9,  // 2: controller.api.resources.authmethods.v1.AuthMethod.description:type_name -> google.protobuf.StringValue
+	10, // 3: controller.api.resources.authmethods.v1.AuthMethod.created_time:type_name -> google.protobuf.Timestamp
+	10, // 4: controller.api.resources.authmethods.v1.AuthMethod.updated_time:type_name -> google.protobuf.Timestamp
+	11, // 5: controller.api.resources.authmethods.v1.AuthMethod.attributes:type_name -> google.protobuf.Struct
+	7,  // 6: controller.api.resources.authmethods.v1.AuthMethod.authorized_collection_actions:type_name -> controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
+	9,  // 7: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.issuer:type_name -> google.protobuf.StringValue
+	9,  // 8: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_id:type_name -> google.protobuf.StringValue
+	9,  // 9: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_secret:type_name -> google.protobuf.StringValue
+	12, // 10: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.max_age:type_name -> google.protobuf.UInt32Value
+	9,  // 11: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.api_url_prefix:type_name -> google.protobuf.StringValue
+	13, // 12: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -926,6 +981,18 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OidcAuthMethodAuthenticateTokenRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -933,7 +1000,7 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

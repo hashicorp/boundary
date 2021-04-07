@@ -25,11 +25,6 @@ const (
 	callbackCommand = "callback"
 	tokenCommand    = "token"
 
-	// start request/response fields
-	authUrlField  = "auth_url"
-	tokenUrlField = "token_url"
-	tokenIdField  = "token_id"
-
 	// token request/response fields
 	tokenField = "token"
 
@@ -247,7 +242,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		return nil, errors.New(errors.InvalidParameter, op, "nil request attributes")
 	}
 
-	attrs := new(pbs.OidcTokenAttributes)
+	attrs := new(pb.OidcAuthMethodAuthenticateTokenRequest)
 	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
 		return nil, errors.New(errors.InvalidParameter, op, "error parsing request attributes")
 	}

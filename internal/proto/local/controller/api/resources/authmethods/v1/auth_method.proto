@@ -152,3 +152,9 @@ message OidcAuthMethodAuthenticateCallbackResponse {
 	// The final redirection URL
 	string final_redirect_url = 10 [json_name="final_redirect_url"];
 }
+
+// The structure of OIDC token request parameters
+message OidcAuthMethodAuthenticateTokenRequest {
+	// The ID of the pending token
+	string token_id = 10 [json_name="token_id"];
+}

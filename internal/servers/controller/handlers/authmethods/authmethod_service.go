@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -966,4 +967,49 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 	return nil
+}
+
+func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok *authtoken.AuthToken, scopeId, userScopeId string) (*pba.AuthToken, error) {
+	const op = "authmethod_service.convertInternalAuthTokenToApiAuthToken"
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	if scopeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Empty scope ID.")
+	}
+	if userScopeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Empty user scope ID.")
+	}
+	if tok == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Nil auth token.")
+	}
+	if tok.Token == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Empty token.")
+	}
+	if tok.GetPublicId() == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Empty token public ID.")
+	}
+	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
+	if err != nil {
+		return nil, err
+	}
+
+	tok.Token = tok.GetPublicId() + "_" + token
+	prot := toAuthTokenProto(tok)
+
+	scp, err := iamRepo.LookupScope(ctx, userScopeId)
+	if err != nil {
+		return nil, err
+	}
+	if scp == nil {
+		return nil, err
+	}
+	prot.Scope = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	return prot, nil
 }

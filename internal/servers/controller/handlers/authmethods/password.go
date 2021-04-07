@@ -8,11 +8,9 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -142,28 +140,12 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, err
 	}
 
-	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
-	if err != nil {
-		return nil, err
-	}
-
-	tok.Token = tok.GetPublicId() + "_" + token
-	prot := toAuthTokenProto(tok)
-
-	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
-	if err != nil {
-		return nil, err
-	}
-	if scp == nil {
-		return nil, err
-	}
-	prot.Scope = &scopes.ScopeInfo{
-		Id:            scp.GetPublicId(),
-		Type:          scp.GetType(),
-		ParentScopeId: scp.GetParentId(),
-	}
-
-	return prot, nil
+	return s.convertInternalAuthTokenToApiAuthToken(
+		ctx,
+		tok,
+		scopeId,
+		u.GetScopeId(),
+	)
 }
 
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
