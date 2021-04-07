@@ -10,8 +10,8 @@ import (
 )
 
 // CreateAuthMethod creates am (*AuthMethod) in the repo along with its
-// associated embedded optional value objects of SigningAlgs, CallbackUrls,
-// AudClaims, and Certificates and returns the newly created AuthMethod
+// associated embedded optional value objects of SigningAlgs, AudClaims,
+// and Certificates and returns the newly created AuthMethod
 // (with its PublicId set)
 //
 // The AuthMethod's public id and version must be empty (zero values).
@@ -92,13 +92,6 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 					return err
 				}
 				msgs = append(msgs, audOplogMsgs...)
-			}
-			if len(vo.Callbacks) > 0 {
-				callbackOplogMsgs := make([]*oplog.Message, 0, len(vo.Callbacks))
-				if err := w.CreateItems(ctx, vo.Callbacks, db.NewOplogMsgs(&callbackOplogMsgs)); err != nil {
-					return err
-				}
-				msgs = append(msgs, callbackOplogMsgs...)
 			}
 			if len(vo.Certs) > 0 {
 				certOplogMsgs := make([]*oplog.Message, 0, len(vo.Certs))

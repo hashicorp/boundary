@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 	"crypto/x509"
-	"net/url"
 	"testing"
 	"time"
 
@@ -32,13 +31,6 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		}
 		return s
 	}
-	convertUrls := func(cb ...*url.URL) []string {
-		u := make([]string, 0, len(cb))
-		for _, c := range cb {
-			u = append(u, c.String())
-		}
-		return u
-	}
 	tests := []struct {
 		name         string
 		am           *AuthMethod
@@ -49,7 +41,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "valid",
 			am: func() *AuthMethod {
 				algs := []Alg{RS256, ES256}
-				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")
+				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
 				auds := []string{"alice-rp", "bob-rp"}
 				cert1, pem1 := testGenerateCA(t, "localhost")
 				cert2, pem2 := testGenerateCA(t, "localhost")
@@ -57,11 +49,11 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				pems := []string{pem1, pem2}
 				am, err := NewAuthMethod(
 					org.PublicId,
-					TestConvertToUrls(t, "https://www.alice.com")[0],
 					"alice-rp",
 					"alice-secret", WithAudClaims("alice-rp"),
 					WithAudClaims(auds...),
-					WithCallbackUrls(cbs...),
+					WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+					WithApiUrl(cbs),
 					WithSigningAlgs(algs...),
 					WithCertificates(certs...),
 					WithName("alice's restaurant"),
@@ -69,7 +61,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
-				require.Equal(t, am.CallbackUrls, convertUrls(cbs...))
+				require.Equal(t, am.ApiUrl, cbs.String())
+				require.Equal(t, "https://www.alice.com", am.Issuer)
 				require.Equal(t, am.AudClaims, auds)
 				require.Equal(t, am.Certificates, pems)
 				require.Equal(t, am.OperationalState, string(InactiveState))
@@ -79,12 +72,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		{
 			name: "bad-state",
 			am: func() *AuthMethod {
-				am, err := NewAuthMethod(
-					org.PublicId,
-					TestConvertToUrls(t, "https://www.alice.com")[0],
-					"bad-state-rp",
-					"alice-secret", WithAudClaims("alice-rp"),
-				)
+				am, err := NewAuthMethod(org.PublicId, "bad-state-rp", "alice-secret",
+					WithAudClaims("alice-rp"), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 				require.NoError(t, err)
 				am.OperationalState = "not-a-valid-state"
 				return am

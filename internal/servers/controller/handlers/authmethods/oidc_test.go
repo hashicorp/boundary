@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -107,23 +108,15 @@ func getSetup(t *testing.T) setup {
 
 	ret.authMethod = oidc.TestAuthMethod(
 		t, ret.conn, ret.databaseWrapper, ret.org.PublicId, oidc.ActivePublicState,
-		oidc.TestConvertToUrls(t, ret.testProvider.Addr())[0],
 		"test-rp", "fido",
-		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, ret.testController.URL)...),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, ret.testProvider.Addr())[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, ret.testController.URL)[0]),
 		oidc.WithSigningAlgs(oidc.Alg(ret.testProviderAlg)),
 		oidc.WithCertificates(ret.testProviderCaCert...),
 	)
 
 	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL, ret.authMethod.PublicId)
 	ret.testProvider.SetAllowedRedirectURIs([]string{ret.testProviderAllowedRedirect})
-
-	allowedCallback, err := oidc.NewCallbackUrl(ret.authMethod.PublicId, oidc.TestConvertToUrls(t, ret.testProviderAllowedRedirect)[0])
-	require.NoError(err)
-	err = ret.rw.Create(ret.ctx, allowedCallback)
-	if err != nil && !errors.Match(errors.T(errors.NotUnique), err) {
-		// ignore dup errors, but raise all others as an invalid test setup
-		require.NoError(err)
-	}
 
 	r, err := ret.oidcRepoFn()
 	require.NoError(err)
@@ -171,7 +164,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"client_id":      structpb.NewStringValue("someclientid"),
 			"client_secret":  structpb.NewStringValue("secret"),
 			"api_url_prefix": structpb.NewStringValue("http://example.com"),
-			"ca_certs": func() *structpb.Value {
+			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -189,7 +182,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
-			"ca_certs": func() *structpb.Value {
+			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
 			}(),
@@ -330,6 +323,16 @@ func TestUpdate_OIDC(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name: &wrapperspb.StringValue{Value: "updated name"},
 					Type: auth.PasswordSubtype.String(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant change is primary",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"is_primary"}},
+				Item: &pb.AuthMethod{
+					IsPrimary: true,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -615,6 +618,18 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Unset Api Url Prefix",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.api_url_prefix"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "Change Api Url Prefix",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -861,11 +876,12 @@ func TestChangeState_OIDC(t *testing.T) {
 	tpCert, err := oidc.ParseCertificates(tp.CACert())
 	require.NoError(t, err)
 
-	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, "https://alice.com")[0], "client id", "secret")
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], tpClientId, oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
-	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", oidc.TestConvertToUrls(t, tp.Addr())[0], "different_client_id", oidc.ClientSecret(tpClientSecret),
-		oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	incompleteAm := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "client id", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.Alg(tpAlg)), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
+	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
@@ -889,14 +905,14 @@ func TestChangeState_OIDC(t *testing.T) {
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"issuer":             structpb.NewStringValue(oidcam.DiscoveryUrl),
+			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
-			"ca_certs":           certs,
+			"idp_ca_certs":       certs,
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -1133,4 +1149,136 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.NotEmpty(m["token_id"])
 		})
 	}
+}
+
+func TestAuthenticate_OIDC_Token(t *testing.T) {
+	s := getSetup(t)
+	testAtRepo, err := authtoken.NewRepository(s.rw, s.rw, s.kmsCache)
+	require.NoError(t, err)
+
+	// a reusable test authmethod for the unit tests
+	testAuthMethod := oidc.TestAuthMethod(t, s.conn, s.databaseWrapper, s.org.PublicId, oidc.ActivePublicState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.Alg(oidc.RS256)),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://alice.com/callback")[0]))
+
+	testAcct := oidc.TestAccount(t, s.conn, testAuthMethod, "alice")
+	testUser := iam.TestUser(t, s.iamRepo, s.org.PublicId, iam.WithAccountIds(testAcct.PublicId))
+
+	cases := []struct {
+		name         string
+		request      *pbs.AuthenticateRequest
+		wantErr      error
+		wantErrMatch *errors.Template
+	}{
+		{
+			name: "no command",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "bad command",
+			request: &pbs.AuthenticateRequest{
+				Command:      "bad",
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no auth method id",
+			request: &pbs.AuthenticateRequest{
+				Command: "token",
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no attributes",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "success",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
+							tokenPublicId, err := authtoken.NewAuthTokenId()
+							require.NoError(t, err)
+							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, 200*time.Second, tokenPublicId)
+						}(),
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+		},
+		{
+			name: "expired",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
+							tokenPublicId, err := authtoken.NewAuthTokenId()
+							require.NoError(t, err)
+							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, -20*time.Second, tokenPublicId)
+						}(),
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+			wantErrMatch: errors.T(errors.AuthAttemptExpired),
+		},
+		{
+			name: "invalid-token-id-not-encoded-encrypted-proto",
+			request: &pbs.AuthenticateRequest{
+				Command:      "token",
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": "bad-token-id",
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
+			},
+			wantErrMatch: errors.T(errors.Unknown),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.request)
+			if tc.wantErr != nil {
+				require.Error(err)
+				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				return
+			}
+			if tc.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tc.wantErrMatch, err), "Got %#v, wanted %#v", err, tc.wantErrMatch.Code)
+				return
+			}
+			require.NoError(err)
+			require.Equal(got.GetCommand(), "token")
+			require.NotNil(got.GetAttributes())
+			m := got.GetAttributes().AsMap()
+			require.NotNil(m)
+			require.Contains(m, "token")
+			require.NotEmpty(m["token"])
+		})
+	}
+
 }

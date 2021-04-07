@@ -36,7 +36,7 @@ const (
 	maxAgeFlagName                            = "max-age"
 	signingAlgorithmFlagName                  = "signing-algorithm"
 	apiUrlPrefixFlagName                      = "api-url-prefix"
-	caCertFlagName                            = "ca-cert"
+	caCertFlagName                            = "idp-ca-cert"
 	allowedAudienceFlagName                   = "allowed-audience"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
@@ -209,9 +209,9 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	}
 	switch c.flagCaCerts {
 	case nil:
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodCaCerts())
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodIdpCaCerts())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodCaCerts(c.flagCaCerts))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagCaCerts))
 	}
 	switch c.flagAllowedAudiences {
 	case nil:

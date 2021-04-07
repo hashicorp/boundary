@@ -45,7 +45,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		return nil, errors.Wrap(err, op)
 	}
 
-	columns := []string{"public_id", "auth_method_id", "issuer_id", "subject_id"}
+	columns := []string{"public_id", "auth_method_id", "issuer", "subject"}
 	values := []interface{}{pubId, am.PublicId, iss, sub}
 	var conflictClauses, fieldMasks, nullMasks []string
 
@@ -138,7 +138,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			if rowCnt > 1 {
 				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
-			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer_id = ? and subject_id = ?", am.PublicId, iss, sub); err != nil {
+			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", am.PublicId, iss, sub); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
 			}
 			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject

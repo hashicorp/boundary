@@ -35,7 +35,7 @@ import (
 )
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
-// WithMaxAge, WithCallbackUrls, WithCertificates, WithAudClaims, and
+// WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
 // WithSigningAlgs options are supported.
 func TestAuthMethod(
 	t *testing.T,
@@ -43,7 +43,6 @@ func TestAuthMethod(
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
 	state AuthMethodState,
-	discoveryUrl *url.URL,
 	clientId string,
 	clientSecret ClientSecret,
 	opt ...Option) *AuthMethod {
@@ -53,7 +52,7 @@ func TestAuthMethod(
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	authMethod, err := NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opt...)
+	authMethod, err := NewAuthMethod(scopeId, clientId, clientSecret, opt...)
 	require.NoError(err)
 	id, err := newAuthMethodId()
 	require.NoError(err)
@@ -63,17 +62,6 @@ func TestAuthMethod(
 	err = rw.Create(ctx, authMethod)
 	require.NoError(err)
 
-	if len(opts.withCallbackUrls) > 0 {
-		newCallbacks := make([]interface{}, 0, len(opts.withCallbackUrls))
-		for _, c := range opts.withCallbackUrls {
-			callback, err := NewCallbackUrl(authMethod.PublicId, c)
-			require.NoError(err)
-			newCallbacks = append(newCallbacks, callback)
-		}
-		err := rw.CreateItems(ctx, newCallbacks)
-		require.NoError(err)
-		require.Equal(len(opts.withCallbackUrls), len(authMethod.CallbackUrls))
-	}
 	if len(opts.withAudClaims) > 0 {
 		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
@@ -135,9 +123,6 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 		sort.Slice(am.AudClaims, func(a, b int) bool {
 			return am.AudClaims[a] < am.AudClaims[b]
 		})
-		sort.Slice(am.CallbackUrls, func(a, b int) bool {
-			return am.CallbackUrls[a] < am.CallbackUrls[b]
-		})
 		sort.Slice(am.Certificates, func(a, b int) bool {
 			return am.Certificates[a] < am.Certificates[b]
 		})
@@ -145,19 +130,19 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 }
 
 // TestAccount creates a test oidc auth account.
-func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subjectId string, opt ...Option) *Account {
+func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, opt ...Option) *Account {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	ctx := context.Background()
 
-	u, err := url.Parse(am.GetDiscoveryUrl())
+	u, err := url.Parse(am.GetIssuer())
 	require.NoError(err)
 	opt = append(opt, WithIssuer(u))
-	a, err := NewAccount(am.PublicId, subjectId, opt...)
+	a, err := NewAccount(am.PublicId, subject, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId(am.GetPublicId(), am.DiscoveryUrl, subjectId)
+	id, err := newAccountId(am.GetPublicId(), am.Issuer, subject)
 	require.NoError(err)
 	a.PublicId = id
 
@@ -298,9 +283,9 @@ func testState(
 	return encodedEncryptedSt
 }
 
-// testTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
+// TestTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
 // the returned string can be used as a parameter for functions like: oidc.TokenRequest
-func testTokenRequestId(
+func TestTokenRequestId(
 	t *testing.T,
 	am *AuthMethod,
 	kms *kms.Kms,
@@ -327,8 +312,8 @@ func testTokenRequestId(
 	return encodedEncryptedReqTk
 }
 
-// testPendingToken will create a pending auth token for the tokenRequestId (aka public id)
-func testPendingToken(
+// TestPendingToken will create a pending auth token for the tokenRequestId (aka public id)
+func TestPendingToken(
 	t *testing.T,
 	tokenRepo *authtoken.Repository,
 	user *iam.User,

@@ -30,7 +30,7 @@ func TestAuthMethod_Create(t *testing.T) {
 
 	type args struct {
 		scopeId      string
-		discoveryURL *url.URL
+		issuer       *url.URL
 		clientId     string
 		clientSecret ClientSecret
 		opt          []Option
@@ -49,45 +49,45 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
+				opt:          []Option{WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
 			},
 			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = -1
 				a.Name = "alice.com"
 				a.Description = "alice's restaurant rp"
+				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
 		},
 		{
-			name: "dup", // must follow "valid" test. combination of ScopeId, DiscoveryUrl and ClientId must be unique.
+			name: "dup", // must follow "valid" test. combination of ScopeId, Issuer and ClientId must be unique.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
+				opt:          []Option{WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
 			},
 			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = -1
 				a.Name = "alice.com"
 				a.Description = "alice's restaurant rp"
+				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
 			wantCreateErr:   true,
@@ -97,19 +97,15 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "valid-with-no-options",
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "eve_rp",
 				clientSecret: ClientSecret("rp-secret"),
 			},
-			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
 				a.ClientId = "eve_rp"
 				a.ClientSecret = "rp-secret"
-				a.MaxAge = 0
 				return &a
 			}(),
 		},
@@ -117,31 +113,31 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "empty-scope-id",
 			args: args{
 				scopeId:      "",
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithDescription("alice's restaurant rp"), WithName("alice.com")},
+				opt:          []Option{WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithDescription("alice's restaurant rp"), WithName("alice.com")},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "nil-url", // should succeed.
+			name: "nil-issuer", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: nil,
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
+				opt:          []Option{WithApiUrl(TestConvertToUrls(t, "https://api.com")[0])},
 			},
 			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = ""
+				a.Issuer = ""
 				a.ClientId = "alice_rp"
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = 0
+				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
 		},
@@ -149,18 +145,19 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-id", // should succeed.
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "",
 				clientSecret: ClientSecret("rp-secret"),
+				opt:          []Option{WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithIssuer(TestConvertToUrls(t, "http://alice.com")[0])},
 			},
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = ""
 				a.ClientSecret = "rp-secret"
 				a.MaxAge = 0
+				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
 		},
@@ -168,18 +165,19 @@ func TestAuthMethod_Create(t *testing.T) {
 			name: "missing-client-secret", // should succeed
 			args: args{
 				scopeId:      org.PublicId,
-				discoveryURL: func() *url.URL { u, err := url.Parse("http://alice.com"); require.NoError(t, err); return u }(),
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret(""),
+				opt:          []Option{WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithIssuer(TestConvertToUrls(t, "http://alice.com")[0])},
 			},
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
 				a.OperationalState = string(InactiveState)
-				a.DiscoveryUrl = "http://alice.com"
+				a.Issuer = "http://alice.com"
 				a.ClientId = "alice_rp"
 				a.ClientSecret = ""
 				a.MaxAge = 0
+				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
 		},
@@ -187,7 +185,7 @@ func TestAuthMethod_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAuthMethod(tt.args.scopeId, tt.args.discoveryURL, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
+			got, err := NewAuthMethod(tt.args.scopeId, tt.args.clientId, tt.args.clientSecret, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -233,8 +231,9 @@ func TestAuthMethod_Delete(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testResource := func(discoveryUrl string, clientId, clientSecret string) *AuthMethod {
-		got, err := NewAuthMethod(org.PublicId, TestConvertToUrls(t, discoveryUrl)[0], clientId, ClientSecret(clientSecret))
+	testResource := func(issuer string, clientId, clientSecret string) *AuthMethod {
+		got, err := NewAuthMethod(org.PublicId, clientId, ClientSecret(clientSecret),
+			WithIssuer(TestConvertToUrls(t, issuer)[0]), WithApiUrl(TestConvertToUrls(t, "http://api.com")[0]))
 		require.NoError(t, err)
 		id, err := newAuthMethodId()
 		require.NoError(t, err)
@@ -306,7 +305,8 @@ func TestAuthMethod_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://alice.com")[0]))
 		m.DisableDiscoveredConfigValidation = true
 
 		cp := m.Clone()
@@ -318,8 +318,10 @@ func TestAuthMethod_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(t, err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
-		m2 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp2", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+		m2 := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp2", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 		cp := m.Clone()
 		assert.True(!proto.Equal(cp.AuthMethod, m2.AuthMethod))
@@ -367,7 +369,8 @@ func Test_encrypt_decrypt_hmac(t *testing.T) {
 	require.NoError(t, err)
 	projDatabaseWrapper, err := kmsCache.GetWrapper(ctx, proj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	tests := []struct {
 		name                string
@@ -494,14 +497,6 @@ func Test_convertValueObjects(t *testing.T) {
 		testAudiences = append(testAudiences, obj)
 	}
 
-	testCbs := []string{"https://alice.com/callback", "https://localhost/callback"}
-	var testCallbacks []interface{}
-	for _, cb := range testCbs {
-		obj, err := NewCallbackUrl(testPublicId, TestConvertToUrls(t, cb)[0])
-		require.NoError(t, err)
-		testCallbacks = append(testCallbacks, obj)
-	}
-
 	_, pem := testGenerateCA(t, "localhost")
 	testCerts := []string{pem}
 	c, err := NewCertificate(testPublicId, pem)
@@ -513,7 +508,6 @@ func Test_convertValueObjects(t *testing.T) {
 		authMethodId    string
 		algs            []string
 		auds            []string
-		callbacks       []string
 		certs           []string
 		wantValues      *convertedValues
 		wantErrMatch    *errors.Template
@@ -524,13 +518,11 @@ func Test_convertValueObjects(t *testing.T) {
 			authMethodId: testPublicId,
 			algs:         testAlgs,
 			auds:         testAuds,
-			callbacks:    testCbs,
 			certs:        testCerts,
 			wantValues: &convertedValues{
-				Algs:      testSigningAlgs,
-				Callbacks: testCallbacks,
-				Auds:      testAudiences,
-				Certs:     testCertificates,
+				Algs:  testSigningAlgs,
+				Auds:  testAudiences,
+				Certs: testCertificates,
 			},
 		},
 		{
@@ -547,7 +539,6 @@ func Test_convertValueObjects(t *testing.T) {
 					PublicId:     tt.authMethodId,
 					SigningAlgs:  tt.algs,
 					AudClaims:    tt.auds,
-					CallbackUrls: tt.callbacks,
 					Certificates: tt.certs,
 				},
 			}
@@ -566,14 +557,6 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
 			} else {
 				assert.Equal(tt.wantValues.Auds, convertedAuds)
-			}
-
-			convertedCallbacks, err := am.convertCallbacks()
-			if tt.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
-			} else {
-				assert.Equal(tt.wantValues.Callbacks, convertedCallbacks)
 			}
 
 			convertedCerts, err := am.convertCertificates()

@@ -736,12 +736,12 @@ func (c *Command) createInitialOidcAuthMethod() (*oidc.AuthMethod, error) {
 
 	authMethod, err := oidc.NewAuthMethod(
 		scope.Global.String(),
-		discoveryUrl,
 		c.oidcSetup.clientId,
 		c.oidcSetup.clientSecret,
 		oidc.WithName("Generated global scope initial oidc auth method"),
 		oidc.WithDescription("Provides initial administrative and unprivileged authentication into Boundary"),
-		oidc.WithCallbackUrls(c.oidcSetup.callbackUrl),
+		oidc.WithIssuer(discoveryUrl),
+		oidc.WithApiUrl(c.oidcSetup.callbackUrl),
 		oidc.WithSigningAlgs(oidc.EdDSA),
 		oidc.WithOperationalState(oidc.ActivePublicState))
 	if err != nil {

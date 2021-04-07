@@ -24,7 +24,8 @@ func TestAudClaim_Create(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 
 	type args struct {
 		authMethodId string
@@ -130,16 +131,8 @@ func TestAudClaim_Delete(t *testing.T) {
 	require.NoError(t, err)
 
 	testAuthMethod :=
-		TestAuthMethod(
-			t,
-			conn,
-			databaseWrapper,
-			org.PublicId,
-			InactiveState,
-			TestConvertToUrls(t, "https://alice.com")[0],
-			"alice_rp",
-			"my-dogs-name",
-			WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
+		TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com")) // seed an extra callback url to just make sure the delete only gets the right num of rows
 
 	testResource := func(authMethodId string, AudClaim string) *AudClaim {
 		c, err := NewAudClaim(authMethodId, AudClaim)
@@ -214,7 +207,8 @@ func TestAudClaim_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewAudClaim(m.PublicId, "eve.com")
 		require.NoError(err)
 		cp := orig.Clone()
@@ -225,7 +219,8 @@ func TestAudClaim_Clone(t *testing.T) {
 		org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 		require.NoError(err)
-		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, TestConvertToUrls(t, "https://alice.com")[0], "alice_rp", "my-dogs-name")
+		m := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+			WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 		orig, err := NewAudClaim(m.PublicId, "eve.com")
 		require.NoError(err)
 		orig2, err := NewAudClaim(m.PublicId, "alice.com")

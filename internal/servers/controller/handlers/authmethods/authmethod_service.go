@@ -40,6 +40,7 @@ const (
 	attributesField   = "attributes"
 	authMethodIdField = "auth_method_id"
 	tokenTypeField    = "token_type"
+	isPrimaryField    = "is_primary"
 )
 
 var (
@@ -598,6 +599,7 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
+		IsPrimary:   in.GetIsPrimaryAuthMethod(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -621,17 +623,17 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		attrs := &pb.OidcAuthMethodAttributes{
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
-			CaCerts:           i.GetCertificates(),
+			IdpCaCerts:        i.GetCertificates(),
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
 		}
-		if i.GetDiscoveryUrl() != "" {
-			attrs.Issuer = wrapperspb.String(i.DiscoveryUrl)
+		if i.GetIssuer() != "" {
+			attrs.Issuer = wrapperspb.String(i.Issuer)
 		}
-		if len(i.GetCallbackUrls()) > 0 {
-			attrs.ApiUrlPrefix = wrapperspb.String(i.GetCallbackUrls()[0])
-			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetCallbackUrls()[0], i.GetPublicId())
+		if len(i.GetApiUrl()) > 0 {
+			attrs.ApiUrlPrefix = wrapperspb.String(i.GetApiUrl())
+			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetApiUrl(), i.GetPublicId())
 		}
 		switch i.GetMaxAge() {
 		case 0:
@@ -688,6 +690,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields[scopeIdField] = "This field must be 'global' or a valid org scope id."
 		}
+		if req.GetItem().GetIsPrimary() {
+			badFields[isPrimaryField] = "This field is read only."
+		}
 		switch auth.SubtypeFromType(req.GetItem().GetType()) {
 		case auth.PasswordSubtype:
 			attrs := &pb.PasswordAuthMethodAttributes{}
@@ -734,14 +739,16 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						}
 					}
 				}
-				if attrs.GetApiUrlPrefix() != nil {
+				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+					// TODO: When we start accepting the address used in the request make this an optional field.
+					badFields[apiUrlPrefixField] = "This field is required."
+				} else {
 					if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-						badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
-						break
+						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					}
 				}
-				if len(attrs.GetCaCerts()) > 0 {
-					if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+				if len(attrs.GetIdpCaCerts()) > 0 {
+					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
 						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
@@ -760,6 +767,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
+		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), isPrimaryField) {
+			badFields[isPrimaryField] = "This field is read only."
+		}
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.PasswordSubtype:
 			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != auth.PasswordSubtype {
@@ -778,6 +788,15 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+				// TODO: When we start accepting the address used in the request make this an optional field.
+				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+					badFields[apiUrlPrefixField] = "This field should not be set to empty."
+				}
+				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
+					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+				}
+			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
 				if attrs.GetIssuer().GetValue() != "" {
 					du, err := url.Parse(attrs.GetIssuer().GetValue())
@@ -820,12 +839,12 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if attrs.GetApiUrlPrefix() != nil {
 				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[apiUrlPrefixeField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					break
 				}
 			}
-			if len(attrs.GetCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(attrs.GetCaCerts()...); err != nil {
+			if len(attrs.GetIdpCaCerts()) > 0 {
+				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
 					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}

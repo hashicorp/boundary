@@ -43,10 +43,10 @@ func Test_TokenRequest(t *testing.T) {
 
 	// a reusable test authmethod for the unit tests
 	testAuthMethod := TestAuthMethod(t, conn, orgDatabaseWrapper, org.PublicId, ActivePublicState,
-		TestConvertToUrls(t, "https://alice.com")[0],
 		"alice-rp", "fido",
 		WithSigningAlgs(Alg(RS256)),
-		WithCallbackUrls(TestConvertToUrls(t, "https://alice.com/callback")[0]))
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]),
+		WithApiUrl(TestConvertToUrls(t, "https://alice.com/callback")[0]))
 
 	testAcct := TestAccount(t, conn, testAuthMethod, "alice")
 	testUser := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(testAcct.PublicId))
@@ -119,8 +119,8 @@ func Test_TokenRequest(t *testing.T) {
 			tokenRequest: func() string {
 				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
-				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-				return testTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
+				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
 			}(),
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to get oidc wrapper",
@@ -132,8 +132,8 @@ func Test_TokenRequest(t *testing.T) {
 			tokenRequest: func() string {
 				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
-				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-				return testTokenRequestId(t, testAuthMethod, kmsCache, 0, tokenPublicId)
+				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return TestTokenRequestId(t, testAuthMethod, kmsCache, 0, tokenPublicId)
 			}(),
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "request token id has expired",
@@ -147,8 +147,8 @@ func Test_TokenRequest(t *testing.T) {
 			tokenRequest: func() string {
 				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
-				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-				return testTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
+				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
 			}(),
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "atRepoFn-error",
@@ -270,8 +270,8 @@ func Test_TokenRequest(t *testing.T) {
 			tokenRequest: func() string {
 				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
-				testPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-				return testTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
+				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
+				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
 			}(),
 		},
 	}

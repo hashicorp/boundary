@@ -28,7 +28,7 @@ func Test_AuthMethodSubtypes(t *testing.T) {
 	require.NoError(err)
 
 	// test oidc subtype insert
-	oidcAm, err := oidc.NewAuthMethod(org.PublicId, oidc.TestConvertToUrls(t, "https://alice.com")[0], "alice-rp", "fido", oidc.WithName("alice"))
+	oidcAm, err := oidc.NewAuthMethod(org.PublicId, "alice-rp", "fido", oidc.WithName("alice"))
 	require.NoError(err)
 	oidcAm, err = oidcRepo.CreateAuthMethod(ctx, oidcAm)
 	require.NoError(err)

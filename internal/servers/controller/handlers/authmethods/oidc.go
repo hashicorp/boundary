@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -29,6 +30,9 @@ const (
 	tokenUrlField = "token_url"
 	tokenIdField  = "token_id"
 
+	// token request/response fields
+	tokenField = "token"
+
 	// field names
 	issuerField                            = "attributes.issuer"
 	clientSecretField                      = "attributes.client_secret"
@@ -36,7 +40,7 @@ const (
 	clientSecretHmacField                  = "attributes.client_secret_hmac"
 	stateField                             = "attributes.state"
 	callbackUrlField                       = "attributes.callback_url"
-	apiUrlPrefixeField                     = "attributes.api_url_prefixes"
+	apiUrlPrefixField                      = "attributes.api_url_prefix"
 	caCertsField                           = "attributes.ca_certs"
 	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
@@ -150,6 +154,8 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 		return s.authenticateOidcStart(ctx, req, authResults)
 	case callbackCommand:
 		return s.authenticateOidcCallback(ctx, req, authResults)
+	case tokenCommand:
+		return s.authenticateOidcToken(ctx, req, authResults)
 	}
 
 	// Default is tokenCommand -- note we've already checked that it's one of
@@ -207,6 +213,52 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
 	}
 	return nil, handlers.ApiErrorWithCode(codes.Unimplemented)
+}
+
+func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateOidcToken"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+	}
+	if req.GetAttributes() == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "nil request attributes")
+	}
+
+	attrs := new(pbs.OidcTokenAttributes)
+	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "error parsing request attributes")
+	}
+	if attrs.TokenId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "empty token id request attributes")
+	}
+
+	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
+	if err != nil {
+		// TODO: Log something so we don't lose the error's context and entire msg...
+		switch {
+		case errors.Match(errors.T(errors.Forbidden), err):
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+		default:
+			return nil, errors.Wrap(err, op)
+		}
+	}
+
+	attrsMap := map[string]interface{}{
+		tokenField:     token,
+		tokenTypeField: req.GetTokenType(),
+	}
+
+	respAttrs, err := structpb.NewStruct(attrsMap)
+	if err != nil {
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+	}
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
 }
 
 func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
@@ -300,16 +352,17 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	var discoveryUrl *url.URL
-	if ds := attrs.GetIssuer().GetValue(); ds != "" {
+	if iss := strings.TrimSpace(attrs.GetIssuer().GetValue()); iss != "" {
+		var issuer *url.URL
 		var err error
-		if discoveryUrl, err = url.Parse(ds); err != nil {
+		if issuer, err = url.Parse(iss); err != nil {
 			return nil, false, err
 		}
 		// remove everything except for protocol, hostname, and port.
-		if discoveryUrl, err = discoveryUrl.Parse("/"); err != nil {
+		if issuer, err = issuer.Parse("/"); err != nil {
 			return nil, false, err
 		}
+		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 
 	if attrs.GetMaxAge() != nil {
@@ -331,24 +384,24 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
 	}
 
-	if attrs.GetApiUrlPrefix().GetValue() != "" {
-		apiU, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
+	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
+		apiU, err := url.Parse(apiUrl)
 		if err != nil {
 			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{apiUrlPrefixeField: "Unparsable url"})
+				map[string]string{apiUrlPrefixField: "Unparsable url"})
 		}
-		opts = append(opts, oidc.WithCallbackUrls(apiU))
+		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
-	if len(attrs.GetCaCerts()) > 0 {
-		certs, err := oidc.ParseCertificates(attrs.GetCaCerts()...)
+	if len(attrs.GetIdpCaCerts()) > 0 {
+		certs, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...)
 		if err != nil {
 			return nil, false, err
 		}
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
-	u, err := oidc.NewAuthMethod(scopeId, discoveryUrl, clientId, clientSecret, opts...)
+	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
 	if err != nil {
 		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}

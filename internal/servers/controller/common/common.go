@@ -3,7 +3,6 @@ package common
 import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -12,7 +11,7 @@ import (
 )
 
 type (
-	AuthTokenRepoFactory    func() (*authtoken.Repository, error)
+	AuthTokenRepoFactory    = oidc.AuthTokenRepoFactory
 	IamRepoFactory          func() (*iam.Repository, error)
 	OidcAuthRepoFactory     = oidc.OidcRepoFactory
 	PasswordAuthRepoFactory func() (*password.Repository, error)

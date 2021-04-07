@@ -141,18 +141,16 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.Version = agg.Version
 		am.OperationalState = agg.State
 		am.DisableDiscoveredConfigValidation = agg.DisableDiscoveredConfigValidation
-		am.DiscoveryUrl = agg.DiscoveryUrl
+		am.Issuer = agg.Issuer
 		am.ClientId = agg.ClientId
 		am.CtClientSecret = agg.CtClientSecret
 		am.ClientSecret = agg.ClientSecret
 		am.ClientSecretHmac = agg.ClientSecretHmac
 		am.KeyId = agg.KeyId
 		am.MaxAge = int32(agg.MaxAge)
+		am.ApiUrl = agg.ApiUrl
 		if agg.Algs != "" {
 			am.SigningAlgs = strings.Split(agg.Algs, aggregateDelimiter)
-		}
-		if agg.Callbacks != "" {
-			am.CallbackUrls = strings.Split(agg.Callbacks, aggregateDelimiter)
 		}
 		if agg.Auds != "" {
 			am.AudClaims = strings.Split(agg.Auds, aggregateDelimiter)
@@ -178,7 +176,7 @@ type authMethodAgg struct {
 	Version                           uint32
 	State                             string
 	DisableDiscoveredConfigValidation bool
-	DiscoveryUrl                      string
+	Issuer                            string
 	ClientId                          string
 	CtClientSecret                    []byte `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
 	ClientSecret                      string `gorm:"-" wrapping:"pt,client_secret"`
@@ -186,7 +184,7 @@ type authMethodAgg struct {
 	KeyId                             string
 	MaxAge                            int
 	Algs                              string
-	Callbacks                         string
+	ApiUrl                            string
 	Auds                              string
 	Certs                             string
 }
