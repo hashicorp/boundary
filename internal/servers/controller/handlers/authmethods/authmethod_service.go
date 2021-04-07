@@ -969,17 +969,11 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	return nil
 }
 
-func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok *authtoken.AuthToken, scopeId, userScopeId string) (*pba.AuthToken, error) {
+func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok *authtoken.AuthToken) (*pba.AuthToken, error) {
 	const op = "authmethod_service.convertInternalAuthTokenToApiAuthToken"
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		return nil, err
-	}
-	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty scope ID.")
-	}
-	if userScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty user scope ID.")
 	}
 	if tok == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth token.")
@@ -990,7 +984,10 @@ func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 	if tok.GetPublicId() == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "Empty token public ID.")
 	}
-	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
+	if tok.GetScopeId() == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Empty token, scope ID.")
+	}
+	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetScopeId(), tok.GetPublicId(), tok.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -998,7 +995,7 @@ func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 	tok.Token = tok.GetPublicId() + "_" + token
 	prot := toAuthTokenProto(tok)
 
-	scp, err := iamRepo.LookupScope(ctx, userScopeId)
+	scp, err := iamRepo.LookupScope(ctx, tok.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -1012,4 +1009,36 @@ func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 	}
 
 	return prot, nil
+}
+
+func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.convertToAuthenticateResponse"
+	if req == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
+	}
+	if authResults == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
+
+	}
+	if authResults.Scope == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results scope.")
+	}
+	if authResults.Scope.Id == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results scope ID.")
+	}
+	if tok == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Nil auth token.")
+	}
+	res := &perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.AuthToken,
+	}
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
+	retAttrs, err := handlers.ProtoToStruct(tok)
+	if err != nil {
+		return nil, err
+	}
+	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
+
+	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
 }

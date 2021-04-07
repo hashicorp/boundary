@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -263,17 +262,14 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		}
 	}
 
-	attrsMap := map[string]interface{}{
-		tokenField:     token,
-		tokenTypeField: req.GetTokenType(),
-	}
-
-	respAttrs, err := structpb.NewStruct(attrsMap)
+	responseToken, err := s.convertInternalAuthTokenToApiAuthToken(
+		ctx,
+		token,
+	)
 	if err != nil {
-		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+		return nil, errors.Wrap(err, op)
 	}
-
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
+	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
 
 func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
