@@ -190,7 +190,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
-	const op = "host_service.(Service).createInRepo"
+	const op = "hosts.(Service).createInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)

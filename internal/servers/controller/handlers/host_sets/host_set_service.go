@@ -63,7 +63,7 @@ var _ pbs.HostSetServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	const op = "host_sets.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing statis repository")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }

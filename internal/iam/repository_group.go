@@ -230,7 +230,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentMembers []*GroupMember

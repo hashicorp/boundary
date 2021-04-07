@@ -150,10 +150,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, err
 		return nil, errors.Wrap(err, op)
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
+	if err != nil && !errors.IsNotFoundError(err) {
 		return nil, errors.Wrap(err, op)
 	}
 	if u == nil {

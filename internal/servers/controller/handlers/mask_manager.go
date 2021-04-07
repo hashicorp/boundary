@@ -32,7 +32,7 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	for k, v := range srcToDest {
 		ov, ok := destToSrc[v]
 		if !ok || ov != k {
-			return nil, errors.New(errors.Encrypt, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.New(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 		result[k] = v
 	}
@@ -40,7 +40,6 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	// Now check to make sure there aren't any dangling dest mappings.
 	for k, v := range destToSrc {
 		if ov, ok := srcToDest[v]; !ok || ov != k {
-			//todo(schristoff): I'm not in love with this error
 			return nil, errors.New(errors.Encrypt, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 	}
@@ -63,7 +62,6 @@ func mapFromProto(ps ...protoreflect.ProtoMessage) (map[string]string, error) {
 			opts := f.Options().(*descriptorpb.FieldOptions)
 			if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) && nameMap != nil {
 				if _, ok := mapping[nameMap.GetThis()]; ok {
-					//todo(schristoff): I'm not in love with this error either
 					return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
 				}
 				mapping[nameMap.GetThis()] = nameMap.GetThat()

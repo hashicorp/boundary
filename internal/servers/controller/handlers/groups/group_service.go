@@ -254,10 +254,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) 
 		return nil, errors.Wrap(err, op)
 	}
 	g, m, err := repo.LookupGroup(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
+	if err != nil && !errors.IsNotFoundError(err) {
 		return nil, errors.Wrap(err, op)
 	}
 	if g == nil {
@@ -294,7 +291,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
-	const op = "groups.(Service).createInRepo"
+	const op = "groups.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
