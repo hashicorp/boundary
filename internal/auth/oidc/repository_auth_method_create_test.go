@@ -33,13 +33,13 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	}
 	tests := []struct {
 		name         string
-		am           *AuthMethod
+		am           func(*testing.T) *AuthMethod
 		opt          []Option
 		wantErrMatch *errors.Template
 	}{
 		{
 			name: "valid",
-			am: func() *AuthMethod {
+			am: func(t *testing.T) *AuthMethod {
 				algs := []Alg{RS256, ES256}
 				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
 				auds := []string{"alice-rp", "bob-rp"}
@@ -67,44 +67,111 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				require.Equal(t, am.Certificates, pems)
 				require.Equal(t, am.OperationalState, string(InactiveState))
 				return am
-			}(),
+			},
+		},
+		{
+			name: "valid with custom ID",
+			am: func(t *testing.T) *AuthMethod {
+				algs := []Alg{RS256, ES256}
+				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
+				auds := []string{"alice-rp-custom", "bob-rp-custom"}
+				cert1, pem1 := testGenerateCA(t, "localhost")
+				cert2, pem2 := testGenerateCA(t, "localhost")
+				certs := []*x509.Certificate{cert1, cert2}
+				pems := []string{pem1, pem2}
+				am, err := NewAuthMethod(
+					org.PublicId,
+					"alice-rp-custom",
+					"alice-secret-custom", WithAudClaims("alice-rp-custom"),
+					WithAudClaims(auds...),
+					WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+					WithApiUrl(cbs),
+					WithSigningAlgs(algs...),
+					WithCertificates(certs...),
+					WithName("alice's restaurant with a twist"),
+					WithDescription("it's an okay but kinda weird place to eat"),
+				)
+				require.NoError(t, err)
+				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
+				require.Equal(t, am.ApiUrl, cbs.String())
+				require.Equal(t, "https://www.alice.com", am.Issuer)
+				require.Equal(t, am.AudClaims, auds)
+				require.Equal(t, am.Certificates, pems)
+				require.Equal(t, am.OperationalState, string(InactiveState))
+				return am
+			},
+			opt: []Option{WithPublicId("amoidc_1234567890")},
+		},
+		{
+			name: "bad custom ID",
+			am: func(t *testing.T) *AuthMethod {
+				algs := []Alg{RS256, ES256}
+				cbs := TestConvertToUrls(t, "https://www.alice.com/callback")[0]
+				auds := []string{"alice-rp-bad", "bob-rp-bad"}
+				cert1, pem1 := testGenerateCA(t, "localhost")
+				cert2, pem2 := testGenerateCA(t, "localhost")
+				certs := []*x509.Certificate{cert1, cert2}
+				pems := []string{pem1, pem2}
+				am, err := NewAuthMethod(
+					org.PublicId,
+					"alice-rp-bad",
+					"alice-secret-bad", WithAudClaims("alice-rp-bad"),
+					WithAudClaims(auds...),
+					WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
+					WithApiUrl(cbs),
+					WithSigningAlgs(algs...),
+					WithCertificates(certs...),
+					WithName("alice's restaurant is bad"),
+					WithDescription("their food is awful"),
+				)
+				require.NoError(t, err)
+				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
+				require.Equal(t, am.ApiUrl, cbs.String())
+				require.Equal(t, "https://www.alice.com", am.Issuer)
+				require.Equal(t, am.AudClaims, auds)
+				require.Equal(t, am.Certificates, pems)
+				require.Equal(t, am.OperationalState, string(InactiveState))
+				return am
+			},
+			opt:          []Option{WithPublicId("amoic_1234567890")},
+			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "bad-state",
-			am: func() *AuthMethod {
+			am: func(t *testing.T) *AuthMethod {
 				am, err := NewAuthMethod(org.PublicId, "bad-state-rp", "alice-secret",
 					WithAudClaims("alice-rp"), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
 				require.NoError(t, err)
 				am.OperationalState = "not-a-valid-state"
 				return am
-			}(),
+			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "missing-auth-method",
-			am: func() *AuthMethod {
+			am: func(t *testing.T) *AuthMethod {
 				return nil
-			}(),
+			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "bad-public-id",
-			am: func() *AuthMethod {
+			am: func(t *testing.T) *AuthMethod {
 				id, err := newAuthMethodId()
 				require.NoError(t, err)
 				am := AllocAuthMethod()
 				am.PublicId = id
 				return &am
-			}(),
+			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "bad-version",
-			am: func() *AuthMethod {
+			am: func(t *testing.T) *AuthMethod {
 				am := AllocAuthMethod()
 				am.Version = 22
 				return &am
-			}(),
+			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 	}
@@ -114,26 +181,32 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthMethod(ctx, tt.am, tt.opt...)
+			am := tt.am(t)
+			got, err := repo.CreateAuthMethod(ctx, am, tt.opt...)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Nil(got)
 
-				if tt.am != nil {
-					err := db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-					require.Errorf(err, "should not have found oplog entry for %s", tt.am.PublicId)
+				if am != nil {
+					err := db.TestVerifyOplog(t, rw, am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+					require.Errorf(err, "should not have found oplog entry for %s", am.PublicId)
 				}
 				return
 			}
 			require.NoError(err)
-			tt.am.PublicId = got.PublicId
-			tt.am.CreateTime = got.CreateTime
-			tt.am.UpdateTime = got.UpdateTime
-			tt.am.Version = got.Version
-			assert.Truef(proto.Equal(tt.am.AuthMethod, got.AuthMethod), "got %+v expected %+v", got, tt.am)
+			if tt.opt != nil {
+				if opts := getOpts(tt.opt...); opts.withPublicId != "" {
+					require.Equal(opts.withPublicId, got.PublicId)
+				}
+			}
+			am.PublicId = got.PublicId
+			am.CreateTime = got.CreateTime
+			am.UpdateTime = got.UpdateTime
+			am.Version = got.Version
+			assert.Truef(proto.Equal(am.AuthMethod, got.AuthMethod), "got %+v expected %+v", got, tt.am)
 
-			err = db.TestVerifyOplog(t, rw, tt.am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 		})
 	}

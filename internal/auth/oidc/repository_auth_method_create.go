@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 )
 
 // CreateAuthMethod creates am (*AuthMethod) in the repo along with its
@@ -40,6 +41,10 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 			return nil, errors.Wrap(err, op)
 		}
 		am.PublicId = id
+	} else {
+		if !handlers.ValidId(handlers.Id(am.PublicId), AuthMethodPrefix) {
+			return nil, errors.New(errors.InvalidParameter, op, "bad custom auth method id")
+		}
 	}
 
 	vo, err := am.convertValueObjects()
