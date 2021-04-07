@@ -1148,10 +1148,10 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 
 	// a reusable test authmethod for the unit tests
 	testAuthMethod := oidc.TestAuthMethod(t, s.conn, s.databaseWrapper, s.org.PublicId, oidc.ActivePublicState,
-		oidc.TestConvertToUrls(t, "https://alice.com")[0],
 		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
 		oidc.WithSigningAlgs(oidc.Alg(oidc.RS256)),
-		oidc.WithCallbackUrls(oidc.TestConvertToUrls(t, "https://alice.com/callback")[0]))
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://alice.com/callback")[0]))
 
 	testAcct := oidc.TestAccount(t, s.conn, testAuthMethod, "alice")
 	testUser := iam.TestUser(t, s.iamRepo, s.org.PublicId, iam.WithAccountIds(testAcct.PublicId))
