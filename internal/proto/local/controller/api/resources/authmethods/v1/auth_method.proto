@@ -133,11 +133,22 @@ message OidcAuthMethodAuthenticateStartResponse {
 	string token_id = 30 [json_name="token_id"];
 }
 
-// The structure of OIDC callback parameters
+// The structure of OIDC callback request parameters
 message OidcAuthMethodAuthenticateCallbackRequest {
 	// The returned code
 	string code = 10 [json_name="code"];
 
 	// The returned state
 	string state = 20 [json_name="state"];
+
+	// Error parameters, if they are returned
+	string error = 30 [json_name="error"];
+	string error_description = 40 [json_name="error_description"];
+	string error_uri = 50 [json_name="error_uri"];
+}
+
+// The structure of OIDC callback response parameters
+message OidcAuthMethodAuthenticateCallbackResponse {
+	// The final redirection URL
+	string final_redirect_url = 10 [json_name="final_redirect_url"];
 }

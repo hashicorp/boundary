@@ -212,6 +212,26 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	if authResults == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
 	}
+
+	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
+	// Note that this conversion has already happened in the validate call so we don't expect errors here.
+	if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
+		return nil, err
+	}
+
+	_, err := oidc.Callback(
+		ctx,
+		s.oidcRepoFn,
+		oidc.IamRepoFactory(s.iamRepoFn),
+		s.atRepoFn,
+		req.GetAuthMethodId(),
+		attrs.GetState(),
+		attrs.GetCode())
+	if err != nil {
+		// TODO: Log something more meaningful
+		return nil, errors.New(errors.InvalidParameter, op, "Callback validation failed.")
+	}
+
 	return nil, handlers.ApiErrorWithCode(codes.Unimplemented)
 }
 
@@ -305,6 +325,11 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 		if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
 			badFields[attributesField] = "Unable to parse callback request attributes."
 			break
+		}
+
+		if attrs.GetError() != "" {
+			// TODO: Log more info.
+			return handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "OIDC provider returned an error.")
 		}
 
 		if attrs.GetCode() == "" {
