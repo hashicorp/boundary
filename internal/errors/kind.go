@@ -12,6 +12,7 @@ const (
 	Transaction
 	Encryption
 	Encoding
+	External
 )
 
 func (e Kind) String() string {
@@ -24,5 +25,6 @@ func (e Kind) String() string {
 		Transaction: "db transaction issue",
 		Encryption:  "encryption issue",
 		Encoding:    "encoding issue",
+		External:    "external system issue",
 	}[e]
 }
