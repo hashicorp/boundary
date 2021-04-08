@@ -36,7 +36,7 @@ func (j *Job) TableName() string {
 }
 
 // SetTableName sets the table name. If the caller attempts to
-// set the name to "" the name will be reset to the default name.
+// set the name to "" the name will be reset to the default name "job".
 func (j *Job) SetTableName(n string) {
 	j.tableName = n
 }

@@ -24,14 +24,11 @@
 //  // db implements both the reader and writer interfaces.
 //  db, _ := db.Open(db.Postgres, url)
 //
-//  var j *job.Job
-//  j, _ = job.New("name", "code", "description")
-//
 //  var repo *job.Repository
 //  repo, _ = job.NewRepository(db, db, wrapper)
 //
-//  // insert job into database
-//  _, _ = repo.CreateJob(context.Background(), j)
+//  var j *job.Job
+//  j, _ = repo.CreateJob(context.Background(), j, "name", "code", "description")
 //
 //  var runs []*Run
 //  repo, _ = job.NewRepository(db, db, wrapper)

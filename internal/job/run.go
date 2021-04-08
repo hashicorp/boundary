@@ -35,7 +35,7 @@ func (j *Run) TableName() string {
 }
 
 // SetTableName sets the table name. If the caller attempts to
-// set the name to "" the name will be reset to the default name.
+// set the name to "" the name will be reset to the default name "job_run".
 func (j *Run) SetTableName(n string) {
 	j.tableName = n
 }

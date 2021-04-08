@@ -14,9 +14,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// RunJobs queries the job repository for available work and returns a slice of *Run
-// for each job that needs to be run.  If there are not jobs an empty slice will be returned,
-// with a nil error.
+// RunJobs queries the job repository for jobs that need to be run. It creates new entries
+// for each job that needs to be run in the job_run repository, returning a slice of *Run.
+// If there are not jobs to run, an empty slice will be returned with a nil error.
 //
 // • serverId is required and is the private_id of the server that will run the jobs.
 //
@@ -131,7 +131,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 	return run, nil
 }
 
-// CompleteRun updates the Run repository entry for the provided privateId.
+// CompleteRun updates the Run repository entry for the provided runId.
 // It sets the status to 'completed' and updates the run's EndTime to the current database time.
 // CompleteRun also updates the Job repository entry that is associated with this run,
 // setting the job's NextScheduledRun to the current database time incremented by the nextRunIn
@@ -230,7 +230,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 	return run, nil
 }
 
-// FailRun updates the Run repository entry for the provided privateId.
+// FailRun updates the Run repository entry for the provided runId.
 // It sets the status to 'failed' and updates the run's EndTime to the current database time.
 //
 // Once a run has been persisted with a final run status (completed, failed
