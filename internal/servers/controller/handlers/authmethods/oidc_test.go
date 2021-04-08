@@ -931,7 +931,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		{
 			name: "Update an Existing AuthMethod",
 			id:   am.GetPublicId(),
-			mask: []string{"name", "description"},
+			mask: []string{"name", "description", "attributes.dry_run"},
 			item: &pb.AuthMethod{
 				Name:        wrapperspb.String("updated"),
 				Description: wrapperspb.String("updated"),
@@ -947,6 +947,47 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 				c.GetAttributes().GetFields()["dry_run"] = structpb.NewBoolValue(true)
 				return c
 			}(),
+		},
+		{
+			name: "Update To Make Not Complete",
+			id:   am.GetPublicId(),
+			mask: []string{"attributes.issuer"},
+			item: &pb.AuthMethod{
+				Version:     am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+				}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Update To Make Not Validated",
+			id:   am.GetPublicId(),
+			mask: []string{"attributes.signing_algorithms"},
+			item: &pb.AuthMethod{
+				Version:     am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+					"signing_algorithms": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{string(oidc.RS512)})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Update dry run with force",
+			id:   am.GetPublicId(),
+			mask: []string{"name"},
+			item: &pb.AuthMethod{
+				Version:     am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+					"disable_discovered_config_validation": structpb.NewBoolValue(true),
+				}},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tc := range cases {
