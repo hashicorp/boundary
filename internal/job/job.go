@@ -1,12 +1,9 @@
 package job
 
 import (
-	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Job represents work that should be run at a predetermined time and needs to be synchronized
@@ -14,42 +11,6 @@ import (
 type Job struct {
 	*store.Job
 	tableName string `gorm:"-"`
-}
-
-// New creates a new in memory Job.
-//
-// • Name is the human-friendly name of the job.
-//
-// • Code is not user facing and should be used to distinguish unique jobs of
-// the same type that can run in parallel.
-//
-// • Description is the human-friendly description of the job.
-//
-// WithNextRunAt() is the only valid option.  If this option is not
-// provided the NextScheduledRun of the job will default to zero time, and be available
-// to run immediately.
-func New(name, code, description string, opt ...Option) (*Job, error) {
-	const op = "job.New"
-	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
-	}
-	if code == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing code")
-	}
-	if description == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing description")
-	}
-
-	opts := getOpts(opt...)
-	job := &Job{
-		Job: &store.Job{
-			Name:             name,
-			Description:      description,
-			Code:             code,
-			NextScheduledRun: &timestamp.Timestamp{Timestamp: timestamppb.New(opts.withNextRunAt)},
-		},
-	}
-	return job, nil
 }
 
 func (j *Job) clone() *Job {

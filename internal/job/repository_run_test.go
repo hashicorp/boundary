@@ -79,7 +79,7 @@ func TestRepository_RunJobs(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var jId string
 			if tt.job != nil {
-				job := testJob(t, conn, tt.job.Name, tt.job.Code, tt.job.Description)
+				job := testJob(t, conn, tt.job.Name, tt.job.Code, tt.job.Description, wrapper)
 				jId = job.PrivateId
 			}
 
@@ -152,7 +152,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 			require.NotNil(repo)
 
 			for i := 0; i < numJobs; i++ {
-				testJob(t, conn, tt.name, fmt.Sprintf("%d", i), "description")
+				testJob(t, conn, tt.name, fmt.Sprintf("%d", i), "description", wrapper)
 			}
 
 			got, err := repo.RunJobs(context.Background(), server.PrivateId, tt.opts...)
@@ -177,9 +177,9 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	require.NotNil(repo)
 
 	// Regardless of order of adding jobs, fetching work should be based on order of earliest scheduled time
-	lastJob := testJob(t, conn, "future", "code", "description", WithNextRunAt(time.Now().Add(-1*time.Hour)))
-	firstJob := testJob(t, conn, "past", "code", "description", WithNextRunAt(time.Now().Add(-24*time.Hour)))
-	middleJob := testJob(t, conn, "current", "code", "description", WithNextRunAt(time.Now().Add(-12*time.Hour)))
+	lastJob := testJob(t, conn, "future", "code", "description", wrapper, WithNextRunIn(-1*time.Hour))
+	firstJob := testJob(t, conn, "past", "code", "description", wrapper, WithNextRunIn(-24*time.Hour))
+	middleJob := testJob(t, conn, "current", "code", "description", wrapper, WithNextRunIn(-12*time.Hour))
 
 	runs, err := repo.RunJobs(context.Background(), server.PrivateId)
 	require.NoError(err)
@@ -188,7 +188,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobId, firstJob.PrivateId)
 
 	// End first job with time between last and middle
-	_, err = repo.CompleteRun(context.Background(), run.PrivateId, time.Now().Add(-6*time.Hour))
+	_, err = repo.CompleteRun(context.Background(), run.PrivateId, -6*time.Hour)
 	require.NoError(err)
 
 	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
@@ -224,7 +224,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
-	job := testJob(t, conn, "name", "code", "description")
+	job := testJob(t, conn, "name", "code", "description", wrapper)
 
 	type args struct {
 		completed, total int
@@ -357,6 +357,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 
 			got, err := repo.UpdateProgress(context.Background(), privateId, tt.args.completed, tt.args.total)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 
@@ -406,36 +407,21 @@ func TestRepository_CompleteRun(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
-	job := testJob(t, conn, "name", "code", "description")
-
-	futureTime := time.Now().Add(time.Hour)
+	job := testJob(t, conn, "name", "code", "description", wrapper)
 
 	tests := []struct {
-		name             string
-		orig             *Run
-		nextScheduledRun time.Time
-		wantErr          bool
-		wantErrCode      errors.Code
-		wantErrMsg       string
+		name        string
+		orig        *Run
+		nextRunIn   time.Duration
+		wantErr     bool
+		wantErrCode errors.Code
+		wantErrMsg  string
 	}{
 		{
 			name:        "no-run-id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 			wantErrMsg:  "job.(Repository).CompleteRun: missing run id: parameter violation: error #100",
-		},
-		{
-			name: "invalid-next-run",
-			orig: &Run{
-				JobRun: &store.JobRun{
-					JobId:    job.PrivateId,
-					ServerId: server.PrivateId,
-					Status:   Running.string(),
-				},
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CompleteRun: missing next scheduled run: parameter violation: error #100",
 		},
 		{
 			name: "status-already-final",
@@ -446,10 +432,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 					Status:   Interrupted.string(),
 				},
 			},
-			nextScheduledRun: futureTime,
-			wantErr:          true,
-			wantErrCode:      errors.InvalidJobRunState,
-			wantErrMsg:       "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run is already in a final run state: integrity violation: error #115",
+			nextRunIn:   time.Hour,
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run is already in a final run state: integrity violation: error #115",
 		},
 		{
 			name: "valid",
@@ -460,7 +446,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 					Status:   Running.string(),
 				},
 			},
-			nextScheduledRun: futureTime,
+			nextRunIn: time.Hour,
 		},
 	}
 
@@ -480,8 +466,9 @@ func TestRepository_CompleteRun(t *testing.T) {
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.CompleteRun(context.Background(), privateId, tt.nextScheduledRun)
+			got, err := repo.CompleteRun(context.Background(), privateId, tt.nextRunIn)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 
@@ -501,7 +488,16 @@ func TestRepository_CompleteRun(t *testing.T) {
 			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobId)
 			assert.NoError(err)
 			require.NotNil(updatedJob)
-			assert.Equal(tt.nextScheduledRun.Unix(), updatedJob.NextScheduledRun.Timestamp.GetSeconds())
+
+			// The previous run is ended before the next run is scheduled, therefore the previous
+			// run end time incremented by the nextRunIn duration, should be less than or equal to the
+			// NextScheduledRun time that is persisted in the repo.
+			nextRunAt := updatedJob.NextScheduledRun.Timestamp.GetSeconds()
+			previousRunEnd := got.EndTime.Timestamp.GetSeconds()
+			nextRunIn := int64(tt.nextRunIn.Round(time.Second).Seconds())
+			assert.True(nextRunAt >= previousRunEnd+nextRunIn,
+				fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run end time (%d) incremented by %d",
+					nextRunAt, previousRunEnd, tt.nextRunIn))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
@@ -521,7 +517,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CompleteRun(context.Background(), "fake-run-id", futureTime)
+		got, err := repo.CompleteRun(context.Background(), "fake-run-id", time.Hour)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -537,7 +533,7 @@ func TestRepository_FailRun(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
-	job := testJob(t, conn, "name", "code", "description")
+	job := testJob(t, conn, "name", "code", "description", wrapper)
 
 	tests := []struct {
 		name        string
@@ -595,6 +591,7 @@ func TestRepository_FailRun(t *testing.T) {
 
 			got, err := repo.FailRun(context.Background(), privateId)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 
@@ -642,7 +639,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 
 	server := testController(t, conn, wrapper)
 
-	job1 := testJob(t, conn, "job1", "code1", "description")
+	job1 := testJob(t, conn, "job1", "code1", "description", wrapper)
 	require.NotNil(job1)
 
 	run, err := testRun(conn, job1.PrivateId, server.PrivateId)
@@ -656,7 +653,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 	assert.Equal("pq: duplicate key value violates unique constraint \"job_run_status_constraint\"", err.Error())
 
 	// Creating a new job with a different name, the associated run should not conflict with the previous run
-	job2 := testJob(t, conn, "job2", "code1", "description")
+	job2 := testJob(t, conn, "job2", "code1", "description", wrapper)
 	require.NotNil(job1)
 
 	run, err = testRun(conn, job2.PrivateId, server.PrivateId)
@@ -664,7 +661,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 	require.NotNil(run)
 
 	// Creating a new job with same name and different code should not conflict
-	job1withCode := testJob(t, conn, "job1", "code2", "description")
+	job1withCode := testJob(t, conn, "job1", "code2", "description", wrapper)
 	require.NotNil(job1)
 
 	run.JobId = job1withCode.PrivateId
@@ -681,7 +678,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	job := testJob(t, conn, "name", "code", "description")
+	job := testJob(t, conn, "name", "code", "description", wrapper)
 	server := testController(t, conn, wrapper)
 	run, err := testRun(conn, job.PrivateId, server.PrivateId)
 	require.NoError(t, err)
@@ -720,6 +717,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.LookupRun(context.Background(), tt.in)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Nil(got)
@@ -738,7 +736,7 @@ func TestRepository_deleteJobRun(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	job := testJob(t, conn, "name", "code", "description")
+	job := testJob(t, conn, "name", "code", "description", wrapper)
 	server := testController(t, conn, wrapper)
 
 	run, err := testRun(conn, job.PrivateId, server.PrivateId)
@@ -779,6 +777,7 @@ func TestRepository_deleteJobRun(t *testing.T) {
 			require.NotNil(repo)
 			got, err := repo.deleteRun(context.Background(), tt.in)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				assert.Zero(got)

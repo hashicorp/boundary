@@ -20,21 +20,20 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withNextRunAt    time.Time
+	withNextRunIn    time.Duration
 	withRunJobsLimit uint
 }
 
 func getDefaultOptions() options {
 	return options{
-		withNextRunAt:    time.Unix(0, 0),
 		withRunJobsLimit: defaultRunJobsLimit,
 	}
 }
 
-// WithNextRunAt provides an option to provide the next scheduled run time for a job.
-func WithNextRunAt(ts time.Time) Option {
+// WithNextRunIn provides an option to provide the duration until the next run is scheduled.
+func WithNextRunIn(d time.Duration) Option {
 	return func(o *options) {
-		o.withNextRunAt = ts
+		o.withNextRunIn = d
 	}
 }
 

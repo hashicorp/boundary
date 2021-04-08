@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -16,7 +17,9 @@ func TestJob_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
-	oriJob := testJob(t, conn, "name", "code", "description")
+	wrapper := db.TestWrapper(t)
+	iam.TestRepo(t, conn, wrapper)
+	oriJob := testJob(t, conn, "name", "code", "description", wrapper)
 
 	tests := []struct {
 		name      string
@@ -76,10 +79,11 @@ func TestJobRun_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	iam.TestRepo(t, conn, wrapper)
 	w := db.New(conn)
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	job := testJob(t, conn, "testJob", "testCode", "testDescription")
+	job := testJob(t, conn, "testJob", "testCode", "testDescription", wrapper)
 	server := testController(t, conn, wrapper)
 	oriRun, err := testRun(conn, job.PrivateId, server.PrivateId)
 	require.NoError(t, err)

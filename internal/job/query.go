@@ -23,11 +23,28 @@ const runJobsQuery = `
 	returning *;
 `
 
+const createJobQuery = `
+	insert into job (
+	  private_id, -- $1
+	  name, -- $2
+	  code, -- $3
+	  description, -- $4
+	  next_scheduled_run -- $5
+	) values (
+	  $1, -- private_id
+	  $2, -- name
+	  $3, -- code
+	  $4, -- description
+	  wt_add_seconds_to_now($5) -- next_scheduled_run
+	)
+	returning *;
+`
+
 const setNextScheduleRunQuery = `
 	update
 	  job
 	set
-	  next_scheduled_run = ?
+	  next_scheduled_run = wt_add_seconds_to_now(?)
 	where
 	  private_id = ?;
 `

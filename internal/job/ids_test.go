@@ -50,6 +50,7 @@ func Test_Ids(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newJobId(tt.args.name, tt.args.code)
 			if tt.wantErr {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return

@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestJobWorkflow(t *testing.T) {
@@ -26,10 +28,7 @@ func TestJobWorkflow(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(err)
 
-	job, err := New("job1", "code", "description")
-	assert.NoError(err)
-
-	job, err = repo.CreateJob(context.Background(), job)
+	job, err := repo.CreateJob(context.Background(), "job1", "code", "description")
 	assert.NoError(err)
 	require.NotNil(job)
 	require.NotEmpty(job.PrivateId)
@@ -51,15 +50,13 @@ func TestJobWorkflow(t *testing.T) {
 	assert.NoError(err)
 	require.Len(newRuns, 0)
 
-	nextRun := time.Now().Add(time.Hour)
-	run, err = repo.CompleteRun(context.Background(), run.PrivateId, nextRun)
+	run, err = repo.CompleteRun(context.Background(), run.PrivateId, time.Hour)
 	assert.NoError(err)
 	assert.Equal(Completed.string(), run.Status)
 
 	job, err = repo.LookupJob(context.Background(), job.PrivateId)
 	assert.NoError(err)
 	require.NotNil(job)
-	assert.Equal(nextRun.Unix(), job.NextScheduledRun.Timestamp.GetSeconds())
 
 	// The only available job has a next run in the future, a request for work should return nil
 	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
@@ -67,8 +64,8 @@ func TestJobWorkflow(t *testing.T) {
 	require.Len(newRuns, 0)
 
 	// Update job next run to time in past
-	job.NextScheduledRun = testZeroTime
-	job, count, err := repo.UpdateJob(context.Background(), job, []string{"NextScheduledRun"})
+	job.NextScheduledRun = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+	count, err := rw.Update(context.Background(), job, []string{"NextScheduledRun"}, nil)
 	require.NoError(err)
 	require.Equal(1, count)
 

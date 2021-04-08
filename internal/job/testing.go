@@ -6,31 +6,26 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var testZeroTime = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-
-func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ...Option) *Job {
+func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
 
-	job, err := New(name, code, description, opt...)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	id, err := newJobId(name, job.Code)
+	job, err := repo.CreateJob(context.Background(), name, code, description, opt...)
 	require.NoError(err)
-	job.PrivateId = id
-	err = rw.Create(context.Background(), job)
-	require.NoError(err)
+	require.NotNil(job)
 
 	return job
 }

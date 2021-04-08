@@ -54,7 +54,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 
 			// Write Run create messages to oplog
 			for _, run := range runs {
-				if err = upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, nil, run); err != nil {
+				if err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, nil, run); err != nil {
 					return errors.Wrap(err, op)
 				}
 			}
@@ -116,7 +116,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 			}
 
 			// Write Run update to oplog
-			err = upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"CompletedCount", "TotalCount"}, run)
+			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"CompletedCount", "TotalCount"}, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -134,19 +134,17 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 // CompleteRun updates the Run repository entry for the provided privateId.
 // It sets the status to 'completed' and updates the run's EndTime to the current database time.
 // CompleteRun also updates the Job repository entry that is associated with this run,
-// setting the NextScheduledRun with the provided nextScheduledRun.
+// setting the job's NextScheduledRun to the current database time incremented by the nextRunIn
+// parameter.
 //
 // Once a run has been persisted with a final run status (completed, failed
 // or interrupted), any future calls to CompleteRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) CompleteRun(ctx context.Context, runId string, nextScheduledRun time.Time, _ ...Option) (*Run, error) {
+func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).CompleteRun"
 	if runId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
-	}
-	if nextScheduledRun.IsZero() {
-		return nil, errors.New(errors.InvalidParameter, op, "missing next scheduled run")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
@@ -188,14 +186,14 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextSchedule
 			}
 
 			// Write Run update to oplog
-			err = upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
+			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
 
 			job := allocJob()
 			job.PrivateId = run.JobId
-			rowsAffected, err := w.Exec(ctx, setNextScheduleRunQuery, []interface{}{nextScheduledRun, job.PrivateId})
+			rowsAffected, err := w.Exec(ctx, setNextScheduleRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
 			}
@@ -283,7 +281,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 			}
 
 			// Write Run update to oplog
-			err = upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
+			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -356,10 +354,10 @@ func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (
 	return rowsDeleted, nil
 }
 
-// upsertOplog will write oplog msgs for run upserts. The db.Writer needs to be the writer for the current
+// upsertRunOplog will write oplog msgs for run upserts. The db.Writer needs to be the writer for the current
 // transaction that's executing the upsert.
-func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper, opType oplog.OpType, fieldMasks []string, run *Run) error {
-	const op = "job.upsertOplog"
+func upsertRunOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper, opType oplog.OpType, fieldMasks []string, run *Run) error {
+	const op = "job.upsertRunOplog"
 	ticket, err := w.GetTicket(run)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))

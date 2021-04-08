@@ -10,13 +10,12 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
-	t.Run("WithNextRunAt", func(t *testing.T) {
+	t.Run("WithNextRunIn", func(t *testing.T) {
 		assert := assert.New(t)
-		ts := time.Now().Add(time.Hour)
-		opts := getOpts(WithNextRunAt(ts))
+		opts := getOpts(WithNextRunIn(time.Hour))
 		testOpts := getDefaultOptions()
 		assert.NotEqual(opts, testOpts)
-		testOpts.withNextRunAt = ts
+		testOpts.withNextRunIn = time.Hour
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithRunJobsLimit", func(t *testing.T) {
