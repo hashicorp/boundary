@@ -192,6 +192,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}, nil
 		},
+		"auth-methods change-state oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "change-state",
+			}, nil
+		},
 
 		"auth-tokens": func() (cli.Command, error) {
 			return &authtokenscmd.Command{
