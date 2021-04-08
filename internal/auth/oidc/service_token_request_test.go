@@ -59,6 +59,7 @@ func Test_TokenRequest(t *testing.T) {
 		kms             *kms.Kms
 		atRepoFn        AuthTokenRepoFactory
 		tokenRequest    string
+		wantNil         bool
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
@@ -260,8 +261,7 @@ func Test_TokenRequest(t *testing.T) {
 				require.NoError(t, err)
 				return base58.Encode(b)
 			}(),
-			wantErrMatch:    errors.T(errors.Forbidden),
-			wantErrContains: "token not found",
+			wantNil: true,
 		},
 		{
 			name:     "success",
@@ -288,7 +288,11 @@ func Test_TokenRequest(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.NotEmpty(gotTk)
+			if tt.wantNil {
+				assert.Empty(gotTk)
+			} else {
+				assert.NotEmpty(gotTk)
+			}
 		})
 	}
 }

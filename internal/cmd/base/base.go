@@ -42,6 +42,8 @@ const (
 	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
 	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+
+	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
@@ -323,7 +325,7 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 		return nil
 
 	case "wincred", "keychain":
-		token, err = zkeyring.Get("HashiCorp Boundary Auth Token", tokenName)
+		token, err = zkeyring.Get(StoredTokenName, tokenName)
 		if err != nil {
 			if err == zkeyring.ErrNotFound {
 				c.UI.Error("No saved credential found, continuing without")
