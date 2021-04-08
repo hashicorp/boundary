@@ -2,12 +2,12 @@ package oidc
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 )
 
 // CreateAuthMethod creates am (*AuthMethod) in the repo along with its
@@ -42,8 +42,8 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		}
 		am.PublicId = id
 	} else {
-		if !handlers.ValidId(handlers.Id(am.PublicId), AuthMethodPrefix) {
-			return nil, errors.New(errors.InvalidParameter, op, "bad custom auth method id")
+		if !strings.HasPrefix(am.PublicId, AuthMethodPrefix+"_") {
+			return nil, errors.New(errors.InvalidParameter, op, "wrong auth method id prefix")
 		}
 	}
 
