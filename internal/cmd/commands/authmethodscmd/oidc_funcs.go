@@ -136,7 +136,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 			f.BoolVar(&base.BoolVar{
 				Name:   dryRunFlagName,
 				Target: &c.flagDryRun,
-				Usage:  "Applies the changes to the auth method and performs all completeness and validation checks without persisting the changes.",
+				Usage:  "Performs all completeness and validation checks with any newly-provided values without persisting the changes.",
 			})
 		}
 	}
