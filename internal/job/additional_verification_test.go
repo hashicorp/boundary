@@ -54,7 +54,7 @@ func TestJobWorkflow(t *testing.T) {
 	nextRun := time.Now().Add(time.Hour)
 	run, err = repo.CompleteRun(context.Background(), run.PrivateId, nextRun)
 	assert.NoError(err)
-	assert.Equal(Completed.String(), run.Status)
+	assert.Equal(Completed.string(), run.Status)
 
 	job, err = repo.LookupJob(context.Background(), job.PrivateId)
 	assert.NoError(err)

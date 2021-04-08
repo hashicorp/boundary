@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/proto"
 )
 
-// RunJobs queries the job repository for available work and returns a Run
-// of a job that needs to be run.  If there are not jobs an empty slice will be returned,
+// RunJobs queries the job repository for available work and returns a slice of *Run
+// for each job that needs to be run.  If there are not jobs an empty slice will be returned,
 // with a nil error.
 //
 // • serverId is required and is the private_id of the server that will run the jobs.
@@ -298,35 +297,35 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 	return run, nil
 }
 
-// LookupRun will look up a run in the repository using the privateId. If the run is not
+// LookupRun will look up a run in the repository using the runId. If the run is not
 // found, it will return nil, nil.
 //
 // All options are ignored.
-func (r *Repository) LookupRun(ctx context.Context, privateId string, _ ...Option) (*Run, error) {
+func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).LookupRun"
-	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	if runId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
-	run.PrivateId = privateId
+	run.PrivateId = runId
 	if err := r.reader.LookupById(ctx, run); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", runId)))
 	}
 	return run, nil
 }
 
-// deleteRun deletes the job for the provided id from the repository
+// deleteRun deletes the job for the provided runId from the repository
 // returning a count of the number of records deleted.
 //
 // All options are ignored.
-func (r *Repository) deleteRun(ctx context.Context, privateId string, _ ...Option) (int, error) {
+func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteRun"
-	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+	if runId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
@@ -335,7 +334,7 @@ func (r *Repository) deleteRun(ctx context.Context, privateId string, _ ...Optio
 	}
 
 	run := allocRun()
-	run.PrivateId = privateId
+	run.PrivateId = runId
 	var rowsDeleted int
 	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -351,7 +350,7 @@ func (r *Repository) deleteRun(ctx context.Context, privateId string, _ ...Optio
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", runId)))
 	}
 
 	return rowsDeleted, nil

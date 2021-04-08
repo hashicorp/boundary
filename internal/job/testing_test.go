@@ -62,5 +62,5 @@ func Test_TestRun(t *testing.T) {
 	assert.Equal(server.PrivateId, got.ServerId)
 	assert.Equal(job.PrivateId, got.JobId)
 	assert.NotEmpty(got.CreateTime)
-	assert.Equal(Running.String(), got.Status)
+	assert.Equal(Running.string(), got.Status)
 }

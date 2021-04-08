@@ -17,6 +17,6 @@ const (
 	Interrupted Status = "interrupted"
 )
 
-func (s Status) String() string {
+func (s Status) string() string {
 	return string(s)
 }

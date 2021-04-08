@@ -251,7 +251,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Interrupted.String(),
+					Status:   Interrupted.string(),
 				},
 			},
 			wantErr:     true,
@@ -264,7 +264,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 		},
@@ -274,7 +274,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 			args: args{
@@ -290,7 +290,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:      job.PrivateId,
 					ServerId:   server.PrivateId,
-					Status:     Running.String(),
+					Status:     Running.string(),
 					TotalCount: 10,
 				},
 			},
@@ -309,7 +309,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 			args: args{
@@ -327,7 +327,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 			args: args{
@@ -371,7 +371,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.Nil(got.EndTime)
-			assert.Equal(Running.String(), got.Status)
+			assert.Equal(Running.string(), got.Status)
 			assert.Equal(uint32(tt.want.completed), got.CompletedCount)
 			assert.Equal(uint32(tt.want.total), got.TotalCount)
 
@@ -430,7 +430,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 			wantErr:     true,
@@ -443,7 +443,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Interrupted.String(),
+					Status:   Interrupted.string(),
 				},
 			},
 			nextScheduledRun: futureTime,
@@ -457,7 +457,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 			nextScheduledRun: futureTime,
@@ -496,7 +496,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.NotEmpty(got.EndTime)
-			assert.Equal(Completed.String(), got.Status)
+			assert.Equal(Completed.string(), got.Status)
 
 			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobId)
 			assert.NoError(err)
@@ -558,7 +558,7 @@ func TestRepository_FailRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Interrupted.String(),
+					Status:   Interrupted.string(),
 				},
 			},
 			wantErr:     true,
@@ -571,7 +571,7 @@ func TestRepository_FailRun(t *testing.T) {
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
 					ServerId: server.PrivateId,
-					Status:   Running.String(),
+					Status:   Running.string(),
 				},
 			},
 		},
@@ -609,7 +609,7 @@ func TestRepository_FailRun(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.NotEmpty(got.EndTime)
-			assert.Equal(Failed.String(), got.Status)
+			assert.Equal(Failed.string(), got.Status)
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
@@ -698,7 +698,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 			name:        "with-no-id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).LookupRun: missing private id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).LookupRun: missing run id: parameter violation: error #100",
 		},
 		{
 			name: "with-non-existing-id",
@@ -753,10 +753,10 @@ func TestRepository_deleteJobRun(t *testing.T) {
 		wantErrMsg  string
 	}{
 		{
-			name:        "With no private id",
+			name:        "With no run id",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).deleteRun: missing private id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).deleteRun: missing run id: parameter violation: error #100",
 		},
 		{
 			name: "With non existing job id",

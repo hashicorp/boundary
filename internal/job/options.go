@@ -21,14 +21,12 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withNextRunAt    time.Time
-	withStatus       Status
 	withRunJobsLimit uint
 }
 
 func getDefaultOptions() options {
 	return options{
 		withNextRunAt:    time.Unix(0, 0),
-		withStatus:       Running,
 		withRunJobsLimit: defaultRunJobsLimit,
 	}
 }
@@ -48,12 +46,5 @@ func WithRunJobsLimit(l uint) Option {
 		if o.withRunJobsLimit == 0 {
 			o.withRunJobsLimit = defaultRunJobsLimit
 		}
-	}
-}
-
-// WithStatus provides an option to provide the run status for the job run.
-func WithStatus(s Status) Option {
-	return func(o *options) {
-		o.withStatus = s
 	}
 }

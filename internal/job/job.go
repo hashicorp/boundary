@@ -9,11 +9,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const (
-	// DefaultJobTableName is the default name of the database table that is used to persist a Job
-	DefaultJobTableName = "job"
-)
-
 // Job represents work that should be run at a predetermined time and needs to be synchronized
 // across servers to ensure that one and only one instance of a job is running at any given time.
 type Job struct {
@@ -76,7 +71,7 @@ func (j *Job) TableName() string {
 	if j.tableName != "" {
 		return j.tableName
 	}
-	return DefaultJobTableName
+	return "job"
 }
 
 // SetTableName sets the table name. If the caller attempts to
