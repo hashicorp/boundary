@@ -291,13 +291,6 @@ type OidcAuthMethodAttributes struct {
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
 	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"`
-	// dry_run, when set on an update request, indicates that the changes should
-	// not be persisted.  Boundary will still perform the normal checks to confirm
-	// the auth method is complete and validated against the discovered config.
-	// This value will also be set on the returned resource when set in the request
-	// along with the updated fields applied to the resource (but not persisted) as
-	// a result of the update request.
-	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty"`
 }
 
 func (x *OidcAuthMethodAttributes) Reset() {
@@ -416,11 +409,252 @@ func (x *OidcAuthMethodAttributes) GetDisableDiscoveredConfigValidation() bool {
 	return false
 }
 
-func (x *OidcAuthMethodAttributes) GetDryRun() bool {
-	if x != nil {
-		return x.DryRun
+// The structure of the OIDC authenticate start response, in the JSON object
+type OidcAuthMethodAuthenticateStartResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The returned authentication URL
+	AuthUrl string `protobuf:"bytes,10,opt,name=auth_url,proto3" json:"auth_url,omitempty"`
+	// The returned token URL
+	TokenUrl string `protobuf:"bytes,20,opt,name=token_url,proto3" json:"token_url,omitempty"`
+	// The returned token ID
+	TokenId string `protobuf:"bytes,30,opt,name=token_id,proto3" json:"token_id,omitempty"`
+}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) Reset() {
+	*x = OidcAuthMethodAuthenticateStartResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
 	}
-	return false
+}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcAuthMethodAuthenticateStartResponse) ProtoMessage() {}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcAuthMethodAuthenticateStartResponse.ProtoReflect.Descriptor instead.
+func (*OidcAuthMethodAuthenticateStartResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) GetAuthUrl() string {
+	if x != nil {
+		return x.AuthUrl
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) GetTokenUrl() string {
+	if x != nil {
+		return x.TokenUrl
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateStartResponse) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
+// The structure of OIDC callback request parameters
+type OidcAuthMethodAuthenticateCallbackRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The returned code
+	Code string `protobuf:"bytes,10,opt,name=code,proto3" json:"code,omitempty"`
+	// The returned state
+	State string `protobuf:"bytes,20,opt,name=state,proto3" json:"state,omitempty"`
+	// Error parameters, if they are returned
+	Error            string `protobuf:"bytes,30,opt,name=error,proto3" json:"error,omitempty"`
+	ErrorDescription string `protobuf:"bytes,40,opt,name=error_description,proto3" json:"error_description,omitempty"`
+	ErrorUri         string `protobuf:"bytes,50,opt,name=error_uri,proto3" json:"error_uri,omitempty"`
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) Reset() {
+	*x = OidcAuthMethodAuthenticateCallbackRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcAuthMethodAuthenticateCallbackRequest) ProtoMessage() {}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcAuthMethodAuthenticateCallbackRequest.ProtoReflect.Descriptor instead.
+func (*OidcAuthMethodAuthenticateCallbackRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) GetErrorDescription() string {
+	if x != nil {
+		return x.ErrorDescription
+	}
+	return ""
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackRequest) GetErrorUri() string {
+	if x != nil {
+		return x.ErrorUri
+	}
+	return ""
+}
+
+// The structure of OIDC callback response parameters
+type OidcAuthMethodAuthenticateCallbackResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The final redirection URL
+	FinalRedirectUrl string `protobuf:"bytes,10,opt,name=final_redirect_url,proto3" json:"final_redirect_url,omitempty"`
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackResponse) Reset() {
+	*x = OidcAuthMethodAuthenticateCallbackResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcAuthMethodAuthenticateCallbackResponse) ProtoMessage() {}
+
+func (x *OidcAuthMethodAuthenticateCallbackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcAuthMethodAuthenticateCallbackResponse.ProtoReflect.Descriptor instead.
+func (*OidcAuthMethodAuthenticateCallbackResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *OidcAuthMethodAuthenticateCallbackResponse) GetFinalRedirectUrl() string {
+	if x != nil {
+		return x.FinalRedirectUrl
+	}
+	return ""
+}
+
+// The structure of OIDC token request parameters
+type OidcAuthMethodAuthenticateTokenRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The ID of the pending token
+	TokenId string `protobuf:"bytes,10,opt,name=token_id,proto3" json:"token_id,omitempty"`
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) Reset() {
+	*x = OidcAuthMethodAuthenticateTokenRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcAuthMethodAuthenticateTokenRequest) ProtoMessage() {}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcAuthMethodAuthenticateTokenRequest.ProtoReflect.Descriptor instead.
+func (*OidcAuthMethodAuthenticateTokenRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *OidcAuthMethodAuthenticateTokenRequest) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
 }
 
 var File_controller_api_resources_authmethods_v1_auth_method_proto protoreflect.FileDescriptor
@@ -515,7 +749,7 @@ var file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = []b
 	0x6e, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x6c, 0x65, 0x6e, 0x67, 0x74,
 	0x68, 0x12, 0x11, 0x4d, 0x69, 0x6e, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x4c, 0x65,
 	0x6e, 0x67, 0x74, 0x68, 0x52, 0x13, 0x6d, 0x69, 0x6e, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f,
-	0x72, 0x64, 0x5f, 0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x22, 0xa3, 0x08, 0x0a, 0x18, 0x4f, 0x69,
+	0x72, 0x64, 0x5f, 0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x22, 0x82, 0x08, 0x0a, 0x18, 0x4f, 0x69,
 	0x64, 0x63, 0x41, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x41, 0x74, 0x74, 0x72,
 	0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18,
 	0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x59, 0x0a, 0x06,
@@ -579,16 +813,44 @@ var file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc = []b
 	0x67, 0x5f, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x78, 0x20, 0x01,
 	0x28, 0x08, 0x42, 0x04, 0xa0, 0xda, 0x29, 0x01, 0x52, 0x24, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c,
 	0x65, 0x5f, 0x64, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x65, 0x64, 0x5f, 0x63, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x5f, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1f,
-	0x0a, 0x07, 0x64, 0x72, 0x79, 0x5f, 0x72, 0x75, 0x6e, 0x18, 0x82, 0x01, 0x20, 0x01, 0x28, 0x08,
-	0x42, 0x04, 0xa0, 0xda, 0x29, 0x01, 0x52, 0x07, 0x64, 0x72, 0x79, 0x5f, 0x72, 0x75, 0x6e, 0x42,
-	0x5d, 0x5a, 0x5b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61,
-	0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79,
-	0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f,
-	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f,
-	0x64, 0x73, 0x3b, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x66, 0x69, 0x67, 0x5f, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x7f,
+	0x0a, 0x27, 0x4f, 0x69, 0x64, 0x63, 0x41, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64,
+	0x41, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x53, 0x74, 0x61, 0x72,
+	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x75, 0x74,
+	0x68, 0x5f, 0x75, 0x72, 0x6c, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x75, 0x74,
+	0x68, 0x5f, 0x75, 0x72, 0x6c, 0x12, 0x1c, 0x0a, 0x09, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x75,
+	0x72, 0x6c, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f,
+	0x75, 0x72, 0x6c, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x18,
+	0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x22,
+	0xb7, 0x01, 0x0a, 0x29, 0x4f, 0x69, 0x64, 0x63, 0x41, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68,
+	0x6f, 0x64, 0x41, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x43, 0x61,
+	0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a,
+	0x04, 0x63, 0x6f, 0x64, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x63, 0x6f, 0x64,
+	0x65, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
+	0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x2c, 0x0a,
+	0x11, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69,
+	0x6f, 0x6e, 0x18, 0x28, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f,
+	0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1c, 0x0a, 0x09, 0x65,
+	0x72, 0x72, 0x6f, 0x72, 0x5f, 0x75, 0x72, 0x69, 0x18, 0x32, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09,
+	0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x75, 0x72, 0x69, 0x22, 0x5c, 0x0a, 0x2a, 0x4f, 0x69, 0x64,
+	0x63, 0x41, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x41, 0x75, 0x74, 0x68, 0x65,
+	0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x43, 0x61, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2e, 0x0a, 0x12, 0x66, 0x69, 0x6e, 0x61, 0x6c,
+	0x5f, 0x72, 0x65, 0x64, 0x69, 0x72, 0x65, 0x63, 0x74, 0x5f, 0x75, 0x72, 0x6c, 0x18, 0x0a, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x12, 0x66, 0x69, 0x6e, 0x61, 0x6c, 0x5f, 0x72, 0x65, 0x64, 0x69, 0x72,
+	0x65, 0x63, 0x74, 0x5f, 0x75, 0x72, 0x6c, 0x22, 0x44, 0x0a, 0x26, 0x4f, 0x69, 0x64, 0x63, 0x41,
+	0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x41, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74,
+	0x69, 0x63, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x42, 0x5d, 0x5a,
+	0x5b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
+	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x73, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73,
+	0x3b, 0x61, 0x75, 0x74, 0x68, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -603,33 +865,37 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescGZIP(
 	return file_controller_api_resources_authmethods_v1_auth_method_proto_rawDescData
 }
 
-var file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_controller_api_resources_authmethods_v1_auth_method_proto_goTypes = []interface{}{
-	(*AuthMethod)(nil),                   // 0: controller.api.resources.authmethods.v1.AuthMethod
-	(*PasswordAuthMethodAttributes)(nil), // 1: controller.api.resources.authmethods.v1.PasswordAuthMethodAttributes
-	(*OidcAuthMethodAttributes)(nil),     // 2: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes
-	nil,                                  // 3: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
-	(*scopes.ScopeInfo)(nil),             // 4: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrappers.StringValue)(nil),         // 5: google.protobuf.StringValue
-	(*timestamp.Timestamp)(nil),          // 6: google.protobuf.Timestamp
-	(*_struct.Struct)(nil),               // 7: google.protobuf.Struct
-	(*wrappers.UInt32Value)(nil),         // 8: google.protobuf.UInt32Value
-	(*_struct.ListValue)(nil),            // 9: google.protobuf.ListValue
+	(*AuthMethod)(nil),                                 // 0: controller.api.resources.authmethods.v1.AuthMethod
+	(*PasswordAuthMethodAttributes)(nil),               // 1: controller.api.resources.authmethods.v1.PasswordAuthMethodAttributes
+	(*OidcAuthMethodAttributes)(nil),                   // 2: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes
+	(*OidcAuthMethodAuthenticateStartResponse)(nil),    // 3: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateStartResponse
+	(*OidcAuthMethodAuthenticateCallbackRequest)(nil),  // 4: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackRequest
+	(*OidcAuthMethodAuthenticateCallbackResponse)(nil), // 5: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackResponse
+	(*OidcAuthMethodAuthenticateTokenRequest)(nil),     // 6: controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenRequest
+	nil,                          // 7: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
+	(*scopes.ScopeInfo)(nil),     // 8: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrappers.StringValue)(nil), // 9: google.protobuf.StringValue
+	(*timestamp.Timestamp)(nil),  // 10: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),       // 11: google.protobuf.Struct
+	(*wrappers.UInt32Value)(nil), // 12: google.protobuf.UInt32Value
+	(*_struct.ListValue)(nil),    // 13: google.protobuf.ListValue
 }
 var file_controller_api_resources_authmethods_v1_auth_method_proto_depIdxs = []int32{
-	4,  // 0: controller.api.resources.authmethods.v1.AuthMethod.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	5,  // 1: controller.api.resources.authmethods.v1.AuthMethod.name:type_name -> google.protobuf.StringValue
-	5,  // 2: controller.api.resources.authmethods.v1.AuthMethod.description:type_name -> google.protobuf.StringValue
-	6,  // 3: controller.api.resources.authmethods.v1.AuthMethod.created_time:type_name -> google.protobuf.Timestamp
-	6,  // 4: controller.api.resources.authmethods.v1.AuthMethod.updated_time:type_name -> google.protobuf.Timestamp
-	7,  // 5: controller.api.resources.authmethods.v1.AuthMethod.attributes:type_name -> google.protobuf.Struct
-	3,  // 6: controller.api.resources.authmethods.v1.AuthMethod.authorized_collection_actions:type_name -> controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
-	5,  // 7: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.issuer:type_name -> google.protobuf.StringValue
-	5,  // 8: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_id:type_name -> google.protobuf.StringValue
-	5,  // 9: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_secret:type_name -> google.protobuf.StringValue
-	8,  // 10: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.max_age:type_name -> google.protobuf.UInt32Value
-	5,  // 11: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.api_url_prefix:type_name -> google.protobuf.StringValue
-	9,  // 12: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
+	8,  // 0: controller.api.resources.authmethods.v1.AuthMethod.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	9,  // 1: controller.api.resources.authmethods.v1.AuthMethod.name:type_name -> google.protobuf.StringValue
+	9,  // 2: controller.api.resources.authmethods.v1.AuthMethod.description:type_name -> google.protobuf.StringValue
+	10, // 3: controller.api.resources.authmethods.v1.AuthMethod.created_time:type_name -> google.protobuf.Timestamp
+	10, // 4: controller.api.resources.authmethods.v1.AuthMethod.updated_time:type_name -> google.protobuf.Timestamp
+	11, // 5: controller.api.resources.authmethods.v1.AuthMethod.attributes:type_name -> google.protobuf.Struct
+	7,  // 6: controller.api.resources.authmethods.v1.AuthMethod.authorized_collection_actions:type_name -> controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry
+	9,  // 7: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.issuer:type_name -> google.protobuf.StringValue
+	9,  // 8: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_id:type_name -> google.protobuf.StringValue
+	9,  // 9: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.client_secret:type_name -> google.protobuf.StringValue
+	12, // 10: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.max_age:type_name -> google.protobuf.UInt32Value
+	9,  // 11: controller.api.resources.authmethods.v1.OidcAuthMethodAttributes.api_url_prefix:type_name -> google.protobuf.StringValue
+	13, // 12: controller.api.resources.authmethods.v1.AuthMethod.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -679,6 +945,54 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OidcAuthMethodAuthenticateStartResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OidcAuthMethodAuthenticateCallbackRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OidcAuthMethodAuthenticateCallbackResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_resources_authmethods_v1_auth_method_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OidcAuthMethodAuthenticateTokenRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -686,7 +1000,7 @@ func file_controller_api_resources_authmethods_v1_auth_method_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_authmethods_v1_auth_method_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

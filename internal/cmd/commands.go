@@ -60,6 +60,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"authenticate oidc": func() (cli.Command, error) {
+			return &authenticate.OidcCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{

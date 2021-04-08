@@ -8,19 +8,13 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pwstore "github.com/hashicorp/boundary/internal/auth/password/store"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -98,17 +92,7 @@ func (s Service) authenticatePassword(ctx context.Context, req *pbs.Authenticate
 	if err != nil {
 		return nil, err
 	}
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.AuthToken,
-	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, auth.WithResource(res)).Strings()
-	retAttrs, err := handlers.ProtoToStruct(tok)
-	if err != nil {
-		return nil, err
-	}
-	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+	return s.convertToAuthenticateResponse(ctx, req, authResults, tok)
 }
 
 func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
@@ -142,28 +126,10 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, err
 	}
 
-	token, err := authtoken.EncryptToken(ctx, s.kms, scopeId, tok.GetPublicId(), tok.GetToken())
-	if err != nil {
-		return nil, err
-	}
-
-	tok.Token = tok.GetPublicId() + "_" + token
-	prot := toAuthTokenProto(tok)
-
-	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
-	if err != nil {
-		return nil, err
-	}
-	if scp == nil {
-		return nil, err
-	}
-	prot.Scope = &scopes.ScopeInfo{
-		Id:            scp.GetPublicId(),
-		Type:          scp.GetType(),
-		ParentScopeId: scp.GetParentId(),
-	}
-
-	return prot, nil
+	return s.convertInternalAuthTokenToApiAuthToken(
+		ctx,
+		tok,
+	)
 }
 
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {

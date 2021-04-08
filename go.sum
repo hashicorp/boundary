@@ -433,8 +433,6 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0/go.mod h1:d2gYTOTUQklu06xp0AJYY
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/boundary/sdk v0.0.4 h1:l3uuXOL5ZQwYc63Bm8sLY36XGUlIN/4Q2r2SqkmGTyw=
 github.com/hashicorp/boundary/sdk v0.0.4/go.mod h1:MQ8FJhseJrKpwvFDTn+AUAcJ1vdk1NKUxk7DxQgH7oQ=
-github.com/hashicorp/cap v0.0.0-20210406144452-17a80273f33d h1:Thru7NbW0SMuPbmy+J/+rNtEZ6oIcMtd7Ua8qAEkG7I=
-github.com/hashicorp/cap v0.0.0-20210406144452-17a80273f33d/go.mod h1:hjMYKmFvk9AOL69NbqrahCHoMPZHRWqvRcdr7ciPU7g=
 github.com/hashicorp/cap v0.0.0-20210408110729-0dd65efe5473 h1:qEikB8/ychrgsll9feuGjVLt0qo5oktfyTWi7BLsUrg=
 github.com/hashicorp/cap v0.0.0-20210408110729-0dd65efe5473/go.mod h1:hjMYKmFvk9AOL69NbqrahCHoMPZHRWqvRcdr7ciPU7g=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
@@ -1077,7 +1075,6 @@ golang.org/x/net v0.0.0-20200904194848-62affa334b73/go.mod h1:/O7V0waA8r7cgGh81R
 golang.org/x/net v0.0.0-20201021035429-f5854403a974/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
 golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
 golang.org/x/net v0.0.0-20201110031124-69a78807bb2b/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
-golang.org/x/net v0.0.0-20210119194325-5f4716e94777 h1:003p0dJM77cxMSyCPFphvZf/Y5/NXf5fzg6ufd1/Oew=
 golang.org/x/net v0.0.0-20210119194325-5f4716e94777/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 h1:qWPm9rbaAMKs8Bq/9LRpbMqxWRVUAQwMI9fVrssnTfw=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=

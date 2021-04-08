@@ -39,10 +39,13 @@ type options struct {
 	withRoundtripPayload    string
 	withKeyId               string
 	withIssuer              *url.URL
+	withOperationalState    AuthMethodState
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withOperationalState: InactiveState,
+	}
 }
 
 // WithDescription provides an optional description.
@@ -190,5 +193,12 @@ func WithKeyId(id string) Option {
 func WithIssuer(iss *url.URL) Option {
 	return func(o *options) {
 		o.withIssuer = iss
+	}
+}
+
+// WithOperationalState provides an option for specifying an issuer.
+func WithOperationalState(state AuthMethodState) Option {
+	return func(o *options) {
+		o.withOperationalState = state
 	}
 }
