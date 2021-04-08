@@ -2,11 +2,11 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
-	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -23,7 +23,7 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ..
 	require := require.New(t)
 	rw := db.New(conn)
 
-	job, err := NewJob(name, code, description, opt...)
+	job, err := New(name, code, description, opt...)
 	require.NoError(err)
 
 	id, err := newJobId(name, job.Code)
@@ -35,27 +35,33 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, opt ..
 	return job
 }
 
-func testJobRun(t *testing.T, conn *gorm.DB, jId, cId string, status Status) *JobRun {
-	t.Helper()
-	require := require.New(t)
+var testRunQuery = `
+	insert into job_run (
+	  job_id, server_id
+	)
+	values (?,?)
+	returning *;
+`
 
+func testRun(conn *gorm.DB, jId, cId string) (*Run, error) {
 	rw := db.New(conn)
+	run := allocRun()
 
-	run := &JobRun{
-		JobRun: &store.JobRun{
-			JobId:    jId,
-			ServerId: cId,
-			Status:   status.String(),
-		},
+	rows, err := rw.Query(context.Background(), testRunQuery, []interface{}{jId, cId})
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		return nil, fmt.Errorf("expected to rows")
 	}
 
-	id, err := newJobRunId()
-	require.NoError(err)
-	run.PrivateId = id
-	err = rw.Create(context.Background(), run)
-	require.NoError(err)
+	err = rw.ScanRows(rows, run)
+	if err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
 
-	return run
+	return run, nil
 }
 
 func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {

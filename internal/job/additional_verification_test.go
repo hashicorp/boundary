@@ -26,7 +26,7 @@ func TestJobWorkflow(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(err)
 
-	job, err := NewJob("job1", "code", "description")
+	job, err := New("job1", "code", "description")
 	assert.NoError(err)
 
 	job, err = repo.CreateJob(context.Background(), job)
@@ -34,27 +34,27 @@ func TestJobWorkflow(t *testing.T) {
 	require.NotNil(job)
 	require.NotEmpty(job.PrivateId)
 
-	run, err := repo.FetchWork(context.Background(), server.PrivateId)
+	runs, err := repo.RunJobs(context.Background(), server.PrivateId)
 	assert.NoError(err)
-	require.NotNil(run)
+	require.Len(runs, 1)
+	run := runs[0]
 	require.NotEmpty(run.PrivateId)
 	assert.Equal(job.PrivateId, run.JobId)
 
-	run.TotalCount = 110
-	run.CompletedCount = 100
-
-	run, count, err := repo.CheckpointJobRun(context.Background(), run, []string{"TotalCount", "CompletedCount"})
+	run, err = repo.UpdateProgress(context.Background(), run.PrivateId, 100, 110)
 	assert.NoError(err)
-	assert.Equal(1, count)
+	assert.Equal(uint32(100), run.CompletedCount)
+	assert.Equal(uint32(110), run.TotalCount)
 
 	// The only available job is already running, a request for work should return nil
-	newRun, err := repo.FetchWork(context.Background(), server.PrivateId)
+	newRuns, err := repo.RunJobs(context.Background(), server.PrivateId)
 	assert.NoError(err)
-	require.Nil(newRun)
+	require.Len(newRuns, 0)
 
 	nextRun := time.Now().Add(time.Hour)
-	err = repo.EndJobRun(context.Background(), run.PrivateId, Completed, nextRun)
+	run, err = repo.CompleteRun(context.Background(), run.PrivateId, nextRun)
 	assert.NoError(err)
+	assert.Equal(Completed.String(), run.Status)
 
 	job, err = repo.LookupJob(context.Background(), job.PrivateId)
 	assert.NoError(err)
@@ -62,18 +62,21 @@ func TestJobWorkflow(t *testing.T) {
 	assert.Equal(nextRun.Unix(), job.NextScheduledRun.Timestamp.GetSeconds())
 
 	// The only available job has a next run in the future, a request for work should return nil
-	newRun, err = repo.FetchWork(context.Background(), server.PrivateId)
+	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
 	assert.NoError(err)
-	require.Nil(newRun)
+	require.Len(newRuns, 0)
 
 	// Update job next run to time in past
 	job.NextScheduledRun = testZeroTime
-	job, count, err = repo.UpdateJob(context.Background(), job, []string{"NextScheduledRun"})
+	job, count, err := repo.UpdateJob(context.Background(), job, []string{"NextScheduledRun"})
+	require.NoError(err)
+	require.Equal(1, count)
 
-	// Now that next scheduled time is in past, a request for work should return a JobRun
-	newRun, err = repo.FetchWork(context.Background(), server.PrivateId)
+	// Now that next scheduled time is in past, a request for work should return a Run
+	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
 	assert.NoError(err)
-	require.NotNil(newRun)
+	require.Len(newRuns, 1)
+	newRun := newRuns[0]
 	require.NotEmpty(newRun.PrivateId)
 	assert.Equal(job.PrivateId, newRun.JobId)
 	assert.NotEqual(run.PrivateId, newRun.PrivateId)

@@ -81,25 +81,26 @@ func TestJobRun_ImmutableFields(t *testing.T) {
 
 	job := testJob(t, conn, "testJob", "testCode", "testDescription")
 	server := testController(t, conn, wrapper)
-	oriRun := testJobRun(t, conn, job.PrivateId, server.PrivateId, Running)
+	oriRun, err := testRun(conn, job.PrivateId, server.PrivateId)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name      string
-		update    *JobRun
+		update    *Run
 		fieldMask []string
 	}{
 		{
 			name: "private_id",
-			update: func() *JobRun {
+			update: func() *Run {
 				j := oriRun.clone()
-				j.PrivateId = JobRunPrefix + "_1234567890"
+				j.PrivateId = "new-run-id"
 				return j
 			}(),
 			fieldMask: []string{"PrivateId"},
 		},
 		{
 			name: "job id",
-			update: func() *JobRun {
+			update: func() *Run {
 				j := oriRun.clone()
 				j.JobId = "job_test-private-id"
 				return j
@@ -108,7 +109,7 @@ func TestJobRun_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "create time",
-			update: func() *JobRun {
+			update: func() *Run {
 				j := oriRun.clone()
 				j.CreateTime = &ts
 				return j

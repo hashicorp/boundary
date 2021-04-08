@@ -28,7 +28,7 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal(testZeroTime.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
 
 	nextRun := time.Now().Add(time.Hour)
-	job1 := testJob(t, conn, "testJob1", "testCode1", "testDescription1", WithNextScheduledRun(nextRun))
+	job1 := testJob(t, conn, "testJob1", "testCode1", "testDescription1", WithNextRunAt(nextRun))
 	require.NotNil(job1)
 
 	var got1 Job
@@ -40,7 +40,7 @@ func Test_TestJob(t *testing.T) {
 	assert.Equal(nextRun.Unix(), got1.NextScheduledRun.Timestamp.GetSeconds())
 }
 
-func Test_TestJobRun(t *testing.T) {
+func Test_TestRun(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -51,26 +51,16 @@ func Test_TestJobRun(t *testing.T) {
 
 	server := testController(t, conn, wrapper)
 
-	run := testJobRun(t, conn, job.PrivateId, server.PrivateId, Running)
+	run, err := testRun(conn, job.PrivateId, server.PrivateId)
+	require.NoError(err)
 	require.NotNil(run)
 
 	rw := db.New(conn)
-	var got JobRun
-	err := rw.LookupWhere(context.Background(), &got, "private_id = ?", run.PrivateId)
+	var got Run
+	err = rw.LookupWhere(context.Background(), &got, "private_id = ?", run.PrivateId)
 	require.NoError(err)
 	assert.Equal(server.PrivateId, got.ServerId)
 	assert.Equal(job.PrivateId, got.JobId)
 	assert.NotEmpty(got.CreateTime)
 	assert.Equal(Running.String(), got.Status)
-
-	run1 := testJobRun(t, conn, job.PrivateId, server.PrivateId, Completed)
-	require.NotNil(run1)
-
-	var got1 JobRun
-	err = rw.LookupWhere(context.Background(), &got1, "private_id = ?", run1.PrivateId)
-	require.NoError(err)
-	assert.Equal(server.PrivateId, got1.ServerId)
-	assert.Equal(job.PrivateId, got1.JobId)
-	assert.NotEmpty(got1.CreateTime)
-	assert.Equal(Completed.String(), got1.Status)
 }

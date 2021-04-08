@@ -21,7 +21,7 @@ type Job struct {
 	tableName string `gorm:"-"`
 }
 
-// NewJob creates a new in memory Job.
+// New creates a new in memory Job.
 //
 // • Name is the human-friendly name of the job.
 //
@@ -30,11 +30,11 @@ type Job struct {
 //
 // • Description is the human-friendly description of the job.
 //
-// WithNextScheduledRun() is the only valid option.  If this option is not
+// WithNextRunAt() is the only valid option.  If this option is not
 // provided the NextScheduledRun of the job will default to zero time, and be available
 // to run immediately.
-func NewJob(name, code, description string, opt ...Option) (*Job, error) {
-	const op = "job.NewJob"
+func New(name, code, description string, opt ...Option) (*Job, error) {
+	const op = "job.New"
 	if name == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
@@ -51,7 +51,7 @@ func NewJob(name, code, description string, opt ...Option) (*Job, error) {
 			Name:             name,
 			Description:      description,
 			Code:             code,
-			NextScheduledRun: &timestamp.Timestamp{Timestamp: timestamppb.New(opts.withNextScheduledRun)},
+			NextScheduledRun: &timestamp.Timestamp{Timestamp: timestamppb.New(opts.withNextRunAt)},
 		},
 	}
 	return job, nil

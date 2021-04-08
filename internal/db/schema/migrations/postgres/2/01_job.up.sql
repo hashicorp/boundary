@@ -38,7 +38,8 @@ begin;
         ('interrupted');
 
     create table job_run (
-         private_id wt_private_id primary key,
+         private_id wh_dim_id primary key
+             default wh_dim_id(),
          job_id wt_private_id not null
              constraint job_fkey
                  references job(private_id)
@@ -61,6 +62,7 @@ begin;
              constraint total_count_can_not_be_negative
                  check(total_count >= 0),
          status text not null
+             default 'running'
              constraint job_run_status_enm_fkey
                  references job_run_status_enm (name)
                  on delete restrict

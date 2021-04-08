@@ -46,7 +46,7 @@ func TestJob_New(t *testing.T) {
 			},
 			wantCreateErr:     true,
 			wantCreateErrCode: errors.InvalidParameter,
-			wantCreateErrMsg:  "job.NewJob: missing name: parameter violation: error #100",
+			wantCreateErrMsg:  "job.New: missing name: parameter violation: error #100",
 		},
 		{
 			name: "missing-code",
@@ -55,7 +55,7 @@ func TestJob_New(t *testing.T) {
 			},
 			wantCreateErr:     true,
 			wantCreateErrCode: errors.InvalidParameter,
-			wantCreateErrMsg:  "job.NewJob: missing code: parameter violation: error #100",
+			wantCreateErrMsg:  "job.New: missing code: parameter violation: error #100",
 		},
 		{
 			name: "missing-description",
@@ -65,7 +65,7 @@ func TestJob_New(t *testing.T) {
 			},
 			wantCreateErr:     true,
 			wantCreateErrCode: errors.InvalidParameter,
-			wantCreateErrMsg:  "job.NewJob: missing description: parameter violation: error #100",
+			wantCreateErrMsg:  "job.New: missing description: parameter violation: error #100",
 		},
 		{
 			name: "valid-no-options",
@@ -142,7 +142,7 @@ func TestJob_New(t *testing.T) {
 				code:        "code",
 				description: "description",
 				opts: []Option{
-					WithNextScheduledRun(futureTime),
+					WithNextRunAt(futureTime),
 				},
 			},
 			want: &Job{
@@ -160,7 +160,7 @@ func TestJob_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewJob(tt.args.name, tt.args.code, tt.args.description, tt.args.opts...)
+			got, err := New(tt.args.name, tt.args.code, tt.args.description, tt.args.opts...)
 			if tt.wantCreateErr {
 				assert.Error(err)
 				assert.Nil(got)

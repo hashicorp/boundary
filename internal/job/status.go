@@ -17,22 +17,6 @@ const (
 	Interrupted Status = "interrupted"
 )
 
-func (s Status) isValidRunStatus() bool {
-	switch s {
-	case Running, Completed, Failed, Interrupted:
-		return true
-	}
-	return false
-}
-
-func (s Status) isFinalRunStatus() bool {
-	switch s {
-	case Completed, Failed, Interrupted:
-		return true
-	}
-	return false
-}
-
 func (s Status) String() string {
 	return string(s)
 }
