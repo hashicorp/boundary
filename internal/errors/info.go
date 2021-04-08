@@ -184,4 +184,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "bad db lock",
 		Kind:    Integrity,
 	},
+	Unavailable: {
+		Message: "external system unavailable",
+		Kind:    External,
+	},
 }

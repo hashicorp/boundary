@@ -13,6 +13,7 @@ const (
 	Encryption
 	Encoding
 	State
+	External
 )
 
 func (e Kind) String() string {
@@ -26,5 +27,6 @@ func (e Kind) String() string {
 		Encryption:  "encryption issue",
 		Encoding:    "encoding issue",
 		State:       "state violation",
+		External:    "external system issue",
 	}[e]
 }

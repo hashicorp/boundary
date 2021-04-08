@@ -237,6 +237,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    MigrationLock,
 			want: MigrationLock,
 		},
+		{
+			name: "Unavailable",
+			c:    Unavailable,
+			want: Unavailable,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
