@@ -196,12 +196,6 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		}
 		*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(uint32(val)))
 	}
-	switch c.flagSigningAlgorithms {
-	case nil:
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
-	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
-	}
 	switch c.flagApiUrlPrefix {
 	case "":
 	case "null":
@@ -209,14 +203,25 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodApiUrlPrefix(c.flagApiUrlPrefix))
 	}
-	switch c.flagCaCerts {
-	case nil:
+	switch {
+	case len(c.flagSigningAlgorithms) == 0:
+	case len(c.flagSigningAlgorithms) == 1 && c.flagSigningAlgorithms[0] == "null":
+		fmt.Print("Got default slice")
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
+	default:
+		fmt.Printf("Got slice %v", c.flagSigningAlgorithms)
+		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
+	}
+	switch {
+	case len(c.flagCaCerts) == 0:
+	case len(c.flagCaCerts) == 1 && c.flagCaCerts[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodIdpCaCerts())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagCaCerts))
 	}
-	switch c.flagAllowedAudiences {
-	case nil:
+	switch {
+	case len(c.flagAllowedAudiences) == 0:
+	case len(c.flagAllowedAudiences) == 1 && c.flagAllowedAudiences[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAllowedAudiences())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAllowedAudiences(c.flagAllowedAudiences))
