@@ -291,7 +291,13 @@ type OidcAuthMethodAttributes struct {
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
 	DisableDiscoveredConfigValidation bool `protobuf:"varint,120,opt,name=disable_discovered_config_validation,proto3" json:"disable_discovered_config_validation,omitempty"`
-	DryRun                            bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty"`
+	// dry_run, when set on an update request, indicates that the changes should
+	// not be persisted.  Boundary will still perform the normal checks to confirm
+	// the auth method is complete and validated against the discovered config.
+	// This value will also be set on the returned resource when set in the request
+	// along with the updated fields applied to the resource (but not persisted) as
+	// a result of the update request.
+	DryRun bool `protobuf:"varint,130,opt,name=dry_run,proto3" json:"dry_run,omitempty"`
 }
 
 func (x *OidcAuthMethodAttributes) Reset() {

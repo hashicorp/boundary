@@ -953,7 +953,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			id:   am.GetPublicId(),
 			mask: []string{"attributes.issuer"},
 			item: &pb.AuthMethod{
-				Version:     am.GetVersion(),
+				Version: am.GetVersion(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"dry_run": structpb.NewBoolValue(true),
 				}},
@@ -965,7 +965,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			id:   am.GetPublicId(),
 			mask: []string{"attributes.signing_algorithms"},
 			item: &pb.AuthMethod{
-				Version:     am.GetVersion(),
+				Version: am.GetVersion(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"dry_run": structpb.NewBoolValue(true),
 					"signing_algorithms": func() *structpb.Value {
@@ -981,9 +981,9 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			id:   am.GetPublicId(),
 			mask: []string{"name"},
 			item: &pb.AuthMethod{
-				Version:     am.GetVersion(),
+				Version: am.GetVersion(),
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"dry_run": structpb.NewBoolValue(true),
+					"dry_run":                              structpb.NewBoolValue(true),
 					"disable_discovered_config_validation": structpb.NewBoolValue(true),
 				}},
 			},
