@@ -24,7 +24,7 @@ type extraOidcCmdVars struct {
 	flagMaxAgeSeconds                     string
 	flagApiUrlPrefix                      string
 	flagSigningAlgorithms                 []string
-	flagCaCerts                           []string
+	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
 	flagDisableDiscoveredConfigValidation bool
 }
@@ -109,7 +109,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 		case caCertFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   caCertFlagName,
-				Target: &c.flagCaCerts,
+				Target: &c.flagIdpCaCerts,
 				Usage:  "Optional PEM-encoded X.509 CA certificate that can be used as trust anchors when connecting to an OIDC provider. May be specified multiple times.",
 			})
 		case allowedAudienceFlagName:
@@ -196,12 +196,6 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		}
 		*opts = append(*opts, authmethods.WithOidcAuthMethodMaxAge(uint32(val)))
 	}
-	switch c.flagSigningAlgorithms {
-	case nil:
-		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
-	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
-	}
 	switch c.flagApiUrlPrefix {
 	case "":
 	case "null":
@@ -209,14 +203,23 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodApiUrlPrefix(c.flagApiUrlPrefix))
 	}
-	switch c.flagCaCerts {
-	case nil:
+	switch {
+	case len(c.flagSigningAlgorithms) == 0:
+	case len(c.flagSigningAlgorithms) == 1 && c.flagSigningAlgorithms[0] == "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
+	}
+	switch {
+	case len(c.flagIdpCaCerts) == 0:
+	case len(c.flagIdpCaCerts) == 1 && c.flagIdpCaCerts[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodIdpCaCerts())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagCaCerts))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagIdpCaCerts))
 	}
-	switch c.flagAllowedAudiences {
-	case nil:
+	switch {
+	case len(c.flagAllowedAudiences) == 0:
+	case len(c.flagAllowedAudiences) == 1 && c.flagAllowedAudiences[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAllowedAudiences())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAllowedAudiences(c.flagAllowedAudiences))
