@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Go SDK
-sidebar_title: Go SDK
 description: |-
   Boundary's Go SDK
 ---
@@ -21,7 +20,7 @@ authenticating to Boundary:
 1. Via an auth method
 1. Via the recovery KMS workflow
 
-We'll cover how to authenticate to Boundary via both of these workflows. 
+We'll cover how to authenticate to Boundary via both of these workflows.
 
 ### Auth Method
 
@@ -33,7 +32,7 @@ For this example, we're going to use the Password auth method. This example
 assumes there's already a valid user and an associated account in Boundary
 against which the client can authenticate. To simplify this example, we're
 assuming you're running a Boundary instance in dev mode, where the default auth
-method, login name, and password are pre-configured. 
+method, login name, and password are pre-configured.
 
 First, we need to create a client from the Boundary API and set the address to reach Boundary:
 
@@ -71,7 +70,7 @@ am := authmethods.NewClient(client)
 
 ~> This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
 
-The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI 
+The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI
 with:
 
 ```bash

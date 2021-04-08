@@ -30,7 +30,7 @@ type Controller struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
-	started     ua.Bool
+	started     *ua.Bool
 
 	workerAuthCache *cache.Cache
 
@@ -53,6 +53,7 @@ func New(conf *Config) (*Controller, error) {
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
+		started:                 ua.NewBool(false),
 		workerStatusUpdateTimes: new(sync.Map),
 	}
 
