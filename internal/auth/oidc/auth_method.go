@@ -69,7 +69,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 	switch {
 	case opts.withIssuer != nil:
 		// trim off anything beyond scheme, host and port
-		u = strings.TrimSuffix(strings.TrimSuffix(opts.withIssuer.String(), "/"), "/.well-known/openid-configuration")
+		u = strings.SplitN(opts.withIssuer.String(), ".well-known/", 2)[0]
 	}
 
 	a := &AuthMethod{

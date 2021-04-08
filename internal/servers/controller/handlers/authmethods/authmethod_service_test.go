@@ -567,7 +567,7 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        auth.OidcSubtype.String(),
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"issuer":             structpb.NewStringValue("https://example.discovery.url:4821"),
+						"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/"),
 						"client_id":          structpb.NewStringValue("someclientid"),
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),

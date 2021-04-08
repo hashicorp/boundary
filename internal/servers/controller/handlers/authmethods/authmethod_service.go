@@ -647,6 +647,9 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
 		}
+		if i.DisableDiscoveredConfigValidation {
+			attrs.DisableDiscoveredConfigValidation = true
+		}
 		if i.GetIssuer() != "" {
 			attrs.Issuer = wrapperspb.String(i.Issuer)
 		}
@@ -724,12 +727,12 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			} else {
 				if attrs.GetIssuer().GetValue() != "" {
-					du, err := url.Parse(attrs.GetIssuer().GetValue())
+					iss, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields[issuerField] = "The path should be empty or `/.well-known/openid-configuration`"
+					if !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
 					}
 				}
 				if attrs.GetDisableDiscoveredConfigValidation() {
@@ -821,19 +824,29 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
 				if attrs.GetIssuer().GetValue() != "" {
-					du, err := url.Parse(attrs.GetIssuer().GetValue())
+					iss, err := url.Parse(attrs.GetIssuer().GetValue())
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-						badFields[issuerField] = "The path should be empty or `/.well-known/openid-configuration`"
+					if !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+					}
+				}
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+				if attrs.GetApiUrlPrefix().GetValue() != "" {
+					cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
+					if err != nil || cu.Host == "" {
+						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+					}
+					if !strutil.StrListContains([]string{"http", "https"}, cu.Scheme) {
+						badFields[apiUrlPrefixField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
 					}
 				}
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
 				badFields[clientSecretField] = "Can change but cannot unset this field."
 			}
-
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
 				badFields[clientIdField] = "Can change but cannot unset this field."
 			}
@@ -848,21 +861,12 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				badFields[callbackUrlField] = "Field is read only."
 			}
 
-			if attrs.GetMaxAge() != nil && attrs.GetMaxAge().GetValue() == 0 {
-				badFields[maxAgeField] = "Must not be `0`."
-			}
 			if len(attrs.GetSigningAlgorithms()) > 0 {
 				for _, sa := range attrs.GetSigningAlgorithms() {
 					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
 						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 						break
 					}
-				}
-			}
-			if attrs.GetApiUrlPrefix() != nil {
-				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
-					break
 				}
 			}
 			if len(attrs.GetIdpCaCerts()) > 0 {
