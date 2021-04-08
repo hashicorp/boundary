@@ -43,12 +43,11 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
-	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing auth token repository")
+		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -144,33 +143,34 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
-	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
-	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(err, op)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
+		}
+		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
 	}
 	if u == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
+		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
 	}
 	return toProto(u), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, err
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
+		return false, fmt.Errorf("unable to delete user: %w", err)
 	}
 	return rows > 0, nil
 }

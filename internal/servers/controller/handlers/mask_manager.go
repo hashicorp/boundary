@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -18,7 +17,6 @@ type MaskManager map[string]string
 // protos assuming they are both using the mask_mapping custom option.  Error is returned if no mappings are
 // found or if one of the passed protos has a mapping that doesn't reciprocate.
 func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMessage) (MaskManager, error) {
-	const op = "handlers.NewMaskManager"
 	srcToDest, err := mapFromProto(src...)
 	if err != nil {
 		return nil, err
@@ -32,7 +30,7 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	for k, v := range srcToDest {
 		ov, ok := destToSrc[v]
 		if !ok || ov != k {
-			return nil, errors.New(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, fmt.Errorf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov)
 		}
 		result[k] = v
 	}
@@ -40,19 +38,18 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	// Now check to make sure there aren't any dangling dest mappings.
 	for k, v := range destToSrc {
 		if ov, ok := srcToDest[v]; !ok || ov != k {
-			return nil, errors.New(errors.Encrypt, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, fmt.Errorf("mapping dest field %q maps to %q, src %q maps to %q", k, v, v, ov)
 		}
 	}
 
 	if len(result) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "mask mapping generated is zero")
+		return nil, fmt.Errorf("size of mask mapping is 0")
 	}
 
 	return result, nil
 }
 
 func mapFromProto(ps ...protoreflect.ProtoMessage) (map[string]string, error) {
-	const op = "handlers.mapFromProto"
 	mapping := make(map[string]string)
 	for _, p := range ps {
 		m := p.ProtoReflect()
@@ -62,7 +59,7 @@ func mapFromProto(ps ...protoreflect.ProtoMessage) (map[string]string, error) {
 			opts := f.Options().(*descriptorpb.FieldOptions)
 			if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) && nameMap != nil {
 				if _, ok := mapping[nameMap.GetThis()]; ok {
-					return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
+					return nil, fmt.Errorf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis())
 				}
 				mapping[nameMap.GetThis()] = nameMap.GetThat()
 			}

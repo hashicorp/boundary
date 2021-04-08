@@ -60,9 +60,8 @@ type Service struct {
 
 // NewService returns a group service which handles group related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
-	const op = "groups.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -248,23 +247,24 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) {
-	const op = "groups.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	g, m, err := repo.LookupGroup(ctx, id)
-	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(err, op)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
+		}
+		return nil, fmt.Errorf("unable to get group: %w", err)
 	}
 	if g == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("group %q not found", id))
+		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 	}
 	return toProto(g, m), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Group) (*pb.Group, error) {
-	const op = "groups.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -278,11 +278,11 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	out, err := repo.CreateGroup(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("unable to create group: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create group but no error returned from repository.")
@@ -291,7 +291,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
-	const op = "groups.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -311,11 +310,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, g, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("unable to update group: %w", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Group %q doesn't exist or incorrect version provided.", id)
@@ -324,7 +323,6 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	const op = "groups.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -334,20 +332,19 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete group"))
+		return false, fmt.Errorf("unable to delete group: %w", err)
 	}
 	return rows > 0, nil
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Group, error) {
-	const op = "groups.(Service).listFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	gl, err := repo.ListGroups(ctx, scopeIds)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("unable to list groups: %w", err)
 	}
 	var outGl []*pb.Group
 	for _, g := range gl {
@@ -357,10 +354,9 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Gro
 }
 
 func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
-	const op = "groups.(Service).addMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	_, err = repo.AddGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -369,7 +365,7 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after adding memebers"))
+		return nil, fmt.Errorf("unable to look up group after adding members: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after adding member to it.")
@@ -378,10 +374,9 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 }
 
 func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
-	const op = "groups.(Service).setMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	_, _, err = repo.SetGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -390,7 +385,7 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after setting members"))
+		return nil, fmt.Errorf("unable to look up group after setting members: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after setting members for it.")
@@ -399,10 +394,9 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 }
 
 func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
-	const op = "groups.(Service).removeMembersInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	_, err = repo.DeleteGroupMembers(ctx, groupId, version, strutil.RemoveDuplicates(userIds, false))
 	if err != nil {
@@ -411,7 +405,7 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up group after removing members"))
+		return nil, fmt.Errorf("unable to look up group after removing members: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup group after removing members from it.")
