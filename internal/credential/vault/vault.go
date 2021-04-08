@@ -94,3 +94,15 @@ func (c *client) Ping() error {
 		return nil
 	}
 }
+
+// RenewToken calls the /auth/token/renew-self Vault endpoint and returns
+// the vault.Secret response. See
+// https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
+func (c *client) RenewToken() (*vault.Secret, error) {
+	const op = "vault.(client).RenewToken"
+	t, err := c.cl.Auth().Token().RenewSelf(0)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return t, nil
+}
