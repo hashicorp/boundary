@@ -26,6 +26,7 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 
 	var resource *dockertest.Resource
 	var url string
+
 	switch dialect {
 	case "postgres":
 		switch {
@@ -82,4 +83,51 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 		return nil
 	}
 	return fmt.Errorf("Failed to cleanup local container: %s", err)
+}
+
+//todo(schristoff): figure out a better way to do this
+func StartDbinDockerImage(repo string, tag string) (cleanup func() error, retURL, container string, err error) {
+	mx.Lock()
+	defer mx.Unlock()
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
+	}
+
+	var resource *dockertest.Resource
+	var url string
+	switch repo {
+	case "postgres":
+		resource, err = pool.Run(repo, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+		//todo(schristoff): should this be default for all postgres related things? can i get this from the container?
+		if err == nil {
+			url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+		}
+	default:
+		fmt.Errorf("not supported container image")
+	}
+	if err != nil {
+		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
+	}
+
+	cleanup = func() error {
+		return cleanupDockerResource(pool, resource)
+	}
+
+	if err := pool.Retry(func() error {
+		db, err := sql.Open("postgres", url)
+		if err != nil {
+			return fmt.Errorf("error opening %s dev container: %w", repo, err)
+		}
+
+		if err := db.Ping(); err != nil {
+			return err
+		}
+		defer db.Close()
+		return nil
+	}); err != nil {
+		return cleanup, "", "", fmt.Errorf("could not ping postgres on startup: %w", err)
+	}
+
+	return cleanup, url, resource.Container.Name, nil
 }

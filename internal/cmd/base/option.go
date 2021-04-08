@@ -21,6 +21,7 @@ type Options struct {
 	withSkipScopesCreation        bool
 	withSkipHostResourcesCreation bool
 	withSkipTargetCreation        bool
+	withDatabaseImage             []string
 }
 
 func getDefaultOptions() Options {
@@ -81,5 +82,11 @@ func WithSkipHostResourcesCreation() Option {
 func WithSkipTargetCreation() Option {
 	return func(o *Options) {
 		o.withSkipTargetCreation = true
+	}
+}
+
+func WithDatabaseImage(image *[]string) Option {
+	return func(o *Options) {
+		o.withDatabaseImage = *image
 	}
 }

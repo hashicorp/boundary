@@ -470,7 +470,15 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = docker.StartDbInDocker(dialect)
+		if len(opts.withDatabaseImage) > 0 {
+			repo := opts.withDatabaseImage[0]
+			tag := opts.withDatabaseImage[1]
+
+			c, url, container, err = docker.StartDbinDockerImage(repo, tag)
+
+		} else {
+			c, url, container, err = docker.StartDbInDocker(dialect)
+		}
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {
