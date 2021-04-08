@@ -459,7 +459,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 				}
 				attrs := &pb.OidcAuthMethodAttributes{}
 				if err := handlers.StructToProto(am.GetAttributes(), attrs); err != nil {
-					return nil, errors.Wrap(err, op, errors.WithMsg("cant convert from attribute struct to proto"))
+					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute struct to proto"))
 				}
 				attrs.DryRun = true
 				if am.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
