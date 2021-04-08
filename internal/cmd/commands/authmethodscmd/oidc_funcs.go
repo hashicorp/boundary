@@ -206,10 +206,8 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	switch {
 	case len(c.flagSigningAlgorithms) == 0:
 	case len(c.flagSigningAlgorithms) == 1 && c.flagSigningAlgorithms[0] == "null":
-		fmt.Print("Got default slice")
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodSigningAlgorithms())
 	default:
-		fmt.Printf("Got slice %v", c.flagSigningAlgorithms)
 		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
 	}
 	switch {
