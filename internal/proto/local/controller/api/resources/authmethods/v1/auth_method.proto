@@ -70,7 +70,7 @@ message OidcAuthMethodAttributes {
 	string state = 10 [json_name="state"];
 
 	// The issuer URL. Boundary expects only the schema, host, and port and will
-	// strip off "/.well-known/openid-configuration" if present. This will be
+	// strip off ".well-known/openid-configuration" if present. This will be
 	// used for configuration discovery as well as for validation of the "iss"
 	// claim.
 	google.protobuf.StringValue issuer = 20 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.issuer" that:"Issuer"}];

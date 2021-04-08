@@ -285,6 +285,43 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Update Issuer",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:72759/somepath/.well-known/openid-configuration")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:72759/somepath/")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "No Update Mask",
 			req: &pbs.UpdateAuthMethodRequest{
 				Item: &pb.AuthMethod{
@@ -549,7 +586,24 @@ func TestUpdate_OIDC(t *testing.T) {
 					},
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["max_age"] = structpb.NewNumberValue(0)
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
 		},
 		{
 			name: "Change Max Age",
@@ -769,6 +823,7 @@ func TestUpdate_OIDC(t *testing.T) {
 								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
 								return structpb.NewListValue(lv)
 							}()
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
 							return f
 						}(),
 					},

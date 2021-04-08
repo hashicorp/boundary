@@ -319,16 +319,21 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	}
 
 	if iss := strings.TrimSpace(attrs.GetIssuer().GetValue()); iss != "" {
-		var issuer *url.URL
-		var err error
-		if issuer, err = url.Parse(iss); err != nil {
-			return nil, false, err
-		}
-		// remove everything except for protocol, hostname, and port.
-		if issuer, err = issuer.Parse("/"); err != nil {
-			return nil, false, err
+		// Strip off everything after and including ".well-known/openid-configuration"
+		// but leave the "/" attached to the end.
+		iss = strings.SplitN(iss, ".well-known/", 2)[0]
+		issuer, err := url.Parse(iss)
+		if err != nil {
+			return nil, false, errors.Wrap(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(issuer))
+	}
+	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
+		apiU, err := url.Parse(apiUrl)
+		if err != nil {
+			return nil, false, errors.Wrap(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+		}
+		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
 	if attrs.GetMaxAge() != nil {
@@ -348,15 +353,6 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	}
 	if len(attrs.GetAllowedAudiences()) > 0 {
 		opts = append(opts, oidc.WithAudClaims(attrs.GetAllowedAudiences()...))
-	}
-
-	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
-		apiU, err := url.Parse(apiUrl)
-		if err != nil {
-			return nil, false, handlers.InvalidArgumentErrorf("Error in provided request",
-				map[string]string{apiUrlPrefixField: "Unparsable url"})
-		}
-		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
 
 	if len(attrs.GetIdpCaCerts()) > 0 {
