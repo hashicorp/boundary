@@ -18,7 +18,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.8
 	github.com/hashicorp/boundary/sdk v0.0.4
-	github.com/hashicorp/cap v0.0.0-20210406144452-17a80273f33d
+	github.com/hashicorp/cap v0.0.0-20210408110729-0dd65efe5473
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-bexpr v0.1.7
