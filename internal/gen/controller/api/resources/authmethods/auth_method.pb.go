@@ -252,7 +252,7 @@ type OidcAuthMethodAttributes struct {
 	// "active-private", or "active-public".
 	State string `protobuf:"bytes,10,opt,name=state,proto3" json:"state,omitempty"`
 	// The issuer URL. Boundary expects only the schema, host, and port and will
-	// strip off "/.well-known/openid-configuration" if present. This will be
+	// strip off ".well-known/openid-configuration" if present. This will be
 	// used for configuration discovery as well as for validation of the "iss"
 	// claim.
 	Issuer *wrappers.StringValue `protobuf:"bytes,20,opt,name=issuer,proto3" json:"issuer,omitempty"`
