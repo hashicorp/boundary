@@ -2,7 +2,6 @@ package authmethods
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -107,14 +106,15 @@ type Service struct {
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
+	const op = "authmethods.NewService"
 	if kms == nil {
-		return Service{}, stderrors.New("nil kms provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
 	if pwRepoFn == nil {
-		return Service{}, fmt.Errorf("nil password repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{kms: kms, pwRepoFn: pwRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}, nil
 }
@@ -340,6 +340,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+	const op = "authmethods.(Service).createInRepo"
 	var opts []password.Option
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -353,11 +354,11 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, err := repo.CreateAuthMethod(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create auth method: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create auth method"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -366,6 +367,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+	const op = "authmethods.(Service).updateInRepo"
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -398,11 +400,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", id)
@@ -411,16 +413,17 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "authmethods.(Service).deleteFromRepo"
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 	rows, err := repo.DeleteAuthMethod(ctx, scopeId, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete auth method: %w", err)
+		return false, errors.Wrap(err, op)
 	}
 	return rows > 0, nil
 }

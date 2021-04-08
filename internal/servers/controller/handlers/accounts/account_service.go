@@ -56,8 +56,9 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.PasswordAuthRepoFactory) (Service, error) {
+	const op = "accounts.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil password repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -225,6 +226,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 }
 
 func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string, item *pb.Account) (*pb.Account, error) {
+	const op = "accounts.(Service).createInRepo"
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
@@ -252,7 +254,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 	}
 	out, err := repo.CreateAccount(ctx, scopeId, a, createOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create user: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
@@ -261,6 +263,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId, scopeId string,
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*pb.Account, error) {
+	const op = "accounts.(Service).updateInRepo"
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -298,7 +301,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
@@ -307,6 +310,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethId, id strin
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "accounts.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -316,7 +320,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete account: %w", err)
+		return false, errors.Wrap(err, op)
 	}
 	return rows > 0, nil
 }
@@ -342,6 +346,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 }
 
 func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
+	const op = "account.(Service).changePasswordInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -358,7 +363,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
-		return nil, fmt.Errorf("unable to change password: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
@@ -367,6 +372,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 }
 
 func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
+	const op = "accounts.(Service).setPasswordInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -380,7 +386,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}
-		return nil, fmt.Errorf("unable to set password: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return toProto(out)
 }
