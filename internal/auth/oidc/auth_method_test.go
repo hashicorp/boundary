@@ -42,6 +42,8 @@ func TestAuthMethod_Create(t *testing.T) {
 		wantErr         bool
 		wantIsErr       errors.Code
 		create          bool
+		wantNewErr      bool
+		wantNewIsErr    errors.Code
 		wantCreateErr   bool
 		wantCreateIsErr errors.Code
 	}{
@@ -51,7 +53,13 @@ func TestAuthMethod_Create(t *testing.T) {
 				scopeId:      org.PublicId,
 				clientId:     "alice_rp",
 				clientSecret: ClientSecret("rp-secret"),
-				opt:          []Option{WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithDescription("alice's restaurant rp"), WithName("alice.com"), WithMaxAge(-1)},
+				opt: []Option{
+					WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+					WithDescription("alice's restaurant rp"),
+					WithName("alice.com"),
+					WithMaxAge(-1),
+				},
 			},
 			create: true,
 			want: func() *AuthMethod {
@@ -67,6 +75,70 @@ func TestAuthMethod_Create(t *testing.T) {
 				a.ApiUrl = "https://api.com"
 				return &a
 			}(),
+		},
+		{
+			name: "valid with operational state set active",
+			args: args{
+				scopeId:      org.PublicId,
+				clientId:     "alice_rp2",
+				clientSecret: ClientSecret("rp-secret2"),
+				opt: []Option{
+					WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+					WithDescription("alice's restaurant rp"),
+					WithName("alice2.com"),
+					WithMaxAge(-1),
+					WithOperationalState(ActivePublicState),
+					WithSigningAlgs(EdDSA),
+				},
+			},
+			create: true,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.OperationalState = string(ActivePublicState)
+				a.Issuer = "http://alice.com"
+				a.ClientId = "alice_rp2"
+				a.ClientSecret = "rp-secret2"
+				a.MaxAge = -1
+				a.Name = "alice2.com"
+				a.Description = "alice's restaurant rp"
+				a.ApiUrl = "https://api.com"
+				a.SigningAlgs = []string{string(EdDSA)}
+				return &a
+			}(),
+		},
+		{
+			name: "incomplete with operational state set active",
+			args: args{
+				scopeId:      org.PublicId,
+				clientId:     "alice_rp3",
+				clientSecret: ClientSecret("rp-secret3"),
+				opt: []Option{
+					WithIssuer(TestConvertToUrls(t, "http://alice.com")[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]),
+					WithDescription("alice's restaurant rp"),
+					WithName("alice3.com"),
+					WithMaxAge(-1),
+					WithOperationalState(ActivePublicState),
+				},
+			},
+			create: true,
+			want: func() *AuthMethod {
+				a := AllocAuthMethod()
+				a.ScopeId = org.PublicId
+				a.OperationalState = string(ActivePublicState)
+				a.Issuer = "http://alice.com"
+				a.ClientId = "alice_rp3"
+				a.ClientSecret = "rp-secret3"
+				a.MaxAge = -1
+				a.Name = "alice3.com"
+				a.Description = "alice's restaurant rp"
+				a.ApiUrl = "https://api.com"
+				return &a
+			}(),
+			wantNewErr:   true,
+			wantNewIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "dup", // must follow "valid" test. combination of ScopeId, Issuer and ClientId must be unique.
@@ -189,6 +261,11 @@ func TestAuthMethod_Create(t *testing.T) {
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
+				return
+			}
+			if tt.wantNewErr {
+				assert.Error(err)
+				assert.True(errors.Match(errors.T(tt.wantNewIsErr), err))
 				return
 			}
 			require.NoError(err)
