@@ -92,7 +92,6 @@ func TestAuthMethod_Create(t *testing.T) {
 					WithSigningAlgs(EdDSA),
 				},
 			},
-			create: true,
 			want: func() *AuthMethod {
 				a := AllocAuthMethod()
 				a.ScopeId = org.PublicId
@@ -123,20 +122,6 @@ func TestAuthMethod_Create(t *testing.T) {
 					WithOperationalState(ActivePublicState),
 				},
 			},
-			create: true,
-			want: func() *AuthMethod {
-				a := AllocAuthMethod()
-				a.ScopeId = org.PublicId
-				a.OperationalState = string(ActivePublicState)
-				a.Issuer = "http://alice.com"
-				a.ClientId = "alice_rp3"
-				a.ClientSecret = "rp-secret3"
-				a.MaxAge = -1
-				a.Name = "alice3.com"
-				a.Description = "alice's restaurant rp"
-				a.ApiUrl = "https://api.com"
-				return &a
-			}(),
 			wantNewErr:   true,
 			wantNewIsErr: errors.InvalidParameter,
 		},
