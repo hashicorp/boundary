@@ -72,7 +72,9 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 	authTk, err := tokenRepo.IssueAuthToken(ctx, reqTk.RequestId)
 	if err != nil {
 		if errors.Match(errors.T(errors.RecordNotFound), err) {
-			return nil, errors.New(errors.Forbidden, op, "token not found")
+			// We don't have it -- at least not yet. So don't mark it as an
+			// error, but nothing is returned.
+			return nil, nil
 		}
 		return nil, errors.Wrap(err, op)
 	}

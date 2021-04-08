@@ -152,9 +152,6 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 		return s.authenticateOidcToken(ctx, req, authResults)
 	}
 
-	// Default is tokenCommand -- note we've already checked that it's one of
-	// these three in the validation function
-	// TODO
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: nil}, nil
 }
 
@@ -267,6 +264,9 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		default:
 			return nil, errors.Wrap(err, op)
 		}
+	}
+	if token == nil {
+		return nil, nil
 	}
 
 	responseToken, err := s.convertInternalAuthTokenToApiAuthToken(

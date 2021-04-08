@@ -21,6 +21,11 @@ const (
 
 func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
 	m = m.ProtoReflect().Interface()
+	if !m.ProtoReflect().IsValid() {
+		// This would be the case if it's a nil pointer
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	switch m := m.(type) {
 	case *pbs.AuthenticateResponse:
 		if m.GetAttributes() == nil || m.GetAttributes().GetFields() == nil {

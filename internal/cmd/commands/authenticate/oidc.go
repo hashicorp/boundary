@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -103,87 +106,49 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	/*
-		// Leg 3: swap for the token
-		token := new(authtokens.AuthToken)
-		if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
-			c.PrintCliError(fmt.Errorf("Error trying to decode response as an auth token: %w", err))
-			return base.CommandCliError
-		}
+	var watchCode int
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-c.Context.Done():
+				c.PrintCliError(errors.New("Command canceled."))
+				watchCode = base.CommandCliError
+				return
 
-		switch base.Format(c.UI) {
-		case "table":
-			c.UI.Output(base.WrapForHelpText([]string{
-				"",
-				"Authentication information:",
-				fmt.Sprintf("  Account ID:      %s", token.AccountId),
-				fmt.Sprintf("  Auth Method ID:  %s", token.AuthMethodId),
-				fmt.Sprintf("  Expiration Time: %s", token.ExpirationTime.Local().Format(time.RFC1123)),
-				fmt.Sprintf("  Token:           %s", token.Token),
-				fmt.Sprintf("  User ID:         %s", token.UserId),
-			}))
-
-		case "json":
-			if ok := c.PrintJsonItem(&dummyGenericResponse{
-				item:     token,
-				response: result.GetResponse(),
-			}, token); !ok {
-				return base.CommandCliError
-			}
-			return base.CommandSuccess
-		}
-
-		var gotErr bool
-		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error fetching keyring information: %s", err))
-			gotErr = true
-		} else if keyringType != "none" &&
-			tokenName != "none" &&
-			keyringType != "" &&
-			tokenName != "" {
-			marshaled, err := json.Marshal(token)
-			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to keyring: %s", err))
-				gotErr = true
-			} else {
-				switch keyringType {
-				case "wincred", "keychain":
-					if err := zkeyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
-						c.UI.Error(fmt.Sprintf("Error saving auth token to %q keyring: %s", keyringType, err))
-						gotErr = true
+			case <-time.After(time.Second):
+				result, err = authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]interface{}{
+					"token_id": startResp.TokenId,
+				})
+				if err != nil {
+					if apiErr := api.AsServerError(err); apiErr != nil {
+						c.PrintApiError(apiErr, "Error from controller when performing authentication token fetch")
+						watchCode = base.CommandApiError
+						return
 					}
-
-				default:
-					krConfig := nkeyring.Config{
-						LibSecretCollectionName: "login",
-						PassPrefix:              "HashiCorp_Boundary",
-						AllowedBackends:         []nkeyring.BackendType{nkeyring.BackendType(keyringType)},
-					}
-
-					kr, err := nkeyring.Open(krConfig)
-					if err != nil {
-						c.UI.Error(fmt.Sprintf("Error opening %q keyring: %s", keyringType, err))
-						gotErr = true
-						break
-					}
-
-					if err := kr.Set(nkeyring.Item{
-						Key:  tokenName,
-						Data: []byte(base64.RawStdEncoding.EncodeToString(marshaled)),
-					}); err != nil {
-						c.UI.Error(fmt.Sprintf("Error storing token in %q keyring: %s", keyringType, err))
-						gotErr = true
-						break
-					}
+					c.PrintCliError(fmt.Errorf("Error trying to perform authentication token fetch: %w", err))
+					watchCode = base.CommandCliError
+					return
 				}
+				if result.GetResponse().StatusCode() == http.StatusNoContent {
+					// Nothing yet -- circle around.
+					continue
+				}
+				return
 			}
 		}
+	}()
+	wg.Wait()
 
-		if gotErr {
-			c.UI.Warn("The token printed above must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.")
-		}
+	if watchCode != 0 {
+		return watchCode
+	}
+	if result == nil {
+		c.PrintCliError(errors.New("After watching for token, no response was found."))
+		return base.CommandCliError
+	}
 
-	*/
-	return base.CommandSuccess
+	return saveAndOrPrintToken(c.Command, result)
 }
