@@ -204,21 +204,21 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcToken"
 	if req == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil request")
+		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
 	}
 	if authResults == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil auth results")
+		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
 	}
 	if req.GetAttributes() == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil request attributes")
+		return nil, errors.New(errors.InvalidParameter, op, "Nil request attributes.")
 	}
 
 	attrs := new(pbs.OidcTokenAttributes)
 	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "error parsing request attributes")
+		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.")
 	}
 	if attrs.TokenId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "empty token id request attributes")
+		return nil, errors.New(errors.InvalidParameter, op, "Empty token id request attributes.")
 	}
 
 	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
@@ -226,11 +226,11 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		// TODO: Log something so we don't lose the error's context and entire msg...
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
-			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
-			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden"))
+			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
 		default:
-			return nil, errors.Wrap(err, op)
+			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request."))
 		}
 	}
 
