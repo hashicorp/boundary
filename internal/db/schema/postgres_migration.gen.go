@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2001,
+		binarySchemaVersion: 2005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5080,6 +5080,27 @@ create table job (
     values
         ('job', 1),
         ('job_run', 1);
+`),
+			2005: []byte(`
+create function wt_add_seconds(sec integer, ts timestamp with time zone)
+        returns timestamp with time zone
+    as $$
+    select ts + sec * '1 second'::interval;
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds is
+        'wt_add_seconds returns ts + sec.';
+
+    create function wt_add_seconds_to_now(sec integer)
+        returns timestamp with time zone
+    as $$
+    select wt_add_seconds(sec, current_timestamp);
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds_to_now is
+        'wt_add_seconds_to_now returns current_timestamp + sec.';
 `),
 		},
 	}
