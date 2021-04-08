@@ -27,7 +27,7 @@ type extraOidcCmdVars struct {
 	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
 	flagDisableDiscoveredConfigValidation bool
-	flagDryRun bool
+	flagDryRun                            bool
 }
 
 const (
@@ -42,7 +42,7 @@ const (
 	allowedAudienceFlagName                   = "allowed-audience"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
-	dryRunFlagName = "dry-run"
+	dryRunFlagName                            = "dry-run"
 )
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {

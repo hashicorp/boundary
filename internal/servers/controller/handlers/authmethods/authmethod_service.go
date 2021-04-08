@@ -1044,7 +1044,6 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 	}
 	if authResults == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
-
 	}
 	if authResults.Scope == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results scope.")
