@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,7 +18,7 @@ import (
 // The AuthMethod's public id and version must be empty (zero values).
 //
 // All options are ignored.
-func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...Option) (*AuthMethod, error) {
+func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).CreateAuthMethod"
 	if am == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth method")
@@ -32,11 +33,19 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 		return nil, err // validate properly sets the op to the caller, the code and the msg, so just return it.
 	}
 
-	id, err := newAuthMethodId()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+	opts := getOpts(opt...)
+	am.PublicId = opts.withPublicId
+	if am.PublicId == "" {
+		id, err := newAuthMethodId()
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		am.PublicId = id
+	} else {
+		if !strings.HasPrefix(am.PublicId, AuthMethodPrefix+"_") {
+			return nil, errors.New(errors.InvalidParameter, op, "wrong auth method id prefix")
+		}
 	}
-	am.PublicId = id
 
 	vo, err := am.convertValueObjects()
 	if err != nil {

@@ -32,7 +32,7 @@ func TestAuthenticationMulti(t *testing.T) {
 	defer c2.Shutdown()
 
 	auth := authmethods.NewClient(c1.Client())
-	token1Result, err := auth.Authenticate(c1.Context(), c1.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": c1.Server().DevLoginName, "password": c1.Server().DevPassword})
+	token1Result, err := auth.Authenticate(c1.Context(), c1.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": c1.Server().DevLoginName, "password": c1.Server().DevPassword})
 	require.Nil(err)
 	token1 := new(authtokens.AuthToken)
 	require.NoError(json.Unmarshal(token1Result.GetRawAttributes(), token1))
@@ -40,7 +40,7 @@ func TestAuthenticationMulti(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 	auth = authmethods.NewClient(c2.Client())
-	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
+	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
 	require.Nil(err)
 	token2 := new(authtokens.AuthToken)
 	require.NoError(json.Unmarshal(token2Result.GetRawAttributes(), token2))

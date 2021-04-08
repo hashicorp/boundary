@@ -77,7 +77,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 			ScopeId:          scopeId,
 			Name:             opts.withName,
 			Description:      opts.withDescription,
-			OperationalState: string(InactiveState),
+			OperationalState: string(opts.withOperationalState),
 			Issuer:           u,
 			ClientId:         clientId,
 			ClientSecret:     string(clientSecret),
@@ -104,6 +104,12 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		a.SigningAlgs = make([]string, 0, len(opts.withSigningAlgs))
 		for _, alg := range opts.withSigningAlgs {
 			a.SigningAlgs = append(a.SigningAlgs, string(alg))
+		}
+	}
+
+	if a.OperationalState != string(InactiveState) {
+		if err := a.isComplete(); err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
 		}
 	}
 

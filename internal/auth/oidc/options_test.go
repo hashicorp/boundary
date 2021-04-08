@@ -168,4 +168,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withIssuer = u
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithOperationalState", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.Equal(InactiveState, testOpts.withOperationalState)
+		opts := getOpts(WithOperationalState(ActivePublicState))
+		assert.Equal(ActivePublicState, opts.withOperationalState)
+	})
 }
