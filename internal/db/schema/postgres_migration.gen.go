@@ -5080,6 +5080,21 @@ create table job (
     values
         ('job', 1),
         ('job_run', 1);
+
+	create view job_jobs_to_run as
+	  with
+	  running_jobs (job_id) as (
+		select job_id
+		  from job_run
+		 where status = 'running'
+	  ),
+	  final (job_id, next_scheduled_run) as (
+		select private_id, next_scheduled_run
+		  from job
+		 where next_scheduled_run <= current_timestamp
+		   and private_id not in (select job_id from running_jobs)
+	  )
+	  select job_id, next_scheduled_run from final;
 `),
 			2005: []byte(`
 create function wt_add_seconds(sec integer, ts timestamp with time zone)

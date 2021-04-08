@@ -1,24 +1,13 @@
 package job
 
 const runJobsQuery = `
-	with running_jobs as (
-	  select job_id
-		from job_run
-	   where status = 'running'
-	),
-	jobs_to_run as (
-	   select private_id as job_id
-		 from job
-		where next_scheduled_run <= current_timestamp
-		  and private_id not in (select job_id from running_jobs)
-		order by next_scheduled_run asc
-	)
 	insert into job_run (
       job_id, server_id
 	)
 	select 
 	  job_id, ?
-	from jobs_to_run 
+	from job_jobs_to_run 
+	order by next_scheduled_run asc
 	limit ?
 	returning *;
 `
