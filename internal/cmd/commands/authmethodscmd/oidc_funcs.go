@@ -24,7 +24,7 @@ type extraOidcCmdVars struct {
 	flagMaxAgeSeconds                     string
 	flagApiUrlPrefix                      string
 	flagSigningAlgorithms                 []string
-	flagCaCerts                           []string
+	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
 	flagDisableDiscoveredConfigValidation bool
 }
@@ -109,7 +109,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 		case caCertFlagName:
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   caCertFlagName,
-				Target: &c.flagCaCerts,
+				Target: &c.flagIdpCaCerts,
 				Usage:  "Optional PEM-encoded X.509 CA certificate that can be used as trust anchors when connecting to an OIDC provider. May be specified multiple times.",
 			})
 		case allowedAudienceFlagName:
@@ -211,11 +211,11 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.WithOidcAuthMethodSigningAlgorithms(c.flagSigningAlgorithms))
 	}
 	switch {
-	case len(c.flagCaCerts) == 0:
-	case len(c.flagCaCerts) == 1 && c.flagCaCerts[0] == "null":
+	case len(c.flagIdpCaCerts) == 0:
+	case len(c.flagIdpCaCerts) == 1 && c.flagIdpCaCerts[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodIdpCaCerts())
 	default:
-		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagCaCerts))
+		*opts = append(*opts, authmethods.WithOidcAuthMethodIdpCaCerts(c.flagIdpCaCerts))
 	}
 	switch {
 	case len(c.flagAllowedAudiences) == 0:
