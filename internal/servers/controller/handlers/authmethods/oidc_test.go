@@ -1041,6 +1041,7 @@ func TestChangeState_OIDC(t *testing.T) {
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Id = mismatchedAM.PublicId
+				am.Attributes.Fields["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
 				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
 				am.Attributes.Fields["client_id"] = structpb.NewStringValue(mismatchedAM.ClientId)
 				am.Attributes.Fields["signing_algorithms"] = func() *structpb.Value {
