@@ -11,7 +11,6 @@ import (
 )
 
 func Test_TestTcpTarget(t *testing.T) {
-	t.Helper()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

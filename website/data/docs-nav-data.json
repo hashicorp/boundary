@@ -1,0 +1,293 @@
+[
+  {
+    "title": "Getting Started",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "getting-started"
+      },
+      {
+        "title": "Run and Login",
+        "path": "getting-started/run-and-login"
+      },
+      {
+        "title": "Connect to Target",
+        "path": "getting-started/connect-to-target"
+      }
+    ]
+  },
+  {
+    "title": "Installing",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "installing"
+      },
+      {
+        "title": "Non-Dev Environments",
+        "path": "installing/no-gen-resources"
+      },
+      {
+        "title": "Systemd Install",
+        "path": "installing/systemd"
+      },
+      {
+        "title": "Postgres Install",
+        "path": "installing/postgres"
+      },
+      {
+        "title": "High Availability Install",
+        "path": "installing/high-availability"
+      }
+    ]
+  },
+  {
+    "title": "API/Clients",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "api-clients"
+      },
+      {
+        "title": "API",
+        "path": "api-clients/api"
+      },
+      {
+        "title": "CLI",
+        "path": "api-clients/cli"
+      },
+      {
+        "title": "Go SDK",
+        "path": "api-clients/go-sdk"
+      },
+      {
+        "title": "Desktop",
+        "path": "api-clients/desktop"
+      }
+    ]
+  },
+  {
+    "title": "Concepts",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "concepts"
+      },
+      {
+        "title": "Security",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/security"
+          },
+          {
+            "title": "Permissions",
+            "path": "concepts/security/permissions"
+          },
+          {
+            "title": "Data Encryption",
+            "path": "concepts/security/data-encryption"
+          },
+          {
+            "title": "Connections/TLS",
+            "path": "concepts/security/connections-tls"
+          }
+        ]
+      },
+      {
+        "title": "Domain Model",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/domain-model"
+          },
+          {
+            "title": "Accounts",
+            "path": "concepts/domain-model/accounts"
+          },
+          {
+            "title": "Auth Methods",
+            "path": "concepts/domain-model/auth-methods"
+          },
+          {
+            "title": "Groups",
+            "path": "concepts/domain-model/groups"
+          },
+          {
+            "title": "Hosts",
+            "path": "concepts/domain-model/hosts"
+          },
+          {
+            "title": "Host Catalogs",
+            "path": "concepts/domain-model/host-catalogs"
+          },
+          {
+            "title": "Host Sets",
+            "path": "concepts/domain-model/host-sets"
+          },
+          {
+            "title": "Scopes",
+            "path": "concepts/domain-model/scopes"
+          },
+          {
+            "title": "Sessions",
+            "path": "concepts/domain-model/sessions"
+          },
+          {
+            "title": "Targets",
+            "path": "concepts/domain-model/targets"
+          },
+          {
+            "title": "Roles",
+            "path": "concepts/domain-model/roles"
+          },
+          {
+            "title": "Users",
+            "path": "concepts/domain-model/users"
+          }
+        ]
+      },
+      {
+        "title": "Filtering",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/filtering"
+          },
+          {
+            "title": "Resource Listing",
+            "path": "concepts/filtering/resource-listing"
+          },
+          {
+            "title": "Worker Tags",
+            "path": "concepts/filtering/worker-tags"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Developing Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "developing"
+      },
+      {
+        "title": "Building",
+        "path": "developing/building"
+      },
+      {
+        "title": "Developing the UI",
+        "path": "developing/ui"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Configuration",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "configuration"
+      },
+      {
+        "title": "listener",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/listener"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration/listener/tcp"
+          },
+          {
+            "title": "Unix",
+            "path": "configuration/listener/unix"
+          }
+        ]
+      },
+      {
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration/kms/ocikms"
+          },
+          {
+            "title": "Vault Transit",
+            "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "controller",
+        "path": "configuration/controller"
+      },
+      {
+        "title": "worker",
+        "path": "configuration/worker"
+      }
+    ]
+  },
+  {
+    "title": "Common Workflows",
+    "href": "https://learn.hashicorp.com/collections/boundary/common-workflows"
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Roadmap",
+    "path": "roadmap"
+  },
+  {
+    "title": "Releases",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "releases"
+      },
+      {
+        "title": "Release Notes",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "releases/release-notes"
+          },
+          {
+            "title": "v0.1.0",
+            "path": "releases/release-notes/v0_1_0"
+          }
+        ]
+      }
+    ]
+  }
+]

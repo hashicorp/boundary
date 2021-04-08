@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: High Availability Installation
-sidebar_title: High Availability Install
 description: |-
   How to install Boundary as a high availability service
 ---
@@ -31,7 +30,7 @@ needs:
 ![](/img/production.png)
 
 As shown above, Boundary is broken up into its controller and worker server components across 3 [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance), in
-3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate [availability zones](), with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independant [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
+3 separate [subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet), in three separate [availability zones](), with the controller API and UI being publically exposed by an [application load balancer (ALB)](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb). The worker and controller VM's are in independent [auto-scaling groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group), allowing them to maintain their exact capacity.
 
 The workers must be able to establish a connection to the hosts with which they interact. In the architecture above, we place them in the public subnet so our remote client can establish a session between them and the target VM.
 

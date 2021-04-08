@@ -124,7 +124,7 @@ func TestRepository_ListSession(t *testing.T) {
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
 		}
-		got, err := repo.ListSessions(context.Background(), WithOrder("create_time asc"))
+		got, err := repo.ListSessions(context.Background(), WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(wantCnt, len(got))
 
@@ -183,7 +183,7 @@ func TestRepository_ListSession(t *testing.T) {
 		}
 		assert.Equal(10, len(testSessions))
 		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
-		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrder("create_time asc"))
+		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(2, len(got))
 		assert.Equal(StatusActive, got[0].States[0].Status)

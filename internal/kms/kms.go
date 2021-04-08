@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
@@ -238,7 +239,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	if externalWrappers.root == nil {
 		return nil, "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key wrapper for scope %s is nil", scopeId))
 	}
-	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrder("version desc"))
+	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrderByVersion(db.DescendingOrderBy))
 	if err != nil {
 		return nil, "", errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error looking up root key versions for scope %s with key ID %s", scopeId, externalWrappers.root.KeyID())))
 	}
@@ -325,13 +326,13 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	var keyVersions []DekVersion
 	switch purpose {
 	case KeyPurposeDatabase:
-		keyVersions, err = repo.ListDatabaseKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+		keyVersions, err = repo.ListDatabaseKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeOplog:
-		keyVersions, err = repo.ListOplogKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+		keyVersions, err = repo.ListOplogKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeTokens:
-		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeSessions:
-		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrder("version desc"))
+		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}

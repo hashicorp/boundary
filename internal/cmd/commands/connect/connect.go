@@ -97,7 +97,7 @@ type Command struct {
 	listener           *net.TCPListener
 	listenerAddr       *net.TCPAddr
 	connsLeftCh        chan int32
-	connectionsLeft    atomic.Int32
+	connectionsLeft    *atomic.Int32
 	expiration         time.Time
 	execCmdReturnValue *atomic.Int32
 	proxyCtx           context.Context
@@ -314,6 +314,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
+	c.connectionsLeft = atomic.NewInt32(0)
 	c.connsLeftCh = make(chan int32)
 
 	if c.flagListenAddr == "" {
@@ -572,7 +573,7 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	if c.flagExec != "" {
 		c.connWg.Add(1)
-		c.execCmdReturnValue = new(atomic.Int32)
+		c.execCmdReturnValue = atomic.NewInt32(0)
 		go c.handleExec(passthroughArgs)
 	}
 
