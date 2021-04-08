@@ -463,7 +463,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 				}
 				attrs.DryRun = true
 				if am.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
-					return nil, errors.Wrap(err, op, errors.WithMsg("cant convert from attribute proto to struct"))
+					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute proto to struct"))
 				}
 				return am, nil
 			}
