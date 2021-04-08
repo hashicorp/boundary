@@ -119,6 +119,14 @@ message OidcAuthMethodAttributes {
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
 	bool disable_discovered_config_validation = 120 [json_name="disable_discovered_config_validation", (custom_options.v1.generate_sdk_option) = true];
+
+	// dry_run, when set on an update request, indicates that the changes should
+	// not be persisted.  Boundary will still perform the normal checks to confirm
+	// the auth method is complete and validated against the discovered config.
+	// This value will also be set on the returned resource when set in the request
+	// along with the updated fields applied to the resource (but not persisted) as
+	// a result of the update request.
+	bool dry_run = 130 [json_name="dry_run", (custom_options.v1.generate_sdk_option) = true];
 }
 
 // The structure of the OIDC authenticate start response, in the JSON object

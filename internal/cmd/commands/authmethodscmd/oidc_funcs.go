@@ -27,6 +27,7 @@ type extraOidcCmdVars struct {
 	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
 	flagDisableDiscoveredConfigValidation bool
+	flagDryRun                            bool
 }
 
 const (
@@ -41,6 +42,7 @@ const (
 	allowedAudienceFlagName                   = "allowed-audience"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
+	dryRunFlagName                            = "dry-run"
 )
 
 func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
@@ -61,7 +63,7 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			disableDiscoveredConfigValidationFlagName,
 		},
 	}
-	flags["update"] = append(flags["create"], disableDiscoveredConfigValidationFlagName)
+	flags["update"] = append(flags["create"], disableDiscoveredConfigValidationFlagName, dryRunFlagName)
 	return flags
 }
 
@@ -129,6 +131,12 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   disableDiscoveredConfigValidationFlagName,
 				Target: &c.flagDisableDiscoveredConfigValidation,
 				Usage:  "Disable validating the given parameters against configuration from the authorization server's discovery URL. This must be specified every time there is an update or state change; not specifying it is equivalent to setting it to false.",
+			})
+		case dryRunFlagName:
+			f.BoolVar(&base.BoolVar{
+				Name:   dryRunFlagName,
+				Target: &c.flagDryRun,
+				Usage:  "Performs all completeness and validation checks with any newly-provided values without persisting the changes.",
 			})
 		}
 	}
@@ -226,6 +234,9 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	}
 	if c.flagDisableDiscoveredConfigValidation {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))
+	}
+	if c.flagDryRun {
+		*opts = append(*opts, authmethods.WithOidcAuthMethodDryRun(c.flagDryRun))
 	}
 
 	return true

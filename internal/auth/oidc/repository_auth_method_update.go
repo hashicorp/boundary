@@ -103,7 +103,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	opts := getOpts(opt...)
 	if opts.withDryRun {
 		updated := applyUpdate(am, origAm, fieldMaskPaths)
-		if err := am.isComplete(); err != nil {
+		if err := updated.isComplete(); err != nil {
 			return updated, db.NoRowsAffected, err
 		}
 		err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updated))

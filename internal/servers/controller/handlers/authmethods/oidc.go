@@ -87,7 +87,7 @@ func (o oidcState) String() string {
 // createOidcInRepo creates an oidc auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*oidc.AuthMethod, error) {
-	u, _, err := toStorageOidcAuthMethod(scopeId, item)
+	u, _, _, err := toStorageOidcAuthMethod(scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -102,11 +102,11 @@ func (s Service) createOidcInRepo(ctx context.Context, scopeId string, item *pb.
 	return out, nil
 }
 
-func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, error) {
+func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*oidc.AuthMethod, bool, error) {
 	item := req.GetItem()
-	u, forced, err := toStorageOidcAuthMethod(scopeId, item)
+	u, dryRun, forced, err := toStorageOidcAuthMethod(scopeId, item)
 	if err != nil {
-		return nil, err
+		return nil, dryRun, err
 	}
 	u.PublicId = req.GetId()
 
@@ -114,25 +114,28 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId string, req *pbs.
 	if forced {
 		opts = append(opts, oidc.WithForce())
 	}
+	if dryRun {
+		opts = append(opts, oidc.WithDryRun())
+	}
 
 	version := item.GetVersion()
 	dbMask := oidcMaskManager.Translate(req.GetUpdateMask().GetPaths())
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		return nil, dryRun, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, dryRun, err
 	}
 	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
+		return nil, dryRun, fmt.Errorf("unable to update auth method: %w", err)
 	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
+	if rowsUpdated == 0 && !dryRun && out == nil {
+		return nil, dryRun, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided.", req.GetId())
 	}
-	return out, nil
+	return out, dryRun, nil
 }
 
 func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -354,14 +357,14 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 	return nil
 }
 
-func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, forced bool, err error) {
+func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, dryRun, forced bool, err error) {
 	const op = "authmethod_service.toStorageOidcAuthMethod"
 	if in == nil {
-		return nil, false, errors.New(errors.InvalidParameter, op, "nil auth method.")
+		return nil, false, false, errors.New(errors.InvalidParameter, op, "nil auth method.")
 	}
 	attrs := &pb.OidcAuthMethodAttributes{}
 	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
-		return nil, false, handlers.InvalidArgumentErrorf("Error in provided request.",
+		return nil, false, false, handlers.InvalidArgumentErrorf("Error in provided request.",
 			map[string]string{attributesField: "Attribute fields do not match the expected format."})
 	}
 	clientId := attrs.GetClientId().GetValue()
@@ -381,14 +384,14 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
 		issuer, err := url.Parse(iss)
 		if err != nil {
-			return nil, false, errors.Wrap(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.Wrap(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
-			return nil, false, errors.Wrap(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.Wrap(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
@@ -415,14 +418,14 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	if len(attrs.GetIdpCaCerts()) > 0 {
 		certs, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...)
 		if err != nil {
-			return nil, false, err
+			return nil, false, false, err
 		}
 		opts = append(opts, oidc.WithCertificates(certs...))
 	}
 
 	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
 	if err != nil {
-		return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
+		return nil, false, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
 	}
-	return u, attrs.DisableDiscoveredConfigValidation, nil
+	return u, attrs.GetDryRun(), attrs.GetDisableDiscoveredConfigValidation(), nil
 }

@@ -430,6 +430,8 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*pb.AuthMethod, error) {
+	const op = "authmethod_service.(Service).updateInRepo"
+	storageToWire := toAuthMethodProto
 	var out auth.AuthMethod
 	switch auth.SubtypeFromId(req.GetId()) {
 	case auth.PasswordSubtype:
@@ -442,16 +444,33 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 		}
 		out = am
 	case auth.OidcSubtype:
-		am, err := s.updateOidcInRepo(ctx, scopeId, req)
+		am, dryRun, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
 			return nil, err
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
+		if dryRun {
+			storageToWire = func(in auth.AuthMethod) (*pb.AuthMethod, error) {
+				am, err := toAuthMethodProto(in)
+				if err != nil {
+					return nil, errors.Wrap(err, op)
+				}
+				attrs := &pb.OidcAuthMethodAttributes{}
+				if err := handlers.StructToProto(am.GetAttributes(), attrs); err != nil {
+					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute struct to proto"))
+				}
+				attrs.DryRun = true
+				if am.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
+					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute proto to struct"))
+				}
+				return am, nil
+			}
+		}
 		out = am
 	}
-	return toAuthMethodProto(out)
+	return storageToWire(out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -791,6 +810,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
+			if attrs.DryRun && attrs.DisableDiscoveredConfigValidation {
+				badFields[disableDiscoveredConfigValidationField] = "This field cannot be set to true with dry_run."
+			}
 
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
 				// TODO: When we start accepting the address used in the request make this an optional field.
@@ -1022,7 +1044,6 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 	}
 	if authResults == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
-
 	}
 	if authResults.Scope == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results scope.")

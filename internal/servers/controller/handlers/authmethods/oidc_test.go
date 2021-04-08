@@ -898,6 +898,180 @@ func TestUpdate_OIDC(t *testing.T) {
 	}
 }
 
+func TestUpdate_OIDCDryRun(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+
+	tp := capoidc.StartTestProvider(t)
+	tpClientId := "alice-rp"
+	tpClientSecret := "her-dog's-name"
+	tp.SetClientCreds(tpClientId, tpClientSecret)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	tpCert, err := oidc.ParseCertificates(tp.CACert())
+	require.NoError(t, err)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	am := oidc.TestAuthMethod(t,
+		conn, databaseWrapper,
+		o.PublicId,
+		oidc.ActivePrivateState,
+		tpClientId, oidc.ClientSecret(tpClientSecret),
+		oidc.WithName("default"),
+		oidc.WithDescription("default"),
+		oidc.WithCertificates(tpCert[0]),
+		oidc.WithSigningAlgs(oidc.Alg(tpAlg)),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost/")[0]),
+	)
+	wireAuthMethod := &pb.AuthMethod{
+		Id:                          am.GetPublicId(),
+		ScopeId:                     am.GetScopeId(),
+		Scope:                       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
+		Name:                        wrapperspb.String(am.GetName()),
+		Description:                 wrapperspb.String(am.GetDescription()),
+		CreatedTime:                 am.GetCreateTime().GetTimestamp(),
+		UpdatedTime:                 am.GetUpdateTime().GetTimestamp(),
+		Version:                     am.GetVersion(),
+		Type:                        auth.OidcSubtype.String(),
+		AuthorizedActions:           oidcAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"api_url_prefix":     structpb.NewStringValue(am.GetApiUrl()),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", am.GetApiUrl(), am.GetPublicId())),
+			"client_id":          structpb.NewStringValue(am.GetClientId()),
+			"client_secret_hmac": structpb.NewStringValue(am.GetClientSecretHmac()),
+			"issuer":             structpb.NewStringValue(am.GetIssuer()),
+			"state":              structpb.NewStringValue(am.GetOperationalState()),
+			"idp_ca_certs": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+		}},
+	}
+
+	tested, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+	cases := []struct {
+		name    string
+		id      string
+		mask    []string
+		item    *pb.AuthMethod
+		want    *pb.AuthMethod
+		err     error
+		wantErr bool
+	}{
+		{
+			name: "Update an Existing AuthMethod",
+			id:   am.GetPublicId(),
+			mask: []string{"name", "description", "attributes.dry_run"},
+			item: &pb.AuthMethod{
+				Name:        wrapperspb.String("updated"),
+				Description: wrapperspb.String("updated"),
+				Version:     am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+				}},
+			},
+			want: func() *pb.AuthMethod {
+				c := proto.Clone(wireAuthMethod).(*pb.AuthMethod)
+				c.Name = wrapperspb.String("updated")
+				c.Description = wrapperspb.String("updated")
+				c.GetAttributes().GetFields()["dry_run"] = structpb.NewBoolValue(true)
+				return c
+			}(),
+		},
+		{
+			name: "Update To Make Not Complete",
+			id:   am.GetPublicId(),
+			mask: []string{"attributes.issuer"},
+			item: &pb.AuthMethod{
+				Version: am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+				}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Update To Make Not Validated",
+			id:   am.GetPublicId(),
+			mask: []string{"attributes.signing_algorithms"},
+			item: &pb.AuthMethod{
+				Version: am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+					"signing_algorithms": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{string(oidc.RS512)})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Update dry run with force",
+			id:   am.GetPublicId(),
+			mask: []string{"name"},
+			item: &pb.AuthMethod{
+				Version: am.GetVersion(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run":                              structpb.NewBoolValue(true),
+					"disable_discovered_config_validation": structpb.NewBoolValue(true),
+				}},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dryUpdated, err := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+				&pbs.UpdateAuthMethodRequest{
+					Id:         tc.id,
+					Item:       tc.item,
+					UpdateMask: &field_mask.FieldMask{Paths: tc.mask},
+				})
+
+			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
+			if tc.err != nil || tc.wantErr {
+				require.Error(t, err)
+				if tc.err != nil {
+					assert.True(t, errors.Is(err, tc.err))
+				}
+				return
+			}
+			require.NoError(t, err)
+			assert.Empty(t, cmp.Diff(dryUpdated.GetItem(), tc.want, protocmp.Transform(), protocmp.SortRepeatedFields(dryUpdated)))
+
+			got, err := tested.GetAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.GetAuthMethodRequest{Id: tc.id})
+			require.NoError(t, err)
+			assert.Empty(t, cmp.Diff(got.GetItem(), wireAuthMethod, protocmp.Transform()))
+		})
+	}
+}
+
 func TestChangeState_OIDC(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
