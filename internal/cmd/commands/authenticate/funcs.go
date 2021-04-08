@@ -57,7 +57,7 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		} else {
 			switch keyringType {
 			case "wincred", "keychain":
-				if err := zkeyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
+				if err := zkeyring.Set(base.StoredTokenName, tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 					c.UI.Error(fmt.Sprintf("Error saving auth token to %q keyring: %s", keyringType, err))
 					gotErr = true
 				}

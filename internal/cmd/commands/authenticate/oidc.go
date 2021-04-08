@@ -83,8 +83,9 @@ func (c *OidcCommand) Run(args []string) int {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError
 	}
+	aClient := authmethods.NewClient(client)
 
-	result, err := authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "start", nil)
+	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "start", nil)
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			c.PrintApiError(apiErr, "Error from controller when performing authentication start")
@@ -102,8 +103,9 @@ func (c *OidcCommand) Run(args []string) int {
 
 	c.UI.Output("Opening returned authentication URL in your browser...")
 	if err := util.OpenURL(startResp.AuthUrl); err != nil {
-		c.PrintCliError(fmt.Errorf("Error opening authentication URL in browser: %w", err))
-		return base.CommandCliError
+		c.UI.Error(fmt.Errorf("Unable to open authentication URL in browser: %w", err).Error())
+		c.UI.Warn("Please open the following URL manually in your web browser:")
+		c.UI.Output(startResp.AuthUrl)
 	}
 
 	var watchCode int
@@ -118,8 +120,8 @@ func (c *OidcCommand) Run(args []string) int {
 				watchCode = base.CommandCliError
 				return
 
-			case <-time.After(time.Second):
-				result, err = authmethods.NewClient(client).Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]interface{}{
+			case <-time.After(1500 * time.Millisecond):
+				result, err = aClient.Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]interface{}{
 					"token_id": startResp.TokenId,
 				})
 				if err != nil {
