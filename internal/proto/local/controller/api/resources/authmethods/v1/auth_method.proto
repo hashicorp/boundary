@@ -119,4 +119,6 @@ message OidcAuthMethodAttributes {
 	// updated or the state is changed, this value must be set to "true" or it
 	// will be disabled.
 	bool disable_discovered_config_validation = 120 [json_name="disable_discovered_config_validation", (custom_options.v1.generate_sdk_option) = true];
+
+	bool dry_run = 130 [json_name="dry_run", (custom_options.v1.generate_sdk_option) = true];
 }

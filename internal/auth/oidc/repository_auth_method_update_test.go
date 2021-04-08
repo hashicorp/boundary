@@ -290,6 +290,45 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
+			name: "with-dry-run-on-validated-authmethod",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp", "alice-secret",
+					WithAudClaims("www.alice.com"),
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.Name = "alice's restaurant"
+				am.Description = "the best place to eat"
+				am.AudClaims = []string{"www.alice.com/admin"}
+				am.ApiUrl = "https://www.bob.com/callback"
+				return &am
+			},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl"},
+			version:    1,
+			opt:        []Option{WithDryRun()},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.Name = updateWith.Name
+				am.Description = updateWith.Description
+				am.AudClaims = updateWith.AudClaims
+				am.ApiUrl = updateWith.ApiUrl
+				return am
+			},
+		},
+		{
 			name:         "nil-authMethod",
 			setup:        func() *AuthMethod { return nil },
 			updateWith:   func(orig *AuthMethod) *AuthMethod { return nil },

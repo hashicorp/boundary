@@ -231,6 +231,30 @@ func DefaultOidcAuthMethodDisableDiscoveredConfigValidation() Option {
 	}
 }
 
+func WithOidcAuthMethodDryRun(inDryRun bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dry_run"] = inDryRun
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodDryRun() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dry_run"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodIdpCaCerts(inIdpCaCerts []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
