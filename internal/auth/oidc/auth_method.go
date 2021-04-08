@@ -107,6 +107,12 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		}
 	}
 
+	if a.OperationalState != string(InactiveState) {
+		if err := a.isComplete(); err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
+		}
+	}
+
 	if err := a.validate(op); err != nil {
 		return nil, err // intentionally not wrapped.
 	}
