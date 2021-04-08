@@ -325,7 +325,7 @@ var account = &Resource{
 				rudActions("an account", true),
 				&Action{
 					Name:        "set-password",
-					Description: "Set a password on an account, without requring the current password",
+					Description: "Set a password on an account, without requiring the current password",
 					Examples: []string{
 						"id=<id>;actions=set-password",
 						"id=<pin>;type=<type>;actions=set-password",
