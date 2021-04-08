@@ -27,6 +27,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli/api/sdk: New OIDC auth method type added with support for create, read,
+  update, delete, and list (see new cli `oidc` subcommands available on CRUDL
+  operations for examples).
+  [PR](https://github.com/hashicorp/boundary/pull/1090)    
+* cli: support to login using an OIDC auth method (see the new `authenticate
+  password oidc` subcommand for an example) 
+  [PR](https://github.com/hashicorp/boundary/pull/1090)
 * server: When performing recursive listing, `list` action is not longer
   required to be granted to the calling user. Instead, the given scope acts as
   the root point (so only results under that scope will be shown), and `list`
