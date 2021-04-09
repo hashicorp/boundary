@@ -96,6 +96,5 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, command string,
 		return nil, apiErr
 	}
 	target.response = resp
-
 	return target, nil
 }
