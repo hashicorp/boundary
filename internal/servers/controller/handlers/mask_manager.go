@@ -40,7 +40,7 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	// Now check to make sure there aren't any dangling dest mappings.
 	for k, v := range destToSrc {
 		if ov, ok := srcToDest[v]; !ok || ov != k {
-			return nil, errors.New(errors.Encrypt, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.New(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 	}
 
