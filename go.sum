@@ -504,8 +504,9 @@ github.com/hashicorp/shared-secure-libs v0.0.4 h1:aRm7/wnJ70z5hSX8cLdyupwI8QNKkl
 github.com/hashicorp/shared-secure-libs v0.0.4/go.mod h1:xhtA0FH6AYYFOy0sir7u0O0zzdLi7ofU6oWxy+gjnuc=
 github.com/hashicorp/vault/api v1.0.5-0.20200514164214-89b1987e38c2/go.mod h1:P8A7gn1a6j/7qQ4zOaWI6FC/Q9jQWEBRTOwZH33tC9o=
 github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f/go.mod h1:euTFbi2YJgwcju3imEt919lhJKF68nN1cQPq3aA+kBE=
-github.com/hashicorp/vault/api v1.0.5-0.20200805123347-1ef507638af6 h1:ChHpobQse3kjVX7GmbpUFVqaMTf4lb1gcLrJltsUmS4=
 github.com/hashicorp/vault/api v1.0.5-0.20200805123347-1ef507638af6/go.mod h1:R3Umvhlxi2TN7Ex2hzOowyeNb+SfbVWI973N+ctaFMk=
+github.com/hashicorp/vault/api v1.1.0 h1:QcxC7FuqEl0sZaIjcXB/kNEeBa0DH5z57qbWBvZwLC4=
+github.com/hashicorp/vault/api v1.1.0/go.mod h1:R3Umvhlxi2TN7Ex2hzOowyeNb+SfbVWI973N+ctaFMk=
 github.com/hashicorp/vault/sdk v0.1.13/go.mod h1:B+hVj7TpuQY1Y/GPbCpffmgd+tSEwvhkWnjtSYCaS2M=
 github.com/hashicorp/vault/sdk v0.1.14-0.20200514144402-4bfac290c352/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
 github.com/hashicorp/vault/sdk v0.1.14-0.20200514164214-89b1987e38c2/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
