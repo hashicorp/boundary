@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2005,
+		binarySchemaVersion: 5005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,7 +4987,7 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
-			2001: []byte(`
+			5001: []byte(`
 -- credential_store
   create table credential_store (
     public_id wt_public_id primary key,
@@ -5225,7 +5225,7 @@ before insert on kms_oidc_key_version
   end;
   $$ language plpgsql;
 `),
-			2002: []byte(`
+			5002: []byte(`
 create table credential_vault_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -5488,7 +5488,7 @@ create table credential_vault_store (
     ('credential_vault_library', 1),
     ('credential_vault_lease', 1) ;
 `),
-			2003: []byte(`
+			5003: []byte(`
 create table target_credential_purpose_enm (
     name text primary key
       constraint only_predefined_credential_purposes_allowed
@@ -5539,7 +5539,7 @@ create table target_credential_purpose_enm (
   create trigger immutable_columns before update on target_credential_library
     for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'target_credential_purpose', 'create_time');
 `),
-			2004: []byte(`
+			5004: []byte(`
 create table session_credential_library (
     session_id wt_public_id not null
       constraint session_fkey
@@ -5574,7 +5574,7 @@ create table session_credential_library (
   create trigger immutable_columns before update on session_credential_library
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'credential_library_id', 'target_credential_purpose', 'create_time');
 `),
-			2005: []byte(`
+			5005: []byte(`
 create function wt_add_seconds(sec integer, ts timestamp with time zone)
     returns timestamp with time zone
   as $$
