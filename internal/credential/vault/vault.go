@@ -48,9 +48,10 @@ func newClient(c *clientConfig) (*client, error) {
 	vc.Address = c.Addr
 	if len(c.CaCert) > 0 {
 		rootConfig := &rootcerts.Config{
-			CACertificate: []byte(c.CaCert),
+			CACertificate: c.CaCert,
 		}
 		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
+		tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
 		if err := rootcerts.ConfigureTLS(tlsConfig, rootConfig); err != nil {
 			return nil, errors.Wrap(err, op)
 		}
