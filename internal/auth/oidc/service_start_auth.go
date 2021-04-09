@@ -99,14 +99,25 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, op)
 	}
+	oidcOpts := []oidc.Option{
+		oidc.WithState(string(encodedEncryptedSt)),
+		oidc.WithNonce(nonce),
+	}
+	switch {
+	case am.MaxAge == -1:
+		oidcOpts = append(oidcOpts, oidc.WithMaxAge(0))
+	case am.MaxAge > 0:
+		oidcOpts = append(oidcOpts, oidc.WithMaxAge(uint(am.MaxAge)))
+	default:
+	}
+
 	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated
 	// things like Audiences, because this oidc.Request isn't cached and not intended for use in future legs
 	// of the authen flow.
 	oidcReq, err := oidc.NewRequest(
 		AttemptExpiration,
 		callbackRedirect,
-		oidc.WithState(string(encodedEncryptedSt)),
-		oidc.WithNonce(nonce))
+		oidcOpts...)
 	if err != nil {
 		return nil, nil, "", errors.New(errors.Unknown, op, "unable to create oidc request", errors.WithWrap(err))
 	}

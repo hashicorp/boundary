@@ -47,6 +47,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * server: Roles for auto generated scopes are now generated at database init.
   [PR](https://github.com/hashicorp/boundary/pull/996)
+* cli: Don't panic on certain commands when outputting in `json` format
+  ([Issue](https://github.com/hashicorp/boundary/pull/992),
+  [PR](https://github.com/hashicorp/boundary/pull/1095))
 
 ## 0.1.8 (2021/03/10)
 

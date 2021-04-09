@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -60,6 +61,16 @@ func Test_StartAuth(t *testing.T) {
 		WithCertificates(tpCert...),
 	)
 
+	testAuthMethodWithMaxAge := TestAuthMethod(
+		t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+		"test-rp3", "fido",
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithCertificates(tpCert...),
+		WithMaxAge(-1),
+	)
+
 	stdSetup := func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (a *AuthMethod, allowedRedirect string) {
 		// update the allowed redirects for the TestProvider
 		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL, am.PublicId)
@@ -96,6 +107,13 @@ func Test_StartAuth(t *testing.T) {
 			authMethod:   testAuthMethod,
 			setup:        stdSetup,
 			roundTripper: `{"alice": "hi bob", "eve": "chuckles says hi alice"}`,
+		},
+		{
+			name:       "simple-with-max-age",
+			repoFn:     repoFn,
+			apiSrv:     testController,
+			authMethod: testAuthMethodWithMaxAge,
+			setup:      stdSetup,
 		},
 		{
 			name:            "inactive",
@@ -162,6 +180,22 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(authParams["client_id"], []string{tt.authMethod.ClientId})
 			require.Equal(1, len(authParams["nonce"]))
 			require.Equal(1, len(authParams["state"]))
+
+			if tt.authMethod.MaxAge != 0 {
+				var expected int
+				switch {
+				case tt.authMethod.MaxAge == -1:
+					expected = 0
+				default:
+					expected = int(tt.authMethod.MaxAge)
+				}
+				gotSlice, ok := authParams["max_age"]
+				require.True(ok)
+				require.Equal(1, len(gotSlice))
+				got, err := strconv.Atoi(gotSlice[0])
+				require.NoError(err)
+				assert.Equal(expected, got)
+			}
 
 			// verify the state in the authUrl can be decrypted and it's correct
 			state := authParams["state"][0]

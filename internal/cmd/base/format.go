@@ -234,8 +234,10 @@ func (c *Command) PrintJsonItem(result api.GenericResult, item interface{}) bool
 		StatusCode int         `json:"status_code"`
 		Item       interface{} `json:"item"`
 	}{
-		StatusCode: result.GetResponse().HttpResponse().StatusCode,
-		Item:       item,
+		Item: item,
+	}
+	if result.GetResponse() != nil && result.GetResponse().HttpResponse() != nil {
+		output.StatusCode = result.GetResponse().HttpResponse().StatusCode
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
@@ -252,8 +254,10 @@ func (c *Command) PrintJsonItems(result api.GenericListResult, items []interface
 		StatusCode int           `json:"status_code"`
 		Items      []interface{} `json:"items"`
 	}{
-		StatusCode: result.GetResponse().HttpResponse().StatusCode,
-		Items:      items,
+		Items: items,
+	}
+	if result.GetResponse() != nil && result.GetResponse().HttpResponse() != nil {
+		output.StatusCode = result.GetResponse().HttpResponse().StatusCode
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
