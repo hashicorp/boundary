@@ -71,7 +71,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	return role, nil
 }
 
-func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMethod, *iam.User, error) {
+func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password.AuthMethod, *iam.User, error) {
 	rw := db.New(b.Database)
 
 	kmsRepo, err := kms.NewRepository(rw, rw)
@@ -94,14 +94,14 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 		return nil, nil, fmt.Errorf("error creating password repo: %w", err)
 	}
 	authMethod, err := password.NewAuthMethod(scope.Global.String(),
-		password.WithName("Generated global scope initial auth method"),
-		password.WithDescription("Provides initial administrative authentication into Boundary"),
+		password.WithName("Generated global scope initial password auth method"),
+		password.WithDescription("Provides initial administrative and unprivileged authentication into Boundary"),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
-	if b.DevAuthMethodId == "" {
-		b.DevAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
+	if b.DevPasswordAuthMethodId == "" {
+		b.DevPasswordAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial auth method id: %w", err)
 		}
@@ -118,28 +118,41 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 	}()
 
 	am, err := pwRepo.CreateAuthMethod(cancelCtx, authMethod,
-		password.WithPublicId(b.DevAuthMethodId))
+		password.WithPublicId(b.DevPasswordAuthMethodId))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving auth method to the db: %w", err)
 	}
-	b.InfoKeys = append(b.InfoKeys, "generated auth method id")
-	b.Info["generated auth method id"] = b.DevAuthMethodId
+	b.InfoKeys = append(b.InfoKeys, "generated password auth method id")
+	b.Info["generated password auth method id"] = b.DevPasswordAuthMethodId
+
+	// we'll designate the initial password auth method as the primary auth
+	// method id for the global scope, which means the auth method will create
+	// users on first login.  Otherwise, the operator would have to create both
+	// a password account and a user associated with the new account, before
+	// users could successfully login.
+	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create iam repo: %w", err)
+	}
+	globalScope, err := iamRepo.LookupScope(ctx, scope.Global.String())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to lookup global scope: %w", err)
+	}
+	globalScope.PrimaryAuthMethodId = am.PublicId
+	if _, _, err := iamRepo.UpdateScope(ctx, globalScope, globalScope.Version, []string{"PrimaryAuthMethodId"}); err != nil {
+		return nil, nil, fmt.Errorf("unable to set primary auth method for global scope: %w", err)
+	}
 
 	createUser := func(loginName, loginPassword, userId string, admin bool) (*iam.User, error) {
 		// Create the dev admin user
 		if loginName == "" {
-			b.DevLoginName, err = base62.Random(10)
-			if err != nil {
-				return nil, fmt.Errorf("unable to generate login name: %w", err)
-			}
-			loginName = strings.ToLower(b.DevLoginName)
+			return nil, fmt.Errorf("empty login name")
 		}
 		if loginPassword == "" {
-			b.DevPassword, err = base62.Random(20)
-			if err != nil {
-				return nil, fmt.Errorf("unable to generate password: %w", err)
-			}
-			loginPassword = b.DevPassword
+			return nil, fmt.Errorf("empty login name")
+		}
+		if userId == "" {
+			return nil, fmt.Errorf("empty user id")
 		}
 		typeStr := "admin"
 		if !admin {
@@ -150,7 +163,7 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 
 		acct, err := password.NewAccount(am.PublicId, password.WithLoginName(loginName))
 		if err != nil {
-			return nil, fmt.Errorf("error creating new in memory auth account: %w", err)
+			return nil, fmt.Errorf("error creating new in memory password auth account: %w", err)
 		}
 		acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(loginPassword))
 		if err != nil {
@@ -161,17 +174,10 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 
 		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
-			return nil, fmt.Errorf("unable to create repo for org id: %w", err)
+			return nil, fmt.Errorf("unable to create iam repo: %w", err)
 		}
 
 		// Create a new user and associate it with the account
-		if userId == "" {
-			b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
-			if err != nil {
-				return nil, fmt.Errorf("error generating initial user id: %w", err)
-			}
-			userId = b.DevUserId
-		}
 		opts := []iam.Option{
 			iam.WithPublicId(userId),
 		}
@@ -220,12 +226,34 @@ func (b *Server) CreateInitialAuthMethod(ctx context.Context) (*password.AuthMet
 		return u, nil
 	}
 
-	if b.DevUnprivilegedLoginName != "" {
-		unprivUser, err := createUser(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, b.DevUnprivilegedUserId, false)
+	switch {
+	case b.DevUnprivilegedLoginName == "",
+		b.DevUnprivilegedPassword == "",
+		b.DevUnprivilegedUserId == "":
+	default:
+		_, err := createUser(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, b.DevUnprivilegedUserId, false)
 		if err != nil {
 			return nil, nil, err
 		}
-		b.DevUnprivilegedUserId = unprivUser.GetPublicId()
+	}
+	if b.DevLoginName == "" {
+		b.DevLoginName, err = base62.Random(10)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to generate login name: %w", err)
+		}
+		b.DevLoginName = strings.ToLower(b.DevLoginName)
+	}
+	if b.DevPassword == "" {
+		b.DevPassword, err = base62.Random(20)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to generate password: %w", err)
+		}
+	}
+	if b.DevUserId == "" {
+		b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
+		}
 	}
 	u, err := createUser(b.DevLoginName, b.DevPassword, b.DevUserId, true)
 	if err != nil {

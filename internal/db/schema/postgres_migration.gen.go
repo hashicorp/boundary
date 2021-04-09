@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2005,
+		binarySchemaVersion: 3005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,7 +4987,888 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
-			2001: []byte(`
+			2100: []byte(`
+-- auth_password_method_with_is_primary is useful for reading a password auth
+-- method with a bool to determine if it's the scope's primary auth method.
+create view auth_password_method_with_is_primary as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,    
+  am.public_id,
+  am.scope_id,
+  am.password_conf_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.min_login_name_length,
+  am.min_password_length
+from 
+  auth_password_method am
+  left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
+comment on view auth_password_method_with_is_primary is
+'password auth method with an is_primary_auth_method bool';
+`),
+			2080: []byte(`
+-- log_migration entries represent logs generated during migrations
+create table log_migration(
+  id bigint generated always as identity primary key,
+  migration_version bigint not null, -- cannot declare FK since the table is truncated during runtime
+  create_time wt_timestamp,
+  entry text not null
+);
+comment on table log_migration is 
+'log_migration entries are logging output from databaes migrations';
+
+-- log_migration triggers
+create trigger 
+  default_create_time_column
+before
+insert on log_migration
+  for each row execute procedure default_create_time();
+
+create trigger
+  immutable_columns
+before
+update on log_migration
+  for each row execute procedure immutable_columns('id', 'migration_version', 'create_time', 'entry');
+
+
+-- log_migration_version() defines a function to be used in a "before update"
+-- trigger for log_migrations entries.  Its intent: set the log_migration
+-- version column to the current migration version.  
+create or replace function
+  log_migration_version()
+  returns trigger
+as $$
+  declare current_version bigint;
+  begin
+    select max(version) from boundary_schema_version into current_version;
+    new.migration_version = current_version;
+    return new;
+  end;
+$$ language plpgsql;
+comment on function log_migration_version() is
+'log_migration_version will set the log_migration entries to the current migration version';    
+
+create trigger
+  migration_version_column
+before
+insert on log_migration
+  for each row execute procedure log_migration_version();
+`),
+			2083: []byte(`
+-- auth_oidc_method_state_enum entries define the possible oidc auth method
+-- states. 
+create table auth_oidc_method_state_enm (
+  name text primary key
+    constraint name_only_predefined_oidc_method_states_allowed
+    check (
+        name in ('inactive', 'active-private', 'active-public')
+    )
+);
+
+-- populate the values of auth_oidc_method_state_enm
+insert into auth_oidc_method_state_enm(name)
+  values
+    ('inactive'),
+    ('active-private'),
+    ('active-public');
+
+ -- define the immutable fields for auth_oidc_method_state_enm (all of them)
+create trigger 
+  immutable_columns
+before
+update on auth_oidc_method_state_enm
+  for each row execute procedure immutable_columns('name');
+
+
+-- auth_oidc_signing_alg entries define the supported oidc auth method
+-- signing algorithms.
+create table auth_oidc_signing_alg_enm (
+  name text primary key
+    constraint only_predefined_auth_oidc_signing_algs_allowed
+    check (
+        name in (
+          'RS256', 
+          'RS384', 
+          'RS512', 
+          'ES256', 
+          'ES384', 
+          'ES512', 
+          'PS256', 
+          'PS384', 
+          'PS512', 
+          'EdDSA')
+    )
+);
+
+-- populate the values of auth_oidc_signing_alg
+insert into auth_oidc_signing_alg_enm (name)
+  values
+    ('RS256'),
+    ('RS384'),
+    ('RS512'),
+    ('ES256'),
+    ('ES384'),
+    ('ES512'),
+    ('PS256'),
+    ('PS384'),
+    ('PS512'),
+    ('EdDSA')
+    ; 
+
+ -- define the immutable fields for auth_oidc_signing_alg (all of them)
+create trigger 
+  immutable_columns
+before
+update on auth_oidc_signing_alg_enm
+  for each row execute procedure immutable_columns('name');
+`),
+			2084: []byte(`
+-- auth_oidc_method entries are the current oidc auth methods configured for
+-- existing scopes. 
+create table auth_oidc_method (
+  public_id wt_public_id
+    primary key,
+  scope_id wt_scope_id
+    not null,
+  name wt_name,
+  description wt_description,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  version wt_version,
+  state text not null
+    constraint auth_oidc_method_state_enm_fkey
+      references auth_oidc_method_state_enm(name)
+      on delete restrict
+      on update cascade,
+  disable_discovered_config_validation bool not null default false,
+  api_url wt_url, -- an address prefix at which the boundary api is reachable.
+  issuer wt_url,
+  client_id text  -- oidc client identifier issued by the oidc provider.
+    constraint client_id_not_empty
+    check(length(trim(client_id)) > 0), 
+  client_secret bytea, -- encrypted oidc client secret issued by the oidc provider.
+  client_secret_hmac text 
+    constraint client_secret_hmac_not_empty
+    check(length(trim(client_secret_hmac)) > 0),
+  key_id wt_private_id not null -- key used to encrypt entries via wrapping wrapper. 
+    constraint kms_database_key_version_fkey
+      references kms_database_key_version(private_id) 
+      on delete restrict
+      on update cascade, 
+    constraint key_id_not_empty
+      check(length(trim(key_id)) > 0),
+  max_age int  -- the allowable elapsed time in secs since the last time the user was authenticated. A value -1 basically forces the IdP to re-authenticate the End-User.  Zero is not a valid value. 
+    constraint max_age_not_equal_zero
+      check(max_age != 0)
+    constraint max_age_not_less_then_negative_one
+      check(max_age >= -1), 
+  constraint auth_method_fkey
+    foreign key (scope_id, public_id)
+        references auth_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+  constraint auth_oidc_method_scope_id_name_uq
+    unique(scope_id, name),
+  constraint auth_oidc_method_scope_id_public_id_uq
+    unique(scope_id, public_id),
+  constraint auth_oidc_method_scope_id_issuer_client_id_unique
+    unique(scope_id, issuer, client_id) -- a client_id must be unique for a provider within a scope.
+);
+comment on table auth_oidc_method is
+'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
+
+-- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
+-- auth method.  There must be at least one allowed alg for each oidc auth method.
+create table auth_oidc_signing_alg (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  signing_alg_name text 
+    constraint auth_oidc_signing_alg_enm_fkey
+    references auth_oidc_signing_alg_enm(name)
+    on delete restrict
+    on update cascade,
+  primary key(oidc_method_id, signing_alg_name)
+);
+comment on table auth_oidc_signing_alg is
+'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
+
+-- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
+-- method.  There can be 0 or more for each parent oidc auth method.  If an auth
+-- method has any aud claims, an ID token must contain one of them to be valid. 
+create table auth_oidc_aud_claim (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  aud_claim text not null
+    constraint aud_claim_must_not_be_empty
+    check(length(trim(aud_claim)) > 0) 
+    constraint aud_claim_must_be_less_than_1024_chars
+      check(length(trim(aud_claim)) < 1024),
+  primary key(oidc_method_id, aud_claim)
+);
+comment on table auth_oidc_aud_claim is
+'auth_oidc_aud_claim entries are the audience claims for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any aud claims, an ID token must contain one of them to be valid.';
+
+
+-- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
+-- Each entry is a single certificate.  An oidc auth method may have 0 or more
+-- of these optional x509s.  If an auth method has any cert entries, they are
+-- used as trust anchors when connecting to the auth method's oidc provider
+-- (instead of the host system's cert chain).
+create table auth_oidc_certificate (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  certificate bytea not null,
+  primary key(oidc_method_id, certificate)
+);
+comment on table auth_oidc_certificate is
+'auth_oidc_certificate entries are optional PEM encoded x509 certificates. Each entry is a single certificate.  An oidc auth method may have 0 or more of these optional x509s.  If an auth method has any cert entries, they are used as trust anchors when connecting to the auth methods oidc provider (instead of the host system cert chain)';
+
+
+-- auth_oidc_account entries are subtypes of auth_account and represent an
+-- oidc account.
+create table auth_oidc_account (
+    public_id wt_public_id
+      primary key,
+    auth_method_id wt_public_id
+      not null,
+    -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
+    -- check is executed before the insert trigger which retrieves the scope_id
+    -- causing an insert to fail.
+    scope_id text not null,
+    name wt_name,
+    description wt_description,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    version wt_version,
+    issuer wt_url not null, -- case-sensitive URL that maps to an id_token's iss claim,
+    subject text not null -- case-sensitive string that maps to an id_token's sub claim
+      constraint subject_must_not_be_empty
+      check (
+        length(trim(subject)) > 0
+      )
+      constraint subject_must_be_less_than_256_chars
+      check(
+        length(trim(subject)) <= 255 -- length limit per OIDC spec
+      ),
+    full_name wt_full_name, -- may be null and maps to an id_token's name claim
+    email wt_email, -- may be null and maps to the id_token's email claim
+    constraint auth_oidc_method_fkey
+      foreign key (scope_id, auth_method_id)
+        references auth_oidc_method (scope_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint auth_account_fkey
+      foreign key (scope_id, auth_method_id, public_id)
+        references auth_account (scope_id, auth_method_id, public_id)
+        on delete cascade
+        on update cascade,
+    constraint auth_oidc_account_auth_method_id_name_uq
+      unique(auth_method_id, name),
+    -- ###############################################################
+    -- any change to this constraints name must be aligned with the 
+    -- acctUpsertQuery const in internal/auth/oidc/query.go
+    -- ###############################################################
+    constraint auth_oidc_account_auth_method_id_issuer_subject_uq
+      unique(auth_method_id, issuer, subject), -- subject must be unique for a provider within specific auth method
+    constraint auth_oidc_account_auth_method_id_public_id_uq
+      unique(auth_method_id, public_id)
+);
+comment on table auth_oidc_method is
+'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
+
+-- auth_oidc_method column triggers
+create trigger
+  insert_auth_method_subtype
+before insert on auth_oidc_method
+  for each row execute procedure insert_auth_method_subtype();
+
+create trigger
+  update_time_column
+before
+update on auth_oidc_method
+  for each row execute procedure update_time_column();
+
+create trigger
+  immutable_columns
+before
+update on auth_oidc_method
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_method
+  for each row execute procedure default_create_time();
+
+create trigger
+  update_version_column
+after update on auth_oidc_method
+  for each row execute procedure update_version_column();
+
+-- active_auth_oidc_method_must_be_complete() defines a function to be used in 
+-- a "before update" trigger for auth_oidc_method entries.  Its intent: prevent
+-- incomplete oidc methods from transitioning out of the "inactive" state.
+create or replace function
+  active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+  begin
+    -- validate signing alg
+    if old.state = 'inactive' and new.state != 'inactive' then
+      perform 
+      from 
+        auth_oidc_method am
+       join auth_oidc_signing_alg alg on am.public_id = alg.oidc_method_id
+      where
+        new.public_id = am.public_id;
+      if not found then 
+        raise exception 'an incomplete oidc auth method must remain inactive';
+      end if;
+      -- validate issuer
+      case 
+        when new.issuer != old.issuer then
+          if length(trim(new.issuer)) = 0 then
+            raise exception 'empty issuer: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.issuer = old.issuer then
+          if length(trim(old.issuer)) = 0 then
+            raise exception 'empty issuer: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+      -- validate client_id
+      case 
+        when new.client_id != old.client_id then
+          if length(trim(new.client_id)) = 0 then
+            raise exception 'empty client_id: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.client_id = old.client_id then
+          if length(trim(old.client_id)) = 0 then
+            raise exception 'empty client_id: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+      -- validate client_secret
+      case 
+        when new.client_secret != old.client_secret then
+          if length(new.client_secret) = 0 then
+            raise exception 'empty client_secret: an incomplete oidc auth method must remain inactive';
+          end if;
+        when new.client_secret = old.client_secret then
+          if length(old.client_secret) = 0 then
+            raise exception 'empty client_secret: an incomplete oidc auth method must remain inactive';
+          end if;
+        else
+      end case;
+
+
+    end if;
+    return new;
+  end;
+$$ language plpgsql;
+comment on function active_auth_oidc_method_must_be_complete() is
+'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
+
+create trigger 
+  update_active_auth_oidc_method_must_be_complete
+before
+update on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
+-- new_auth_oidc_method_must_be_inactive() defines a function to be used in 
+-- a "before insert" trigger for auth_oidc_method entries.  Its intent: 
+-- only allow "inactive" auth methods to be inserted.  Why? there's no way
+-- you can insert an entry that's anything but incomplete, since we have a 
+-- chicken/egg problem: you need the auth method id to create the required
+-- signing algs value objects.
+create or replace function
+  new_auth_oidc_method_must_be_inactive()
+  returns trigger 
+as $$
+  begin
+    if new.state != 'inactive' then
+      raise exception 'an incomplete oidc method must be inactive';
+    end if;
+  end;
+$$ language plpgsql;
+comment on function new_auth_oidc_method_must_be_inactive() is
+'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
+
+create trigger 
+  new_auth_oidc_method_must_be_inactive
+before
+insert on auth_oidc_method
+  for each row execute procedure active_auth_oidc_method_must_be_complete();
+
+-- auth_oidc_account column triggers
+create trigger
+  update_time_column
+before
+update on auth_oidc_account
+  for each row execute procedure update_time_column();
+
+create trigger
+  immutable_columns
+before
+update on auth_oidc_account
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer', 'subject');
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_account
+  for each row execute procedure default_create_time();
+
+create trigger
+  update_version_column
+after update on auth_oidc_account
+  for each row execute procedure update_version_column();
+
+
+-- insert_auth_oidc_account_subtype is intended as a before insert
+-- trigger on auth_oidc_account. Its purpose is to insert a base
+-- auth_account for new oidc accounts.  It's a bit different than the
+-- standard trigger for this, because it will have conflicting PKs
+-- and we just want to "do nothing" on those conflicts, deferring the
+-- raising on an error to insert into the auth_oidc_account table.
+-- this is all necessary because of we're using predictable public ids
+-- for oidc accounts.
+create or replace function
+  insert_auth_oidc_account_subtype()
+  returns trigger
+as $$
+begin
+  select auth_method.scope_id
+    into new.scope_id
+  from auth_method
+  where auth_method.public_id = new.auth_method_id;
+
+  insert into auth_account
+    (public_id, auth_method_id, scope_id)
+  values
+    (new.public_id, new.auth_method_id, new.scope_id)
+  on conflict do nothing;
+
+  return new;
+end;
+  $$ language plpgsql;
+
+create trigger
+  insert_auth_oidc_account_subtype
+before insert on auth_oidc_account
+  for each row execute procedure insert_auth_oidc_account_subtype();
+
+-- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
+-- auth_oidc_certificate, auth_oidc_signing_alg
+
+
+-- on_delete_active_auth_oidc_method_must_be_complete() defines a function
+-- to be used in an "after delete" trigger for auth_oidc_signing_alg
+-- Its intent: prevent deletes that would result in an "active" oidc
+-- auth method which is incomplete.
+create or replace function
+  on_delete_active_auth_oidc_method_must_be_complete()
+  returns trigger
+as $$
+declare am_state text;
+declare alg_cnt int;
+  begin
+    select 
+      am.state,
+      count(alg.oidc_method_id) as alg_cnt
+    from
+      auth_oidc_method am
+      left outer join auth_oidc_signing_alg alg on am.public_id = alg.oidc_method_id
+    where
+      new.oidc_method_id = am.public_id
+    group by am.public_id
+    into am_state, alg_cnt;
+    
+    if not found then 
+      return new; -- auth method was deleted, so we're done
+    end if;
+
+    if am_state != inactive then
+      case 
+        when alg_cnt = 0 then
+          raise exception 'delete would have resulted in an incomplete active oidc auth method with no signing algorithms';
+      end case;
+    end if; 
+  
+    return new;
+  end;
+$$ language plpgsql;
+comment on function on_delete_active_auth_oidc_method_must_be_complete() is
+'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs';
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_aud_claim
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_certificate
+  for each row execute procedure default_create_time();
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_signing_alg
+  for each row execute procedure default_create_time();
+
+create trigger 
+  on_delete_active_auth_oidc_method_must_be_complete
+after
+delete on auth_oidc_signing_alg
+  for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
+    
+insert into oplog_ticket (name, version)
+values
+  ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
+  ('auth_oidc_account', 1);
+`),
+			2085: []byte(`
+-- auth_token_status_enm entries define the possible auth token
+-- states. 
+create table auth_token_status_enm (
+  name text primary key
+    constraint name_only_predefined_auth_token_states_allowed
+    check (
+        name in ('auth token pending','token issued', 'authentication failed', 'system error')
+    )
+);
+
+-- populate the values of auth_token_status_enm
+insert into auth_token_status_enm(name)
+  values
+    ('auth token pending'),
+    ('token issued'),
+    ('authentication failed'),
+    ('system error'); 
+
+
+-- add the state column with a default to the auth_token table.
+alter table auth_token
+add column status text 
+not null
+default 'token issued' -- safest default
+references auth_token_status_enm(name)
+  on update cascade
+  on delete restrict;
+
+
+create or replace view auth_token_account as
+      select at.public_id,
+              at.token,
+              at.auth_account_id,
+              at.create_time,
+              at.update_time,
+              at.approximate_last_access_time,
+              at.expiration_time,
+              aa.scope_id,
+              aa.iam_user_id,
+              aa.auth_method_id,
+              at.status
+        from auth_token as at
+  inner join auth_account as aa
+          on at.auth_account_id = aa.public_id;
+`),
+			2086: []byte(`
+-- add the primary_auth_method_id which determines which auth_method is
+-- designated as for "account info" in the user's scope. It also determines
+-- which auth method is allowed to auto viviify users.  
+alter table iam_scope
+add column primary_auth_method_id wt_public_id  -- allowed to be null and is mutable of course.
+constraint auth_method_fkey
+references auth_method(public_id)
+    on update cascade
+    on delete set null;
+
+-- establish a compond fk, but there's no cascading of deletes or updates, since
+-- we only want to cascade changes to the primary_auth_method_id portion of
+-- the compond fk and that is handled in a separate fk declaration.
+alter table iam_scope
+add constraint auth_method
+  foreign key (public_id, primary_auth_method_id) 
+  references auth_method(scope_id, public_id); 
+
+-- iam_user_acct_info provides account info for users by determining which
+-- auth_method is designated as for "account info" in the user's scope via the
+-- scope's primary_auth_method_id.  Every sub-type of auth_account must be
+-- added to this view's union.
+create view iam_acct_info as
+select 
+    aa.iam_user_id,
+    oa.subject as login_name,
+    oa.full_name as full_name,
+    oa.email as email
+from 	
+    iam_scope s,
+    auth_account aa,
+    auth_oidc_account oa
+where
+    aa.public_id = oa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id 
+union 
+select 
+    aa.iam_user_id,
+    pa.login_name,
+    '' as full_name,
+    '' as email
+from
+    iam_scope s,
+    auth_account aa,
+    auth_password_account pa
+where
+    aa.public_id = pa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id;
+
+-- iam_user_acct_info provides a simple way to retrieve entries that include
+-- both the iam_user fields with an outer join to the user's account info.
+create view iam_user_acct_info as
+select 
+    u.public_id,
+    u.scope_id,
+    u.name,
+    u.description, 
+    u.create_time,
+    u.update_time,
+    u.version,
+    i.login_name,
+    i.full_name,
+    i.email
+from 	
+	iam_user u
+left outer join iam_acct_info i on u.public_id = i.iam_user_id;
+`),
+			2087: []byte(`
+-- the intent of this update statement: set the primary auth method for scopes
+-- that only have a single auth_password_method, since currently there are only
+-- auth_password_methods in boundary. Before this release all
+-- auth_password_methods were "basically" primary auth methods and would create
+-- an iam_user on first login.
+with single_authmethod (scope_id, public_id) as (
+  select 
+    am.scope_id, 
+    am.public_id  
+  from 
+    auth_password_method am,
+    (select 
+        scope_id, 
+        count(public_id) as cnt 
+     from 
+        auth_password_method 
+     group by scope_id) as singles
+    where 
+      am.scope_id = singles.scope_id and
+      singles.cnt = 1
+)
+update 
+  iam_scope
+set 
+  primary_auth_method_id = p.public_id
+from
+  single_authmethod p
+where p.scope_id = iam_scope.public_id;
+
+
+-- the intent of the insert with select statement: log the scopes that have more
+-- than 1 auth method and therefore cannot have their primary auth method
+-- automatically set for them.
+with many_authmethod (scope_id, authmethod_cnt) as (
+  select 
+    am.scope_id, 
+    many.cnt
+  from 
+    auth_password_method am,
+    (select 
+        scope_id, 
+        count(public_id) as cnt 
+     from 
+        auth_password_method 
+     group by scope_id) as many
+    where 
+      am.scope_id = many.scope_id and
+      many.cnt > 1
+)
+insert into log_migration(entry) 
+select 
+  distinct  concat(
+      'unable to set primary_auth_method for ', 
+      public_id,
+      ' there were ', 
+      m.authmethod_cnt, 
+      ' password auth methods for that scope.'
+  ) as entry
+from
+  iam_scope s,
+  many_authmethod m
+where 
+  s.primary_auth_method_id is null and 
+  s.public_id = m.scope_id;
+`),
+			2090: []byte(`
+-- By adding the name column to the base auth method type, the database can
+-- ensure that auth method names are unique across all sub types.
+alter table auth_method
+  add column name wt_name;
+
+alter table auth_method
+  add constraint auth_method_scope_id_name_uq
+    unique (scope_id, name);
+
+
+-- the intent of this statement is to update the base type's name with the
+-- existing password auth method names.
+update auth_method 
+set name = pw.name
+from 
+  auth_password_method pw
+where 
+  auth_method.public_id = pw.public_id and
+  pw.name is not null;
+
+-- insert_auth_method_subtype() is a replacement of the function definition in
+-- migration 07_auth.up.sql  This new definition also inserts the sub type's name
+-- into the base type. The name column must be on the base type, so the database
+-- can ensure that auth method names are unique across all sub types.
+create or replace function
+  insert_auth_method_subtype()
+  returns trigger
+as $$
+begin
+  insert into auth_method
+    (public_id, scope_id, name)
+  values
+    (new.public_id, new.scope_id, new.name);
+  return new;
+end;
+$$ language plpgsql;
+comment on function insert_auth_method_subtype() is
+'insert_auth_method_subtype() inserts sub type name into the base type auth method table';
+
+-- update_auth_method_subtype() is a new function intended to be used in "before
+-- update" triggers for all auth method sub types.  It's purpose is to ensure
+-- that the name column is syncronized between the sub and base auth method
+-- types.  The name column must be on the base type, so the database can ensure
+-- that auth method names are unique across all sub types.
+create or replace function
+  update_auth_method_subtype()
+  returns trigger
+as $$
+begin
+  update auth_method set name = new.name where public_id = new.public_id and new.name != name;
+  return new;
+end;
+$$ language plpgsql;
+comment on function update_auth_method_subtype() is
+'update_auth_method_subtype() will update base auth method type name column with new values from sub type';
+
+create trigger
+  update_auth_method_subtype
+before update on auth_oidc_method
+  for each row execute procedure update_auth_method_subtype();
+
+
+create trigger
+  update_auth_method_subtype
+before update on auth_password_method
+  for each row execute procedure update_auth_method_subtype();
+
+
+-- delete_auth_method_subtype() is an after trigger function for subytypes of
+-- auth_method
+create or replace function
+  delete_auth_method_subtype()
+  returns trigger
+as $$
+begin
+  delete from auth_method
+  where public_id = old.public_id;
+  return null; -- results are ignore since this is an after trigger.
+end;
+$$ language plpgsql;
+comment on function delete_auth_method_subtype is
+'delete_auth_method_subtype() is an after trigger function for subytypes of auth_method';
+
+create trigger
+  delete_auth_method_subtype
+after delete on auth_oidc_method
+  for each row execute procedure delete_auth_method_subtype();
+
+
+create trigger
+  delete_auth_method_subtype
+after delete on auth_password_method 
+  for each row execute procedure delete_auth_method_subtype();
+`),
+			2095: []byte(`
+-- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
+-- with its associated value objects (algs, auds, certs) as columns
+-- with | delimited values.  The use of the postgres string_agg(...) to
+-- aggregate the value objects into a column works because we are only pulling
+-- in one column from the associated tables and that value is part of the
+-- primary key and unique.  This view will make things like recursive listing of
+-- oidc auth methods fairly straightforward to implement for the oidc repo. 
+-- The view also includes an is_primary_auth_method bool
+create view oidc_auth_method_with_value_obj as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,
+  am.public_id,
+  am.scope_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.state,
+  am.api_url,
+  am.disable_discovered_config_validation,
+  am.issuer,
+  am.client_id,
+  am.client_secret,
+  am.client_secret_hmac,
+  am.key_id,
+  am.max_age,
+  -- the string_agg(..) column will be null if there are no associated value objects
+  string_agg(distinct alg.signing_alg_name, '|') as algs,
+  string_agg(distinct aud.aud_claim, '|') as auds,
+  string_agg(distinct cert.certificate, '|') as certs
+from 	
+  auth_oidc_method am 
+  left outer join iam_scope               s     on am.public_id = s.primary_auth_method_id 
+  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id
+  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id
+group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
+comment on view oidc_auth_method_with_value_obj is
+'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
+`),
+			3001: []byte(`
 create table job (
          private_id wt_private_id primary key,
          name wt_name not null,
@@ -5096,7 +5977,7 @@ create table job (
 	  )
 	  select job_id, next_scheduled_run from final;
 `),
-			2005: []byte(`
+			3005: []byte(`
 create function wt_add_seconds(sec integer, ts timestamp with time zone)
         returns timestamp with time zone
     as $$

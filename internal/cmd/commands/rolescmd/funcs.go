@@ -167,7 +167,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]roles.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Option) bool {
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":

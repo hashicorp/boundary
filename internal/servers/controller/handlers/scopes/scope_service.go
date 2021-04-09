@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -323,20 +325,39 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 
 func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
+	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, iam.WithDescription(desc.GetValue()))
+		scopeDesc = desc.GetValue()
+		opts = append(opts, iam.WithDescription(scopeDesc))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, iam.WithName(name.GetValue()))
+		scopeName = name.GetValue()
+		opts = append(opts, iam.WithName(scopeName))
+	}
+	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
+		if !handlers.ValidId(handlers.Id(primaryAuthMethodId.GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"primary_auth_method_id": "Improperly formatted identifier"})
+		}
+		scopePrimaryAuthMethodId = primaryAuthMethodId.GetValue()
+		opts = append(opts, iam.WithPrimaryAuthMethodId(scopePrimaryAuthMethodId))
 	}
 	version := item.GetVersion()
 
 	var iamScope *iam.Scope
 	var err error
-	switch parentScope.GetType() {
-	case scope.Global.String():
+	switch {
+	case scopeId == scope.Global.String():
+		// boundary does not allow you to create a new global scope, so
+		// we'll build the required scope by hand for the update.
+		s := iam.AllocScope()
+		s.PublicId = scopeId
+		iamScope = &s
+		iamScope.Description = scopeDesc
+		iamScope.Name = scopeName
+		iamScope.PrimaryAuthMethodId = scopePrimaryAuthMethodId
+	case parentScope.GetType() == scope.Global.String():
 		iamScope, err = iam.NewOrg(opts...)
-	case scope.Org.String():
+	case parentScope.GetType() == scope.Org.String():
 		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
 	if err != nil {
@@ -453,6 +474,10 @@ func ToProto(in *iam.Scope) *pb.Scope {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if in.GetPrimaryAuthMethodId() != "" {
+		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+
 	return &out
 }
 
@@ -467,11 +492,11 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -497,7 +522,7 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 			badFields["type"] = "Org scopes can only be created under the global scope."
 		}
 	case scope.Project.String():
-		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) {
+		if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Org.Prefix()) {
 			badFields["type"] = "Project scopes can only be created under an org scope."
 		}
 	}
@@ -525,14 +550,14 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	switch {
 	case id == "global":
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Org.String(), req.GetItem().GetType()) {
 			badFields["type"] = "Cannot modify the resource type."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 		if req.GetItem().GetType() != "" && !strings.EqualFold(scope.Project.String(), req.GetItem().GetType()) {
@@ -566,6 +591,9 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
+	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(handlers.Id(item.GetPrimaryAuthMethodId().GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+		badFields["primary_auth_method_id"] = "Improperly formatted identifier."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
@@ -580,11 +608,11 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	case id == "global":
 		badFields["id"] = "Invalid to delete the global scope."
 	case strings.HasPrefix(id, scope.Org.Prefix()):
-		if !handlers.ValidId(scope.Org.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Org.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	case strings.HasPrefix(id, scope.Project.Prefix()):
-		if !handlers.ValidId(scope.Project.Prefix(), id) {
+		if !handlers.ValidId(handlers.Id(id), scope.Project.Prefix()) {
 			badFields["id"] = "Invalidly formatted scope id."
 		}
 	default:
@@ -598,7 +626,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 
 func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
-	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) {
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

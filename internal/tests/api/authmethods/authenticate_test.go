@@ -1,6 +1,7 @@
 package authmethods_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -21,11 +22,11 @@ func TestAuthenticate(t *testing.T) {
 	client := tc.Client()
 	methods := authmethods.NewClient(client)
 
-	tok, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
+	tok, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
 	assert.NotNil(tok)
 
-	_, err = methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "wrong"})
+	_, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "wrong"})
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)
@@ -35,16 +36,17 @@ func TestAuthenticate(t *testing.T) {
 	reqBody := map[string]interface{}{
 		"credentials": map[string]interface{}{"login_name": "user", "password": "passpass"},
 	}
-	req, err := client.NewRequest(tc.Context(), "POST", fmt.Sprintf("auth-methods/%s:authenticate", tc.Server().DevAuthMethodId), reqBody)
+	req, err := client.NewRequest(tc.Context(), "POST", fmt.Sprintf("auth-methods/%s:authenticate", tc.Server().DevPasswordAuthMethodId), reqBody)
 	require.NoError(err)
 	resp, err := client.Do(req)
 	require.NoError(err)
 
-	target := new(authtokens.AuthTokenReadResult)
-	target.Item = new(authtokens.AuthToken)
-	apiErr, err = resp.Decode(target.Item)
+	result := new(authmethods.AuthenticateResult)
+	apiErr, err = resp.Decode(result)
 	require.NoError(err)
 	require.Nil(apiErr)
-	require.NotNil(target.GetItem())
-	require.NotEmpty(target.GetItem().(*authtokens.AuthToken).Token)
+
+	token := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+	require.NotEmpty(token.Token)
 }

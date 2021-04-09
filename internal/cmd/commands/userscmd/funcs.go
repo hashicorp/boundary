@@ -104,7 +104,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]users.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]users.Option) bool {
 	switch c.Func {
 	case "add-accounts", "remove-accounts":
 		if len(c.flagAccounts) == 0 {
