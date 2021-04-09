@@ -163,16 +163,18 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 
 	dataSrcDir, err := ioutil.TempDir("", strings.ReplaceAll(t.Name(), "/", "-"))
 	require.NoError(err)
+	t.Log(dataSrcDir)
+	require.NoError(os.Chmod(dataSrcDir, 0o777))
 	cleanupDataDir := func() {
 		os.RemoveAll(dataSrcDir) // clean up
 	}
 
 	caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-	ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o666)
+	ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777)
 	certFn := filepath.Join(dataSrcDir, "certificate.pem")
-	ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o666)
+	ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777)
 	keyFn := filepath.Join(dataSrcDir, "key.pem")
-	ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o666)
+	ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777)
 
 	var clientCert *testCertBundle
 	if testTls == TestClientTLS {
@@ -181,7 +183,7 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 		server.ClientCert = clientCert.Cert.Cert
 		server.ClientKey = clientCert.Cert.Key
 		clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-		ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o666)
+		ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777)
 	}
 
 	env := []string{

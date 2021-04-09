@@ -141,7 +141,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 }
 
 func TestNewVaultServer(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	t.Run("TestNoTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		v, cleanup := NewTestVaultServer(t, TestNoTLS)
