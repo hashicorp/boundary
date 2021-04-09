@@ -59,10 +59,9 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 	if err != nil {
 		return nil, fmt.Errorf("error decoding ChangeState response: %w", err)
 	}
-
 	if apiErr != nil {
 		return nil, apiErr
 	}
-
+	target.response = resp
 	return target, nil
 }

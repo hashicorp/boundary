@@ -444,11 +444,9 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			b, err := base.JsonFormatter{}.Format(item)
-			if err != nil {
-				return false, fmt.Errorf("Error formatting as JSON: %w", err)
+			if ok := c.PrintJsonItem(c.sar, item); !ok {
+				return false, fmt.Errorf("Error formatting as JSON")
 			}
-			c.UI.Output(string(b))
 			return true, nil
 		}
 	}
