@@ -30,9 +30,9 @@ message Job {
 }
 
 message JobRun {
-  // id is a surrogate key and is auto incrementing.
+  // private_id is used to access the job run but not intended to be available via the API
   // @inject_tag: `gorm:"primary_key"`
-  int64 id = 1;
+  string private_id = 1;
 
   // The job_id of the owning job and must be set.
   // @inject_tag: `gorm:"not_null"`
