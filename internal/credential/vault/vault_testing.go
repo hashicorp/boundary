@@ -124,8 +124,8 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
       "tcp": {
         "address": "0.0.0.0:8200",
         "tls_disable": "false",
-        "tls_cert_file": "/data/certificate.pem",
-        "tls_key_file": "/data/key.pem"
+        "tls_cert_file": "/vault/config/certificates/certificate.pem",
+        "tls_key_file": "/vault/config/certificates/key.pem"
       }
     }
   ]
@@ -138,10 +138,10 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
       "tcp": {
         "address": "0.0.0.0:8200",
         "tls_disable": "false",
-        "tls_cert_file": "/data/certificate.pem",
-        "tls_key_file": "/data/key.pem",
+        "tls_cert_file": "/vault/config/certificates/certificate.pem",
+        "tls_key_file": "/vault/config/certificates/key.pem",
 		"tls_require_and_verify_client_cert": "true",
-		"tls_client_ca_file": "/data/client-ca-certificate.pem"
+		"tls_client_ca_file": "/vault/config/certificates/client-ca-certificate.pem"
       }
     }
   ]
@@ -190,7 +190,7 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8300",
 	}
 
-	dataMount := fmt.Sprintf("%s:/data", dataSrcDir)
+	dataMount := fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir)
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
 		Tag:        "1.7.0",
