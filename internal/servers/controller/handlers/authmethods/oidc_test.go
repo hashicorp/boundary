@@ -1208,7 +1208,7 @@ func TestChangeState_OIDC(t *testing.T) {
 				Version: mismatchedAM.GetVersion(),
 				Attributes: func() *structpb.Struct {
 					s := toState("active-public")
-					s.Fields["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+					s.Fields["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
 					return s
 				}(),
 			},
