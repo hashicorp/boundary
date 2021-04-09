@@ -78,7 +78,7 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 	}
 }
 
-func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, opts *[]accounts.Option) bool {
+func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, opts *[]accounts.Option) bool {
 	if c.Func == "create" && c.flagLoginName == "" {
 		c.UI.Error("Login Name must be passed in via -login-name")
 		return false

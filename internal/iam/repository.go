@@ -242,7 +242,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option)
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	const op = "iam.(Repository).stdMetadata"
 	if s, ok := resource.(*Scope); ok {
-		newScope := allocScope()
+		newScope := AllocScope()
 		newScope.PublicId = s.PublicId
 		newScope.Type = s.Type
 		if newScope.Type == "" {
@@ -251,7 +251,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 			}
 		}
 		switch newScope.Type {
-		case scope.Org.String():
+		case scope.Global.String(), scope.Org.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{newScope.PublicId},

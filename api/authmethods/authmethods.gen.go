@@ -23,6 +23,7 @@ type AuthMethod struct {
 	Version                     uint32                 `json:"version,omitempty"`
 	Type                        string                 `json:"type,omitempty"`
 	Attributes                  map[string]interface{} `json:"attributes,omitempty"`
+	IsPrimary                   bool                   `json:"is_primary,omitempty"`
 	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
 

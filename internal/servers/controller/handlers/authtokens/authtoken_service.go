@@ -257,16 +257,16 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	return handlers.ValidateGetRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}

@@ -201,7 +201,7 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 						continue
 					}
 					output = append(output,
-						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(field.Name, "_", "-")),
+						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-")),
 						fmt.Sprintf("      Error:           %s", field.Description),
 					)
 				}

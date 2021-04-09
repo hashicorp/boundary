@@ -116,3 +116,41 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 		}
 	}()
 }
+
+func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
+	go func() {
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		// desynchronize calls from the controllers, to ease the load on the DB.
+		getRandomInterval := func() time.Duration {
+			// 0 to 0.5 adjustment to the base
+			f := r.Float64() / 2
+			// Half a chance to be faster, not slower
+			if r.Float32() > 0.5 {
+				f = -1 * f
+			}
+			return terminationInterval + time.Duration(f*float64(time.Minute))
+		}
+		timer := time.NewTimer(0)
+		for {
+			select {
+			case <-cancelCtx.Done():
+				c.logger.Info("closing expired pending tokens ticking shutting down")
+				return
+
+			case <-timer.C:
+				repo, err := c.AuthTokenRepoFn()
+				if err != nil {
+					c.logger.Error("error fetching repository for closing expired pending tokens", "error", err)
+				} else {
+					closeCount, err := repo.CloseExpiredPendingTokens(cancelCtx)
+					if err != nil {
+						c.logger.Error("error performing closing expired pending tokens", "error", err)
+					} else if closeCount > 0 {
+						c.logger.Info("closing expired pending tokens completed sessions successful", "pending_tokens_closed", closeCount)
+					}
+				}
+				timer.Reset(getRandomInterval())
+			}
+		}
+	}()
+}

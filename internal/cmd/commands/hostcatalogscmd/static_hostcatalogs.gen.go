@@ -178,7 +178,7 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
-	if ok := extraStaticFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraStaticFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -235,7 +235,7 @@ var (
 	extraStaticActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
-	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *[]hostcatalogs.Option) bool { return true }
+	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *base.FlagSets, *[]hostcatalogs.Option) bool { return true }
 	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hostcatalogs.Client, _ uint32, _ []hostcatalogs.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
