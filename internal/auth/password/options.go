@@ -14,14 +14,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLoginName   string
-	withLimit       int
-	withConfig      Configuration
-	withPublicId    string
-	password        string
-	withPassword    bool
+	withName              string
+	withDescription       string
+	withLoginName         string
+	withLimit             int
+	withConfig            Configuration
+	withPublicId          string
+	password              string
+	withPassword          bool
+	withOrderByCreateTime bool
+	ascending             bool
 }
 
 func getDefaultOptions() options {
@@ -79,5 +81,14 @@ func WithPassword(password string) Option {
 func WithConfiguration(config Configuration) Option {
 	return func(o *options) {
 		o.withConfig = config
+	}
+}
+
+// WithOrderByCreateTime provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByCreateTime(ascending bool) Option {
+	return func(o *options) {
+		o.withOrderByCreateTime = true
+		o.ascending = ascending
 	}
 }

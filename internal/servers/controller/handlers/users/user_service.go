@@ -481,13 +481,13 @@ func toProto(in *iam.User, accts []string) *pb.User {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	return handlers.ValidateGetRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "Must be 'global' or a valid org scope id."
 		}
@@ -496,16 +496,16 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	return handlers.ValidateUpdateRequest(iam.UserPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.UserPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	return handlers.ValidateDeleteRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
@@ -520,7 +520,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -531,7 +531,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -544,7 +544,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -552,7 +552,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -565,7 +565,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -576,7 +576,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}

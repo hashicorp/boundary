@@ -175,7 +175,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 	}
 
-	if ok := extraPasswordFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraPasswordFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -232,7 +232,7 @@ var (
 	extraPasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraPasswordSynopsisFunc        = func(*PasswordCommand) string { return "" }
 	extraPasswordFlagsFunc           = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *[]accounts.Option) bool { return true }
+	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *base.FlagSets, *[]accounts.Option) bool { return true }
 	executeExtraPasswordActions      = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

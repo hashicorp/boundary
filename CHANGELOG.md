@@ -18,9 +18,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   to better match other types of resources. `credentials` will still work for
   now but will be removed in a few releases. Finally, in the Go SDK, the
   `Authenticate` function now requires a `command` value to be passed in.
+* Related to the above change, the output of an API
+  `auth-methods/<id>:authenticate` call will return the given `command` value
+  and a map of attributes that depend on the given command. On the SDK side, the
+  output of the `Authenticate` function returns a map, from which a concrete
+  type can be easily umarshaled (see the updated `authenticate password` command
+  for an example).
 
 ### New and Improved
 
+* cli/api/sdk: New OIDC auth method type added with support for create, read,
+  update, delete, and list (see new cli `oidc` subcommands available on CRUDL
+  operations for examples).
+  [PR](https://github.com/hashicorp/boundary/pull/1090)    
+* cli: support to login using an OIDC auth method (see the new `authenticate
+  password oidc` subcommand for an example) 
+  [PR](https://github.com/hashicorp/boundary/pull/1090)
 * server: When performing recursive listing, `list` action is not longer
   required to be granted to the calling user. Instead, the given scope acts as
   the root point (so only results under that scope will be shown), and `list`
@@ -34,6 +47,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * server: Roles for auto generated scopes are now generated at database init.
   [PR](https://github.com/hashicorp/boundary/pull/996)
+* cli: Don't panic on certain commands when outputting in `json` format
+  ([Issue](https://github.com/hashicorp/boundary/pull/992),
+  [PR](https://github.com/hashicorp/boundary/pull/1095))
 
 ## 0.1.8 (2021/03/10)
 

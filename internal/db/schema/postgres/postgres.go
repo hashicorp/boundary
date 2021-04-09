@@ -222,6 +222,12 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 		}
 	}
 
+	// set the version first, so logs will be associated with this new version.
+	// if there's an error, it will get rollback
+	if err := p.setVersion(ctx, version, false); err != nil {
+		return errors.Wrap(err, op)
+	}
+
 	if _, err := extr.ExecContext(ctx, query); err != nil {
 		if rollbackErr := rollback(); rollbackErr != nil {
 			err = multierror.Append(err, rollbackErr)
@@ -235,7 +241,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 					line, col, lineColOK = computeLineFromPos(query, int(pos))
 				}
 			}
-			message := fmt.Sprintf("migration failed")
+			message := "migration failed"
 			if lineColOK {
 				message = fmt.Sprintf("%s (column %d)", message, col)
 			}
@@ -246,9 +252,6 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 			return errors.Wrap(err, op, errors.WithMsg(message))
 		}
 		return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("migration failed: %s", migr)))
-	}
-	if err := p.setVersion(ctx, version, false); err != nil {
-		return errors.Wrap(err, op)
 	}
 
 	return nil
