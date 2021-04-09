@@ -61,9 +61,8 @@ var _ pbs.HostSetServiceServer = Service{}
 // NewService returns a host set Service which handles host set related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
-	const op = "host_sets.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, fmt.Errorf("nil static repository provided")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -246,7 +245,6 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (*pb.HostSet, error) {
-	const op = "host_sets.(Service).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
@@ -256,7 +254,11 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for creation"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host set for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -264,7 +266,11 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	out, err := repo.CreateSet(ctx, scopeId, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to create host set: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
@@ -273,7 +279,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.HostSet) (*pb.HostSet, error) {
-	const op = "host_sets.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -283,7 +288,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for update"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host set for update: %v.", err)
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -296,7 +305,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to update host set: %w.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", id)
@@ -305,14 +318,17 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
-	const op = "host_sets.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, err
 	}
 	rows, err := repo.DeleteSet(ctx, scopeId, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return false, e
+		}
+		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil
 }
@@ -334,18 +350,25 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 }
 
 func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
-	const op = "host_sets.(Service).addInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
 	}
 	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to add hosts to host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add hosts to host set: %v.", err)
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after adding hosts"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to look up host set after adding hosts: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after adding hosts to it.")
@@ -354,19 +377,26 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 }
 
 func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
-	const op = "host_sets.(Service).setInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to set hosts in host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set hosts in host set: %v.", err)
 	}
 
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after setting hosts"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to look up host set after setting hosts: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after setting hosts for it.")
@@ -375,18 +405,25 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 }
 
 func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
-	const op = "host_sets.(Service).removeInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to remove hosts from host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove hosts from host set: %v.", err)
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to look up host set: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after removing hosts from it.")

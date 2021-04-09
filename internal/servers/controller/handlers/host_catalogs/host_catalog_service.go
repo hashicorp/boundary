@@ -96,12 +96,11 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
-	const op = "host_catalogs.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, fmt.Errorf("nil static repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{staticRepoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -277,7 +276,6 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Hos
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
-	const op = "host_catalogs.(Servivce).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
@@ -287,15 +285,23 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for creation"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create host catalog"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to create host catalog: %w", err)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
@@ -304,7 +310,6 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
-	const op = "service.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -315,7 +320,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for update"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to build host catalog for update: %w", err)
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -324,11 +333,15 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, err
 	}
 	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host catalog"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return nil, e
+		}
+		return nil, fmt.Errorf("unable to update host catalog: %w", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
@@ -337,14 +350,17 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	const op = "service.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, err
 	}
 	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
+		if e := errors.Convert(err); e != nil {
+			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
+			return false, e
+		}
+		return false, fmt.Errorf("unable to delete host: %w", err)
 	}
 	return rows > 0, nil
 }
