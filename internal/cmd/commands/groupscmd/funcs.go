@@ -105,7 +105,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]groups.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]groups.Option) bool {
 	switch c.Func {
 	case "add-members", "remove-members":
 		if len(c.flagMembers) == 0 {

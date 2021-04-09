@@ -72,6 +72,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "too short",
 		Kind:    Integrity,
 	},
+	AuthMethodInactive: {
+		Message: "authentication method is inactive",
+		Kind:    State,
+	},
+	AuthAttemptExpired: {
+		Message: "authentication attempt has expired",
+		Kind:    State,
+	},
 	AccountAlreadyAssociated: {
 		Message: "account already associated with another user",
 		Kind:    Parameter,
@@ -160,6 +168,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "db exception",
 		Kind:    Integrity,
 	},
+	VersionMismatch: {
+		Message: "version mismatch",
+		Kind:    Integrity,
+	},
 	MaxRetries: {
 		Message: "too many retries",
 		Kind:    Transaction,
@@ -171,5 +183,9 @@ var errorCodeInfo = map[Code]Info{
 	MigrationLock: {
 		Message: "bad db lock",
 		Kind:    Integrity,
+	},
+	Unavailable: {
+		Message: "external system unavailable",
+		Kind:    External,
 	},
 }

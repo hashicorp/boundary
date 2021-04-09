@@ -31,7 +31,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
-	newAuthTokId, err := newAuthTokenId()
+	newAuthTokId, err := NewAuthTokenId()
 	require.NoError(t, err)
 
 	type args struct {
@@ -89,6 +89,14 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			},
 			cnt: 1,
 		},
+		{
+			name: "update-status",
+			args: args{
+				fieldMask: []string{"Status"},
+				authTok:   &store.AuthToken{Status: string(IssuedStatus)},
+			},
+			cnt: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -125,7 +133,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	testAuthTokenId := func() string {
-		id, err := newAuthTokenId()
+		id, err := NewAuthTokenId()
 		require.NoError(t, err)
 		return id
 	}
@@ -147,7 +155,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 			name: "duplicate-id",
 			in: &store.AuthToken{
 				PublicId:      createdAuthToken.GetPublicId(),
-				Token:         "duplicateid_test",
+				Token:         "duplicate_id_test",
 				AuthAccountId: acct.GetPublicId(),
 			},
 			wantError: true,
@@ -174,7 +182,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 func TestAuthToken_DbDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	testAuthTokenId := func() string {
-		id, err := newAuthTokenId()
+		id, err := NewAuthTokenId()
 		require.NoError(t, err)
 		return id
 	}

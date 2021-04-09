@@ -370,20 +370,20 @@ func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
-	return handlers.ValidateGetRequest(static.HostPrefix, req, func() map[string]string {
+	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
 		ct := host.SubtypeFromId(req.GetId())
 		if ct == host.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	})
+	}, req, static.HostPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(static.HostCatalogPrefix, req.GetItem().GetHostCatalogId()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
@@ -415,7 +415,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
-	return handlers.ValidateUpdateRequest(static.HostPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
 		case host.StaticSubtype:
@@ -439,16 +439,16 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	})
+	}, static.HostPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(static.HostCatalogPrefix, req.GetHostCatalogId()) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

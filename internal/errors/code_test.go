@@ -113,6 +113,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Forbidden,
 		},
 		{
+			name: "AuthMethodInactive",
+			c:    AuthMethodInactive,
+			want: AuthMethodInactive,
+		},
+		{
+			name: "AuthAttemptExpired",
+			c:    AuthAttemptExpired,
+			want: AuthAttemptExpired,
+		},
+		{
 			name: "PasswordTooShort",
 			c:    PasswordTooShort,
 			want: PasswordTooShort,
@@ -198,6 +208,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Exception,
 		},
 		{
+			name: "VersionMismatch",
+			c:    VersionMismatch,
+			want: VersionMismatch,
+		},
+		{
 			name: "MultipleRecords",
 			c:    MultipleRecords,
 			want: MultipleRecords,
@@ -221,6 +236,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "MigrationLock",
 			c:    MigrationLock,
 			want: MigrationLock,
+		},
+		{
+			name: "Unavailable",
+			c:    Unavailable,
+			want: Unavailable,
 		},
 	}
 	for _, tt := range tests {

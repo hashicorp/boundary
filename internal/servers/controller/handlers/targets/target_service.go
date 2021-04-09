@@ -873,13 +873,13 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetTargetRequest) error {
-	return handlers.ValidateGetRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, target.TcpTargetPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
 		}
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
@@ -924,7 +924,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
-	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
@@ -960,16 +960,16 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, target.TcpTargetPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
-	return handlers.ValidateDeleteRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, target.TcpTargetPrefix)
 }
 
 func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
@@ -984,7 +984,7 @@ func validateListRequest(req *pbs.ListTargetsRequest) error {
 
 func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -994,7 +994,7 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1007,14 +1007,14 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 
 func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1027,7 +1027,7 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 
 func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1037,7 +1037,7 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1054,7 +1054,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	scopeIdEmpty := req.GetScopeId() == ""
 	scopeNameEmpty := req.GetScopeName() == ""
 	if nameEmpty {
-		if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		if !scopeIdEmpty {

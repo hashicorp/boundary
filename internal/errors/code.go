@@ -37,6 +37,9 @@ const (
 	TooShort                 Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
 	AccountAlreadyAssociated Code = 114 // AccountAlreadyAssociated represents an attempt to associate an account failed since it was already associated.
 
+	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
+	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
+
 	// PasswordTooShort results from attempting to set a password which is to short.
 	PasswordTooShort Code = 200
 
@@ -74,8 +77,12 @@ const (
 	ColumnNotFound       Code = 1102 // ColumnNotFound represent that a column was not found in the underlying db
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
+	VersionMismatch      Code = 1105 // VersionMismatch represents the update version and the db version for an entry do not match.
 
-	// Migration setup errors are codes 2000-3000
+	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
 	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
+
+	// External system errors are reserved codes 3000-3999
+	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 )

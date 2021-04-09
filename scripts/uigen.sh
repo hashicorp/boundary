@@ -12,8 +12,8 @@ fi
 
 (
 	cd "$UI_CLONE_DIR"
-	if ! docker-compose -f docker-compose-embedding.yml run build; then
-		yarn install && yarn build
+	if ! (yarn install && yarn build); then
+		echo "Please ensure Node v14+ and Yarn v1.22.10+ are installed."
 	fi
 )
 

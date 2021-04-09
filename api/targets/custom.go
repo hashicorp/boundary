@@ -63,14 +63,15 @@ func (c *Client) AuthorizeSession(ctx context.Context, targetId string, opt ...O
 		return nil, fmt.Errorf("error performing client request during AuthorizeSession call: %w", err)
 	}
 
-	sar := new(SessionAuthorizationResult)
-	sar.Item = new(SessionAuthorization)
-	apiErr, err := resp.Decode(sar.Item)
+	target := new(SessionAuthorizationResult)
+	target.Item = new(SessionAuthorization)
+	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding AuthorizeSession response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	return sar, nil
+	target.response = resp
+	return target, nil
 }

@@ -442,7 +442,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			foundScope := allocScope()
+			foundScope := AllocScope()
 			foundScope.PublicId = updatedScope.PublicId
 			where := "public_id = ?"
 			for _, f := range tt.wantNullFields {
@@ -520,7 +520,7 @@ func Test_Repository_ListScopes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("type = 'org'").Delete(allocScope()).Error)
+			require.NoError(conn.Where("type = 'org'").Delete(AllocScope()).Error)
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testOrgs = append(testOrgs, testOrg(t, repo, "", ""))
@@ -543,7 +543,7 @@ func TestRepository_ListScopes_Multiple_Scopes(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 
-	require.NoError(t, conn.Where("public_id != 'global'").Delete(allocScope()).Error)
+	require.NoError(t, conn.Where("public_id != 'global'").Delete(AllocScope()).Error)
 
 	const numPerScope = 10
 	var total int

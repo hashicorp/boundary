@@ -137,7 +137,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]hostsets.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]hostsets.Option) bool {
 	switch c.Func {
 	case "add-hosts", "remove-hosts":
 		if len(c.flagHosts) == 0 {
