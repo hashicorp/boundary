@@ -4,6 +4,9 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/hashicorp/boundary/internal/oplog"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -101,6 +104,9 @@ func TestRepository_CreateJob(t *testing.T) {
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(tt.want.Code, got.Code)
 			assert.NotEmpty(got.NextScheduledRun)
+
+			// Verify job has oplog entry
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 

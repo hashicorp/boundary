@@ -2,7 +2,7 @@ package job
 
 const runJobsQuery = `
 	insert into job_run (
-      job_id, server_id
+	  job_id, server_id
 	)
 	select 
 	  job_id, ?

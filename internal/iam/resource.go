@@ -30,7 +30,7 @@ type Resource interface {
 	ResourceType() resource.Type
 
 	// Actions that can be assigned permissions for
-	// the Resource in Policies. Action string() is key for
+	// the Resource in Policies. Action String() is key for
 	// the map of Actions returned.
 	Actions() map[string]action.Type
 }

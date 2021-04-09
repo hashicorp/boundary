@@ -103,6 +103,9 @@ func TestRepository_RunJobs(t *testing.T) {
 
 			require.Len(got, 1)
 			assert.Equal(jId, got[0].JobId)
+
+			// Verify Run has oplog entry
+			assert.NoError(db.TestVerifyOplog(t, rw, got[0].PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 }
@@ -158,6 +161,11 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 			got, err := repo.RunJobs(context.Background(), server.PrivateId, tt.opts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+
+			for _, run := range got {
+				// Verify Run has oplog entry
+				assert.NoError(db.TestVerifyOplog(t, rw, run.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
+			}
 		})
 	}
 }
