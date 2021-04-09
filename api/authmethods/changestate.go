@@ -38,10 +38,14 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 		version = existingTarget.Item.Version
 	}
 
-	reqBody := map[string]interface{}{
-		"version":    version,
-		"attributes": map[string]interface{}{"state": state},
+	reqBody := opts.postMap
+	reqBody["version"] = version
+	attrMap, ok := reqBody["attributes"].(map[string]interface{})
+	if !ok {
+		attrMap = make(map[string]interface{})
+		reqBody["attributes"] = attrMap
 	}
+	attrMap["state"] = state
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:change-state", authMethodId), reqBody, apiOpts...)
 	if err != nil {
