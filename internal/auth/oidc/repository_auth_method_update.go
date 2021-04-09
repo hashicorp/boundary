@@ -169,6 +169,15 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return origAm, db.NoRowsAffected, nil
 	}
 
+	// ClientSecret is a bit odd, because it uses the Struct wrapping, we need
+	// to add the encrypted fields to the dbMask or nullFields
+	if strutil.StrListContains(filteredDbMask, "ClientSecret") {
+		filteredDbMask = append(filteredDbMask, "CtClientSecret", "ClientSecretHmac")
+	}
+	if strutil.StrListContains(filteredNullFields, "ClientSecret") {
+		filteredNullFields = append(filteredNullFields, "CtClientSecret", "ClientSecretHmac")
+	}
+
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))

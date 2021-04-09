@@ -76,15 +76,19 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Name = "alice's restaurant"
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
+				am.ClientSecret = "This is a new secret"
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims"},
+			fieldMasks: []string{"Name", "Description", "AudClaims", "ClientSecret"},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
 				am.Name = updateWith.Name
 				am.Description = updateWith.Description
 				am.AudClaims = updateWith.AudClaims
+				am.ClientSecret = updateWith.ClientSecret
+				am.CtClientSecret = updateWith.CtClientSecret
+				am.ClientSecretHmac = updateWith.ClientSecretHmac
 				return am
 			},
 		},
