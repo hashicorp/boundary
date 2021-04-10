@@ -14,6 +14,8 @@ type Repository struct {
 	kms    *kms.Kms
 }
 
+type JobRepoFactory func() (*Repository, error)
+
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.

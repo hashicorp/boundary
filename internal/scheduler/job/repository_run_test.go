@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

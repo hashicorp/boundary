@@ -2,7 +2,7 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the job package.
 package controller.storage.job.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/job/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/scheduler/job/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
