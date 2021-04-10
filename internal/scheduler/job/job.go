@@ -1,8 +1,8 @@
 package job
 
 import (
-	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"google.golang.org/protobuf/proto"
 )
 
