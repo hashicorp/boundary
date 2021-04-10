@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
@@ -47,6 +49,8 @@ type Controller struct {
 	SessionRepoFn      common.SessionRepoFactory
 	StaticHostRepoFn   common.StaticRepoFactory
 	TargetRepoFn       common.TargetRepoFactory
+
+	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
 }
@@ -137,6 +141,11 @@ func New(conf *Config) (*Controller, error) {
 
 	c.workerAuthCache = cache.New(0, 0)
 
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(dbase, dbase, c.kms)
+	}
+	c.scheduler = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn)
+
 	return c, nil
 }
 
@@ -155,6 +164,7 @@ func (c *Controller) Start() error {
 	c.startRecoveryNonceCleanupTicking(c.baseContext)
 	c.startTerminateCompletedSessionsTicking(c.baseContext)
 	c.startCloseExpiredPendingTokens(c.baseContext)
+	// TODO (lruch): c.scheduler.Start()
 	c.started.Store(true)
 
 	return nil
@@ -169,6 +179,7 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
+	// TODO (lruch): c.scheduler.Shutdown()
 	c.started.Store(false)
 	return nil
 }
