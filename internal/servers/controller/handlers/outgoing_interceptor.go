@@ -17,6 +17,7 @@ const (
 	JsVisibleCookieName   = "wt-js-token-cookie"
 	tokenTypeField        = "token_type"
 	finalRedirectUrlField = "final_redirect_url"
+	statusField           = "status"
 )
 
 func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Message) error {
@@ -34,6 +35,15 @@ func OutgoingInterceptor(ctx context.Context, w http.ResponseWriter, m proto.Mes
 			return nil
 		}
 		fields := m.GetAttributes().GetFields()
+		if m.GetCommand() == "token" {
+			if _, ok := fields[statusField]; ok {
+				// For now at least status will never be anything useful so
+				// don't need to check on it; the mere presence is enough to
+				// know what to do
+				w.WriteHeader(http.StatusAccepted)
+				return nil
+			}
+		}
 		// It's a redirect
 		if urlField, ok := fields[finalRedirectUrlField]; ok {
 			u := urlField.GetStringValue()
