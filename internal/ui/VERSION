@@ -1,4 +1,4 @@
-b6818871fc69dbb18eb0d71c97f9b3d585490b9f Merge pull request #518 from hashicorp/style-auth-form
+1ed685d81fb7dfe3344090a460c17d190b6bd3d2
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
