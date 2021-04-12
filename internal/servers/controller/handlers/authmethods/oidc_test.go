@@ -1443,7 +1443,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, 200*time.Second, tokenPublicId)
+							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, 200*time.Second, tokenPublicId)
 						}(),
 					})
 					require.NoError(t, err)
@@ -1462,7 +1462,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, -20*time.Second, tokenPublicId)
+							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, -20*time.Second, tokenPublicId)
 						}(),
 					})
 					require.NoError(t, err)

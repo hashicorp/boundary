@@ -114,20 +114,21 @@ func Test_Callback(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name              string
-		setup             func()               // provide a simple way to do some prework before the test.
-		oidcRepoFn        OidcRepoFactory      // returns a new oidc repo
-		iamRepoFn         IamRepoFactory       // returns a new iam repo
-		atRepoFn          AuthTokenRepoFactory // returns a new auth token repo
-		am                *AuthMethod          // the authmethod for the test
-		state             string               // state parameter for test provider and Callback(...)
-		code              string               // code parameter for test provider and Callback(...)
-		wantSubject       string               // sub claim from id token
-		wantInfoName      string               // name claim from userinfo
-		wantInfoEmail     string               // email claim from userinfo
-		wantFinalRedirect string               // final redirect from Callback(...)
-		wantErrMatch      *errors.Template     // error template to match
-		wantErrContains   string               // error string should contain
+		name                 string
+		setup                func()               // provide a simple way to do some prework before the test.
+		oidcRepoFn           OidcRepoFactory      // returns a new oidc repo
+		iamRepoFn            IamRepoFactory       // returns a new iam repo
+		atRepoFn             AuthTokenRepoFactory // returns a new auth token repo
+		am                   *AuthMethod          // the authmethod for the test
+		authMethodIdOverride *string              // an override of the authmethod.PublcId as a callback parameters
+		state                string               // state parameter for test provider and Callback(...)
+		code                 string               // code parameter for test provider and Callback(...)
+		wantSubject          string               // sub claim from id token
+		wantInfoName         string               // name claim from userinfo
+		wantInfoEmail        string               // email claim from userinfo
+		wantFinalRedirect    string               // final redirect from Callback(...)
+		wantErrMatch         *errors.Template     // error template to match
+		wantErrContains      string               // error string should contain
 	}{
 		{
 			name:              "simple", // must remain the first test
@@ -245,6 +246,18 @@ func Test_Callback(t *testing.T) {
 			wantErrContains: "auth method not-valid not found",
 		},
 		{
+			name:                 "mismatch-auth-method-id", // must remain the first test
+			oidcRepoFn:           repoFn,
+			iamRepoFn:            iamRepoFn,
+			atRepoFn:             atRepoFn,
+			am:                   testAuthMethod,
+			authMethodIdOverride: &testAuthMethod2.PublicId,
+			state:                testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			code:                 "simple",
+			wantErrMatch:         errors.T(errors.InvalidParameter),
+			wantErrContains:      "auth method id does not match request wrapper auth method id",
+		},
+		{
 			name:            "bad-state-encoding",
 			oidcRepoFn:      repoFn,
 			iamRepoFn:       iamRepoFn,
@@ -254,17 +267,6 @@ func Test_Callback(t *testing.T) {
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to decode message",
-		},
-		{
-			name:            "unable-to-decrypt",
-			oidcRepoFn:      repoFn,
-			iamRepoFn:       iamRepoFn,
-			atRepoFn:        atRepoFn,
-			am:              testAuthMethod,
-			state:           testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
-			code:            "simple",
-			wantErrMatch:    errors.T(errors.Decrypt),
-			wantErrContains: "unable to decrypt message",
 		},
 		{
 			name:            "inactive-with-config-change",
@@ -337,12 +339,18 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
+			var authMethodId string
+			if tt.authMethodIdOverride != nil {
+				authMethodId = *tt.authMethodIdOverride
+			} else {
+				authMethodId = tt.am.PublicId
+			}
 
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
 				tt.atRepoFn,
-				tt.am.PublicId,
+				authMethodId,
 				tt.state,
 				tt.code,
 			)
