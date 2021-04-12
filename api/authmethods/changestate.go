@@ -8,6 +8,12 @@ import (
 	"github.com/hashicorp/boundary/api"
 )
 
+const (
+	versionPostBodyKey    = "version"
+	attributesPostBodyKey = "attributes"
+	statePostBodyKey      = "state"
+)
+
 func (c *Client) ChangeState(ctx context.Context, authMethodId string, version uint32, state string, opt ...Option) (*AuthMethodUpdateResult, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("empty authMethodId value passed into ChangeState request")
@@ -39,13 +45,13 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 	}
 
 	reqBody := opts.postMap
-	reqBody["version"] = version
-	attrMap, ok := reqBody["attributes"].(map[string]interface{})
+	reqBody[versionPostBodyKey] = version
+	attrMap, ok := reqBody[attributesPostBodyKey].(map[string]interface{})
 	if !ok {
 		attrMap = make(map[string]interface{})
-		reqBody["attributes"] = attrMap
+		reqBody[attributesPostBodyKey] = attrMap
 	}
-	attrMap["state"] = state
+	attrMap[statePostBodyKey] = state
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:change-state", authMethodId), reqBody, apiOpts...)
 	if err != nil {
