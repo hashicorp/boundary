@@ -9,6 +9,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraOidcSynopsisFunc = extraSynopsisFuncImpl
+}
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -50,6 +54,16 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		})
 	}
 	return helpStr + c.Flags().Help()
+}
+
+func extraSynopsisFuncImpl(c *OidcCommand) string {
+	switch c.Func {
+	case "change-state":
+		return "Change the active state of an auth method"
+
+	default:
+		return ""
+	}
 }
 
 func (c *Command) printListTable(items []*authmethods.AuthMethod) string {

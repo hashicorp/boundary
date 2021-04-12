@@ -518,7 +518,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		}
 
 		var opts []oidc.Option
-		if attrs.GetOverrideOidcDiscoveryUrlConfig() {
+		if attrs.GetDisableDiscoveredConfigValidation() {
 			opts = append(opts, oidc.WithForce())
 		}
 
