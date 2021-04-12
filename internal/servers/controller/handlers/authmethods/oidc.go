@@ -256,7 +256,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		return nil, errors.New(errors.InvalidParameter, op, "Empty token id request attributes.")
 	}
 
-	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
+	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, req.GetAuthMethodId(), attrs.TokenId)
 	if err != nil {
 		// TODO: Log something so we don't lose the error's context and entire msg...
 		switch {
