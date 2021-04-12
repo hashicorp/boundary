@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -148,9 +149,9 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 	}
 	switch req.GetCommand() {
 	case startCommand:
-		return s.authenticateOidcStart(ctx, req, authResults)
+		return s.authenticateOidcStart(ctx, req)
 	case callbackCommand:
-		return s.authenticateOidcCallback(ctx, req, authResults)
+		return s.authenticateOidcCallback(ctx, req)
 	case tokenCommand:
 		return s.authenticateOidcToken(ctx, req, authResults)
 	}
@@ -158,82 +159,112 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: nil}, nil
 }
 
-func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcStart"
 	if req == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
 	}
-	if authResults == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
-	}
 
 	var opts []oidc.Option
-	if req.GetAttributes() != nil {
-		attrs := new(pbs.OidcStartAttributes)
-		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.")
-		}
-		if attrs.GetCachedRoundtripPayload() != "" {
-			opts = append(opts, oidc.WithRoundtripPayload(attrs.GetCachedRoundtripPayload()))
-		}
+	attrs := new(pbs.OidcStartAttributes)
+	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.")
+	}
+	if attrs.GetCachedRoundtripPayload() != "" {
+		opts = append(opts, oidc.WithRoundtripPayload(attrs.GetCachedRoundtripPayload()))
 	}
 
-	authUrl, tokenUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
+	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
 	if err != nil {
 		// TODO: Log something
 		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow.")
 	}
 
-	resp := &pb.OidcAuthMethodAuthenticateStartResponse{
-		AuthUrl:  authUrl.String(),
-		TokenUrl: tokenUrl.String(),
-		TokenId:  tokenId,
+	respAttrs := &pb.OidcAuthMethodAuthenticateStartResponse{
+		AuthUrl: authUrl.String(),
+		TokenId: tokenId,
 	}
-
-	attrs, err := handlers.ProtoToStruct(resp)
-	if err != nil {
+	resp := &pbs.AuthenticateResponse{Command: req.GetCommand()}
+	if resp.Attributes, err = handlers.ProtoToStruct(respAttrs); err != nil {
 		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
 	}
-
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: attrs}, nil
+	return resp, nil
 }
 
-func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+// authenticateOidcCallback behaves differently than other service methods.
+// Because of the way it this is called by the end user, it should only return
+// an error if we are unable to lookup the auth method or the request
+// parameters were invalid.  All other errors should be returned back through
+// the response as a finalRedirectUrl to an endpoint that can properly show the
+// error details.
+func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcCallback"
 	if req == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
 	}
-	if authResults == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Nil auth results.")
+
+	repo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
+	am, err := repo.LookupAuthMethod(ctx, req.GetAuthMethodId())
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if am == nil {
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", req.GetAuthMethodId()))
+	}
+	if am.GetApiUrl() == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "auth method doesn't have api url defined")
+	}
+	errResponse := errorResponseBuilder(am.GetApiUrl())
 
 	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
 	// Note that this conversion has already happened in the validate call so we don't expect errors here.
 	if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
-		return nil, err
+		return errResponse(err), nil
 	}
 
-	finalRedirectUrl, err := oidc.Callback(
+	var finalRedirectUrl string
+	if attrs.GetError() != "" {
+		// TODO: Package the OIDC error into the redirectUrl
+		return errResponse(fmt.Errorf("Got error")), nil
+	}
+	finalRedirectUrl, err = oidc.Callback(
 		ctx,
 		s.oidcRepoFn,
 		oidc.IamRepoFactory(s.iamRepoFn),
 		s.atRepoFn,
-		req.GetAuthMethodId(),
+		am,
 		attrs.GetState(),
 		attrs.GetCode())
 	if err != nil {
-		// TODO: Log something more meaningful
-		return nil, errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err))
+		return errResponse(errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err))), nil
 	}
 
 	respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
 		FinalRedirectUrl: finalRedirectUrl,
 	})
 	if err != nil {
-		return nil, errors.New(errors.Internal, op, "Error marshaling parameters")
+		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters")), nil
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
+}
+
+func errorResponseBuilder(apiUrl string) func(err error) *pbs.AuthenticateResponse {
+	errRedirect := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, apiUrl)
+	return func(err error) *pbs.AuthenticateResponse {
+		u := make(url.Values)
+		// TODO: Decide how to format the domain error to match OIDC error format
+		u.Add("error", err.Error())
+		errRedirect = fmt.Sprintf("%s?%s", errRedirect, u.Encode())
+		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"final_redirect_url": structpb.NewStringValue(errRedirect),
+			},
+		}}
+	}
 }
 
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -326,11 +357,6 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 		if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
 			badFields[attributesField] = "Unable to parse callback request attributes."
 			break
-		}
-
-		if attrs.GetError() != "" {
-			// TODO: Log more info.
-			return handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "OIDC provider returned an error.")
 		}
 
 		if attrs.GetCode() == "" {
