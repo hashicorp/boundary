@@ -26,7 +26,8 @@ const (
 	tokenCommand    = "token"
 
 	// token request/response fields
-	tokenField = "token"
+	tokenField  = "token"
+	statusField = "status"
 
 	// field names
 	issuerField                            = "attributes.issuer"
@@ -271,7 +272,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	}
 	if token == nil {
 		attrs, err := structpb.NewStruct(map[string]interface{}{
-			"status": "unknown",
+			statusField: "unknown",
 		})
 		if err != nil {
 			return nil, errors.New(errors.Internal, op, "Error generating response attributes.")
