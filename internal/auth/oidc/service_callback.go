@@ -96,8 +96,8 @@ func Callback(
 
 	// it appears the authentication request was started with one auth method
 	// and the callback came to a different auth method.
-	if stateWrapper.AuthMethodId != authMethodId {
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, stateWrapper))
+	if stateWrapper.AuthMethodId != am.GetPublicId() {
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", am.GetPublicId(), stateWrapper))
 	}
 
 	stateBytes, err := decryptMessage(ctx, requestWrapper, stateWrapper)

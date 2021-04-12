@@ -120,7 +120,6 @@ func Test_Callback(t *testing.T) {
 		iamRepoFn            IamRepoFactory       // returns a new iam repo
 		atRepoFn             AuthTokenRepoFactory // returns a new auth token repo
 		am                   *AuthMethod          // the authmethod for the test
-		authMethodIdOverride *string              // an override of the authmethod.PublcId as a callback parameters
 		state                string               // state parameter for test provider and Callback(...)
 		code                 string               // code parameter for test provider and Callback(...)
 		wantSubject          string               // sub claim from id token
@@ -235,23 +234,11 @@ func Test_Callback(t *testing.T) {
 			wantErrContains: "missing auth method",
 		},
 		{
-			name:            "bad-auth-method-id",
-			oidcRepoFn:      repoFn,
-			iamRepoFn:       iamRepoFn,
-			atRepoFn:        atRepoFn,
-			am:              func() *AuthMethod { am := AllocAuthMethod(); am.PublicId = "not-valid"; return &am }(),
-			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
-			code:            "simple",
-			wantErrMatch:    errors.T(errors.RecordNotFound),
-			wantErrContains: "auth method not-valid not found",
-		},
-		{
 			name:                 "mismatch-auth-method",
 			oidcRepoFn:           repoFn,
 			iamRepoFn:            iamRepoFn,
 			atRepoFn:             atRepoFn,
 			am:                   testAuthMethod,
-			authMethodIdOverride: &testAuthMethod2.PublicId,
 			state:                testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:                 "simple",
 			wantErrMatch:         errors.T(errors.InvalidParameter),
