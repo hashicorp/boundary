@@ -228,7 +228,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
 		// TODO: Package the OIDC error into the redirectUrl
-		return errResponse(fmt.Errorf("Got error")), nil
+		return errResponse(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription())), nil
 	}
 	finalRedirectUrl, err = oidc.Callback(
 		ctx,
@@ -359,7 +359,7 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 			break
 		}
 
-		if attrs.GetCode() == "" {
+		if attrs.GetCode() == "" && attrs.GetError() == "" {
 			badFields[codeField] = "Code field not supplied in callback request."
 		}
 
