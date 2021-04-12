@@ -82,7 +82,7 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
           <img
             className={styles.logo}
             alt="Boundary"
-            src={require('./img/boundary-logo.svg')}
+            src={require('@hashicorp/mktg-logos/product/boundary/primary/color.svg')}
           />
         }
         product="boundary"
