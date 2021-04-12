@@ -26,7 +26,8 @@ const (
 	tokenCommand    = "token"
 
 	// token request/response fields
-	tokenField = "token"
+	tokenField  = "token"
+	statusField = "status"
 
 	// field names
 	issuerField                            = "attributes.issuer"
@@ -287,7 +288,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		return nil, errors.New(errors.InvalidParameter, op, "Empty token id request attributes.")
 	}
 
-	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, attrs.TokenId)
+	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, req.GetAuthMethodId(), attrs.TokenId)
 	if err != nil {
 		// TODO: Log something so we don't lose the error's context and entire msg...
 		switch {
@@ -300,7 +301,16 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		}
 	}
 	if token == nil {
-		return nil, nil
+		attrs, err := structpb.NewStruct(map[string]interface{}{
+			statusField: "unknown",
+		})
+		if err != nil {
+			return nil, errors.New(errors.Internal, op, "Error generating response attributes.")
+		}
+		return &pbs.AuthenticateResponse{
+			Command:    req.Command,
+			Attributes: attrs,
+		}, nil
 	}
 
 	responseToken, err := s.convertInternalAuthTokenToApiAuthToken(

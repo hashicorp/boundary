@@ -93,6 +93,13 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
+
+	// it appears the authentication request was started with one auth method
+	// and the callback came to a different auth method.
+	if stateWrapper.AuthMethodId != authMethodId {
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, stateWrapper))
+	}
+
 	stateBytes, err := decryptMessage(ctx, requestWrapper, stateWrapper)
 	if err != nil {
 		return "", errors.Wrap(err, op)
