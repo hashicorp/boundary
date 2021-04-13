@@ -68,7 +68,7 @@ type VerifyResults struct {
 	Error       error
 	Scope       *scopes.ScopeInfo
 
-	// AuthenticatedFinished means that the request has been passed through the
+	// AuthenticatedFinished means that the request has passed through the
 	// authentication system successfully. This does _not_ indicate whether a
 	// token was provided on the request. Requests for `u_anon` will still have
 	// this set true! This is because if a request has a token that is invalid,
