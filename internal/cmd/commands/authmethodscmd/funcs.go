@@ -93,6 +93,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		if true {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", m.Version),
+				fmt.Sprintf("    Type:                %s", m.Type),
 			)
 		}
 		if m.Name != "" {
@@ -103,12 +104,6 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		if m.Description != "" {
 			output = append(output,
 				fmt.Sprintf("    Description:         %s", m.Description),
-			)
-		}
-		if true {
-			output = append(output,
-				fmt.Sprintf("    Type:                %s", m.Type),
-				fmt.Sprintf("    Version:             %d", m.Version),
 			)
 		}
 		if len(m.AuthorizedActions) > 0 {
