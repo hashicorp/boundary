@@ -26,7 +26,6 @@ const (
 	tokenCommand    = "token"
 
 	// token request/response fields
-	tokenField  = "token"
 	statusField = "status"
 
 	// field names
@@ -38,7 +37,6 @@ const (
 	callbackUrlField                       = "attributes.callback_url"
 	apiUrlPrefixField                      = "attributes.api_url_prefix"
 	caCertsField                           = "attributes.ca_certs"
-	maxAgeField                            = "attributes.max_age"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
@@ -65,7 +63,7 @@ func init() {
 type oidcState uint
 
 const (
-	unknownState oidcState = iota
+	_ oidcState = iota
 	inactiveState
 	privateState
 	publicState
@@ -169,7 +167,7 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	var opts []oidc.Option
 	attrs := new(pbs.OidcStartAttributes)
 	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.")
+		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.", errors.WithWrap(err))
 	}
 	if attrs.GetCachedRoundtripPayload() != "" {
 		opts = append(opts, oidc.WithRoundtripPayload(attrs.GetCachedRoundtripPayload()))
@@ -177,8 +175,10 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 
 	authUrl, tokenId, err := oidc.StartAuth(ctx, s.oidcRepoFn, req.GetAuthMethodId(), opts...)
 	if err != nil {
-		// TODO: Log something
-		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow.")
+		if s.oidcLogger != nil {
+			s.oidcLogger.Error("error starting the oidc authentication flow", "op", op, "error", err)
+		}
+		return nil, errors.New(errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
 	respAttrs := &pb.OidcAuthMethodAuthenticateStartResponse{
@@ -187,7 +187,7 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 	resp := &pbs.AuthenticateResponse{Command: req.GetCommand()}
 	if resp.Attributes, err = handlers.ProtoToStruct(respAttrs); err != nil {
-		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.")
+		return nil, errors.New(errors.Internal, op, "Error marshaling parameters.", errors.WithWrap(err))
 	}
 	return resp, nil
 }
@@ -213,10 +213,10 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		return nil, errors.Wrap(err, op)
 	}
 	if am == nil {
-		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", req.GetAuthMethodId()))
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("Auth method %s not found.", req.GetAuthMethodId()))
 	}
 	if am.GetApiUrl() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "auth method doesn't have api url defined")
+		return nil, errors.New(errors.InvalidParameter, op, "Auth method doesn't have API URL defined.")
 	}
 
 	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
@@ -259,7 +259,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		FinalRedirectUrl: finalRedirectUrl,
 	})
 	if err != nil {
-		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters")), nil
+		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err))), nil
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
@@ -279,22 +279,24 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 
 	attrs := new(pb.OidcAuthMethodAuthenticateTokenRequest)
 	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.")
+		return nil, errors.New(errors.InvalidParameter, op, "Error parsing request attributes.", errors.WithWrap(err))
 	}
 	if attrs.TokenId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token id request attributes.")
+		return nil, errors.New(errors.InvalidParameter, op, "Empty token ID in request attributes.")
 	}
 
 	token, err := oidc.TokenRequest(ctx, s.kms, s.atRepoFn, req.GetAuthMethodId(), attrs.TokenId)
 	if err != nil {
-		// TODO: Log something so we don't lose the error's context and entire msg...
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
 			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
 			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
 		default:
-			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request."))
+			if s.oidcLogger != nil {
+				s.oidcLogger.Error("error generating parameters for token request", "op", op, "error", err)
+			}
+			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
 		}
 	}
 	if token == nil {
@@ -302,7 +304,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 			statusField: "unknown",
 		})
 		if err != nil {
-			return nil, errors.New(errors.Internal, op, "Error generating response attributes.")
+			return nil, errors.New(errors.Internal, op, "Error generating response attributes.", errors.WithWrap(err))
 		}
 		return &pbs.AuthenticateResponse{
 			Command:    req.Command,
@@ -315,7 +317,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		token,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.New(errors.Internal, op, "Error converting response to proper format.", errors.WithWrap(err))
 	}
 	return s.convertToAuthenticateResponse(ctx, req, authResults, responseToken)
 }
@@ -349,7 +351,6 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 				attrs.CachedRoundtripPayload = string(m)
 				req.Attributes, err = handlers.ProtoToStruct(attrs)
 				if err != nil {
-					// TODO: Logging, when we have a logger
 					return fmt.Errorf("unable to convert map back to proto")
 				}
 			}
