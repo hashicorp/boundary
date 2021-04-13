@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestJobWorkflow(t *testing.T) {
@@ -64,10 +62,8 @@ func TestJobWorkflow(t *testing.T) {
 	assert.Nil(newRuns)
 
 	// Update job next run to time in past
-	job.NextScheduledRun = &timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
-	count, err := rw.Update(context.Background(), job, []string{"NextScheduledRun"}, nil)
+	job, err = repo.UpdateJobNextRun(context.Background(), job.PrivateId, 0)
 	require.NoError(err)
-	assert.Equal(1, count)
 
 	// Now that next scheduled time is in past, a request for work should return a Run
 	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
