@@ -33,4 +33,28 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 		assert.Equal(uint(defaultRunJobsLimit), opts.withRunJobsLimit)
 	})
+	t.Run("WithLimit", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithLimit(100))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withLimit = 100
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithName", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithName("name"))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withName = "name"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithCode", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithCode("code"))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withCode = "code"
+		assert.Equal(opts, testOpts)
+	})
 }
