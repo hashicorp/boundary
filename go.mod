@@ -16,7 +16,7 @@ require (
 	github.com/golang/protobuf v1.5.1
 	github.com/google/go-cmp v0.5.5
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
-	github.com/hashicorp/boundary/api v0.0.8
+	github.com/hashicorp/boundary/api v0.0.9
 	github.com/hashicorp/boundary/sdk v0.0.4
 	github.com/hashicorp/cap v0.0.0-20210408110729-0dd65efe5473
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
