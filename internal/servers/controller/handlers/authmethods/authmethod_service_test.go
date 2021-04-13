@@ -226,8 +226,8 @@ func TestList(t *testing.T) {
 	var wantSomeAuthMethods []*pb.AuthMethod
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), oWithAuthMethods.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.InactiveState, "alice_rp", "secret",
-		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, oWithAuthMethods, oidcam.GetPublicId())
 
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
@@ -236,15 +236,19 @@ func TestList(t *testing.T) {
 		CreatedTime: oidcam.GetCreateTime().GetTimestamp(),
 		UpdatedTime: oidcam.GetUpdateTime().GetTimestamp(),
 		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		Version:     1,
+		Version:     2,
 		Type:        auth.OidcSubtype.String(),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"issuer":             structpb.NewStringValue("https://alice.com"),
 			"client_id":          structpb.NewStringValue("alice_rp"),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
-			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"state":              structpb.NewStringValue(string(oidc.ActivePublicState)),
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
 			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+				return structpb.NewListValue(lv)
+			}(),
 		}},
 		IsPrimary:                   true,
 		AuthorizedActions:           oidcAuthorizedActions,

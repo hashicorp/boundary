@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sort"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -125,6 +127,98 @@ func getSetup(t *testing.T) setup {
 	require.NoError(err)
 	require.NotNil(ret.authMethod)
 	return ret
+}
+
+func TestList_FilterNonPublic(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	// 1 Public
+	i := 0
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+	i++
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, o, oidcam.GetPublicId())
+
+	// 4 private
+	for ; i < 4; i++ {
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+	}
+
+	// 5 inactive
+	for ; i < 10; i++ {
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	}
+
+	noAuthn := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Couldn't create new auth_method service.")
+
+	req := &pbs.ListAuthMethodsRequest{
+		ScopeId: o.GetPublicId(),
+		Filter:  `"/item/type"=="oidc"`, // We are concerned about OIDC auth methods being filtered by authn state
+	}
+
+	got, err := s.ListAuthMethods(noAuthn, req)
+	assert.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Len(t, got.GetItems(), 1)
+	assert.Equal(t, "0", got.GetItems()[0].GetDescription().GetValue())
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+	authn := auth.NewVerifierContext(context.Background(),
+		nil,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		kmsCache,
+		auth.RequestInfo{
+			Token:       at.GetToken(),
+			TokenFormat: auth.AuthTokenTypeBearer,
+			PublicId:    at.GetPublicId(),
+		})
+
+	got, err = s.ListAuthMethods(authn, req)
+	assert.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Len(t, got.GetItems(), 10)
+
+	gotSorted := got.GetItems()
+	sort.Slice(gotSorted, func(i, j int) bool {
+		return gotSorted[i].GetDescription().GetValue() < gotSorted[j].GetDescription().GetValue()
+	})
+	for i := 0; i < 10; i++ {
+		assert.Equal(t, fmt.Sprintf("%d", i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
+	}
 }
 
 func TestUpdate_OIDC(t *testing.T) {

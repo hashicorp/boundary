@@ -149,7 +149,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.Authenticated)
 	if err != nil {
 		return nil, err
 	}
@@ -368,12 +368,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(am)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authenticated bool) ([]*pb.AuthMethod, error) {
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(!authenticated))
 	if err != nil {
 		return nil, err
 	}
