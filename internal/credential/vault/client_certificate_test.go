@@ -42,10 +42,8 @@ func TestClientCertificate_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
 
 	type args struct {
-		storeId     string
 		certificate []byte
 		key         []byte
 	}
@@ -57,20 +55,9 @@ func TestClientCertificate_New(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "blank-store-id",
-			args: args{
-				storeId:     "",
-				certificate: []byte(certPem),
-				key:         []byte(keyPem),
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
 			name: "missing-certificate",
 			args: args{
-				storeId: cs.PublicId,
-				key:     []byte(keyPem),
+				key: []byte(keyPem),
 			},
 			want:    nil,
 			wantErr: true,
@@ -78,7 +65,6 @@ func TestClientCertificate_New(t *testing.T) {
 		{
 			name: "missing-key",
 			args: args{
-				storeId:     cs.PublicId,
 				certificate: []byte(certPem),
 			},
 			want:    nil,
@@ -87,13 +73,11 @@ func TestClientCertificate_New(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				storeId:     cs.PublicId,
 				certificate: []byte(certPem),
 				key:         []byte(keyPem),
 			},
 			want: &ClientCertificate{
 				ClientCertificate: &store.ClientCertificate{
-					StoreId:        cs.PublicId,
 					Certificate:    []byte(certPem),
 					CertificateKey: []byte(keyPem),
 				},
@@ -111,7 +95,7 @@ func TestClientCertificate_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(databaseWrapper)
 
-			got, err := newClientCertificate(tt.args.storeId, tt.args.certificate, tt.args.key)
+			got, err := NewClientCertificate(tt.args.certificate, tt.args.key)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -126,6 +110,8 @@ func TestClientCertificate_New(t *testing.T) {
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
 
+			cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
+			got.StoreId = cs.GetPublicId()
 			err2 := rw.Create(context.Background(), got)
 			assert.NoError(err2)
 		})

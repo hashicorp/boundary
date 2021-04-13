@@ -18,11 +18,9 @@ type ClientCertificate struct {
 	tableName string `gorm:"-"`
 }
 
-func newClientCertificate(storeId string, certificate []byte, key []byte) (*ClientCertificate, error) {
+// NewClientCertificate creates a new in memory ClientCertificate.
+func NewClientCertificate(certificate []byte, key []byte) (*ClientCertificate, error) {
 	const op = "vault.newClientCertificate"
-	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
-	}
 	if len(certificate) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no certificate")
 	}
@@ -38,7 +36,6 @@ func newClientCertificate(storeId string, certificate []byte, key []byte) (*Clie
 
 	c := &ClientCertificate{
 		ClientCertificate: &store.ClientCertificate{
-			StoreId:        storeId,
 			Certificate:    certificateCopy,
 			CertificateKey: keyCopy,
 		},
