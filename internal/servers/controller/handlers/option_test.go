@@ -3,6 +3,7 @@ package handlers
 import (
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,20 +12,28 @@ func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithDiscardUnknownFields", func(t *testing.T) {
 		assert := assert.New(t)
-		// test default of 0
-		opts := getOpts()
+
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.withDiscardUnknownFields = false
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithDiscardUnknownFields(true))
+		opts = GetOpts(WithDiscardUnknownFields(true))
 		testOpts = getDefaultOptions()
 		testOpts.withDiscardUnknownFields = true
 		assert.Equal(opts, testOpts)
 
-		opts = getOpts(WithDiscardUnknownFields(false))
+		opts = GetOpts(WithDiscardUnknownFields(false))
 		testOpts = getDefaultOptions()
 		testOpts.withDiscardUnknownFields = false
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithLogger", func(t *testing.T) {
+		assert := assert.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithLogger)
+
+		opts = GetOpts(WithLogger(hclog.New(nil)))
+		assert.NotNil(opts.WithLogger)
 	})
 }

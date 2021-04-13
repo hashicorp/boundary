@@ -15,7 +15,7 @@ func StructToProto(fields *structpb.Struct, p proto.Message, opt ...Option) erro
 	if err != nil {
 		return err
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	if opts.withDiscardUnknownFields {
 		err = (protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(js, p))
 	} else {
