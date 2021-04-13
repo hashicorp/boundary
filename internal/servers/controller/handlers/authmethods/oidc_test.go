@@ -178,8 +178,6 @@ func TestList_FilterNonPublic(t *testing.T) {
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
-	noAuthn := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
-
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Couldn't create new auth_method service.")
 
@@ -188,36 +186,50 @@ func TestList_FilterNonPublic(t *testing.T) {
 		Filter:  `"/item/type"=="oidc"`, // We are concerned about OIDC auth methods being filtered by authn state
 	}
 
-	got, err := s.ListAuthMethods(noAuthn, req)
-	assert.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Len(t, got.GetItems(), 1)
-	assert.Equal(t, "0", got.GetItems()[0].GetDescription().GetValue())
+	cases := []struct{
+		name string
+		reqCtx context.Context
+		respCount int
+	} {
+		{
+			name: "unauthenticated",
+			reqCtx: auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			respCount: 1,
+		},
+		{
+			name: "authenticated",
+			reqCtx: func() context.Context {
+				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+				return auth.NewVerifierContext(context.Background(),
+					nil,
+					iamRepoFn,
+					authTokenRepoFn,
+					serversRepoFn,
+					kmsCache,
+					auth.RequestInfo{
+						Token:       at.GetToken(),
+						TokenFormat: auth.AuthTokenTypeBearer,
+						PublicId:    at.GetPublicId(),
+					})
+			}(),
+			respCount: 10,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.ListAuthMethods(tc.reqCtx, req)
+			assert.NoError(t, err)
+			require.NotNil(t, got)
+			require.Len(t, got.GetItems(), tc.respCount)
 
-	at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
-	authn := auth.NewVerifierContext(context.Background(),
-		nil,
-		iamRepoFn,
-		authTokenRepoFn,
-		serversRepoFn,
-		kmsCache,
-		auth.RequestInfo{
-			Token:       at.GetToken(),
-			TokenFormat: auth.AuthTokenTypeBearer,
-			PublicId:    at.GetPublicId(),
+			gotSorted := got.GetItems()
+			sort.Slice(gotSorted, func(i, j int) bool {
+				return gotSorted[i].GetDescription().GetValue() < gotSorted[j].GetDescription().GetValue()
+			})
+			for i := 0; i < tc.respCount; i++ {
+				assert.Equal(t, fmt.Sprintf("%d", i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
+			}
 		})
-
-	got, err = s.ListAuthMethods(authn, req)
-	assert.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Len(t, got.GetItems(), 10)
-
-	gotSorted := got.GetItems()
-	sort.Slice(gotSorted, func(i, j int) bool {
-		return gotSorted[i].GetDescription().GetValue() < gotSorted[j].GetDescription().GetValue()
-	})
-	for i := 0; i < 10; i++ {
-		assert.Equal(t, fmt.Sprintf("%d", i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
 	}
 }
 
