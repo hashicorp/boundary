@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_GetOpts(t *testing.T) {
@@ -49,5 +50,19 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withTlsSkipVerify = true
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithClientCert", func(t *testing.T) {
+		testOpts := getDefaultOptions()
+		assert.Nil(t, testOpts.withClientCert)
+		inCert := testClientCert(t, testCaCert(t))
+		cert := inCert.Cert.Cert
+		key := inCert.Cert.Key
+		clientCert, err := NewClientCertificate(cert, key)
+		assert.NoError(t, err)
+		assert.NotNil(t, clientCert)
+		opts := getOpts(WithClientCert(clientCert))
+		require.NotNil(t, opts.withClientCert)
+		assert.Equal(t, cert, opts.withClientCert.Certificate)
+		assert.Equal(t, key, opts.withClientCert.CertificateKey)
 	})
 }

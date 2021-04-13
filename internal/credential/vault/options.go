@@ -21,6 +21,7 @@ type options struct {
 	withNamespace     string
 	withTlsServerName string
 	withTlsSkipVerify bool
+	withClientCert    *ClientCertificate
 }
 
 func getDefaultOptions() options {
@@ -83,4 +84,10 @@ func WithTlsSkipVerify(skipVerify bool) Option {
 	}
 }
 
-// TODO(mgaffney) 03/2021: Add option for client certificate
+// WithClientCert provides an optional ClientCertificate to use for TLS
+// authentication to a Vault server.
+func WithClientCert(clientCert *ClientCertificate) Option {
+	return func(o *options) {
+		o.withClientCert = clientCert
+	}
+}
