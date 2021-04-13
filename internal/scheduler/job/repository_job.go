@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -175,6 +176,34 @@ func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Optio
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return j, nil
+}
+
+// ListJobs returns a slice of Jobs.
+//
+// WithName, WithCode and WithLimit are the only valid options.
+func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error) {
+	const op = "job.(Repository).ListJobs"
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var args []interface{}
+	var where []string
+	if opts.withName != "" {
+		where, args = append(where, "name = ?"), append(args, opts.withName)
+	}
+	if opts.withCode != "" {
+		where, args = append(where, "code = ?"), append(args, opts.withCode)
+	}
+
+	var jobs []*Job
+	err := r.reader.SearchWhere(ctx, &jobs, strings.Join(where, " and "), args, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return jobs, nil
 }
 
 // deleteJob deletes the job for the provided id from the repository

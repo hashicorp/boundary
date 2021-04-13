@@ -2,9 +2,14 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/hashicorp/boundary/internal/oplog"
 
@@ -280,6 +285,175 @@ func TestRepository_deleteJob(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListJobs(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	job1 := testJob(t, conn, "sameName", "sameCode", "description", wrapper)
+	job2 := testJob(t, conn, "sameName", "differentCode", "description", wrapper)
+	job3 := testJob(t, conn, "differentName", "sameCode", "description", wrapper)
+
+	tests := []struct {
+		name        string
+		opts        []Option
+		want        []*Job
+		wantErr     bool
+		wantErrCode errors.Code
+		wantErrMsg  string
+	}{
+		{
+			name: "no-options",
+			want: []*Job{job1, job2, job3},
+		},
+		{
+			name: "with-same-name",
+			opts: []Option{
+				WithName("sameName"),
+			},
+			want: []*Job{job1, job2},
+		},
+		{
+			name: "with-different-name",
+			opts: []Option{
+				WithName("differentName"),
+			},
+			want: []*Job{job3},
+		},
+		{
+			name: "with-same-code",
+			opts: []Option{
+				WithCode("sameCode"),
+			},
+			want: []*Job{job1, job3},
+		},
+		{
+			name: "with-different-code",
+			opts: []Option{
+				WithCode("differentCode"),
+			},
+			want: []*Job{job2},
+		},
+		{
+			name: "with-name-and-code",
+			opts: []Option{
+				WithName("sameName"),
+				WithCode("sameCode"),
+			},
+			want: []*Job{job1},
+		},
+		{
+			name: "with-fake-name",
+			opts: []Option{
+				WithName("fake-name"),
+			},
+			want: []*Job{},
+		},
+		{
+			name: "with-fake-code",
+			opts: []Option{
+				WithName("fake-code"),
+			},
+			want: []*Job{},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListJobs(context.Background(), tt.opts...)
+			if tt.wantErr {
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			require.NoError(err)
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *Job) bool { return x.PrivateId < y.PrivateId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(tt.want, got, opts...))
+		})
+	}
+}
+
+func TestRepository_ListJobs_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	count := 10
+	jobs := make([]*Job, count)
+	for i := range jobs {
+		jobs[i] = testJob(t, conn, "name", fmt.Sprintf("code-%d", i), "description", wrapper)
+	}
+
+	tests := []struct {
+		name     string
+		repoOpts []Option
+		listOpts []Option
+		wantLen  int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: count,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "With List limit",
+			listOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative List limit",
+			listOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "With repo smaller than list limit",
+			repoOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(6)},
+			wantLen:  6,
+		},
+		{
+			name:     "With repo larger than list limit",
+			repoOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(2)},
+			wantLen:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListJobs(context.Background(), tt.listOpts...)
+			require.NoError(err)
+			assert.Len(got, tt.wantLen)
 		})
 	}
 }
