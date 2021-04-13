@@ -30,8 +30,8 @@ type ACL struct {
 // pass more detailed information along in the future if we want. It was useful
 // in Vault, may be useful here.
 type ACLResults struct {
-	Authenticated bool
-	Authorized    bool
+	AuthenticationFinished bool
+	Authorized             bool
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant

@@ -139,7 +139,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
