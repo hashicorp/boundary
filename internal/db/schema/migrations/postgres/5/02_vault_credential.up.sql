@@ -18,9 +18,9 @@ begin;
     namespace text
       constraint namespace_must_not_be_empty
         check(length(trim(namespace)) > 0),
-    ca_cert text -- PEM encoded certificate bundle
+    ca_cert bytea -- PEM encoded certificate bundle
       constraint ca_cert_must_not_be_empty
-        check(length(trim(ca_cert)) > 0),
+        check(length(ca_cert) > 0),
     tls_server_name text
       constraint tls_server_name_must_not_be_empty
         check(length(trim(tls_server_name)) > 0),

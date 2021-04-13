@@ -17,7 +17,7 @@ type options struct {
 	withName          string
 	withDescription   string
 	withLimit         int
-	withCACert        string
+	withCACert        []byte
 	withNamespace     string
 	withTlsServerName string
 	withTlsSkipVerify bool
@@ -53,7 +53,7 @@ func WithLimit(l int) Option {
 
 // WithCACert provides an optional PEM-encoded certificate
 // to verify the Vault server's SSL certificate.
-func WithCACert(cert string) Option {
+func WithCACert(cert []byte) Option {
 	return func(o *options) {
 		o.withCACert = cert
 	}

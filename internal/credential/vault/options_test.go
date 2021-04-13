@@ -28,9 +28,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithCACert", func(t *testing.T) {
-		opts := getOpts(WithCACert("test cert"))
+		opts := getOpts(WithCACert([]byte("test cert")))
 		testOpts := getDefaultOptions()
-		testOpts.withCACert = "test cert"
+		testOpts.withCACert = []byte("test cert")
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithNamespace", func(t *testing.T) {

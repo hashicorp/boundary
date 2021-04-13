@@ -128,7 +128,7 @@ func TestCredentialStore_New(t *testing.T) {
 				vaultAddress: "https://vault.consul.service",
 				token:        []byte("token"),
 				opts: []Option{
-					WithCACert("ca-cert"),
+					WithCACert([]byte("ca-cert")),
 				},
 			},
 			want: &CredentialStore{
@@ -136,7 +136,7 @@ func TestCredentialStore_New(t *testing.T) {
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
-					CaCert:       "ca-cert",
+					CaCert:       []byte("ca-cert"),
 				},
 			},
 		},
