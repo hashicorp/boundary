@@ -429,26 +429,16 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
+	var opts []docker.Option
 	switch c.flagDatabaseUrl {
 	case "":
-		var opts []base.Option
 		if c.flagDisableDatabaseDestruction {
-			opts = append(opts, base.WithSkipDatabaseDestruction())
+			opts = append(opts, docker.WithSkipDatabaseDestruction())
 		}
-		//c.flagDatabaseImage currently only supports Postgres
 		if c.flagDatabaseImage != "" {
-			image, err := verifyContainerImage(c.flagDatabaseImage)
-			if err != nil {
-				c.UI.Error(err.Error())
-			}
-			opts = append(opts, base.WithDatabaseImage(&image))
-			if err := c.CreateDevDatabase(c.Context, "", opts...); err != nil {
+			opts = append(opts, docker.WithDatabaseImage(c.flagDatabaseImage))
+			if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 				c.UI.Error(fmt.Errorf("Error creating dev database container (in c.flagDatabaseImage): %w", err).Error())
-				return base.CommandCliError
-			}
-		} else if err := c.CreateDevDatabase(c.Context, "postgres", opts...); err != nil {
-			if err == docker.ErrDockerUnsupported {
-				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
 				return base.CommandCliError
 			}
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
@@ -463,7 +453,11 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
+
+		//todo (schristoff): hmmm
+		//If no database container image is specified, postgres:11 is used
+		opts = append(opts, docker.WithDatabaseImage([]string{"postgres:11"}))
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
@@ -548,24 +542,4 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
-}
-
-//todo: it should be ambigious enough that it is easy to change for other things
-// but also verify it is in correct format + is postgres
-func verifyContainerImage(image string) ([]string, error) {
-	var repo string
-	separated := strings.Split(image, ":")
-	repo = separated[0]
-
-	switch repo {
-	case "postgres":
-		//todo(schristoff): I assume we want to check the tag for validity but I have no clean way to do it
-		//Should we return separated and split them out again after the end, or because we already split
-		//them here should we send them around separately?
-		return separated, nil
-
-	default:
-		return separated, fmt.Errorf("Database Container Image is not supported, please see documentation for supported images")
-	}
-
 }

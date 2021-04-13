@@ -12,8 +12,9 @@ import (
 func TestMigrateStore(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
+	opts := docker.WithDatabaseImage(dialect)
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

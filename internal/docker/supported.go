@@ -15,7 +15,7 @@ func init() {
 	StartDbInDocker = startDbInDockerSupported
 }
 
-func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, container string, err error) {
+func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, container string, err error) {
 	// TODO: Debug what part of this method is actually causing race condition issues with our test and fix.
 	mx.Lock()
 	defer mx.Unlock()
@@ -25,7 +25,8 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 	}
 
 	var resource *dockertest.Resource
-	var url string
+	var url, dialect, tag string
+	dialect, tag = splitImage(opt...)
 
 	switch dialect {
 	case "postgres":
@@ -33,8 +34,9 @@ func startDbInDockerSupported(dialect string) (cleanup func() error, retURL, con
 		case os.Getenv("BOUNDARY_TESTING_PG_URL") != "":
 			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
 			return func() error { return nil }, url, "", nil
+
 		default:
-			resource, err = pool.Run("postgres", "11", []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
@@ -85,49 +87,14 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 	return fmt.Errorf("Failed to cleanup local container: %s", err)
 }
 
-//todo(schristoff): figure out a better way to do this
-func StartDbinDockerImage(repo string, tag string) (cleanup func() error, retURL, container string, err error) {
-	mx.Lock()
-	defer mx.Unlock()
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
+// splitImage takes the WithDatabaseImage option and separates
+// it into repo + tag. If a tag is not found, it sets the tag to latest
+func splitImage(opt ...Option) (string, string) {
+	opts := GetOpts(opt...)
+	separated := strings.Split(opts.WithDatabaseImage, ":")
+	if len(separated) > 1 {
+		return separated[0], separated[1]
 	}
+	return separated[0], "latest"
 
-	var resource *dockertest.Resource
-	var url string
-	switch repo {
-	case "postgres":
-		resource, err = pool.Run(repo, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
-		//todo(schristoff): should this be default for all postgres related things? can i get this from the container?
-		if err == nil {
-			url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
-		}
-	default:
-		fmt.Errorf("not supported container image")
-	}
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
-	}
-
-	cleanup = func() error {
-		return cleanupDockerResource(pool, resource)
-	}
-
-	if err := pool.Retry(func() error {
-		db, err := sql.Open("postgres", url)
-		if err != nil {
-			return fmt.Errorf("error opening %s dev container: %w", repo, err)
-		}
-
-		if err := db.Ping(); err != nil {
-			return err
-		}
-		defer db.Close()
-		return nil
-	}); err != nil {
-		return cleanup, "", "", fmt.Errorf("could not ping postgres on startup: %w", err)
-	}
-
-	return cleanup, url, resource.Container.Name, nil
 }

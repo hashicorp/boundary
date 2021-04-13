@@ -1,7 +1,7 @@
-package base
+package docker
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) Options {
+//GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -14,14 +14,26 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope              bool
-	withNoTokenValue              bool
-	withSkipDatabaseDestruction   bool
-	withSkipAuthMethodCreation    bool
-	withSkipScopesCreation        bool
-	withSkipHostResourcesCreation bool
-	withSkipTargetCreation        bool
-	withDatabaseImage             []string
+	withNoTokenScope bool
+	withNoTokenValue bool
+
+	//WithSkipDatabaseDestruction must be accessible from other packages.
+	WithSkipDatabaseDestruction bool
+
+	//WithSkipAuthMethodCreation must be accessible from other packages.
+	WithSkipAuthMethodCreation bool
+
+	//WithSkipScopesCreation must be accessible from other packages.
+	WithSkipScopesCreation bool
+
+	//WithSkipHostResourcesCreation must be accessible from other packages.
+	WithSkipHostResourcesCreation bool
+
+	//WithSkipTargetCreation must be accessible from other packages.
+	WithSkipTargetCreation bool
+
+	//WithDatabaseImage must be accessible from other packages.
+	WithDatabaseImage string
 }
 
 func getDefaultOptions() Options {
@@ -40,7 +52,7 @@ func WithNoTokenScope() Option {
 // WithSkipDatabaseDestruction tells the command not to destroy the database even on error.
 func WithSkipDatabaseDestruction() Option {
 	return func(o *Options) {
-		o.withSkipDatabaseDestruction = true
+		o.WithSkipDatabaseDestruction = true
 	}
 }
 
@@ -57,7 +69,7 @@ func WithNoTokenValue() Option {
 // method on first run.
 func WithSkipAuthMethodCreation() Option {
 	return func(o *Options) {
-		o.withSkipAuthMethodCreation = true
+		o.WithSkipAuthMethodCreation = true
 	}
 }
 
@@ -65,7 +77,7 @@ func WithSkipAuthMethodCreation() Option {
 // run.
 func WithSkipScopesCreation() Option {
 	return func(o *Options) {
-		o.withSkipScopesCreation = true
+		o.WithSkipScopesCreation = true
 	}
 }
 
@@ -73,7 +85,7 @@ func WithSkipScopesCreation() Option {
 // catalog and related resources on first run.
 func WithSkipHostResourcesCreation() Option {
 	return func(o *Options) {
-		o.withSkipHostResourcesCreation = true
+		o.WithSkipHostResourcesCreation = true
 	}
 }
 
@@ -81,12 +93,12 @@ func WithSkipHostResourcesCreation() Option {
 // run.
 func WithSkipTargetCreation() Option {
 	return func(o *Options) {
-		o.withSkipTargetCreation = true
+		o.WithSkipTargetCreation = true
 	}
 }
 
-func WithDatabaseImage(image *[]string) Option {
+func WithDatabaseImage(image string) Option {
 	return func(o *Options) {
-		o.withDatabaseImage = *image
+		o.WithDatabaseImage = image
 	}
 }

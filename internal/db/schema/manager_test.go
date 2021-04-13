@@ -15,7 +15,9 @@ import (
 
 func TestNewManager(t *testing.T) {
 	dialect := "postgres"
-	c, u, _, err := docker.StartDbInDocker(dialect)
+
+	opts := docker.WithDatabaseImage(dialect)
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -36,7 +38,8 @@ func TestNewManager(t *testing.T) {
 
 func TestCurrentState(t *testing.T) {
 	dialect := "postgres"
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	opts := docker.WithDatabaseImage(dialect)
+	c, u, _, err := docker.StartDbInDocker(opts)
 	t.Cleanup(func() {
 		if err := c(); err != nil {
 			t.Fatalf("Got error at cleanup: %v", err)
@@ -77,7 +80,9 @@ func TestCurrentState(t *testing.T) {
 
 func TestRollForward(t *testing.T) {
 	dialect := "postgres"
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	opts := docker.WithDatabaseImage(dialect)
+
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -105,8 +110,9 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 	nState := createPartialMigrationState(oState, 8)
 	migrationStates[dialect] = nState
+	opts := docker.WithDatabaseImage(dialect)
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -139,7 +145,9 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 func TestRunMigration_canceledContext(t *testing.T) {
 	dialect := "postgres"
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	opts := docker.WithDatabaseImage(dialect)
+
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -166,8 +174,9 @@ func TestRollForward_BadSQL(t *testing.T) {
 	nState.binarySchemaVersion = 10
 	nState.upMigrations[10] = []byte("SELECT 1 FROM NonExistantTable;")
 	migrationStates[dialect] = nState
+	opts := docker.WithDatabaseImage(dialect)
 
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -190,7 +199,9 @@ func TestRollForward_BadSQL(t *testing.T) {
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"
-	c, u, _, err := docker.StartDbInDocker(dialect)
+	opts := docker.WithDatabaseImage(dialect)
+
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -213,19 +224,22 @@ func TestManager_ExclusiveLock(t *testing.T) {
 
 func TestManager_SharedLock(t *testing.T) {
 	ctx := context.Background()
-	c, u, _, err := docker.StartDbInDocker("postgres")
+	dialect := "postgres"
+	opts := docker.WithDatabaseImage(dialect)
+
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d1, err := sql.Open("postgres", u)
+	d1, err := sql.Open(dialect, u)
 	require.NoError(t, err)
-	m1, err := NewManager(ctx, "postgres", d1)
+	m1, err := NewManager(ctx, dialect, d1)
 	require.NoError(t, err)
 
-	d2, err := sql.Open("postgres", u)
+	d2, err := sql.Open(dialect, u)
 	require.NoError(t, err)
-	m2, err := NewManager(ctx, "postgres", d2)
+	m2, err := NewManager(ctx, dialect, d2)
 	require.NoError(t, err)
 
 	assert.NoError(t, m1.SharedLock(ctx))

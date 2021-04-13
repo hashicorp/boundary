@@ -56,7 +56,8 @@ func testId(t *testing.T) string {
 
 func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
 	t.Helper()
-	cleanup, retURL, _, err = docker.StartDbInDocker("postgres")
+	opts := docker.WithDatabaseImage("postgres")
+	cleanup, retURL, _, err = docker.StartDbInDocker(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
