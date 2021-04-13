@@ -218,7 +218,19 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	if am.GetApiUrl() == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "auth method doesn't have api url defined")
 	}
-	errResponse := errorResponseBuilder(am.GetApiUrl())
+
+	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
+	errResponse := func(err error) *pbs.AuthenticateResponse {
+		u := make(url.Values)
+		// TODO: Decide how to format the domain error to match OIDC error format
+		u.Add("error", err.Error())
+		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
+		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"final_redirect_url": structpb.NewStringValue(errRedirect),
+			},
+		}}
+	}
 
 	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
 	// Note that this conversion has already happened in the validate call so we don't expect errors here.
@@ -251,21 +263,6 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
-}
-
-func errorResponseBuilder(apiUrl string) func(err error) *pbs.AuthenticateResponse {
-	errRedirect := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, apiUrl)
-	return func(err error) *pbs.AuthenticateResponse {
-		u := make(url.Values)
-		// TODO: Decide how to format the domain error to match OIDC error format
-		u.Add("error", err.Error())
-		errRedirect = fmt.Sprintf("%s?%s", errRedirect, u.Encode())
-		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"final_redirect_url": structpb.NewStringValue(errRedirect),
-			},
-		}}
-	}
 }
 
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
