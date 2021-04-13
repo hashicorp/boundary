@@ -1373,8 +1373,6 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.NotNil(m)
 			require.Contains(m, "auth_url")
 			require.NotEmpty(m["auth_url"])
-			require.Contains(m, "token_url")
-			require.NotEmpty(m["token_url"])
 			require.Contains(m, "token_id")
 			require.NotEmpty(m["token_id"])
 		})

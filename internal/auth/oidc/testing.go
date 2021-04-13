@@ -339,12 +339,12 @@ func TestPendingToken(
 type testControllerSrv struct {
 	mu sync.RWMutex
 
-	authMethodId string
-	oidcRepoFn   OidcRepoFactory
-	iamRepoFn    IamRepoFactory
-	atRepoFn     AuthTokenRepoFactory
-	httpServer   *httptest.Server
-	t            *testing.T
+	authMethod *AuthMethod
+	oidcRepoFn OidcRepoFactory
+	iamRepoFn  IamRepoFactory
+	atRepoFn   AuthTokenRepoFactory
+	httpServer *httptest.Server
+	t          *testing.T
 }
 
 // startTestControllerSrv returns a running testControllerSrv
@@ -365,22 +365,22 @@ func startTestControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn 
 	return s
 }
 
-// SetAuthMethodId will set the auth method id used for various
+// SetAuthMethod will set the auth method id used for various
 // operations
-func (s *testControllerSrv) SetAuthMethodId(authMethodId string) {
+func (s *testControllerSrv) SetAuthMethod(authMethod *AuthMethod) {
 	s.t.Helper()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.authMethodId = authMethodId
+	s.authMethod = authMethod
 }
 
-// AuthMethodId returns the auth method id currently being used
+// AuthMethod returns the auth method id currently being used
 // for various operations
-func (s *testControllerSrv) AuthMethodId() string {
+func (s *testControllerSrv) AuthMethod() *AuthMethod {
 	s.t.Helper()
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.authMethodId
+	return s.authMethod
 }
 
 // Addr returns the scheme.host.port of the running srv.
@@ -401,8 +401,8 @@ func (s *testControllerSrv) FinalRedirectUrl() string {
 func (s *testControllerSrv) CallbackUrl() string {
 	s.t.Helper()
 	require := require.New(s.t)
-	require.NotEmptyf(s.authMethodId, "auth method id was missing")
-	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethodId)
+	require.NotNil(s.authMethod, "auth method was missing")
+	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethod.GetPublicId())
 }
 
 // ServeHTTP satisfies the http.Handler interface
@@ -410,7 +410,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	s.t.Helper()
 	require := require.New(s.t)
 	switch req.URL.Path {
-	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethodId):
+	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethod.GetPublicId()):
 		err := req.ParseForm()
 		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
 		state := req.FormValue("state")
@@ -427,7 +427,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 				s.oidcRepoFn,
 				s.iamRepoFn,
 				s.atRepoFn,
-				s.authMethodId,
+				s.authMethod,
 				state,
 				code,
 			)

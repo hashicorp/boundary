@@ -30,33 +30,33 @@ import (
 // WithRoundTripPayload(string) provides an option for a client roundtrip
 // payload. This payload will be added to the final redirect as a query
 // parameter.
-func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId string, opt ...Option) (authUrl *url.URL, tokenUrl *url.URL, tokenId string, e error) {
+func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId string, opt ...Option) (authUrl *url.URL, tokenId string, e error) {
 	const op = "oidc.StartAuth"
 	if authMethodId == "" {
-		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, "", errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if oidcRepoFn == nil {
-		return nil, nil, "", errors.New(errors.InvalidParameter, op, "missing oidc repo function")
+		return nil, "", errors.New(errors.InvalidParameter, op, "missing oidc repo function")
 	}
 	r, err := oidcRepoFn()
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	if am == nil {
-		return nil, nil, "", errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
+		return nil, "", errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
 	}
 	if am.OperationalState == string(InactiveState) {
-		return nil, nil, "", errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
+		return nil, "", errors.New(errors.AuthMethodInactive, op, "not allowed to start authentication attempt")
 	}
 
 	// get the provider from the cache (if possible)
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl(), authMethodId)
 
@@ -72,15 +72,15 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
 	tokenRequestId, err := authtoken.NewAuthTokenId()
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	nonce, err := oidc.NewID()
 	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to generate nonce", errors.WithWrap(err))
+		return nil, "", errors.New(errors.Unknown, op, "unable to generate nonce", errors.WithWrap(err))
 	}
 	hash, err := provider.ConfigHash()
 	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to get provider config hash", errors.WithWrap(err))
+		return nil, "", errors.New(errors.Unknown, op, "unable to get provider config hash", errors.WithWrap(err))
 	}
 	st := &request.State{
 		TokenRequestId:     tokenRequestId,
@@ -93,11 +93,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 
 	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, authMethodId)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
 	oidcOpts := []oidc.Option{
 		oidc.WithState(string(encodedEncryptedSt)),
@@ -119,16 +119,16 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 		callbackRedirect,
 		oidcOpts...)
 	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to create oidc request", errors.WithWrap(err))
+		return nil, "", errors.New(errors.Unknown, op, "unable to create oidc request", errors.WithWrap(err))
 	}
 
 	u, err := provider.AuthURL(ctx, oidcReq)
 	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to get auth url from provider", errors.WithWrap(err))
+		return nil, "", errors.New(errors.Unknown, op, "unable to get auth url from provider", errors.WithWrap(err))
 	}
 	authUrl, err = url.Parse(u)
 	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to parse auth url", errors.WithWrap(err))
+		return nil, "", errors.New(errors.Unknown, op, "unable to parse auth url", errors.WithWrap(err))
 	}
 
 	t := &request.Token{
@@ -137,12 +137,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	}
 	encodedEncryptedTk, err := encryptMessage(ctx, requestWrapper, am, t)
 	if err != nil {
-		return nil, nil, "", errors.Wrap(err, op)
+		return nil, "", errors.Wrap(err, op)
 	}
-	tokenUrl, err = url.Parse(fmt.Sprintf(TokenEndpoint, am.GetApiUrl(), authMethodId))
-	if err != nil {
-		return nil, nil, "", errors.New(errors.Unknown, op, "unable to generate token URL", errors.WithWrap(err))
-	}
-
-	return authUrl, tokenUrl, encodedEncryptedTk, nil
+	return authUrl, encodedEncryptedTk, nil
 }

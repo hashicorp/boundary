@@ -46,7 +46,7 @@ func Callback(
 	oidcRepoFn OidcRepoFactory,
 	iamRepoFn IamRepoFactory,
 	atRepoFn AuthTokenRepoFactory,
-	authMethodId,
+	am *AuthMethod,
 	state, code string) (finalRedirect string, e error) {
 	const op = "oidc.Callback"
 	if oidcRepoFn == nil {
@@ -58,8 +58,8 @@ func Callback(
 	if atRepoFn == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing auth token repository function")
 	}
-	if authMethodId == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing auth method id")
+	if am == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing auth method")
 	}
 	if state == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing state")
@@ -82,17 +82,10 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	am, err := r.lookupAuthMethod(ctx, authMethodId)
-	if err != nil {
-		return "", errors.Wrap(err, op)
-	}
-	if am == nil {
-		return "", errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
-	}
 
 	// state is a proto request.Wrapper msg, which contains a cipher text field, so
 	// we need the derived wrapper that was used to encrypt it.
-	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, authMethodId)
+	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, am.GetPublicId())
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
@@ -103,8 +96,8 @@ func Callback(
 
 	// it appears the authentication request was started with one auth method
 	// and the callback came to a different auth method.
-	if stateWrapper.AuthMethodId != authMethodId {
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, stateWrapper))
+	if stateWrapper.AuthMethodId != am.GetPublicId() {
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", am.GetPublicId(), stateWrapper))
 	}
 
 	stateBytes, err := decryptMessage(ctx, requestWrapper, stateWrapper)

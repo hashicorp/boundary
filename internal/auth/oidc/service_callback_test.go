@@ -120,7 +120,6 @@ func Test_Callback(t *testing.T) {
 		iamRepoFn            IamRepoFactory       // returns a new iam repo
 		atRepoFn             AuthTokenRepoFactory // returns a new auth token repo
 		am                   *AuthMethod          // the authmethod for the test
-		authMethodIdOverride *string              // an override of the authmethod.PublcId as a callback parameters
 		state                string               // state parameter for test provider and Callback(...)
 		code                 string               // code parameter for test provider and Callback(...)
 		wantSubject          string               // sub claim from id token
@@ -224,35 +223,23 @@ func Test_Callback(t *testing.T) {
 			wantErrContains: "missing code",
 		},
 		{
-			name:            "missing-auth-method-id",
+			name:            "missing-auth-method",
 			oidcRepoFn:      repoFn,
 			iamRepoFn:       iamRepoFn,
 			atRepoFn:        atRepoFn,
-			am:              func() *AuthMethod { am := AllocAuthMethod(); return &am }(),
+			am:              func() *AuthMethod { return nil }(),
 			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:            "simple",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing auth method",
 		},
 		{
-			name:            "bad-auth-method-id",
-			oidcRepoFn:      repoFn,
-			iamRepoFn:       iamRepoFn,
-			atRepoFn:        atRepoFn,
-			am:              func() *AuthMethod { am := AllocAuthMethod(); am.PublicId = "not-valid"; return &am }(),
-			state:           testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
-			code:            "simple",
-			wantErrMatch:    errors.T(errors.RecordNotFound),
-			wantErrContains: "auth method not-valid not found",
-		},
-		{
-			name:                 "mismatch-auth-method-id", // must remain the first test
+			name:                 "mismatch-auth-method",
 			oidcRepoFn:           repoFn,
 			iamRepoFn:            iamRepoFn,
 			atRepoFn:             atRepoFn,
 			am:                   testAuthMethod,
-			authMethodIdOverride: &testAuthMethod2.PublicId,
-			state:                testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
+			state:                testState(t, testAuthMethod2, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce),
 			code:                 "simple",
 			wantErrMatch:         errors.T(errors.InvalidParameter),
 			wantErrContains:      "auth method id does not match request wrapper auth method id",
@@ -339,18 +326,12 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
-			var authMethodId string
-			if tt.authMethodIdOverride != nil {
-				authMethodId = *tt.authMethodIdOverride
-			} else {
-				authMethodId = tt.am.PublicId
-			}
 
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
 				tt.atRepoFn,
-				authMethodId,
+				tt.am,
 				tt.state,
 				tt.code,
 			)
@@ -370,7 +351,11 @@ func Test_Callback(t *testing.T) {
 				var entries []oplog.Entry
 				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
 				require.NoError(err)
-				require.Equalf(0, len(entries), "should not have found oplog entry for %s", tt.am.PublicId)
+				amId := ""
+				if tt.am != nil {
+					amId = tt.am.PublicId
+				}
+				require.Equalf(0, len(entries), "should not have found oplog entry for %s", amId)
 				return
 			}
 			require.NoError(err)
@@ -476,7 +461,7 @@ func Test_Callback(t *testing.T) {
 			repoFn,
 			iamRepoFn,
 			atRepoFn,
-			testAuthMethod.PublicId,
+			testAuthMethod,
 			state,
 			"simple",
 		)
@@ -488,7 +473,7 @@ func Test_Callback(t *testing.T) {
 			repoFn,
 			iamRepoFn,
 			atRepoFn,
-			testAuthMethod.PublicId,
+			testAuthMethod,
 			state,
 			"simple",
 		)
@@ -563,9 +548,9 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 
 		// the test controller is stateful and needs to know what auth method id
 		// it's suppose to operate on
-		controller.SetAuthMethodId(endToEndAuthMethod.PublicId)
+		controller.SetAuthMethod(endToEndAuthMethod)
 
-		authUrl, _, _, err := StartAuth(ctx, repoFn, endToEndAuthMethod.PublicId)
+		authUrl, _, err := StartAuth(ctx, repoFn, endToEndAuthMethod.PublicId)
 		require.NoError(err)
 
 		authParams, err := url.ParseQuery(authUrl.RawQuery)
