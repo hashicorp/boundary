@@ -186,14 +186,14 @@ func TestList_FilterNonPublic(t *testing.T) {
 		Filter:  `"/item/type"=="oidc"`, // We are concerned about OIDC auth methods being filtered by authn state
 	}
 
-	cases := []struct{
-		name string
-		reqCtx context.Context
+	cases := []struct {
+		name      string
+		reqCtx    context.Context
 		respCount int
-	} {
+	}{
 		{
-			name: "unauthenticated",
-			reqCtx: auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			name:      "unauthenticated",
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 			respCount: 1,
 		},
 		{

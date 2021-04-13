@@ -42,6 +42,10 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
+const (
+	AnonymousUserId = "u_anon"
+)
+
 type key int
 
 var verifierKey key
@@ -218,7 +222,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// If the anon user was used (either no token, or invalid (perhaps
 			// expired) token), return a 401. That way if it's an authn'd user
 			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserId == "u_anon" {
+			if ret.UserId == AnonymousUserId {
 				ret.Error = handlers.UnauthenticatedError()
 			}
 			return
@@ -361,7 +365,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
-	userId = "u_anon"
+	userId = AnonymousUserId
 	var accountId string
 
 	// Validate the token and fetch the corresponding user ID
@@ -396,7 +400,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			userId = at.GetIamUserId()
 			if userId == "" {
 				v.logger.Warn("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon", "token_id", at.GetPublicId())
-				userId = "u_anon"
+				userId = AnonymousUserId
 				accountId = ""
 			}
 		}

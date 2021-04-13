@@ -149,7 +149,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults.Authenticated)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId != auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
