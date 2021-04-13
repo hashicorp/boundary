@@ -117,12 +117,6 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 
 	job := allocJob()
 	job.PrivateId = privateId
-	if err := r.reader.LookupById(ctx, job); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("job %q does not exist", privateId)))
-		}
-		return nil, errors.Wrap(err, op)
-	}
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
@@ -142,6 +136,9 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
 				}
+			}
+			if rowCnt == 0 {
+				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", privateId))
 			}
 
 			// Write job update to oplog

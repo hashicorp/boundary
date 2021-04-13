@@ -333,6 +333,6 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateJobNextRun: job \"fake-private-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).UpdateJobNextRun: db.DoTx: job.(Repository).UpdateJobNextRun: job \"fake-private-id\" does not exist: search issue: error #1100", err.Error())
 	})
 }
