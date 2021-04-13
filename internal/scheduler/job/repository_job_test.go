@@ -283,3 +283,56 @@ func TestRepository_deleteJob(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_UpdateJobNextRun(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kmsCache)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		job, err := repo.CreateJob(context.Background(), "name", "code", "description")
+		require.NoError(err)
+
+		got, err := repo.UpdateJobNextRun(context.Background(), job.PrivateId, time.Hour)
+		require.NoError(err)
+		require.NotNil(got)
+		assert.NotEqual(job.NextScheduledRun.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
+
+		// update NextScheduledRun to pass equality check
+		job.NextScheduledRun = got.NextScheduledRun
+		assert.Equal(job, got)
+	})
+
+	t.Run("no-private-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kmsCache)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		got, err := repo.UpdateJobNextRun(context.Background(), "", time.Hour)
+		require.Error(err)
+		require.Nil(got)
+		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
+		assert.Equal("job.(Repository).UpdateJobNextRun: missing private id: parameter violation: error #100", err.Error())
+	})
+
+	t.Run("job-not-found", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kmsCache)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		got, err := repo.UpdateJobNextRun(context.Background(), "fake-private-id", time.Hour)
+		require.Error(err)
+		require.Nil(got)
+		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
+		assert.Equal("job.(Repository).UpdateJobNextRun: job \"fake-private-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+	})
+}

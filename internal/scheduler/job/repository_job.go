@@ -99,6 +99,66 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 	return j, nil
 }
 
+// UpdateJobNextRun updates the Job repository entry for the privateId
+// setting the job's NextScheduledRun to the current database time incremented by
+// the nextRunIn parameter.
+//
+// All options are ignored.
+func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nextRunIn time.Duration, _ ...Option) (*Job, error) {
+	const op = "job.(Repository).UpdateJobNextRun"
+	if privateId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	job := allocJob()
+	job.PrivateId = privateId
+	if err := r.reader.LookupById(ctx, job); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("job %q does not exist", privateId)))
+		}
+		return nil, errors.Wrap(err, op)
+	}
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", job.PrivateId)))
+			}
+			defer rows.Close()
+
+			var rowCnt int
+			for rows.Next() {
+				if rowCnt > 0 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+				}
+				rowCnt++
+				err = r.ScanRows(rows, job)
+				if err != nil {
+					_ = rows.Close()
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+				}
+			}
+
+			// Write job update to oplog
+			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, job)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return job, nil
+}
+
 // LookupJob will look up a job in the repository using the privateId. If the job is not
 // found, it will return nil, nil.
 //

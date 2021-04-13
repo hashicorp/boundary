@@ -505,7 +505,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			nextRunIn := int64(tt.nextRunIn.Round(time.Second).Seconds())
 			assert.True(nextRunAt >= previousRunEnd+nextRunIn,
 				fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run end time (%d) incremented by %d",
-					nextRunAt, previousRunEnd, tt.nextRunIn))
+					nextRunAt, previousRunEnd, nextRunIn))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
