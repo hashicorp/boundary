@@ -455,8 +455,8 @@ func (c *Command) Run(args []string) int {
 		}
 
 		//todo (schristoff): hmmm
-		//If no database container image is specified, postgres:11 is used
-		opts = append(opts, docker.WithDatabaseImage([]string{"postgres:11"}))
+		//If no database container image is specified, postgres is used
+		opts = append(opts, docker.WithDatabaseImage("postgres"))
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError

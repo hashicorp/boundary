@@ -14,8 +14,8 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope bool
-	withNoTokenValue bool
+	WithNoTokenScope bool
+	WithNoTokenValue bool
 
 	//WithSkipDatabaseDestruction must be accessible from other packages.
 	WithSkipDatabaseDestruction bool
@@ -45,7 +45,7 @@ func getDefaultOptions() Options {
 // time.
 func WithNoTokenScope() Option {
 	return func(o *Options) {
-		o.withNoTokenScope = true
+		o.WithNoTokenScope = true
 	}
 }
 
@@ -61,7 +61,7 @@ func WithSkipDatabaseDestruction() Option {
 // time.
 func WithNoTokenValue() Option {
 	return func(o *Options) {
-		o.withNoTokenValue = true
+		o.WithNoTokenValue = true
 	}
 }
 

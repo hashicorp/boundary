@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +37,8 @@ func testServerCommand(t *testing.T, controllerKey string) *Command {
 	require.NoError(err)
 	require.NoError(cmd.SetupKMSes(cmd.UI, parsedKmsConfig))
 
-	err = cmd.CreateDevDatabase(cmd.Context, "postgres")
+	opts := docker.WithDatabaseImage("postgres")
+	err = cmd.CreateDevDatabase(cmd.Context, opts)
 	if err != nil {
 		if cmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(cmd.DevDatabaseCleanupFunc())

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/vault/sdk/helper/password"
 	nkeyring "github.com/jefferai/keyring"
 	"github.com/mitchellh/cli"
@@ -119,7 +120,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.flagPassword = strings.TrimSpace(value)
 	}
 
-	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
+	client, err := c.Client(docker.WithNoTokenScope(), docker.WithNoTokenValue())
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
 		return base.CommandCliError

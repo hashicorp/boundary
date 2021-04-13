@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -508,11 +509,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 			}
 		}
 	} else if !opts.DisableDatabaseCreation {
-		var createOpts []base.Option
+		var createOpts []docker.Option
 		if opts.DisableAuthMethodCreation {
-			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
+			createOpts = append(createOpts, docker.WithSkipAuthMethodCreation())
 		}
-		if err := tc.b.CreateDevDatabase(ctx, "postgres", createOpts...); err != nil {
+		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}

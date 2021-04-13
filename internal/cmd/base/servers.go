@@ -461,17 +461,21 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...docker.Option) error {
-	opts := docker.GetOpts(opt...)
+func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) error {
 
-	// opts.WithDatabaseImage could have repo:tag, so split it and only
-	// assign the repo to dialect
-	separated := strings.Split(opts.WithDatabaseImage, ":")
-	dialect = separated[0]
-
-	var container, url string
+	var container, url, dialect string
 	var err error
 	var c func() error
+
+	opts := docker.GetOpts(opt...)
+	// opts.WithDatabaseImage could have repo:tag, so split it and only
+	// assign the repo to dialect
+	if opts.WithDatabaseImage == "" {
+		dialect = "postgres"
+	} else {
+		separated := strings.Split(opts.WithDatabaseImage, ":")
+		dialect = separated[0]
+	}
 
 	switch b.DatabaseUrl {
 	case "":
