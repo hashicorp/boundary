@@ -14,7 +14,9 @@ import (
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	opts := getOpts()
-	assert.Equal(t, options{}, opts)
+	assert.Equal(t, options{
+		withUserId: AnonymousUserId,
+	}, opts)
 
 	withKms := new(kms.Kms)
 	res := new(perms.Resource)
