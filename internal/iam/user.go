@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	defaultUserTableName = "iam_user"
+	defaultUserTableName            = "iam_user"
+	defaultUserAccountInfoTableName = "iam_user_acct_info"
 )
 
 // User defines boundary users which are scoped to an Org
@@ -105,4 +106,30 @@ func (u *User) TableName() string {
 // reset to the default name.
 func (u *User) SetTableName(n string) {
 	u.tableName = n
+}
+
+// userAccountInfo provides a way to represent a user along with the user's
+// account info from the scope's primary auth method
+type userAccountInfo struct {
+	*store.GroupMemberView
+	tableName string `gorm:"-"`
+}
+
+// TableName provides an overridden gorm table name..
+func (u *userAccountInfo) TableName() string {
+	if u.tableName != "" {
+		return u.tableName
+	}
+	return defaultUserAccountInfoTableName
+}
+
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
+func (u *userAccountInfo) SetTableName(n string) {
+	switch n {
+	case "":
+		u.tableName = defaultUserAccountInfoTableName
+	default:
+		u.tableName = n
+	}
 }
