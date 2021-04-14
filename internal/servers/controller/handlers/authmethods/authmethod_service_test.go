@@ -350,7 +350,8 @@ func TestList(t *testing.T) {
 			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			// First check with non-anonymous user
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -365,6 +366,21 @@ func TestList(t *testing.T) {
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+
+			// Now check with anonymous user
+			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			for _, g := range got.Items {
+				assert.Nil(g.Attributes)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
 		})
 	}
 }

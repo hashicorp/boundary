@@ -386,18 +386,18 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(am)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, unauthn bool) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.AuthMethod, error) {
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(unauthn))
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(anonUser))
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ol {
-		ou, err := toAuthMethodProto(u)
+		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -413,7 +413,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, unauthn bo
 		return nil, err
 	}
 	for _, u := range pl {
-		ou, err := toAuthMethodProto(u)
+		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +470,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
 		if dryRun {
-			storageToWire = func(in auth.AuthMethod) (*pb.AuthMethod, error) {
+			storageToWire = func(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
 				am, err := toAuthMethodProto(in)
 				if err != nil {
 					return nil, errors.Wrap(err, op)
@@ -630,14 +630,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
+func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := &pb.AuthMethod{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		IsPrimary:   in.GetIsPrimaryAuthMethod(),
+		Id:        in.GetPublicId(),
+		ScopeId:   in.GetScopeId(),
+		IsPrimary: in.GetIsPrimaryAuthMethod(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -645,9 +643,17 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
+	}
 	switch i := in.(type) {
 	case *password.AuthMethod:
 		out.Type = auth.PasswordSubtype.String()
+		if anonListing {
+			break
+		}
 		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
 			MinLoginNameLength: i.GetMinLoginNameLength(),
 			MinPasswordLength:  i.GetMinPasswordLength(),
@@ -658,6 +664,9 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		out.Attributes = st
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
+		if anonListing {
+			break
+		}
 		attrs := &pb.OidcAuthMethodAttributes{
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,
