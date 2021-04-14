@@ -43,7 +43,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 
 	sched.Start()
 
-	// Wait for scheduler to start both jobs
+	// Wait for scheduler to run both jobs
 	<-job1Ready
 	<-job2Ready
 
@@ -62,9 +62,10 @@ func TestSchedulerWorkflow(t *testing.T) {
 	assert.Len(sched.runningJobs, 1)
 	sched.l.RUnlock()
 
+	// Complete job 1
 	job1Ch <- nil
 
-	// update job2 to run again
+	// Update job2 to run again
 	err = sched.UpdateJobNextRun(context.Background(), job2Id, 0)
 	require.NoError(err)
 	<-job2Ready
@@ -73,6 +74,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	assert.Len(sched.runningJobs, 1)
 	sched.l.RUnlock()
 
+	// Complete job 2
 	job2Ch <- nil
 
 	sched.Shutdown()
@@ -92,7 +94,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	fn := func(ctx context.Context) error {
 		jobReady <- struct{}{}
 
-		// block until context is cancelled
+		// Block until context is cancelled
 		<-ctx.Done()
 
 		jobDone <- struct{}{}
@@ -104,14 +106,14 @@ func TestSchedulerCancelCtx(t *testing.T) {
 
 	sched.Start()
 
-	// Wait for scheduler to start both jobs
+	// Wait for scheduler to run job
 	<-jobReady
 
 	sched.l.RLock()
 	assert.Len(sched.runningJobs, 1)
 	sched.l.RUnlock()
 
-	// verify job is not done
+	// Verify job is not done
 	select {
 	case <-jobDone:
 		t.Fatal("expected job to be blocking on context")

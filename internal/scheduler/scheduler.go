@@ -40,6 +40,8 @@ type Scheduler struct {
 //
 // • jobRepoFn must be provided and is a function that returns the job repository
 //
+// • logger must be provided and is used to log errors that occur during scheduling and running of jobs
+//
 // WithRunJobsLimit and WithRunJobsInterval are the only valid options.
 func New(serverId string, jobRepoFn jobRepo.JobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
@@ -48,6 +50,9 @@ func New(serverId string, jobRepoFn jobRepo.JobRepoFactory, logger hclog.Logger,
 	}
 	if jobRepoFn == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing job repo function")
+	}
+	if logger == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -146,22 +151,22 @@ func (s *Scheduler) start() {
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				s.logger.Error("error creating job repo %w", err)
+				s.logger.Error("error creating job repo", "error", err)
 				break
 			}
 
 			runs, err := repo.RunJobs(s.baseContext, s.serverId, jobRepo.WithRunJobsLimit(s.runJobsLimit))
 			if err != nil {
-				s.logger.Error("error getting jobs to run from repo %w", err)
+				s.logger.Error("error getting jobs to run from repo", "error", err)
 				break
 			}
 
 			for _, r := range runs {
 				err := s.runJob(r)
 				if err != nil {
-					s.logger.Error("error starting job %w", err)
+					s.logger.Error("error starting job", "error", err)
 					if _, inner := repo.FailRun(s.baseContext, r.PrivateId); inner != nil {
-						s.logger.Error("error updating failed job run %w", inner)
+						s.logger.Error("error updating failed job run", "error", inner)
 					}
 				}
 			}
@@ -174,29 +179,29 @@ func (s *Scheduler) start() {
 
 func (s *Scheduler) runJob(r *jobRepo.Run) error {
 	jobId := JobId(r.JobId)
-	s.logger.Debug("starting job run %q for job %q", r.PrivateId, jobId)
 	j, ok := s.registeredJobs.Load(jobId)
+	job := j.(Job)
+	s.logger.Debug(fmt.Sprintf("starting job run %q for job (%v: %v)", r.PrivateId, jobId, job.Name()))
 	if !ok {
-		return fmt.Errorf("job %q not registered on scheduler", jobId)
+		return fmt.Errorf("job (%v: %v) not registered on scheduler", jobId, job.Name())
 	}
 
 	s.l.Lock()
 	if _, ok := s.runningJobs[jobId]; ok {
 		s.l.Unlock()
-		return fmt.Errorf("job %q is already running", jobId)
+		return fmt.Errorf("job (%v: %v) is already running", jobId, job.Name())
 	}
 	jobContext, jobCancel := context.WithCancel(context.Background())
 	s.runningJobs[jobId] = runningJob{runId: r.PrivateId, cancelCtx: jobCancel}
 	s.l.Unlock()
 
 	go func() {
-		job := j.(Job)
 		runErr := job.Run(jobContext)
 		repo, err := s.jobRepoFn()
 		if err != nil {
 			// Failed to create repo needed update run.  Best option is to log error,
 			// delete running job and return.
-			s.logger.Error("error creating job repo after job run: %w", err)
+			s.logger.Error("error creating job repo after job run", "error", err)
 			s.l.Lock()
 			delete(s.runningJobs, jobId)
 			s.l.Unlock()
@@ -205,14 +210,14 @@ func (s *Scheduler) runJob(r *jobRepo.Run) error {
 
 		switch runErr {
 		case nil:
-			s.logger.Debug("job run %q for job %q complete", r.PrivateId, jobId)
+			s.logger.Debug(fmt.Sprintf("job run %q for job (%v: %v) complete", r.PrivateId, jobId, job.Name()))
 			if _, inner := repo.CompleteRun(jobContext, r.PrivateId, job.NextRunIn()); inner != nil {
-				s.logger.Error("error updating completed job run %v", inner)
+				s.logger.Error("error updating completed job run", "error", inner)
 			}
 		default:
-			s.logger.Debug("job run %q for job %q failed: %w", r.PrivateId, jobId, runErr)
+			s.logger.Debug(fmt.Sprintf("job run %q for job (%v: %v) failed: %v", r.PrivateId, jobId, job.Name(), runErr))
 			if _, inner := repo.FailRun(jobContext, r.PrivateId); inner != nil {
-				s.logger.Error("error updating failed job run %w", inner)
+				s.logger.Error("error updating failed job run", "error", inner)
 			}
 		}
 

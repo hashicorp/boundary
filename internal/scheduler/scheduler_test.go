@@ -30,6 +30,7 @@ func TestScheduler_New(t *testing.T) {
 	type args struct {
 		serverId    string
 		jobRepo     job.JobRepoFactory
+		looger      hclog.Logger
 		runLimit    uint
 		runInterval time.Duration
 	}
@@ -58,10 +59,21 @@ func TestScheduler_New(t *testing.T) {
 			wantErrMsg:  "scheduler.New: missing job repo function: parameter violation: error #100",
 		},
 		{
+			name: "with-no-logger",
+			args: args{
+				serverId: "test-server",
+				jobRepo:  jobRepoFn,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+			wantErrMsg:  "scheduler.New: missing logger: parameter violation: error #100",
+		},
+		{
 			name: "valid",
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
+				looger:   hclog.L(),
 			},
 			want: args{
 				serverId:    "test-server",
@@ -74,6 +86,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
+				looger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -89,6 +102,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
+				looger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsLimit(20),
@@ -104,6 +118,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
+				looger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -121,7 +136,7 @@ func TestScheduler_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(tt.args.serverId, tt.args.jobRepo, hclog.L(), tt.opts...)
+			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.args.looger, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -333,7 +348,9 @@ func TestScheduler_StartStop(t *testing.T) {
 
 	sched.Shutdown()
 	assert.False(sched.started.Load())
+	sched.l.RLock()
 	assert.Len(sched.runningJobs, 0)
+	sched.l.RUnlock()
 
 	// verify baseContext has been cancelled
 	select {

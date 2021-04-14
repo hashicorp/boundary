@@ -299,12 +299,9 @@ func TestRepository_ListJobs(t *testing.T) {
 	job3 := testJob(t, conn, "differentName", "sameCode", "description", wrapper)
 
 	tests := []struct {
-		name        string
-		opts        []Option
-		want        []*Job
-		wantErr     bool
-		wantErrCode errors.Code
-		wantErrMsg  string
+		name string
+		opts []Option
+		want []*Job
 	}{
 		{
 			name: "no-options",
@@ -370,11 +367,6 @@ func TestRepository_ListJobs(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListJobs(context.Background(), tt.opts...)
-			if tt.wantErr {
-				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
-				return
-			}
 			require.NoError(err)
 			opts := []cmp.Option{
 				cmpopts.SortSlices(func(x, y *Job) bool { return x.PrivateId < y.PrivateId }),
@@ -475,8 +467,12 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		got, err := repo.UpdateJobNextRun(context.Background(), job.PrivateId, time.Hour)
 		require.NoError(err)
 		require.NotNil(got)
-		assert.NotEqual(job.NextScheduledRun.Timestamp.GetSeconds(), got.NextScheduledRun.Timestamp.GetSeconds())
 
+		previousRunAt := job.NextScheduledRun.Timestamp.GetSeconds()
+		nextRunAt := got.NextScheduledRun.Timestamp.GetSeconds()
+		assert.True(nextRunAt >= previousRunAt+int64(time.Hour.Seconds()),
+			fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run (%d)",
+				nextRunAt, previousRunAt))
 		// update NextScheduledRun to pass equality check
 		job.NextScheduledRun = got.NextScheduledRun
 		assert.Equal(job, got)

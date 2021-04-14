@@ -135,7 +135,7 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 				err = r.ScanRows(rows, job)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows"))
 				}
 			}
 			if rowCnt == 0 {

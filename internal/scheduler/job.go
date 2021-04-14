@@ -12,7 +12,7 @@ import (
 // This id is prefixed with "job_".
 type JobId string
 
-// Job defines an interface for jobs that can will be invoked by the scheduler.
+// Job defines an interface for jobs that can be invoked by the scheduler.
 type Job interface {
 	// Status reports the job’s current status.  The status is periodically persisted by
 	// the scheduler when a job is running, and will be used to verify a job is making progress.

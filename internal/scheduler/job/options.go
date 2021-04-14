@@ -51,8 +51,8 @@ func WithRunJobsLimit(l uint) Option {
 	}
 }
 
-// WithLimit provides an option to provide a limit. Intentionally allowing
-// negative integers. If WithLimit < 0, then unlimited results are
+// WithLimit provides an option to provide a limit for ListJobs. Intentionally
+// allowing negative integers. If WithLimit < 0, then unlimited results are
 // returned. If WithLimit == 0, then default limits are used for results.
 func WithLimit(l int) Option {
 	return func(o *options) {

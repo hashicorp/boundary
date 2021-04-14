@@ -33,7 +33,7 @@ func getDefaultOptions() options {
 }
 
 // WithRunJobsLimit provides an option to provide the number of jobs that will be requested
-// by the scheduler periodically.
+// by the scheduler when querying for jobs to run.
 // If WithRunJobsLimit == 0, then default run jobs limit is used.
 func WithRunJobsLimit(l uint) Option {
 	return func(o *options) {
@@ -45,7 +45,7 @@ func WithRunJobsLimit(l uint) Option {
 }
 
 // WithRunJobsInterval provides an option to provide the interval at which the scheduler
-// will request work.
+// will query the repository for jobs to run.
 // If WithRunJobsInterval == 0, then default interval is used.
 func WithRunJobsInterval(l time.Duration) Option {
 	return func(o *options) {
