@@ -144,7 +144,10 @@ func New(conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
-	c.scheduler = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn)
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new scheduler: %w", err)
+	}
 
 	return c, nil
 }
