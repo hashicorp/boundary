@@ -82,33 +82,33 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
+				fmt.Sprintf("  ID:                     %s", m.Id),
 			)
 		}
 		if c.FlagRecursive {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
 			)
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("    Version:              %d", m.Version),
+				fmt.Sprintf("    Type:                 %s", m.Type),
 			)
 		}
 		if m.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Name:                 %s", m.Name),
 			)
 		}
 		if m.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Description:          %s", m.Description),
 			)
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("   Is Primary For Scope: %t", m.IsPrimary),
+				fmt.Sprintf("    Is Primary For Scope: %t", m.IsPrimary),
 			)
 		}
 
