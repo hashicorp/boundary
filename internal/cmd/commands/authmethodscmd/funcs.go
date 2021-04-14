@@ -106,6 +106,12 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("    Description:         %s", m.Description),
 			)
 		}
+		if true {
+			output = append(output,
+				fmt.Sprintf("   Is Primary For Scope: %t", m.IsPrimary),
+			)
+		}
+
 		if len(m.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -119,11 +125,12 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 
 func printItemTable(in *authmethods.AuthMethod) string {
 	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Type":         in.Type,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+		"ID":                   in.Id,
+		"Version":              in.Version,
+		"Type":                 in.Type,
+		"Created Time":         in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":         in.UpdatedTime.Local().Format(time.RFC1123),
+		"Is Primary For Scope": in.IsPrimary,
 	}
 
 	if in.Name != "" {
