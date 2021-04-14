@@ -2,8 +2,6 @@ module github.com/hashicorp/boundary
 
 go 1.15
 
-replace github.com/hashicorp/boundary/api => ./api
-
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.37.0
