@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
-
 	jobRepo "github.com/hashicorp/boundary/internal/scheduler/job"
 )
 
