@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -102,17 +103,6 @@ func (t *Token) SetTableName(n string) {
 	t.tableName = n
 }
 
-func (t *Token) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-type": []string{"credential-vault-token"},
-		"op-type":       []string{op.String()},
-	}
-	if t.StoreId != "" {
-		metadata["store-id"] = []string{t.StoreId}
-	}
-	return metadata
-}
-
 func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(Token).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, t.Token, nil); err != nil {
@@ -144,4 +134,22 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 		exp,
 	}
 	return
+}
+
+func (t *Token) oplogMessage(opType db.OpType) *oplog.Message {
+	msg := oplog.Message{
+		Message:  t,
+		TypeName: t.TableName(),
+	}
+	switch opType {
+	case db.CreateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case db.UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+		// msg.FieldMaskPaths = opts.WithFieldMaskPaths
+		// msg.SetToNullPaths = opts.WithNullPaths
+	case db.DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	}
+	return &msg
 }

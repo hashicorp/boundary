@@ -81,7 +81,8 @@ func newClient(c *clientConfig) (*client, error) {
 }
 
 // Ping calls the /sys/health Vault endpoint and returns an error if no
-// response is returned. See
+// response is returned. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
 func (c *client) Ping() error {
 	const op = "vault.(client).Ping"
@@ -97,11 +98,25 @@ func (c *client) Ping() error {
 }
 
 // RenewToken calls the /auth/token/renew-self Vault endpoint and returns
-// the vault.Secret response. See
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
 func (c *client) RenewToken() (*vault.Secret, error) {
 	const op = "vault.(client).RenewToken"
 	t, err := c.cl.Auth().Token().RenewSelf(0)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return t, nil
+}
+
+// LookupToken calls the /auth/token/lookup-self Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
+func (c *client) LookupToken() (*vault.Secret, error) {
+	const op = "vault.(client).LookupToken"
+	t, err := c.cl.Auth().Token().LookupSelf()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}

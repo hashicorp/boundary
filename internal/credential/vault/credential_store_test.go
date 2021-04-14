@@ -33,8 +33,6 @@ func TestCredentialStore_New(t *testing.T) {
 		opts         []Option
 	}
 
-	// TODO(mgaffney) 03/2021: Add vault token to tests
-
 	tests := []struct {
 		name    string
 		args    args

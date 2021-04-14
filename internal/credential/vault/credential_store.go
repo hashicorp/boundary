@@ -95,3 +95,6 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+// TODO(mgaffney) 04/2021: add private method to renew token (maybe here or
+// could be a new unexported struct)

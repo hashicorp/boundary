@@ -75,3 +75,41 @@ func tokenExpirationTime(t *testing.T, s *vault.Secret) time.Time {
 	require.NoError(err)
 	return et
 }
+
+func TestClient_LookupToken(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	v, cleanup := NewTestVaultServer(t, TestNoTLS)
+	defer cleanup()
+	require.NotNil(v)
+	secret := v.CreateToken(t)
+	require.NotNil(secret)
+
+	token, err := secret.TokenID()
+	require.NoError(err)
+	assert.NotEmpty(token)
+	require.Equal(token, secret.Auth.ClientToken)
+	secretLookup := v.LookupToken(t, token)
+	t.Log(testLogVaultSecret(t, secretLookup))
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      token,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	require.NoError(client.Ping())
+
+	tokenLookup, err := client.LookupToken()
+	require.NoError(err)
+	require.NotNil(tokenLookup)
+
+	t.Log(testLogVaultSecret(t, tokenLookup))
+
+	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, tokenLookup)
+	assert.True(t1.Equal(t2))
+}

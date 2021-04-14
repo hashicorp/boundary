@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -20,7 +19,7 @@ type ClientCertificate struct {
 
 // NewClientCertificate creates a new in memory ClientCertificate.
 func NewClientCertificate(certificate []byte, key []byte) (*ClientCertificate, error) {
-	const op = "vault.newClientCertificate"
+	const op = "vault.NewClientCertificate"
 	if len(certificate) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no certificate")
 	}
@@ -67,17 +66,6 @@ func (c *ClientCertificate) TableName() string {
 // SetTableName sets the table name.
 func (c *ClientCertificate) SetTableName(n string) {
 	c.tableName = n
-}
-
-func (c *ClientCertificate) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-type": []string{"credential-vault-client-certificate"},
-		"op-type":       []string{op.String()},
-	}
-	if c.StoreId != "" {
-		metadata["store-id"] = []string{c.StoreId}
-	}
-	return metadata
 }
 
 func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {

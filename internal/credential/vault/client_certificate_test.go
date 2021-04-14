@@ -112,8 +112,12 @@ func TestClientCertificate_New(t *testing.T) {
 
 			cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
 			got.StoreId = cs.GetPublicId()
-			err2 := rw.Create(context.Background(), got)
+			err2 := rw.Create(ctx, got)
 			assert.NoError(err2)
+
+			insertedCert := allocClientCertificate()
+			require.NoError(rw.LookupWhere(ctx, &insertedCert, "store_id = ?", got.StoreId))
+			require.NoError(insertedCert.decrypt(ctx, databaseWrapper))
 		})
 	}
 }
