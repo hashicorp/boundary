@@ -9,6 +9,7 @@ console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
 module.exports = withHashicorp({
   defaultLayout: true,
   transpileModules: ['is-absolute-url', '@hashicorp/react-.*'],
+  tipBranch: 'main',
   mdx: { resolveIncludes: path.join(__dirname, 'pages/partials') },
 })({
   async redirects() {
