@@ -45,7 +45,7 @@ func New(serverId string, jobRepoFn jobRepo.JobRepoFactory, opt ...Option) (*Sch
 
 // RegisterJob registers a job with the scheduler and persists the job into the repository.
 //
-// • job must be provided and is the implementer of the Job interface.
+// • job must be provided and is an implementer of the Job interface.
 //
 // • code must be provided and is used to uniquely distinguish between the same job implementation.
 //
