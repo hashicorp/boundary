@@ -3,6 +3,8 @@ package scheduler
 import (
 	"context"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // JobId is the unique id assigned to the job after registration, it is generated and
@@ -44,4 +46,18 @@ type JobStatus struct {
 	// each job implementation will determine the definition of
 	// progress by calculating both Completed and Total.
 	Completed, Total int
+}
+
+func validateJob(j Job) error {
+	const op = "scheduler.validateJob"
+	if j == nil {
+		return errors.New(errors.InvalidParameter, op, "missing job")
+	}
+	if j.Name() == "" {
+		return errors.New(errors.InvalidParameter, op, "missing name")
+	}
+	if j.Description() == "" {
+		return errors.New(errors.InvalidParameter, op, "missing description")
+	}
+	return nil
 }

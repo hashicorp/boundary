@@ -144,7 +144,7 @@ func New(conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn)
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -179,10 +179,10 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 		return nil
 	}
 	c.baseCancel()
+	// TODO (lruch): c.scheduler.Shutdown()
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
-	// TODO (lruch): c.scheduler.Shutdown()
 	c.started.Store(false)
 	return nil
 }
