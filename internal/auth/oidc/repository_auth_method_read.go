@@ -61,7 +61,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 
 // getAuthMethods allows the caller to either lookup a specific AuthMethod via
 // its id or search for a set AuthMethods within a set of scopes.  Passing both
-// scopeIds and a authMethodId is an error. The WithUnauthenticatedUser,
+// scopeIds and a authMethod is an error. The WithUnauthenticatedUser,
 // WithLimit and WithOrder options are supported and all other options are
 // ignored.
 //

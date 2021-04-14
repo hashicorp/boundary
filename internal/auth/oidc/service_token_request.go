@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
@@ -21,13 +22,19 @@ import (
 // * Use the authtoken.(Repository).IssueAuthToken to issue the request id's
 // token and mark it as issued in the repo.  If the token is already issue, an
 // error is returned.
-func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFactory, tokenRequestId string) (*authtoken.AuthToken, error) {
+func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFactory, authMethodId, tokenRequestId string) (*authtoken.AuthToken, error) {
 	const op = "oidc.TokenRequest"
 	if kms == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
 	if atRepoFn == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing auth token repo function")
+	}
+	if authMethodId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+	}
+	if tokenRequestId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing token request id")
 	}
 
 	reqTkWrapper, err := unwrapMessage(ctx, tokenRequestId)
@@ -39,6 +46,9 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 	}
 	if reqTkWrapper.AuthMethodId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "request token id wrapper missing auth method id")
+	}
+	if reqTkWrapper.AuthMethodId != authMethodId {
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, reqTkWrapper.AuthMethodId))
 	}
 
 	// tokenRequestId is a proto request.Wrapper, which contains a cipher text field,

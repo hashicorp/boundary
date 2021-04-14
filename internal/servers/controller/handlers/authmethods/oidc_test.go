@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sort"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -125,6 +127,110 @@ func getSetup(t *testing.T) setup {
 	require.NoError(err)
 	require.NotNil(ret.authMethod)
 	return ret
+}
+
+func TestList_FilterNonPublic(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(rw, rw, kmsCache)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kmsCache)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	o, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	// 1 Public
+	i := 0
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+	i++
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, o, oidcam.GetPublicId())
+
+	// 4 private
+	for ; i < 4; i++ {
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
+	}
+
+	// 5 inactive
+	for ; i < 10; i++ {
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
+	}
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	require.NoError(t, err, "Couldn't create new auth_method service.")
+
+	req := &pbs.ListAuthMethodsRequest{
+		ScopeId: o.GetPublicId(),
+		Filter:  `"/item/type"=="oidc"`, // We are concerned about OIDC auth methods being filtered by authn state
+	}
+
+	cases := []struct {
+		name      string
+		reqCtx    context.Context
+		respCount int
+	}{
+		{
+			name:      "unauthenticated",
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			respCount: 1,
+		},
+		{
+			name: "authenticated",
+			reqCtx: func() context.Context {
+				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
+				return auth.NewVerifierContext(context.Background(),
+					nil,
+					iamRepoFn,
+					authTokenRepoFn,
+					serversRepoFn,
+					kmsCache,
+					auth.RequestInfo{
+						Token:       at.GetToken(),
+						TokenFormat: auth.AuthTokenTypeBearer,
+						PublicId:    at.GetPublicId(),
+					})
+			}(),
+			respCount: 10,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.ListAuthMethods(tc.reqCtx, req)
+			assert.NoError(t, err)
+			require.NotNil(t, got)
+			require.Len(t, got.GetItems(), tc.respCount)
+
+			gotSorted := got.GetItems()
+			sort.Slice(gotSorted, func(i, j int) bool {
+				return gotSorted[i].GetDescription().GetValue() < gotSorted[j].GetDescription().GetValue()
+			})
+			for i := 0; i < tc.respCount; i++ {
+				assert.Equal(t, fmt.Sprintf("%d", i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
+			}
+		})
+	}
 }
 
 func TestUpdate_OIDC(t *testing.T) {
@@ -1208,7 +1314,7 @@ func TestChangeState_OIDC(t *testing.T) {
 				Version: mismatchedAM.GetVersion(),
 				Attributes: func() *structpb.Struct {
 					s := toState("active-public")
-					s.Fields["override_oidc_discovery_url_config"] = structpb.NewBoolValue(true)
+					s.Fields["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
 					return s
 				}(),
 			},
@@ -1373,8 +1479,6 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.NotNil(m)
 			require.Contains(m, "auth_url")
 			require.NotEmpty(m["auth_url"])
-			require.Contains(m, "token_url")
-			require.NotEmpty(m["token_url"])
 			require.Contains(m, "token_id")
 			require.NotEmpty(m["token_id"])
 		})
@@ -1443,7 +1547,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, 200*time.Second, tokenPublicId)
+							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, 200*time.Second, tokenPublicId)
 						}(),
 					})
 					require.NoError(t, err)
@@ -1462,7 +1566,7 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
-							return oidc.TestTokenRequestId(t, testAuthMethod, s.kmsCache, -20*time.Second, tokenPublicId)
+							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, -20*time.Second, tokenPublicId)
 						}(),
 					})
 					require.NoError(t, err)

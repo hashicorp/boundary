@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -97,10 +98,12 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
+
+	oidcLogger hclog.Logger
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
+func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
 	if kms == nil {
 		return Service{}, stderrors.New("nil kms provided")
 	}
@@ -116,7 +119,12 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	return Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}, nil
+	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
+	opts := handlers.GetOpts(opt...)
+	if opts.WithLogger != nil {
+		s.oidcLogger = opts.WithLogger.Named("oidc")
+	}
+	return s, nil
 }
 
 var _ pbs.AuthMethodServiceServer = Service{}
@@ -133,7 +141,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -149,7 +157,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -368,12 +376,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(am)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, unauthn bool) ([]*pb.AuthMethod, error) {
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(unauthn))
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +526,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		}
 
 		var opts []oidc.Option
-		if attrs.GetOverrideOidcDiscoveryUrlConfig() {
+		if attrs.GetDisableDiscoveredConfigValidation() {
 			opts = append(opts, oidc.WithForce())
 		}
 
