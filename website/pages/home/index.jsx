@@ -186,36 +186,70 @@ export default function HomePage() {
               content:
                 'Enables privileged sessions for users and applications based on user identity and role.',
               icon: require('./img/features/identity-based-access.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-intro',
+              },
             },
             {
               title: 'Session management',
               content:
                 'Ensures access control regardless of user or operators’ infrastructure.',
               icon: require('./img/features/session-management.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/manage-sessions?in=boundary/common-workflows',
+              },
             },
             {
               title: 'Platform agnostic',
               content:
                 'One workflow for identity-based access across clouds, kubernetes clusters, and on-prem infrastructure.',
               icon: require('./img/features/platform-agnosticity.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url: '/docs/getting-started/connect-to-target',
+              },
             },
             {
               title: 'Session visibility',
               content:
                 'Visibility into session metrics, events, logs, and traces with the ability to export data to business intelligence and event monitoring tools.',
               icon: require('./img/features/session-visibility.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/manage-sessions?in=boundary/common-workflows',
+              },
             },
             {
               title: 'Infrastructure as code',
               content:
                 'Define policies and manage Boundary with an Infrastructure as Code approach. Terraform provider supports the full breadth of Boundary configurations.',
               icon: require('./img/features/config-as-code.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url:
+                  'https://learn.hashicorp.com/tutorials/boundary/getting-started-config',
+              },
             },
             {
               title: 'Manage dynamic environments',
               content:
                 'Secure access to dynamic systems and applications with automated controls.',
               icon: require('./img/features/managing-dynamic-environments.svg?url'),
+              link: {
+                type: 'inbound',
+                text: 'Learn more',
+                url: '/docs/api-clients',
+              },
             },
           ]}
         />
