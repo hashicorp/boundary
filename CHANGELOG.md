@@ -24,6 +24,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   output of the `Authenticate` function returns a map, from which a concrete
   type can be easily umarshaled (see the updated `authenticate password` command
   for an example).
+* Anonymous scope/auth method listing: When listing auth methods and scopes
+  without authentication (that is, as the anonymous user `u_anon`), only
+  information necessary for navigation to an auth method and authenticating to
+  the auth method is now output. Granting `u_anon` list access to other resource
+  types will not currently filter any information out.
 
 ### New and Improved
 

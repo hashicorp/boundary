@@ -369,13 +369,8 @@ func TestList(t *testing.T) {
 
 			// Now check with anonymous user
 			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
-			if tc.err != nil {
-				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
-				return
-			}
 			require.NoError(gErr)
-			for _, g := range got.Items {
+			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
 				assert.Nil(g.UpdatedTime)
