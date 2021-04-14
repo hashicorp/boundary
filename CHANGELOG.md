@@ -6,24 +6,29 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* authentication: The `auth-methods/<id>:authenticate:login` action is
-  deprecated and will be removed in a few releases. (Yes, this was meant to
-  deprecate the `authenticate` action; apologies for going back on this!) To
-  better support future auth methods, and especially the potential for plugins,
-  rather than defining custom actions on the URL path the `authenticate` action
-  will consume both a map of parameters but also a `command` parameter that
-  specifies the type of command. This allows workflows that require multiple
-  steps, such as OIDC, to not require custom subactions. Additionally, the
-  `credentials` map in the `authenticate` action has been renamed `attributes`
-  to better match other types of resources. `credentials` will still work for
-  now but will be removed in a few releases. Finally, in the Go SDK, the
-  `Authenticate` function now requires a `command` value to be passed in.
+* The `auth-methods/<id>:authenticate:login` action is deprecated and will be
+  removed in a few releases. (Yes, this was meant to deprecate the
+  `authenticate` action; apologies for going back on this!) To better support
+  future auth methods, and especially the potential for plugins, rather than
+  defining custom actions on the URL path the `authenticate` action will consume
+  both a map of parameters but also a `command` parameter that specifies the
+  type of command. This allows workflows that require multiple steps, such as
+  OIDC, to not require custom subactions. Additionally, the `credentials` map in
+  the `authenticate` action has been renamed `attributes` to better match other
+  types of resources. `credentials` will still work for now but will be removed
+  in a few releases. Finally, in the Go SDK, the `Authenticate` function now
+  requires a `command` value to be passed in.
 * Related to the above change, the output of an API
   `auth-methods/<id>:authenticate` call will return the given `command` value
   and a map of attributes that depend on the given command. On the SDK side, the
   output of the `Authenticate` function returns a map, from which a concrete
   type can be easily umarshaled (see the updated `authenticate password` command
   for an example).
+* Anonymous scope/auth method listing: When listing auth methods and scopes
+  without authentication (that is, as the anonymous user `u_anon`), only
+  information necessary for navigation to an auth method and authenticating to
+  the auth method is now output. Granting `u_anon` list access to other resource
+  types will not currently filter any information out.
 
 ### New and Improved
 
