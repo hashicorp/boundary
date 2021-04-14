@@ -239,7 +239,12 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Match(errors.T(errors.InvalidParameter), err):
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unable to update auth method: %v.", err)
+		default:
+			return nil, err
+		}
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
