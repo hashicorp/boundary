@@ -106,6 +106,12 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("    Description:         %s", m.Description),
 			)
 		}
+		if true {
+			output = append(output,
+				fmt.Sprintf("    Is Primary:          %t", m.IsPrimary),
+			)
+		}
+
 		if len(m.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -124,6 +130,7 @@ func printItemTable(in *authmethods.AuthMethod) string {
 		"Type":         in.Type,
 		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
 		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+		"Is Primary":   in.IsPrimary,
 	}
 
 	if in.Name != "" {
