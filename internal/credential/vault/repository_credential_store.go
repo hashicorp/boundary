@@ -91,7 +91,6 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if err != nil {
 		return nil, err
 	}
-	token.StoreId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
