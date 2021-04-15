@@ -2,7 +2,25 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Bug Fixes
+
+* cors: Fix allowing all origins by default
+  [PR](https://github.com/hashicorp/boundary/pull/1134)
+
 ## 0.2.0 (2021/04/14)
+
+### Known Issues
+
+* By default, CORS support will allow all origins. This is due to a bug in how
+  the set of allowed origins was processed, in conjunction with changes to CORS
+  behavior to automatically include the origin of the Desktop Client. This will
+  be fixed in 0.2.1. In the meantime, this can be worked around by either
+  explicitly disabing CORS with `cors_enabled = false` in the `listener` config
+  block with purpose `api`; or setting an `allowed_origins` field to have values
+  other than `serve://boundary` (including values that do not map to any real
+  origin).
 
 ### Deprecations/Changes
 
