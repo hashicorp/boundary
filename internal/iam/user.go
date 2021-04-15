@@ -49,7 +49,8 @@ func NewUser(scopeId string, opt ...Option) (*User, error) {
 	return u, nil
 }
 
-func allocUser() User {
+// AllocUser will allocate an empty user
+func AllocUser() User {
 	return User{
 		User: &store.User{},
 	}
@@ -111,8 +112,14 @@ func (u *User) SetTableName(n string) {
 // userAccountInfo provides a way to represent a user along with the user's
 // account info from the scope's primary auth method
 type userAccountInfo struct {
-	*store.GroupMemberView
+	*store.User
 	tableName string `gorm:"-"`
+}
+
+func (u *userAccountInfo) shallowConversion() *User {
+	return &User{
+		User: u.User,
+	}
 }
 
 // TableName provides an overridden gorm table name..
