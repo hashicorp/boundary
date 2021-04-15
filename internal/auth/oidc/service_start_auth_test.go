@@ -158,18 +158,16 @@ func Test_StartAuth(t *testing.T) {
 			}
 
 			now := time.Now()
-			authUrl, tokenUrl, tokenId, err := StartAuth(ctx, tt.repoFn, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
+			authUrl, tokenId, err := StartAuth(ctx, tt.repoFn, tt.authMethod.PublicId, WithRoundtripPayload(tt.roundTripper))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(authUrl)
-				assert.Nil(tokenUrl)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch, err)
 				assert.Contains(err.Error(), tt.wantErrContains)
 				return
 			}
 			require.NoError(err)
 			require.NotNil(authUrl)
-			require.NotNil(tokenUrl)
 
 			authParams, err := url.ParseQuery(authUrl.RawQuery)
 			require.NoError(err)

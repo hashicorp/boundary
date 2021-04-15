@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
@@ -81,7 +82,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -531,7 +532,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -552,7 +553,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -576,7 +577,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}

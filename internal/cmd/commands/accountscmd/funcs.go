@@ -37,10 +37,10 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "change-password":
-		return "Change the password on an account resource"
+		return "Change the password on an account"
 
 	case "set-password":
-		return "Directly set the password on an account resource"
+		return "Directly set the password on an account"
 
 	default:
 		return ""

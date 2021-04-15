@@ -134,9 +134,6 @@ message OidcAuthMethodAuthenticateStartResponse {
 	// The returned authentication URL
 	string auth_url = 10 [json_name="auth_url"];
 
-	// The returned token URL
-	string token_url = 20 [json_name="token_url"];
-
 	// The returned token ID
 	string token_id = 30 [json_name="token_id"];
 }
@@ -165,4 +162,12 @@ message OidcAuthMethodAuthenticateCallbackResponse {
 message OidcAuthMethodAuthenticateTokenRequest {
 	// The ID of the pending token
 	string token_id = 10 [json_name="token_id"];
+}
+
+// Internal only: the structure of a token response if it _does not_ contain a
+// token.
+message OidcAuthMethodAuthenticateTokenResponse {
+	// The status. This will always be "unknown". It will never be forwarded to
+	// the consumer.
+	string status = 10;
 }

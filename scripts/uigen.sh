@@ -12,7 +12,7 @@ fi
 
 (
 	cd "$UI_CLONE_DIR"
-	if ! yarn install && yarn build; then
+	if ! (yarn install && yarn build); then
 		echo "Please ensure Node v14+ and Yarn v1.22.10+ are installed."
 	fi
 )
