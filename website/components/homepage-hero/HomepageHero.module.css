@@ -45,10 +45,6 @@
 
         & :global(.progress-bar) {
           background-color: var(--gray-5);
-
-          & > span {
-            background: var(--boundary);
-          }
         }
       }
     }

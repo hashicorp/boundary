@@ -58,3 +58,7 @@
 .boundary-clickthrough-desktop-video {
   max-width: 800px;
 }
+
+.g-type-body {
+  color: var(--gray-2);
+}
