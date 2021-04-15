@@ -22,6 +22,8 @@ func Test_TestCredentialStores(t *testing.T) {
 	assert.Len(css, count)
 	for _, cs := range css {
 		assert.NotEmpty(cs.GetPublicId())
+		assert.NotNil(cs.Token())
+		assert.NotNil(cs.ClientCertificate())
 	}
 }
 

@@ -74,7 +74,7 @@ func TestCredentialStore_New(t *testing.T) {
 				token:        []byte("token"),
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -92,7 +92,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -111,7 +111,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -130,7 +130,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -149,7 +149,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -168,7 +168,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:       scope.PublicId,
 					VaultAddress:  "https://vault.consul.service",
@@ -187,7 +187,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token: []byte("token"),
+				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:       scope.PublicId,
 					VaultAddress:  "https://vault.consul.service",
@@ -206,7 +206,7 @@ func TestCredentialStore_New(t *testing.T) {
 				},
 			},
 			want: &CredentialStore{
-				token:      []byte("token"),
+				inputToken: []byte("token"),
 				clientCert: clientCert,
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,

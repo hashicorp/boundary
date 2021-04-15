@@ -12,8 +12,9 @@ type CredentialStore struct {
 	*store.CredentialStore
 	tableName string `gorm:"-"`
 
-	clientCert *ClientCertificate `gorm:"-"`
-	token      []byte             `gorm:"-"`
+	clientCert  *ClientCertificate `gorm:"-"`
+	inputToken  []byte             `gorm:"-"`
+	outputToken *Token             `gorm:"-"`
 }
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
@@ -34,7 +35,7 @@ func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt .
 
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
-		token:      token,
+		inputToken: token,
 		clientCert: opts.withClientCert,
 		CredentialStore: &store.CredentialStore{
 			ScopeId:       scopeId,
@@ -57,15 +58,15 @@ func allocCredentialStore() *CredentialStore {
 }
 
 func (cs *CredentialStore) clone() *CredentialStore {
-	tokenCopy := make([]byte, len(cs.token))
-	copy(tokenCopy, cs.token)
+	tokenCopy := make([]byte, len(cs.inputToken))
+	copy(tokenCopy, cs.inputToken)
 	var clientCertCopy *ClientCertificate
 	if cs.clientCert != nil {
 		clientCertCopy = cs.clientCert.clone()
 	}
 	cp := proto.Clone(cs.CredentialStore)
 	return &CredentialStore{
-		token:           tokenCopy,
+		inputToken:      tokenCopy,
 		clientCert:      clientCertCopy,
 		CredentialStore: cp.(*store.CredentialStore),
 	}
@@ -94,6 +95,16 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["scope-id"] = []string{cs.ScopeId}
 	}
 	return metadata
+}
+
+// Token returns the current vault token if available.
+func (cs *CredentialStore) Token() *Token {
+	return cs.outputToken
+}
+
+// ClientCertificate returns the client certificate if available.
+func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
+	return cs.clientCert
 }
 
 // TODO(mgaffney) 04/2021: add private method to renew token (maybe here or

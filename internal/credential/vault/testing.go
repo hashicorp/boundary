@@ -22,10 +22,16 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
+
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	assert.NoError(err)
+	require.NotNil(databaseWrapper)
+
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
-
-		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("token%d", i)))
+		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("vault-token-%s-%d", scopeId, i)))
 		assert.NoError(err)
 		require.NotNil(cs)
 		id, err := newCredentialStoreId()
@@ -33,14 +39,31 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 		require.NotEmpty(id)
 		cs.PublicId = id
 
-		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
 				return iw.Create(ctx, cs)
 			},
 		)
-
 		require.NoError(err2)
+
+		token := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 1)[0]
+		cs.outputToken = token
+
+		inCert := testClientCert(t, testCaCert(t))
+		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+		require.NoError(err)
+		require.NotEmpty(clientCert)
+		clientCert.StoreId = id
+		require.NoError(clientCert.encrypt(ctx, databaseWrapper))
+
+		_, err3 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, clientCert)
+			},
+		)
+		require.NoError(err3)
+
+		cs.clientCert = clientCert
 		css = append(css, cs)
 	}
 	return css
@@ -91,7 +114,7 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%d", i)), 5*time.Minute)
+		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%s-%d", storeId, i)), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(inToken)
 
