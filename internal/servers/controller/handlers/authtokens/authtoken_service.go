@@ -22,6 +22,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Delete,
 	}

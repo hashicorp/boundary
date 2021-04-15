@@ -87,6 +87,10 @@ func TestAction(t *testing.T) {
 			action: ChangeState,
 			want:   "change-state",
 		},
+		{
+			action: NoOp,
+			want:   "no-op",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

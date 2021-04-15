@@ -33,6 +33,7 @@ func init() {
 	}
 
 	IdActions[auth.PasswordSubtype] = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
