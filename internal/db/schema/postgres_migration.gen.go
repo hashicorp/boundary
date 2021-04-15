@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2100,
+		binarySchemaVersion: 3001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5637,13 +5637,11 @@ select
     '' as full_name,
     '' as email
 from
-    iam_scope s,
     auth_account aa,
     auth_password_account pa
 where
-    aa.public_id = pa.public_id and 
-    aa.auth_method_id = s.primary_auth_method_id;
-
+    aa.public_id = pa.public_id;
+    
 -- iam_user_acct_info provides a simple way to retrieve entries that include
 -- both the iam_user fields with an outer join to the user's account info.
 create view iam_user_acct_info as
@@ -5867,6 +5865,13 @@ from
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
+`),
+			3001: []byte(`
+-- this constraint is intended to ensure that a user cannot have more than one
+-- account per auth_method
+alter table auth_account
+  add constraint auth_account_auth_method_id_public_id_uq
+    unique(auth_method_id, iam_user_id);
 `),
 		},
 	}
