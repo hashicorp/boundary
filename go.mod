@@ -35,7 +35,7 @@ require (
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.0
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/go-wordwrap v1.0.1
