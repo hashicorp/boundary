@@ -88,7 +88,6 @@ begin;
         on update cascade,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version,
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
@@ -112,9 +111,6 @@ begin;
   create unique index credential_vault_token_current_status_constraint
     on credential_vault_token (store_id)
     where status = 'current';
-
-  create trigger update_version_column after update on credential_vault_token
-    for each row execute procedure update_version_column();
 
   create trigger update_time_column before update on credential_vault_token
     for each row execute procedure update_time_column();
