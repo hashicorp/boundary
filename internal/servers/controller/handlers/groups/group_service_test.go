@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-members", "set-members", "remove-members"}
+
 // Creates an org scoped group and a project scoped group.
 func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -106,7 +108,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
-		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	wantProjGroup := &pb.Group{
@@ -125,7 +127,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
-		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -227,7 +229,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       og.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       og.GetUpdateTime().GetTimestamp(),
 			Version:           1,
-			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalGroups = append(totalGroups, wantOrgGroups[i])
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
@@ -238,7 +240,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       pg.GetUpdateTime().GetTimestamp(),
 			Version:           1,
-			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalGroups = append(totalGroups, wantProjGroups[i])
 	}
@@ -450,7 +452,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -469,7 +471,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -490,7 +492,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -632,7 +634,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -663,7 +665,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -695,7 +697,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -727,7 +729,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -790,7 +792,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -821,7 +823,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -852,7 +854,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
