@@ -17,8 +17,8 @@ import (
 
 func Test_PrimaryAuthMethodChanges(t *testing.T) {
 	t.Parallel()
-	const priorMigration = 2086
-	const primaryAuthMethodMigration = 2087
+	const priorMigration = 2006
+	const primaryAuthMethodMigration = 2007
 	t.Run("migrate-store", func(t *testing.T) {
 		// this is a sequential test which relies on:
 		// 1) initializing the db using a migration up to the "priorMigration"
