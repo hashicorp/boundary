@@ -9,13 +9,13 @@ console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
 module.exports = withHashicorp({
   defaultLayout: true,
   transpileModules: ['is-absolute-url', '@hashicorp/react-.*'],
-  tipBranch: 'main',
   mdx: { resolveIncludes: path.join(__dirname, 'pages/partials') },
 })({
   async redirects() {
     return await redirects
   },
   svgo: { plugins: [{ removeViewBox: false }] },
+  tipBranch: 'main',
   env: {
     HASHI_ENV: process.env.HASHI_ENV || 'development',
     SEGMENT_WRITE_KEY: 'JkNZiSgwVRAAFrkqqdHLxf0xfcZuhYYc',
