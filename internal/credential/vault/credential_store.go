@@ -11,13 +11,15 @@ import (
 type CredentialStore struct {
 	*store.CredentialStore
 	tableName string `gorm:"-"`
+
+	clientCert *ClientCertificate `gorm:"-"`
+	token      []byte             `gorm:"-"`
 }
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
-// server at vaultAddress assigned to scopeId.
-// Name, description, CA cert, namespace, TLS server name, and TLS skip
-// verify are the only valid options.
-// All other options are ignored.
+// server at vaultAddress assigned to scopeId. Name, description, CA cert,
+// client cert, namespace, TLS server name, and TLS skip verify are the
+// only valid options. All other options are ignored.
 func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
 	const op = "vault.NewCredentialStore"
 	if scopeId == "" {
@@ -30,10 +32,10 @@ func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt .
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
 
-	// TODO(mgaffney) 03/2021: handle token
-
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
+		token:      token,
+		clientCert: opts.withClientCert,
 		CredentialStore: &store.CredentialStore{
 			ScopeId:       scopeId,
 			Name:          opts.withName,
@@ -55,8 +57,16 @@ func allocCredentialStore() *CredentialStore {
 }
 
 func (cs *CredentialStore) clone() *CredentialStore {
+	tokenCopy := make([]byte, len(cs.token))
+	copy(tokenCopy, cs.token)
+	var clientCertCopy *ClientCertificate
+	if cs.clientCert != nil {
+		clientCertCopy = cs.clientCert.clone()
+	}
 	cp := proto.Clone(cs.CredentialStore)
 	return &CredentialStore{
+		token:           tokenCopy,
+		clientCert:      clientCertCopy,
 		CredentialStore: cp.(*store.CredentialStore),
 	}
 }
@@ -85,3 +95,6 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+// TODO(mgaffney) 04/2021: add private method to renew token (maybe here or
+// could be a new unexported struct)

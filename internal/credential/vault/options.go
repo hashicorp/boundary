@@ -17,10 +17,11 @@ type options struct {
 	withName          string
 	withDescription   string
 	withLimit         int
-	withCACert        string
+	withCACert        []byte
 	withNamespace     string
 	withTlsServerName string
 	withTlsSkipVerify bool
+	withClientCert    *ClientCertificate
 }
 
 func getDefaultOptions() options {
@@ -52,7 +53,7 @@ func WithLimit(l int) Option {
 
 // WithCACert provides an optional PEM-encoded certificate
 // to verify the Vault server's SSL certificate.
-func WithCACert(cert string) Option {
+func WithCACert(cert []byte) Option {
 	return func(o *options) {
 		o.withCACert = cert
 	}
@@ -83,4 +84,10 @@ func WithTlsSkipVerify(skipVerify bool) Option {
 	}
 }
 
-// TODO(mgaffney) 03/2021: Add option for client certificate
+// WithClientCert provides an optional ClientCertificate to use for TLS
+// authentication to a Vault server.
+func WithClientCert(clientCert *ClientCertificate) Option {
+	return func(o *options) {
+		o.withClientCert = clientCert
+	}
+}

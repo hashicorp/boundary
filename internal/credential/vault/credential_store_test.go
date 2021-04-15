@@ -4,11 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestCredentialStore_New(t *testing.T) {
@@ -19,14 +21,17 @@ func TestCredentialStore_New(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	scope := prj
 
+	inCert := testClientCert(t, testCaCert(t))
+	clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+	require.NoError(t, err)
+	require.NotNil(t, clientCert)
+
 	type args struct {
 		scopeId      string
 		vaultAddress string
-		token        string
+		token        []byte
 		opts         []Option
 	}
-
-	// TODO(mgaffney) 03/2021: Add vault token to tests
 
 	tests := []struct {
 		name    string
@@ -38,7 +43,7 @@ func TestCredentialStore_New(t *testing.T) {
 			name: "missing-scope-id",
 			args: args{
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 			},
 			want:    nil,
 			wantErr: true,
@@ -47,7 +52,7 @@ func TestCredentialStore_New(t *testing.T) {
 			name: "missing-vault-address",
 			args: args{
 				scopeId: scope.PublicId,
-				token:   "token",
+				token:   []byte("token"),
 			},
 			want:    nil,
 			wantErr: true,
@@ -66,9 +71,10 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -80,12 +86,13 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -98,12 +105,13 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
 					WithDescription("test-description"),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -116,16 +124,17 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
-					WithCACert("ca-cert"),
+					WithCACert([]byte("ca-cert")),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
-					CaCert:       "ca-cert",
+					CaCert:       []byte("ca-cert"),
 				},
 			},
 		},
@@ -134,12 +143,13 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
 					WithNamespace("kazmierczak"),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:      scope.PublicId,
 					VaultAddress: "https://vault.consul.service",
@@ -152,12 +162,13 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
 					WithTlsServerName("crews"),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:       scope.PublicId,
 					VaultAddress:  "https://vault.consul.service",
@@ -170,16 +181,36 @@ func TestCredentialStore_New(t *testing.T) {
 			args: args{
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
-				token:        "token",
+				token:        []byte("token"),
 				opts: []Option{
 					WithTlsSkipVerify(true),
 				},
 			},
 			want: &CredentialStore{
+				token: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					ScopeId:       scope.PublicId,
 					VaultAddress:  "https://vault.consul.service",
 					TlsSkipVerify: true,
+				},
+			},
+		},
+		{
+			name: "valid-with-client-cert",
+			args: args{
+				scopeId:      scope.PublicId,
+				vaultAddress: "https://vault.consul.service",
+				token:        []byte("token"),
+				opts: []Option{
+					WithClientCert(clientCert),
+				},
+			},
+			want: &CredentialStore{
+				token:      []byte("token"),
+				clientCert: clientCert,
+				CredentialStore: &store.CredentialStore{
+					ScopeId:      scope.PublicId,
+					VaultAddress: "https://vault.consul.service",
 				},
 			},
 		},
@@ -189,7 +220,7 @@ func TestCredentialStore_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, []byte(tt.args.token), tt.args.opts...)
+			got, err := NewCredentialStore(tt.args.scopeId, tt.args.vaultAddress, tt.args.token, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -200,6 +231,7 @@ func TestCredentialStore_New(t *testing.T) {
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)
+			assert.Empty(cmp.Diff(tt.want, got.clone(), protocmp.Transform()))
 
 			id, err := newCredentialStoreId()
 			assert.NoError(err)
