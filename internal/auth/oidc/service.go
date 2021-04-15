@@ -24,20 +24,15 @@ const (
 
 	// FinalRedirectEndpoint is the endpoint that the oidc callback redirect
 	// client to after the callback is complete.
-	FinalRedirectEndpoint = "%s/authentication-complete" // TODO jimlambrt 2/2021 get redirect from FE before PR
+	FinalRedirectEndpoint = "%s/authentication-complete"
 
 	// AuthenticationErrorsEndpoint is the endpoint that will returned as the final redirect
 	// from the callback when there are auth errors
-	AuthenticationErrorsEndpoint = "%s/authentication-error" // TODO jimlambrt 3/2021 get endpoint from FE before PR
+	AuthenticationErrorsEndpoint = "%s/authentication-error"
 
 	// CallbackEndpoint is the endpoint for the oidc callback which will be
 	// included in the auth URL returned when an authen attempted is kicked off.
-	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
-
-	// TokenEndpoint is the endpoint the client will poll to see if their
-	// authentication attempt has completed and if successful, they'll
-	// retrieve their Boundary token.
-	TokenEndpoint = "%s/v1/auth-methods/%s:authenticate:token" // TODO jimlambrt 2/2021 get endpoint from Todd before PR
+	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback"
 )
 
 type (
@@ -162,7 +157,7 @@ func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrap
 // both a Request.State and Request.Token.
 //
 // It first checks the cache of derived wrappers. If it's not found in the cache, it
-// generates a key based on the scope's oidc DEK, using the scopeId and authMethodId
+// generates a key based on the scope's oidc DEK, using the scopeId and authMethod
 // as salt and info for derivation, creates a wrapper for the new key, adds that wrapper
 // to the cache and the returns the wrapper for the new key.
 //
@@ -193,7 +188,7 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 		return derivedWrapper.(*aead.Wrapper), nil
 	}
 
-	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethodId
+	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
 	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
 		return nil, errors.Wrap(err, op)

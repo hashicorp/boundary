@@ -106,7 +106,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}

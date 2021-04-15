@@ -130,7 +130,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 			f.BoolVar(&base.BoolVar{
 				Name:   disableDiscoveredConfigValidationFlagName,
 				Target: &c.flagDisableDiscoveredConfigValidation,
-				Usage:  "Disable validating the given parameters against configuration from the authorization server's discovery URL. This must be specified every time there is an update or state change; not specifying it is equivalent to setting it to false.",
+				Usage:  "Disable validating the given auth method against configuration from the authorization server's discovery URL. This must be specified every time an unvalidatable auth method is updated or state changed; not specifying it is equivalent to setting it to false.",
 			})
 		case dryRunFlagName:
 			f.BoolVar(&base.BoolVar{
@@ -163,6 +163,16 @@ func (c *OidcCommand) extraOidcHelpFunc(helpMap map[string]func() string) string
 			"  Update an oidc-type auth method given its ID. Example:",
 			"",
 			`    $ boundary auth-methods update oidc -id amoidc_1234567890 -name "devops" -description "Oidc auth-method for DevOps"`,
+			"",
+			"",
+		})
+	case "change-state":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods change-state oidc [options] [args]",
+			"",
+			"  Change the active and visibility state of an oidc-type auth method given its ID. Example:",
+			"",
+			`    $ boundary auth-methods change-state oidc -id amoidc_1234567890 -state "public-active"`,
 			"",
 			"",
 		})
@@ -245,6 +255,9 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 func executeExtraOidcActionsImpl(c *OidcCommand, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
 	switch c.Func {
 	case "change-state":
+		if c.flagDisableDiscoveredConfigValidation {
+			opts = append(opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
+		}
 		return amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
 	}
 	return origResult, origError

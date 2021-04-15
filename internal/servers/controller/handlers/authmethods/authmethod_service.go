@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -96,11 +97,14 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
+
+	oidcLogger hclog.Logger
 }
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory) (Service, error) {
-	const op = "authmethods.NewService"
+func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
+  const op = "authmethods.NewService"
+  
 	if kms == nil {
 		return Service{}, errors.New(errors.InvalidParameter, op, "missing kms")
 	}
@@ -116,7 +120,12 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	return Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}, nil
+	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
+	opts := handlers.GetOpts(opt...)
+	if opts.WithLogger != nil {
+		s.oidcLogger = opts.WithLogger.Named("oidc")
+	}
+	return s, nil
 }
 
 var _ pbs.AuthMethodServiceServer = Service{}
@@ -133,7 +142,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -149,7 +158,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +240,12 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	}
 	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Match(errors.T(errors.InvalidParameter), err):
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unable to update auth method: %v.", err)
+		default:
+			return nil, err
+		}
 	}
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
@@ -252,7 +266,12 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 	}
 	am, err := s.changeStateInRepo(ctx, req)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Match(errors.T(errors.InvalidParameter), err):
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Unable to change auth method state: %v.", err)
+		default:
+			return nil, err
+		}
 	}
 	am.Scope = authResults.Scope
 	am.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.Id, IdActions[auth.OidcSubtype]).Strings()
@@ -368,19 +387,20 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(am)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
+
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds)
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(anonUser))
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ol {
-		ou, err := toAuthMethodProto(u)
+		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +416,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 		return nil, errors.Wrap(err, op)
 	}
 	for _, u := range pl {
-		ou, err := toAuthMethodProto(u)
+		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -454,7 +474,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
 		if dryRun {
-			storageToWire = func(in auth.AuthMethod) (*pb.AuthMethod, error) {
+			storageToWire = func(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
 				am, err := toAuthMethodProto(in)
 				if err != nil {
 					return nil, errors.Wrap(err, op)
@@ -521,7 +541,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		}
 
 		var opts []oidc.Option
-		if attrs.GetOverrideOidcDiscoveryUrlConfig() {
+		if attrs.GetDisableDiscoveredConfigValidation() {
 			opts = append(opts, oidc.WithForce())
 		}
 
@@ -615,14 +635,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
+func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := &pb.AuthMethod{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		IsPrimary:   in.GetIsPrimaryAuthMethod(),
+		Id:        in.GetPublicId(),
+		ScopeId:   in.GetScopeId(),
+		IsPrimary: in.GetIsPrimaryAuthMethod(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -630,9 +648,17 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
+	}
 	switch i := in.(type) {
 	case *password.AuthMethod:
 		out.Type = auth.PasswordSubtype.String()
+		if anonListing {
+			break
+		}
 		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
 			MinLoginNameLength: i.GetMinLoginNameLength(),
 			MinPasswordLength:  i.GetMinPasswordLength(),
@@ -643,6 +669,9 @@ func toAuthMethodProto(in auth.AuthMethod) (*pb.AuthMethod, error) {
 		out.Attributes = st
 	case *oidc.AuthMethod:
 		out.Type = auth.OidcSubtype.String()
+		if anonListing {
+			break
+		}
 		attrs := &pb.OidcAuthMethodAttributes{
 			ClientId:          wrapperspb.String(i.GetClientId()),
 			ClientSecretHmac:  i.ClientSecretHmac,

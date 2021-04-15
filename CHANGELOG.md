@@ -2,43 +2,45 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.2.0 (2021/04/14)
 
 ### Deprecations/Changes
 
-* authentication: The `auth-methods/<id>:authenticate:login` action is
-  deprecated and will be removed in a few releases. (Yes, this was meant to
-  deprecate the `authenticate` action; apologies for going back on this!) To
-  better support future auth methods, and especially the potential for plugins,
-  rather than defining custom actions on the URL path the `authenticate` action
-  will consume both a map of parameters but also a `command` parameter that
-  specifies the type of command. This allows workflows that require multiple
-  steps, such as OIDC, to not require custom subactions. Additionally, the
-  `credentials` map in the `authenticate` action has been renamed `attributes`
-  to better match other types of resources. `credentials` will still work for
-  now but will be removed in a few releases. Finally, in the Go SDK, the
-  `Authenticate` function now requires a `command` value to be passed in.
+* The `auth-methods/<id>:authenticate:login` action is deprecated and will be
+  removed in a few releases. (Yes, this was meant to deprecate the
+  `authenticate` action; apologies for going back on this!) To better support
+  future auth methods, and especially the potential for plugins, rather than
+  defining custom actions on the URL path the `authenticate` action will consume
+  both a map of parameters but also a `command` parameter that specifies the
+  type of command. This allows workflows that require multiple steps, such as
+  OIDC, to not require custom subactions. Additionally, the `credentials` map in
+  the `authenticate` action has been renamed `attributes` to better match other
+  types of resources. `credentials` will still work for now but will be removed
+  in a few releases. Finally, in the Go SDK, the `Authenticate` function now
+  requires a `command` value to be passed in.
 * Related to the above change, the output of an API
   `auth-methods/<id>:authenticate` call will return the given `command` value
   and a map of attributes that depend on the given command. On the SDK side, the
   output of the `Authenticate` function returns a map, from which a concrete
   type can be easily umarshaled (see the updated `authenticate password` command
   for an example).
+* Anonymous scope/auth method listing: When listing auth methods and scopes
+  without authentication (that is, as the anonymous user `u_anon`), only
+  information necessary for navigation to an auth method and authenticating to
+  the auth method is now output. Granting `u_anon` list access to other resource
+  types will not currently filter any information out.
 
 ### New and Improved
 
 * cli/api/sdk: New OIDC auth method type added with support for create, read,
   update, delete, and list (see new cli `oidc` subcommands available on CRUDL
-  operations for examples).
-  [PR](https://github.com/hashicorp/boundary/pull/1090)    
-* cli: support to login using an OIDC auth method (see the new `authenticate
-  password oidc` subcommand for an example) 
+  operations for examples), as well as the ability to authenticate against it
+  via the SDK, CLI, admin UI, and desktop client.
   [PR](https://github.com/hashicorp/boundary/pull/1090)
-* server: When performing recursive listing, `list` action is not longer
-  required to be granted to the calling user. Instead, the given scope acts as
-  the root point (so only results under that scope will be shown), and `list`
-  grant is evaluated per-scope.
-  [PR](https://github.com/hashicorp/boundary/pull/1016)
+* server: When performing recursive listing, `list` action is no longer required
+  to be granted to the calling user. Instead, the given scope acts as the root
+  point (so only results under that scope will be shown), and `list` grant is
+  evaluated per-scope. [PR](https://github.com/hashicorp/boundary/pull/1016)
 * database init: If the database is already initialized, return 0 as the exit
   code. This matches how the `database migrate` command works.
   [PR](https://github.com/hashicorp/boundary/pull/1033)

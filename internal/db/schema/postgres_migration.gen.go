@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2100,
+		binarySchemaVersion: 2020,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,32 +4987,7 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
-			2100: []byte(`
--- auth_password_method_with_is_primary is useful for reading a password auth
--- method with a bool to determine if it's the scope's primary auth method.
-create view auth_password_method_with_is_primary as 
-select 
-  case when s.primary_auth_method_id is not null then
-    true
-  else false end
-  as is_primary_auth_method,    
-  am.public_id,
-  am.scope_id,
-  am.password_conf_id,
-  am.name,
-  am.description,
-  am.create_time,
-  am.update_time,
-  am.version,
-  am.min_login_name_length,
-  am.min_password_length
-from 
-  auth_password_method am
-  left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
-comment on view auth_password_method_with_is_primary is
-'password auth method with an is_primary_auth_method bool';
-`),
-			2080: []byte(`
+			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
 create table log_migration(
   id bigint generated always as identity primary key,
@@ -5060,7 +5035,7 @@ before
 insert on log_migration
   for each row execute procedure log_migration_version();
 `),
-			2083: []byte(`
+			2003: []byte(`
 -- auth_oidc_method_state_enum entries define the possible oidc auth method
 -- states. 
 create table auth_oidc_method_state_enm (
@@ -5128,7 +5103,7 @@ before
 update on auth_oidc_signing_alg_enm
   for each row execute procedure immutable_columns('name');
 `),
-			2084: []byte(`
+			2004: []byte(`
 -- auth_oidc_method entries are the current oidc auth methods configured for
 -- existing scopes. 
 create table auth_oidc_method (
@@ -5548,7 +5523,7 @@ values
   ('auth_oidc_method', 1), -- auth method is the root aggregate itself and all of its value objects.
   ('auth_oidc_account', 1);
 `),
-			2085: []byte(`
+			2005: []byte(`
 -- auth_token_status_enm entries define the possible auth token
 -- states. 
 create table auth_token_status_enm (
@@ -5594,7 +5569,7 @@ create or replace view auth_token_account as
   inner join auth_account as aa
           on at.auth_account_id = aa.public_id;
 `),
-			2086: []byte(`
+			2006: []byte(`
 -- add the primary_auth_method_id which determines which auth_method is
 -- designated as for "account info" in the user's scope. It also determines
 -- which auth method is allowed to auto viviify users.  
@@ -5662,7 +5637,7 @@ from
 	iam_user u
 left outer join iam_acct_info i on u.public_id = i.iam_user_id;
 `),
-			2087: []byte(`
+			2007: []byte(`
 -- the intent of this update statement: set the primary auth method for scopes
 -- that only have a single auth_password_method, since currently there are only
 -- auth_password_methods in boundary. Before this release all
@@ -5728,7 +5703,7 @@ where
   s.primary_auth_method_id is null and 
   s.public_id = m.scope_id;
 `),
-			2090: []byte(`
+			2010: []byte(`
 -- By adding the name column to the base auth method type, the database can
 -- ensure that auth method names are unique across all sub types.
 alter table auth_method
@@ -5823,7 +5798,7 @@ create trigger
 after delete on auth_password_method 
   for each row execute procedure delete_auth_method_subtype();
 `),
-			2095: []byte(`
+			2015: []byte(`
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
 -- with its associated value objects (algs, auds, certs) as columns
 -- with | delimited values.  The use of the postgres string_agg(...) to
@@ -5867,6 +5842,31 @@ from
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
+`),
+			2020: []byte(`
+-- auth_password_method_with_is_primary is useful for reading a password auth
+-- method with a bool to determine if it's the scope's primary auth method.
+create view auth_password_method_with_is_primary as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,    
+  am.public_id,
+  am.scope_id,
+  am.password_conf_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.min_login_name_length,
+  am.min_password_length
+from 
+  auth_password_method am
+  left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
+comment on view auth_password_method_with_is_primary is
+'password auth method with an is_primary_auth_method bool';
 `),
 		},
 	}

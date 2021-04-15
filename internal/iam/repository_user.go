@@ -244,7 +244,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		return nil, errors.Wrap(err, op)
 	}
 	if !allowed {
-		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("user not found for account %s", accountId))
+		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("user not found for account %s and auth method is not primary for the scope so refusing to auto-create user", accountId))
 	}
 
 	metadata := oplog.Metadata{

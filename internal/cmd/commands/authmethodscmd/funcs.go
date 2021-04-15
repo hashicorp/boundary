@@ -9,6 +9,10 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraOidcSynopsisFunc = extraSynopsisFuncImpl
+}
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -52,6 +56,16 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
+func extraSynopsisFuncImpl(c *OidcCommand) string {
+	switch c.Func {
+	case "change-state":
+		return "Change the active state of an auth method"
+
+	default:
+		return ""
+	}
+}
+
 func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	if len(items) == 0 {
 		return "No auth methods found"
@@ -68,35 +82,36 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
+				fmt.Sprintf("  ID:                     %s", m.Id),
 			)
 		}
 		if c.FlagRecursive {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
 			)
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", m.Version),
+				fmt.Sprintf("    Version:              %d", m.Version),
+				fmt.Sprintf("    Type:                 %s", m.Type),
 			)
 		}
 		if m.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Name:                 %s", m.Name),
 			)
 		}
 		if m.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Description:          %s", m.Description),
 			)
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("    Type:                %s", m.Type),
-				fmt.Sprintf("    Version:             %d", m.Version),
+				fmt.Sprintf("    Is Primary For Scope: %t", m.IsPrimary),
 			)
 		}
+
 		if len(m.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -110,11 +125,12 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 
 func printItemTable(in *authmethods.AuthMethod) string {
 	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Type":         in.Type,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+		"ID":                   in.Id,
+		"Version":              in.Version,
+		"Type":                 in.Type,
+		"Created Time":         in.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":         in.UpdatedTime.Local().Format(time.RFC1123),
+		"Is Primary For Scope": in.IsPrimary,
 	}
 
 	if in.Name != "" {

@@ -86,7 +86,7 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 ### Build and Start Boundary in Dev Mode
 
 If you have the following requirements met locally:
-- Golang v1.14 or greater
+- Golang v1.16 or greater
 - Docker
 
 You can get up and running with Boundary quickly. Simply run:
@@ -99,8 +99,8 @@ UI assets; which will take a few extra minutes.) Once complete, run Boundary in
 
   ```./$GOPATH/bin/boundary dev```
 
-Please note that building the UI requires `go-bindata`; the easiest way to install
-Boundary's dependent tools is to simply run:
+Please note that development may require other tools; to install the set of
+tools at the versions used by the Boundary team, run:
 
   ```make tools```
 
