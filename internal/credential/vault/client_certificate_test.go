@@ -37,7 +37,6 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 func TestClientCertificate_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	rw := db.New(conn)
 
 	kkms := kms.TestKms(t, conn, wrapper)
 
@@ -89,8 +88,8 @@ func TestClientCertificate_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-
 			ctx := context.Background()
+
 			databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NotNil(databaseWrapper)
@@ -109,15 +108,7 @@ func TestClientCertificate_New(t *testing.T) {
 			assert.Equal(want, got)
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
-
-			cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
-			got.StoreId = cs.GetPublicId()
-			err2 := rw.Create(ctx, got)
-			assert.NoError(err2)
-
-			insertedCert := allocClientCertificate()
-			require.NoError(rw.LookupWhere(ctx, &insertedCert, "store_id = ?", got.StoreId))
-			require.NoError(insertedCert.decrypt(ctx, databaseWrapper))
+			require.NoError(got.decrypt(ctx, databaseWrapper))
 		})
 	}
 }

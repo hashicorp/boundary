@@ -21,7 +21,7 @@ func TestLease_New(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
 	lib := TestCredentialLibraries(t, conn, wrapper, cs.PublicId, 1)[0]
-	token := testTokens(t, conn, wrapper, prj.GetPublicId(), cs.GetPublicId(), 1)[0]
+	token := cs.Token()
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	session := temp.TestDefaultSession(t, conn, wrapper, iamRepo)

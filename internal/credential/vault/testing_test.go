@@ -44,21 +44,3 @@ func Test_TestCredentialLibraries(t *testing.T) {
 		assert.NotEmpty(lib.GetPublicId())
 	}
 }
-
-func Test_testTokens(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NotNil(prj)
-	assert.NotEmpty(prj.GetPublicId())
-
-	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-
-	count := 4
-	tokens := testTokens(t, conn, wrapper, prj.GetPublicId(), cs.GetPublicId(), count)
-	assert.Len(tokens, count)
-	for _, token := range tokens {
-		assert.NotEmpty(token.GetTokenSha256())
-	}
-}

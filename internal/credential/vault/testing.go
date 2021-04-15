@@ -46,7 +46,7 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 		)
 		require.NoError(err2)
 
-		token := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 1)[0]
+		token := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 4)[0]
 		cs.outputToken = token
 
 		inCert := testClientCert(t, testCaCert(t))
