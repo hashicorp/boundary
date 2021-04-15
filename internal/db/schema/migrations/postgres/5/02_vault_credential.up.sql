@@ -258,4 +258,36 @@ begin;
     ('credential_vault_library', 1),
     ('credential_vault_lease', 1) ;
 
+
+     create view credential_vault_store_agg as
+     with
+     current_tokens as (
+        select *
+          from credential_vault_token
+         where status = 'current'
+     )
+     select store.public_id         as public_id,
+            store.scope_id          as scope_id,
+            store.name              as name,
+            store.description       as description,
+            store.create_time       as create_time,
+            store.update_time       as update_time,
+            store.version           as version,
+            store.vault_address     as vault_address,
+            store.namespace         as namespace,
+            store.ca_cert           as ca_cert,
+            store.tls_server_name   as tls_server_name,
+            store.tls_skip_verify   as tls_skip_verify,
+            token.token_sha256      as token_sha256,
+            token.last_renewal_time as token_last_renewal_time,
+            token.expiration_time   as token_expiration_time,
+            token.create_time       as token_create_time,
+            token.update_time       as token_update_time,
+            cert.certificate        as client_certificate
+       from credential_vault_store store
+  left join current_tokens token
+         on store.public_id = token.store_id
+  left join credential_vault_client_certificate cert
+         on store.public_id = cert.store_id;
+
 commit;

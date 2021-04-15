@@ -22,6 +22,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
@@ -37,7 +38,6 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(in)
 		assert.NotEmpty(in.Name)
-		ctx := context.Background()
 		got, err := repo.CreateCredentialStore(ctx, in)
 
 		require.NoError(err)
@@ -56,13 +56,12 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-
-		ctx := context.Background()
 
 		v, cleanup := NewTestVaultServer(t, TestNoTLS)
 		defer cleanup()
@@ -153,6 +152,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
@@ -178,7 +178,6 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 			assert.NoError(err)
 			require.NotNil(credStoreIn)
-			ctx := context.Background()
 			got, err := repo.CreateCredentialStore(ctx, credStoreIn)
 
 			if tt.wantIsErr != 0 {
@@ -204,6 +203,93 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			if tt.tls == TestClientTLS {
 				outClientCert := allocClientCertificate()
 				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", got.PublicId))
+			}
+		})
+	}
+}
+
+func TestRepository_LookupCredentialStore(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	stores := TestCredentialStores(t, conn, wrapper, prj.PublicId, 2)
+	csWithClientCert := stores[0]
+	csWithoutClientCert := stores[1]
+
+	ccert := allocClientCertificate()
+	rows, err := rw.Delete(context.Background(), ccert, db.WithWhere("store_id = ?", csWithoutClientCert.GetPublicId()))
+	require.NoError(t, err)
+	require.Equal(t, 1, rows)
+
+	badId, err := newCredentialStoreId()
+	assert.NoError(t, err)
+	require.NotNil(t, badId)
+
+	// TODO(mgaffney) 04/2021: Add test for credential stores with no
+	// 'current' token
+	tests := []struct {
+		name           string
+		id             string
+		want           *CredentialStore
+		wantClientCert bool
+		wantErr        errors.Code
+	}{
+		{
+			name:           "valid-with-client-cert",
+			id:             csWithClientCert.GetPublicId(),
+			want:           csWithClientCert,
+			wantClientCert: true,
+		},
+		{
+			name:           "valid-without-client-cert",
+			id:             csWithoutClientCert.GetPublicId(),
+			want:           csWithoutClientCert,
+			wantClientCert: false,
+		},
+		{
+			name:    "empty-public-id",
+			id:      "",
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "not-found",
+			id:   badId,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			got, err := repo.LookupCredentialStore(ctx, tt.id)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+
+			if tt.want == nil {
+				assert.Nil(got)
+				return
+			}
+
+			assert.NotNil(got)
+			assert.NotSame(got, tt.want)
+			assert.NotNil(got.Token(), "token")
+
+			if tt.wantClientCert {
+				assert.NotNil(got.ClientCertificate(), "client certificate")
+			} else {
+				assert.Nil(got.ClientCertificate(), "client certificate")
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -46,7 +47,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if cs.ScopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
-	if len(cs.token) == 0 {
+	if len(cs.inputToken) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
 	if cs.VaultAddress == "" {
@@ -66,7 +67,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
-		Token:         string(cs.token),
+		Token:         string(cs.inputToken),
 		CaCert:        cs.CaCert,
 		TlsServerName: cs.TlsServerName,
 		TlsSkipVerify: cs.TlsSkipVerify,
@@ -101,7 +102,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
 	}
 
-	token, err := newToken(id, cs.token, tokenExpires)
+	token, err := newToken(id, cs.inputToken, tokenExpires)
 	if err != nil {
 		return nil, err
 	}
@@ -215,3 +216,78 @@ func validateTokenLookup(op errors.Op, s *vault.Secret) error {
 
 	return nil
 }
+
+// LookupCredentialStore returns the CredentialStore for publicId. Returns
+// nil, nil if no CredentialStore is found for publicId.
+func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string, _ ...Option) (*CredentialStore, error) {
+	const op = "vault.LookupCredentialStore"
+	if publicId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+	}
+	agg := new(credentialStoreAgg)
+	agg.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, agg); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+	}
+
+	cs := allocCredentialStore()
+	cs.PublicId = agg.PublicId
+	cs.ScopeId = agg.ScopeId
+	cs.Name = agg.Name
+	cs.Description = agg.Description
+	cs.CreateTime = agg.CreateTime
+	cs.UpdateTime = agg.UpdateTime
+	cs.Version = agg.Version
+	cs.VaultAddress = agg.VaultAddress
+	cs.Namespace = agg.Namespace
+	cs.CaCert = agg.CaCert
+	cs.TlsServerName = agg.TlsServerName
+	cs.TlsSkipVerify = agg.TlsSkipVerify
+
+	if agg.TokenSha256 != nil {
+		tk := allocToken()
+		tk.TokenSha256 = agg.TokenSha256
+		tk.LastRenewalTime = agg.TokenLastRenewalTime
+		tk.ExpirationTime = agg.TokenExpirationTime
+		tk.CreateTime = agg.TokenCreateTime
+		tk.UpdateTime = agg.TokenUpdateTime
+		cs.outputToken = tk
+	}
+
+	if agg.ClientCertificate != nil {
+		cert := allocClientCertificate()
+		cert.Certificate = agg.ClientCertificate
+		cs.clientCert = cert
+	}
+
+	return cs, nil
+}
+
+type credentialStoreAgg struct {
+	PublicId             string `gorm:"primary_key"`
+	ScopeId              string
+	Name                 string
+	Description          string
+	CreateTime           *timestamp.Timestamp
+	UpdateTime           *timestamp.Timestamp
+	Version              uint32
+	VaultAddress         string
+	Namespace            string
+	CaCert               []byte
+	TlsServerName        string
+	TlsSkipVerify        bool
+	TokenSha256          []byte
+	TokenLastRenewalTime *timestamp.Timestamp
+	TokenExpirationTime  *timestamp.Timestamp
+	TokenCreateTime      *timestamp.Timestamp
+	TokenUpdateTime      *timestamp.Timestamp
+	ClientCertificate    []byte
+}
+
+// TableName returns the table name for gorm.
+func (agg *credentialStoreAgg) TableName() string { return "credential_vault_store_agg" }
+
+func (agg *credentialStoreAgg) GetPublicId() string { return agg.PublicId }
