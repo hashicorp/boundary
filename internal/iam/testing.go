@@ -48,6 +48,10 @@ func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMeth
 	s.PrimaryAuthMethodId = authMethodId
 	_, _, err := repo.UpdateScope(context.Background(), s, s.Version, []string{"PrimaryAuthMethodId"})
 	require.NoError(err)
+
+	updated, err := repo.LookupScope(context.Background(), s.PublicId)
+	require.NoError(err)
+	require.Equal(authMethodId, updated.PrimaryAuthMethodId)
 }
 
 // TestScopes creates an org and project suitable for testing.
@@ -253,7 +257,7 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	require.NotEmpty(authMethodId)
 
 	if userId != "" {
-		foundUser := allocUser()
+		foundUser := AllocUser()
 		foundUser.PublicId = userId
 		err := rw.LookupByPublicId(context.Background(), &foundUser)
 		require.NoError(err)
