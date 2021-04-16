@@ -51,7 +51,7 @@ func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMeth
 
 	updated, err := repo.LookupScope(context.Background(), s.PublicId)
 	require.NoError(err)
-	require.Equal(authMethodId, updated.PrimaryAuthMethodId)
+	require.Equalf(authMethodId, updated.PrimaryAuthMethodId, "expected %s to be the primary auth method for scope: %s", authMethodId, updated.PublicId)
 }
 
 // TestScopes creates an org and project suitable for testing.
