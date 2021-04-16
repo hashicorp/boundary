@@ -290,4 +290,5 @@ type credentialStoreAgg struct {
 // TableName returns the table name for gorm.
 func (agg *credentialStoreAgg) TableName() string { return "credential_vault_store_agg" }
 
+// GetPublicId returns the public id.
 func (agg *credentialStoreAgg) GetPublicId() string { return agg.PublicId }
