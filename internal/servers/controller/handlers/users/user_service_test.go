@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -125,6 +126,7 @@ func TestList(t *testing.T) {
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
 	s, err := users.NewService(repoFn)
+	require.NoError(t, err)
 
 	var wantUsers []*pb.User
 
@@ -215,10 +217,32 @@ func TestList(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
+			gotUsers := sortableUsers{
+				users: got.GetItems(),
+			}
+			resUsers := sortableUsers{
+				users: tc.res.GetItems(),
+			}
+			if got != nil {
+				sort.Sort(gotUsers)
+				got.Items = gotUsers.users
+			}
+			if tc.res != nil {
+				sort.Sort(resUsers)
+				tc.res.Items = resUsers.users
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
+
+type sortableUsers struct {
+	users []*pb.User
+}
+
+func (s sortableUsers) Len() int           { return len(s.users) }
+func (s sortableUsers) Less(i, j int) bool { return s.users[i].GetId() < s.users[j].GetId() }
+func (s sortableUsers) Swap(i, j int)      { s.users[i], s.users[j] = s.users[j], s.users[i] }
 
 func TestDelete(t *testing.T) {
 	u, repoFn := createDefaultUserAndRepo(t)
@@ -676,8 +700,13 @@ func TestAddAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccounts(t, conn, amId, 1)
+		accts = append(accts, newAcct[0])
+	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
 	oidcAm := oidc.TestAuthMethod(
@@ -815,10 +844,16 @@ func TestSetAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccounts(t, conn, amId, 1)
+		accts = append(accts, newAcct[0])
+	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
@@ -850,7 +885,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -861,7 +896,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set duplicate account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -872,7 +907,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set empty on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -886,7 +921,7 @@ func TestSetAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, _ = iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
 			}()
 
 			tc.setup(usr)
@@ -955,10 +990,16 @@ func TestRemoveAccount(t *testing.T) {
 	require.NoError(t, err, "Error when getting new user service.")
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-	accts := password.TestAccounts(t, conn, amId, 3)
+	acctCnt := 3
+	accts := make([]*password.Account, 0, acctCnt)
+	for i := 0; i < acctCnt; i++ {
+		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
+		newAcct := password.TestAccounts(t, conn, amId, 1)
+		accts = append(accts, newAcct[0])
+	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
