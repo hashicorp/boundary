@@ -212,6 +212,7 @@ func TestList(t *testing.T) {
 				require.Nil(item.CreatedTime)
 				require.Nil(item.UpdatedTime)
 				require.Zero(item.Version)
+				require.Empty(item.HostIds)
 			}
 		})
 	}

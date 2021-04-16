@@ -74,7 +74,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bool) ([]*pb.Host, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	}
 	var outHl []*pb.Host
 	for _, h := range hl {
-		p, err := toProto(h, nil)
+		p, err := toProto(h, nil, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -353,14 +353,12 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
+func toProto(in *static.Host, members []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
 		Type:          host.StaticSubtype.String(),
-		CreatedTime:   in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
-		Version:       in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -368,14 +366,19 @@ func toProto(in *static.Host, members []*static.HostSet) (*pb.Host, error) {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	for _, m := range members {
-		out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.Version
+		for _, m := range members {
+			out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
+		}
+		st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)
+		}
+		out.Attributes = st
 	}
-	st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)
-	}
-	out.Attributes = st
 	return &out, nil
 }
 

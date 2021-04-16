@@ -182,31 +182,39 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 		"",
 		"Host Set information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
 		if true {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("  ID:                    %s", item.Id),
 			)
 		}
-		if m.Name != "" {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Description != "" {
+		if true {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if item.Name != "" {
+			output = append(output,
+				fmt.Sprintf("    Name:                %s", item.Name),
+			)
+		}
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
