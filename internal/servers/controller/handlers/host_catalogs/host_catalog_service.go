@@ -133,7 +133,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 	return toProto(hc), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.HostCatalog, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.HostCatalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -271,7 +271,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Hos
 	}
 	var outUl []*pb.HostCatalog
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		outUl = append(outUl, toProto(u, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outUl, nil
 }
@@ -410,20 +410,23 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.HostCatalog) *pb.HostCatalog {
+func toProto(in *static.HostCatalog, opt ...handlers.Option) *pb.HostCatalog {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.HostCatalog{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		Type:        host.StaticSubtype.String(),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
+		Type:    host.StaticSubtype.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
 	}
 	return &out
 }
