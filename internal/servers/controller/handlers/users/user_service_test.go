@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -25,11 +24,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"}
 
 func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -59,7 +61,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:       u.CreateTime.GetTimestamp(),
 		UpdatedTime:       u.UpdateTime.GetTimestamp(),
 		Version:           1,
-		AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -125,6 +127,7 @@ func TestList(t *testing.T) {
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
 	s, err := users.NewService(repoFn)
+	require.NoError(t, err)
 
 	var wantUsers []*pb.User
 
@@ -154,7 +157,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       u.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
 			Version:           1,
-			AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -285,8 +288,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	defaultUser, repoFn := createDefaultUserAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultCreated := defaultUser.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
 		name string
@@ -309,7 +311,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -328,7 +330,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -345,7 +347,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId:     defaultUser.GetScopeId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -354,7 +356,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId:     defaultUser.GetScopeId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -374,10 +376,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a user created after the test setup's default user
 				assert.True(gotCreateTime.After(defaultCreated), "New user should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.After(defaultCreated), "New user should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
@@ -397,8 +397,7 @@ func TestUpdate(t *testing.T) {
 	tested, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
-	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	created := u.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateUserRequest{
 		Id: u.GetPublicId(),
 	}
@@ -439,7 +438,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -462,7 +461,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -515,7 +514,7 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -538,7 +537,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -561,7 +560,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -602,7 +601,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.User{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -615,7 +614,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.User{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -649,8 +648,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateUser response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a user updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated user should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
@@ -680,6 +678,7 @@ func TestAddAccount(t *testing.T) {
 	accts := password.TestAccounts(t, conn, amId, 3)
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
@@ -733,7 +732,7 @@ func TestAddAccount(t *testing.T) {
 		{
 			name: "Add empty on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -819,6 +818,7 @@ func TestSetAccount(t *testing.T) {
 	accts := password.TestAccounts(t, conn, amId, 3)
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
@@ -850,7 +850,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -861,7 +861,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set duplicate account on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -872,7 +872,7 @@ func TestSetAccount(t *testing.T) {
 		{
 			name: "Set empty on populated user",
 			setup: func(u *iam.User) {
-				iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+				_, err := iamRepo.AddUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
 					[]string{accts[0].GetPublicId(), accts[1].GetPublicId()})
 				require.NoError(t, err)
 				u.Version = u.Version + 1
@@ -886,7 +886,8 @@ func TestSetAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 
 			tc.setup(usr)
@@ -959,6 +960,7 @@ func TestRemoveAccount(t *testing.T) {
 	accts := password.TestAccounts(t, conn, amId, 3)
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
@@ -1041,7 +1043,8 @@ func TestRemoveAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 			tc.setup(usr)
 			req := &pbs.RemoveUserAccountsRequest{
