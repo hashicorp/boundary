@@ -76,7 +76,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.HostSet, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bool) ([]*pb.HostSet, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -345,7 +345,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	}
 	var outH []*pb.HostSet
 	for _, h := range hl {
-		outH = append(outH, toProto(h, nil))
+		outH = append(outH, toProto(h, nil, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outH, nil
 }
@@ -472,14 +472,12 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
+func toProto(in *static.HostSet, hs []*static.Host, opt ...handlers.Option) *pb.HostSet {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.HostSet{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
 		Type:          host.StaticSubtype.String(),
-		CreatedTime:   in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
-		Version:       in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -487,8 +485,13 @@ func toProto(in *static.HostSet, hs []*static.Host) *pb.HostSet {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	for _, h := range hs {
-		out.HostIds = append(out.HostIds, h.GetPublicId())
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.Version
+		for _, h := range hs {
+			out.HostIds = append(out.HostIds, h.GetPublicId())
+		}
 	}
 	return &out
 }
