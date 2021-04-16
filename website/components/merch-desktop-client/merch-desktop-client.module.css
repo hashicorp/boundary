@@ -28,9 +28,25 @@
 .platformVersion {
   display: flex;
   align-content: center;
-  justify-content: space-between;
+  justify-content: center;
+
+  & .logo {
+    margin-right: 20px;
+  }
+
+  & .version {
+    align-self: center;
+  }
 }
 
-.downloadLink {
+.downloadLinks {
   color: var(--brand);
+
+  & a {
+    margin-right: 20px;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
 }
