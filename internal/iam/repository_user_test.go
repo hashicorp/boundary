@@ -1140,50 +1140,67 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		// {
-		// 	name: "one-already-associated",
-		// 	args: args{
-		// 		userId: user.PublicId,
-		// 		accountIdsFn: func() ([]string, []string) {
-		// 			ids := createAccountsFn("one-already-associated")
-		// 			changes := append([]string{}, ids...)
-		// 			a := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-		// 			ids = append(ids, a.PublicId)
-		// 			return ids, changes
-		// 		},
-		// 	},
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "no-change",
-		// 	args: args{
-		// 		userId: user.PublicId,
-		// 		accountIdsFn: func() ([]string, []string) {
-		// 			ids := []string{}
-		// 			for i := 0; i < 10; i++ {
-		// 				a := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-		// 				ids = append(ids, a.PublicId)
-		// 			}
-		// 			return ids, nil
-		// 		},
-		// 	},
-		// 	wantErr: false,
-		// },
-		// {
-		// 	name: "remove-all",
-		// 	args: args{
-		// 		userId: user.PublicId,
-		// 		accountIdsFn: func() ([]string, []string) {
-		// 			ids := []string{}
-		// 			for i := 0; i < 10; i++ {
-		// 				a := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-		// 				ids = append(ids, a.PublicId)
-		// 			}
-		// 			return nil, ids
-		// 		},
-		// 	},
-		// 	wantErr: false,
-		// },
+		{
+			name: "one-already-associated",
+			args: args{
+				userId: user.PublicId,
+				accountIdsFn: func() ([]string, []string) {
+					ids := createAccountsFn("one-already-associated")
+					changes := append([]string{}, ids...)
+					authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "one-already-associated-alice-rp", "fido",
+						oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+						oidc.WithSigningAlgs(oidc.RS256),
+						oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+					a := oidc.TestAccount(t, conn, authMethod, "acct-one-already-associated")
+					user, _, err := repo.LookupUser(context.Background(), user.PublicId)
+					require.NoError(t, err)
+					added, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, []string{a.PublicId})
+					require.NoError(t, err)
+					require.Contains(t, added, a.PublicId)
+					ids = append(ids, a.PublicId)
+					return ids, changes
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "no-change",
+			args: args{
+				userId: user.PublicId,
+				accountIdsFn: func() ([]string, []string) {
+					ids := createAccountsFn("no-change")
+					user, _, err := repo.LookupUser(context.Background(), user.PublicId)
+					require.NoError(t, err)
+					added, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, ids)
+					require.NoError(t, err)
+					require.Equal(t, len(ids), len(added))
+
+					// ids := []string{}
+					// for i := 0; i < 10; i++ {
+					// 	a := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+					// 	ids = append(ids, a.PublicId)
+					// }
+					return ids, nil
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "remove-all",
+			args: args{
+				userId: user.PublicId,
+				accountIdsFn: func() ([]string, []string) {
+					ids := createAccountsFn("remove-all")
+					user, _, err := repo.LookupUser(context.Background(), user.PublicId)
+					require.NoError(t, err)
+					added, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, ids)
+					require.NoError(t, err)
+					require.Equal(t, len(ids), len(added))
+					return nil, ids
+				},
+			},
+			wantErr: false,
+		},
 		{
 			name: "associated-with-diff-user",
 			args: args{
@@ -1290,7 +1307,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
 			require.NoError(err)
 			switch tt.name {
-			case "no-accounts-no-changes":
+			case "no-accounts-no-changes", "no-change":
 				assert.Equalf(version, u.Version, "expected version %d and got: %d", version, u.Version)
 			default:
 				assert.Equalf(version+1, u.Version, "expected version %d and got: %d", version+1, u.Version)
