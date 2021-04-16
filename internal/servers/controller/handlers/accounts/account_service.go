@@ -719,7 +719,7 @@ func toProto(in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
 }
 
 func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
-	const op = "account_service.ToStoragePwAccount"
+	const op = "account_service.toStoragePwAccount"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
