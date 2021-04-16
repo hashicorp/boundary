@@ -141,7 +141,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -157,7 +157,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return &pbs.ListScopesResponse{}, nil
 	}
 
-	pl, err := s.listFromRepo(ctx, scopeIds)
+	pl, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +407,7 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -419,7 +419,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Sco
 
 	var outPl []*pb.Scope
 	for _, scp := range scps {
-		outPl = append(outPl, ToProto(scp))
+		outPl = append(outPl, ToProto(scp, handlers.WithAnonymousListing(anonUser)))
 	}
 	SortScopes(outPl)
 	return outPl, nil
@@ -464,14 +464,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func ToProto(in *iam.Scope) *pb.Scope {
+func ToProto(in *iam.Scope, opt ...handlers.Option) *pb.Scope {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Scope{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetParentId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		Type:        in.GetType(),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetParentId(),
+		Type:    in.GetType(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -481,6 +479,11 @@ func ToProto(in *iam.Scope) *pb.Scope {
 	}
 	if in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
 	}
 
 	return &out

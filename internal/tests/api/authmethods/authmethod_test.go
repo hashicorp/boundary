@@ -95,7 +95,6 @@ func TestCustomMethods(t *testing.T) {
 	tpClientId := "alice-rp"
 	tpClientSecret := "her-dog's-name"
 	tp.SetClientCreds(tpClientId, tpClientSecret)
-	_, _, tpAlg, _ := tp.SigningKeys()
 
 	u, err := amClient.Create(tc.Context(), "oidc", global,
 		authmethods.WithName("foo"),
@@ -103,17 +102,21 @@ func TestCustomMethods(t *testing.T) {
 		authmethods.WithOidcAuthMethodApiUrlPrefix("https://example.com"),
 		authmethods.WithOidcAuthMethodClientSecret("secret"),
 		authmethods.WithOidcAuthMethodClientId("client-id"),
-		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string(tpAlg)}),
+		authmethods.WithOidcAuthMethodSigningAlgorithms([]string{string("EdDSA")}),
 		authmethods.WithOidcAuthMethodIdpCaCerts([]string{tp.CACert()}))
 	require.NoError(t, err)
 
 	const newState = "active-private"
-	u, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, newState)
-	assert.NoError(t, err)
+	nilU, err := amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, newState)
+	require.Error(t, err)
+	assert.Nil(t, nilU)
+
+	u, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, newState, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
+	require.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Equal(t, newState, u.Item.Attributes["state"])
 
-	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "")
+	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "", authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 	assert.Error(t, err)
 }
 

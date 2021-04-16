@@ -42,6 +42,10 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
+const (
+	AnonymousUserId = "u_anon"
+)
+
 type key int
 
 var verifierKey key
@@ -63,11 +67,31 @@ type RequestInfo struct {
 }
 
 type VerifyResults struct {
-	UserId        string
-	AuthTokenId   string
-	Error         error
-	Scope         *scopes.ScopeInfo
-	Authenticated bool
+	UserId      string
+	AuthTokenId string
+	Error       error
+	Scope       *scopes.ScopeInfo
+
+	// AuthenticatedFinished means that the request has passed through the
+	// authentication system successfully. This does _not_ indicate whether a
+	// token was provided on the request. Requests for `u_anon` will still have
+	// this set true! This is because if a request has a token that is invalid,
+	// we fall back to `u_anon` because the request may still be allowed for any
+	// anonymous user; it simply fails to validate for and look up grants for an
+	// actual known user.
+	//
+	// A good example is when running dev mode twice. The first time you can
+	// authenticate and get a token which is saved by the token helper. The
+	// second time, you run a command and it reads the token from the helper.
+	// That token is no longer valid, but if the action is granted to `u_anon`
+	// the action should still succeed. What happens internally is that the
+	// token fails to look up a non-anonymous user, so we fallback to the
+	// anonymous user, which is the default.
+	//
+	// If you want to know if the request had a valid token provided, use a
+	// switch on UserId. Anything that isn't `u_anon` will have to have had a
+	// valid token provided. And a valid token will never fall back to `u_anon`.
+	AuthenticationFinished bool
 
 	// RoundTripValue can be set to allow the function performing authentication
 	// (often accompanied by lookup(s)) to return a result of that lookup to the
@@ -208,7 +232,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	ret.AuthTokenId = v.requestInfo.PublicId
-	ret.Authenticated = authResults.Authenticated
+	ret.AuthenticationFinished = authResults.AuthenticationFinished
 	if !authResults.Authorized {
 		if v.requestInfo.DisableAuthzFailures {
 			ret.Error = nil
@@ -218,7 +242,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// If the anon user was used (either no token, or invalid (perhaps
 			// expired) token), return a 401. That way if it's an authn'd user
 			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserId == "u_anon" {
+			if ret.UserId == AnonymousUserId {
 				ret.Error = handlers.UnauthenticatedError()
 			}
 			return
@@ -361,7 +385,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
-	userId = "u_anon"
+	userId = AnonymousUserId
 	var accountId string
 
 	// Validate the token and fetch the corresponding user ID
@@ -396,7 +420,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			userId = at.GetIamUserId()
 			if userId == "" {
 				v.logger.Warn("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon", "token_id", at.GetPublicId())
-				userId = "u_anon"
+				userId = AnonymousUserId
 				accountId = ""
 			}
 		}
@@ -441,7 +465,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	// At this point we don't need to look up grants since it's automatically allowed
 	if v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms {
-		aclResults.Authenticated = true
+		aclResults.AuthenticationFinished = true
 		aclResults.Authorized = true
 		retErr = nil
 		return
@@ -481,7 +505,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// is used for further permissions checks, such as during recursive listing.
 	// So we want to make sure any code relying on that has the full set of
 	// grants successfully loaded.
-	aclResults.Authenticated = true
+	aclResults.AuthenticationFinished = true
 	retErr = nil
 	return
 }

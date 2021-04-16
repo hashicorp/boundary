@@ -1,0 +1,45 @@
+---
+layout: docs
+page_title: v0.2.0
+description: |-
+  Boundary release notes for v0.2.0
+---
+
+# Boundary v0.2.0
+
+The release notes below contain information about Boundary v0.2.0 as well as new features since Boundary's 0.1.0 that became available in 0.1.x releases. To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md). To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/docs/getting-started).
+
+Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.2.0, please review Boundary’s [general upgrade guide](https://learn.hashicorp.com/tutorials/boundary/upgrade-version).
+
+## Boundary v0.2.0 Highlights
+
+**Open ID Connect (OIDC) Authentication**: Boundary 0.2 adds support for OIDC authentication methods, which allow users to delegate authentication to an OIDC provider.
+This feature enables Boundary to integrate with popular identity providers like Microsoft Azure Active Directory, Okta,
+cloud identity management systems such as AWS IAM, and others. To get started with creating OIDC auth methods to log into Boundary with common OIDC providers,
+get started with the new [Boundary OIDC learn tutorial](https://learn.hashicorp.com/boundary).
+
+**Boundary Desktop for MacOS:** Boundary Desktop enables users to use Boundary to access resources through a convenient GUI application. Boundary Desktop enables users to
+
+- **Login with available auth methods**: Users can now login to Boundary Desktop with all support auth methods, including OIDC.
+- **Find targets:** Users can browse available targets.
+- **Connect to targets:** Users can connect to targets via Boundary Desktop.
+- **Manage sessions:** Users can manage all of their active sessions or drill down to sessions associated with a specific target.
+- **AutoUpdate:** AutoUpdate the Boundary Desktop app as new versions become available.
+
+**Worker tags & filters (0.1.5):** Enable target traffic to be effectively “tied” to a given set of workers with [worker tags](https://www.boundaryproject.io/docs/concepts/filtering/worker-tags), forcing the session to occur through specified workers for a specific target.
+
+Improvements to list actions:\*\* There have been numerous improvements to listing actions since Boundary 0.1.0.
+
+- **Resource filtering (0.1.8):** allows users to navigate their resources more easily by [filtering list actions based on resource information](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing).
+- **Recursive listing (0.1.5):** allows users to recursively list resources across a scope.
+- **List authorizations (0.1.5):** allows users to see what actions they’re authorized to perform against the resources returned in a list command.
+
+**Database migrations (0.1.5):** Boundary provides an [easy upgrade path](https://learn.hashicorp.com/tutorials/boundary/upgrade-version) with fail-safes in the event of migration issues.
+This includes support for database upgrades in a single transaction.
+
+## What's Changed
+
+- **Authentication:** The auth-methods \{id}:authenticate:login action is deprecated and will be removed in a few releases. (Yes, this was meant to deprecate the authenticate action; apologies for going back on this!) To better support future auth methods, and especially the potential for plugins, rather than defining custom actions on the URL path the authenticate action will consume both a map of parameters but also a command parameter that specifies the type of command. This allows workflows that require multiple steps, such as OIDC, to not require custom subactions. Additionally, the credentials map in the authenticate action has been renamed attributes to better match other types of resources. credentials will still work for now but will be removed in a few releases. Finally, in the Go SDK, the Authenticate function now requires a command value to be passed in.
+- Related to the above change, the output of an API auth-methods \{id}:authenticate call will return the given command value and a map of attributes that depend on the given command. On the SDK side, the output of the Authenticate function returns a map, from which a concrete type can be easily umarshaled (see the updated authenticate password command for an example).
+
+**For more detailed information of all changes since 0.1.0, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md)**

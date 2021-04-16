@@ -114,7 +114,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, handlers.WithLogger(c.logger.Named("authmethod_service")))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
@@ -283,9 +283,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		case len(allowedOrigins) == 0:
 			// not valid
 
-		case len(allowedOrigins) == 1 &&
-			(allowedOrigins[0] == "*" ||
-				allowedOrigins[0] == "serve://boundary"):
+		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
 			valid = true
 
 		default:

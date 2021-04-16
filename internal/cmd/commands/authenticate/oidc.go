@@ -134,7 +134,7 @@ func (c *OidcCommand) Run(args []string) int {
 					watchCode = base.CommandCliError
 					return
 				}
-				if result.GetResponse().StatusCode() == http.StatusNoContent {
+				if result.GetResponse().StatusCode() == http.StatusAccepted {
 					// Nothing yet -- circle around.
 					continue
 				}

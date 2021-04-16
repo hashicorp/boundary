@@ -10,12 +10,14 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -665,6 +667,7 @@ func TestUpdate(t *testing.T) {
 func TestAddAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -675,6 +678,16 @@ func TestAddAccount(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
 	accts := password.TestAccounts(t, conn, amId, 3)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	addCases := []struct {
 		name           string
@@ -688,6 +701,12 @@ func TestAddAccount(t *testing.T) {
 			setup:          func(u *iam.User) {},
 			addAccounts:    []string{accts[1].GetPublicId()},
 			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name:           "Add oidc account on empty user",
+			setup:          func(u *iam.User) {},
+			addAccounts:    []string{oidcAcct.GetPublicId()},
+			resultAccounts: []string{oidcAcct.GetPublicId()},
 		},
 		{
 			name: "Add account on populated user",
@@ -787,6 +806,7 @@ func TestAddAccount(t *testing.T) {
 func TestSetAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -797,6 +817,16 @@ func TestSetAccount(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
 	accts := password.TestAccounts(t, conn, amId, 3)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	setCases := []struct {
 		name           string
@@ -810,6 +840,12 @@ func TestSetAccount(t *testing.T) {
 			setup:          func(u *iam.User) {},
 			setAccounts:    []string{accts[1].GetPublicId()},
 			resultAccounts: []string{accts[1].GetPublicId()},
+		},
+		{
+			name:           "Set oidc account on empty user",
+			setup:          func(u *iam.User) {},
+			setAccounts:    []string{oidcAcct.GetPublicId()},
+			resultAccounts: []string{oidcAcct.GetPublicId()},
 		},
 		{
 			name: "Set account on populated user",
@@ -910,6 +946,7 @@ func TestSetAccount(t *testing.T) {
 func TestRemoveAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -920,6 +957,16 @@ func TestRemoveAccount(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
 	accts := password.TestAccounts(t, conn, amId, 3)
+
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
+	oidcAm := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
 	addCases := []struct {
 		name           string
@@ -943,6 +990,17 @@ func TestRemoveAccount(t *testing.T) {
 				u.Version = u.Version + 1
 			},
 			removeAccounts: []string{accts[1].GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 oidc account of 2 accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), oidcAcct.GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{oidcAcct.GetPublicId()},
 			resultAccounts: []string{accts[0].GetPublicId()},
 		},
 		{
