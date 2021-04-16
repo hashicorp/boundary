@@ -37,12 +37,10 @@ method, login name, and password are pre-configured.
 First, we need to create a client from the Boundary API and set the address to reach Boundary:
 
 ```go
-import "github.com/hashicorp/boundary/api"
-
 // The default address points to the default dev mode address
 client, err := api.NewClient(nil)
 if err != nil {
-  return err
+  fmt.Printf("ERROR: %v\n", err.Error())
 }
 ```
 
@@ -63,9 +61,7 @@ credentials := map[string]interface{}{
 Now let's create an auth method client using the base client from above:
 
 ```go
-import "github.com/hashicorp/boundary/api/authmethods"
-
-am := authmethods.NewClient(client)
+amClient := authmethods.NewClient(client))
 ```
 
 ~> This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
@@ -89,9 +85,9 @@ Note the ID in the output above, we're going to use that in the next step.
 We can use the credentials object we created to execute `Authenticate()` on this client:
 
 ```go
-at, err := am.Authenticate(context.Background(), "ampw_1234567890", credentials)
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
 if err != nil {
-  return err
+  fmt.Printf("ERROR: %v\n", err.Error())
 }
 ```
 
@@ -99,13 +95,18 @@ Lastly, let's update the original client with the token we got from the `Authent
 
 ```go
 // pass this client to any other resource specific API resources
-client.SetToken(at.Item.Token)
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ```
 
 Putting this all together:
 
 ```go
+package main
+
 import (
+  "context"
+  "fmt"
+
   "github.com/hashicorp/boundary/api"
   "github.com/hashicorp/boundary/api/authmethods"
 )
@@ -119,17 +120,17 @@ func main() {
   // The default address points to the default dev mode address
   client, err := api.NewClient(nil)
   if err != nil {
-    return err
+    fmt.Printf("ERROR: %v\n", err.Error())
   }
 
-  am := authmethods.NewClient(client)
-  at, err := am.Authenticate(context.Background(), "ampw_1234567890", credentials)
+  amClient := authmethods.NewClient(client)
+  authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
   if err != nil {
-    return err
+    fmt.Printf("ERROR: %v\n", err.Error())
   }
 
   // pass this client to any other resource specific API resources
-  client.SetToken(at.Item.Token)
+  client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 }
 ```
 
