@@ -24,6 +24,9 @@ type User struct {
 	AccountIds        []string          `json:"account_ids,omitempty"`
 	Accounts          []*Account        `json:"accounts,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`
+	LoginName         string            `json:"login_name,omitempty"`
+	FullName          string            `json:"full_name,omitempty"`
+	Email             string            `json:"email,omitempty"`
 
 	response *api.Response
 }
