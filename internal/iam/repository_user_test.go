@@ -20,96 +20,96 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// func TestRepository_CreateUser(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	rw := db.New(conn)
-// 	wrapper := db.TestWrapper(t)
-// 	repo := TestRepo(t, conn, wrapper)
-// 	id := testId(t)
-// 	org, _ := TestScopes(t, repo)
+func TestRepository_CreateUser(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo := iam.TestRepo(t, conn, wrapper)
+	id := testId(t)
+	org, _ := iam.TestScopes(t, repo)
 
-// 	type args struct {
-// 		user *User
-// 		opt  []Option
-// 	}
-// 	tests := []struct {
-// 		name       string
-// 		args       args
-// 		wantDup    bool
-// 		wantErr    bool
-// 		wantErrMsg string
-// 	}{
-// 		{
-// 			name: "valid",
-// 			args: args{
-// 				user: func() *User {
-// 					u, err := NewUser(org.PublicId, WithName("valid"+id), WithDescription(id))
-// 					assert.NoError(t, err)
-// 					return u
-// 				}(),
-// 			},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name: "bad-scope-id",
-// 			args: args{
-// 				user: func() *User {
-// 					u, err := NewUser(id)
-// 					assert.NoError(t, err)
-// 					return u
-// 				}(),
-// 			},
-// 			wantErr:    true,
-// 			wantErrMsg: "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found",
-// 		},
-// 		{
-// 			name: "dup-name",
-// 			args: args{
-// 				user: func() *User {
-// 					u, err := NewUser(org.PublicId, WithName("dup-name"+id))
-// 					assert.NoError(t, err)
-// 					return u
-// 				}(),
-// 			},
-// 			wantDup:    true,
-// 			wantErr:    true,
-// 			wantErrMsg: "iam.(Repository).CreateUser: user %s already exists in org %s: integrity violation: error #1002",
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			assert, require := assert.New(t), require.New(t)
-// 			if tt.wantDup {
-// 				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
-// 				require.NoError(err)
-// 				require.NotNil(dup)
-// 			}
-// 			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
-// 			if tt.wantErr {
-// 				require.Error(err)
-// 				assert.Nil(u)
-// 				switch tt.name {
-// 				case "dup-name":
-// 					assert.Contains(err.Error(), fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId))
-// 				default:
-// 					assert.Contains(err.Error(), tt.wantErrMsg)
-// 				}
-// 				return
-// 			}
-// 			require.NoError(err)
-// 			assert.NotNil(u.CreateTime)
-// 			assert.NotNil(u.UpdateTime)
+	type args struct {
+		user *iam.User
+		opt  []iam.Option
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantDup    bool
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name: "valid",
+			args: args{
+				user: func() *iam.User {
+					u, err := iam.NewUser(org.PublicId, iam.WithName("valid"+id), iam.WithDescription(id))
+					assert.NoError(t, err)
+					return u
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-scope-id",
+			args: args{
+				user: func() *iam.User {
+					u, err := iam.NewUser(id)
+					assert.NoError(t, err)
+					return u
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "iam.(Repository).create: error getting metadata: iam.(Repository).stdMetadata: unable to get scope: iam.LookupScope: db.LookupWhere: record not found",
+		},
+		{
+			name: "dup-name",
+			args: args{
+				user: func() *iam.User {
+					u, err := iam.NewUser(org.PublicId, iam.WithName("dup-name"+id))
+					assert.NoError(t, err)
+					return u
+				}(),
+			},
+			wantDup:    true,
+			wantErr:    true,
+			wantErrMsg: "iam.(Repository).CreateUser: user %s already exists in org %s: integrity violation: error #1002",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tt.wantDup {
+				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
+				require.NoError(err)
+				require.NotNil(dup)
+			}
+			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(u)
+				switch tt.name {
+				case "dup-name":
+					assert.Contains(err.Error(), fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId))
+				default:
+					assert.Contains(err.Error(), tt.wantErrMsg)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(u.CreateTime)
+			assert.NotNil(u.UpdateTime)
 
-// 			foundUser, _, err := repo.LookupUser(context.Background(), u.PublicId)
-// 			require.NoError(err)
-// 			assert.True(proto.Equal(foundUser, u))
+			foundUser, _, err := repo.LookupUser(context.Background(), u.PublicId)
+			require.NoError(err)
+			assert.True(proto.Equal(foundUser, u))
 
-// 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-// 			assert.NoError(err)
-// 		})
-// 	}
-// }
+			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
 
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
@@ -319,9 +319,6 @@ func TestRepository_UpdateUser(t *testing.T) {
 			s, err = repo.LookupScope(context.Background(), org.PublicId)
 			require.NoError(err)
 			iam.TestSetPrimaryAuthMethod(t, repo, s, authMethod.PublicId)
-			s, err = repo.LookupScope(context.Background(), org.PublicId)
-			require.NoError(err)
-			require.Equal(authMethod.PublicId, s.PrimaryAuthMethodId)
 
 			sort.Strings(accountIds)
 			if len(accountIds) > 0 {
@@ -476,83 +473,101 @@ func TestRepository_DeleteUser(t *testing.T) {
 	}
 }
 
-// func TestRepository_ListUsers(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	const testLimit = 10
-// 	wrapper := db.TestWrapper(t)
-// 	repo := TestRepo(t, conn, wrapper, WithLimit(testLimit))
-// 	org, _ := TestScopes(t, repo)
+func TestRepository_ListUsers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper, iam.WithLimit(testLimit))
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
 
-// 	type args struct {
-// 		withOrgId string
-// 		opt       []Option
-// 	}
-// 	tests := []struct {
-// 		name      string
-// 		createCnt int
-// 		args      args
-// 		wantCnt   int
-// 		wantErr   bool
-// 	}{
-// 		{
-// 			name:      "no-limit",
-// 			createCnt: repo.defaultLimit + 1,
-// 			args: args{
-// 				withOrgId: org.PublicId,
-// 				opt:       []Option{WithLimit(-1)},
-// 			},
-// 			wantCnt: repo.defaultLimit + 1,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:      "default-limit",
-// 			createCnt: repo.defaultLimit + 1,
-// 			args: args{
-// 				withOrgId: org.PublicId,
-// 			},
-// 			wantCnt: repo.defaultLimit,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:      "custom-limit",
-// 			createCnt: repo.defaultLimit + 1,
-// 			args: args{
-// 				withOrgId: org.PublicId,
-// 				opt:       []Option{WithLimit(3)},
-// 			},
-// 			wantCnt: 3,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:      "bad-org",
-// 			createCnt: 1,
-// 			args: args{
-// 				withOrgId: "bad-id",
-// 			},
-// 			wantCnt: 0,
-// 			wantErr: false,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			assert, require := assert.New(t), require.New(t)
-// 			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(allocUser()).Error)
-// 			testUsers := []*User{}
-// 			for i := 0; i < tt.createCnt; i++ {
-// 				testUsers = append(testUsers, TestUser(t, repo, org.PublicId))
-// 			}
-// 			assert.Equal(tt.createCnt, len(testUsers))
-// 			got, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
-// 			if tt.wantErr {
-// 				require.Error(err)
-// 				return
-// 			}
-// 			require.NoError(err)
-// 			assert.Equal(tt.wantCnt, len(got))
-// 		})
-// 	}
-// }
+	iam.TestSetPrimaryAuthMethod(t, repo, org, authMethod.PublicId)
+
+	type args struct {
+		withOrgId string
+		opt       []iam.Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: testLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []iam.Option{iam.WithLimit(-1)},
+			},
+			wantCnt: testLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: testLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+			},
+			wantCnt: testLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: testLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []iam.Option{iam.WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "bad-org",
+			createCnt: 1,
+			args: args{
+				withOrgId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(iam.AllocUser()).Error)
+			testUsers := []*iam.User{}
+			wantEmail, wantFullName := fmt.Sprintf("%s@example.com", tt.name), tt.name
+			for i := 0; i < tt.createCnt; i++ {
+				u := iam.TestUser(t, repo, org.PublicId)
+				testUsers = append(testUsers, u)
+				a := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
+				_, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{a.PublicId})
+				require.NoError(err)
+			}
+			assert.Equal(tt.createCnt, len(testUsers))
+			got, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+			for _, u := range got {
+				assert.Equal(wantFullName, u.FullName)
+				assert.Equal(wantEmail, u.Email)
+			}
+		})
+	}
+}
 
 // func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 // 	t.Parallel()
