@@ -3,14 +3,17 @@ import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 import { productName, productSlug } from 'data/metadata'
 import ProductDownloader from '@hashicorp/react-product-downloader'
+import MerchDesktopClient from 'components/merch-desktop-client'
 import styles from './style.module.css'
 
-export default function DownloadsPage({ releases }) {
+const DESKTOP_BINARY_SLUG = 'boundary-desktop'
+
+export default function DownloadsPage({ binaryReleases, desktopReleases }) {
   return (
     <div className={styles.root}>
       <HashiHead is={Head} title={`Downloads | ${productName} by HashiCorp`} />
       <ProductDownloader
-        releases={releases}
+        releases={binaryReleases}
         packageManagers={[
           {
             label: 'Homebrew',
@@ -59,7 +62,7 @@ export default function DownloadsPage({ releases }) {
         ]}
         productName={productName}
         productId={productSlug}
-        latestVersion={VERSION}
+        latestVersion={VERSION[productSlug]}
         getStartedLinks={[
           {
             label: 'Install Boundary',
@@ -90,22 +93,41 @@ export default function DownloadsPage({ releases }) {
           href:
             'https://learn.hashicorp.com/tutorials/boundary/getting-started-install',
         }}
+        merchandisingSlot={
+          <MerchDesktopClient
+            version={VERSION[DESKTOP_BINARY_SLUG]}
+            releases={desktopReleases}
+          />
+        }
       />
     </div>
   )
 }
 
 export async function getStaticProps() {
-  return fetch(`https://releases.hashicorp.com/boundary/index.json`, {
-    headers: {
-      'Cache-Control': 'no-cache',
-    },
-  })
-    .then((res) => res.json())
+  return Promise.all([
+    fetch(`https://releases.hashicorp.com/boundary/index.json`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    }).then((res) => res.json()),
+    fetch(`https://releases.hashicorp.com/boundary-desktop/index.json`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    }).then((res) => res.json()),
+  ])
     .then((result) => {
+      const binaryReleases = result.find(
+        (releases) => releases.name === productSlug
+      )
+      const desktopReleases = result.find(
+        (releases) => releases.name === DESKTOP_BINARY_SLUG
+      )
       return {
         props: {
-          releases: result,
+          binaryReleases,
+          desktopReleases,
         },
       }
     })
