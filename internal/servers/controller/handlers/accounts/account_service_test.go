@@ -268,10 +268,11 @@ func TestListPassword(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.ListAccountsRequest
-		res  *pbs.ListAccountsResponse
-		err  error
+		name     string
+		req      *pbs.ListAccountsRequest
+		res      *pbs.ListAccountsResponse
+		err      error
+		skipAnon bool
 	}{
 		{
 			name: "List Some Accounts",
@@ -299,7 +300,8 @@ func TestListPassword(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].Attributes.AsMap()["login_name"]),
 			},
-			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			skipAnon: true,
 		},
 		{
 			name: "Filter All Accounts",
@@ -321,7 +323,8 @@ func TestListPassword(t *testing.T) {
 			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			// Test non-anon first
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -330,6 +333,19 @@ func TestListPassword(t *testing.T) {
 				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Now test with anon
+			if tc.skipAnon {
+				return
+			}
+			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			require.NoError(gErr)
+			for _, g := range got.GetItems() {
+				assert.Nil(g.Attributes)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
 		})
 	}
 }
@@ -401,10 +417,11 @@ func TestListOidc(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.ListAccountsRequest
-		res  *pbs.ListAccountsResponse
-		err  error
+		name     string
+		req      *pbs.ListAccountsRequest
+		res      *pbs.ListAccountsResponse
+		err      error
+		skipAnon bool
 	}{
 		{
 			name: "List Some Accounts",
@@ -432,7 +449,8 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject"]),
 			},
-			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			skipAnon: true,
 		},
 		{
 			name: "Filter All Accounts",
@@ -454,7 +472,7 @@ func TestListOidc(t *testing.T) {
 			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -467,6 +485,19 @@ func TestListOidc(t *testing.T) {
 					got.Items[j].GetAttributes().GetFields()["subject"].GetStringValue()) < 0
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Now test with anon
+			if tc.skipAnon {
+				return
+			}
+			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			require.NoError(gErr)
+			for _, g := range got.GetItems() {
+				assert.Nil(g.Attributes)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
 		})
 	}
 }

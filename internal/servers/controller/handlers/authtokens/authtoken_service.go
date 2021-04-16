@@ -83,7 +83,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.AuthToken, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.AuthToken, error) {
 	repo, err := s.repoFn()
 	_ = repo
 	if err != nil {
@@ -188,7 +188,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Aut
 	}
 	var outUl []*pb.AuthToken
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		outUl = append(outUl, toProto(u, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outUl, nil
 }
@@ -237,18 +237,22 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *authtoken.AuthToken) *pb.AuthToken {
+func toProto(in *authtoken.AuthToken, opt ...handlers.Option) *pb.AuthToken {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.AuthToken{
-		Id:                      in.GetPublicId(),
-		ScopeId:                 in.GetScopeId(),
-		CreatedTime:             in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:             in.GetUpdateTime().GetTimestamp(),
-		ApproximateLastUsedTime: in.GetApproximateLastAccessTime().GetTimestamp(),
-		ExpirationTime:          in.GetExpirationTime().GetTimestamp(),
-		UserId:                  in.GetIamUserId(),
-		AuthMethodId:            in.GetAuthMethodId(),
-		AccountId:               in.GetAuthAccountId(),
+		Id:           in.GetPublicId(),
+		ScopeId:      in.GetScopeId(),
+		UserId:       in.GetIamUserId(),
+		AuthMethodId: in.GetAuthMethodId(),
+		AccountId:    in.GetAuthAccountId(),
 	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.ApproximateLastUsedTime = in.GetApproximateLastAccessTime().GetTimestamp()
+		out.ExpirationTime = in.GetExpirationTime().GetTimestamp()
+	}
+
 	return &out
 }
 

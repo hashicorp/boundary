@@ -115,7 +115,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
+	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId(), authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -512,7 +512,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
+func (s Service) listFromRepo(ctx context.Context, authMethodId string, anonUser bool) ([]*pb.Account, error) {
 	var outUl []*pb.Account
 	switch auth.SubtypeFromId(authMethodId) {
 	case auth.PasswordSubtype:
@@ -525,7 +525,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 			return nil, err
 		}
 		for _, u := range pwl {
-			ou, err := toProto(u)
+			ou, err := toProto(u, handlers.WithAnonymousListing(anonUser))
 			if err != nil {
 				return nil, err
 			}
@@ -541,7 +541,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 			return nil, err
 		}
 		for _, u := range oidcl {
-			ou, err := toProto(u)
+			ou, err := toProto(u, handlers.WithAnonymousListing(anonUser))
 			if err != nil {
 				return nil, err
 			}
@@ -670,13 +670,11 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return authMeth, auth.Verify(ctx, opts...)
 }
 
-func toProto(in auth.Account) (*pb.Account, error) {
+func toProto(in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Account{
 		Id:           in.GetPublicId(),
-		CreatedTime:  in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
-		Version:      in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -684,8 +682,16 @@ func toProto(in auth.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
+	}
 	switch i := in.(type) {
 	case *password.Account:
+		if anonListing {
+			break
+		}
 		out.Type = auth.PasswordSubtype.String()
 		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
 		if err != nil {
@@ -693,6 +699,9 @@ func toProto(in auth.Account) (*pb.Account, error) {
 		}
 		out.Attributes = st
 	case *oidc.Account:
+		if anonListing {
+			break
+		}
 		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAccountAttributes{
 			Issuer:   i.GetIssuer(),
@@ -710,7 +719,7 @@ func toProto(in auth.Account) (*pb.Account, error) {
 }
 
 func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
-	const op = "account_service.toStoragePwAccount"
+	const op = "account_service.ToStoragePwAccount"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
