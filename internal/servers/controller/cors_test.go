@@ -143,6 +143,13 @@ func TestHandler_CORS(t *testing.T) {
 			listenerNum: 3,
 		},
 		{
+			name:        "enabled with allowed origins and desktop origin",
+			method:      http.MethodPost,
+			origin:      "serve://boundary",
+			code:        http.StatusOK,
+			listenerNum: 3,
+		},
+		{
 			name:        "enabled with wildcard origins and no origin defined",
 			method:      http.MethodPost,
 			code:        http.StatusOK,
