@@ -5,7 +5,7 @@ export default function MerchDesktopDownload({ version, releases }) {
   const { builds } = releases.versions[version]
 
   return (
-    <div className={s.container}>
+    <div className={s.container} id="#desktop">
       <div className={s.wrapper}>
         <span className={s.title}>Desktop Client</span>
         <div className={s.platformVersion}>
