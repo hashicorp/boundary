@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -942,134 +943,153 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 	}
 }
 
-// func TestRepository_DisassociateAccounts(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	rw := db.New(conn)
-// 	wrapper := db.TestWrapper(t)
-// 	repo := TestRepo(t, conn, wrapper)
-// 	org, _ := TestScopes(t, repo)
-// 	authMethodId := testAuthMethod(t, conn, org.PublicId)
-// 	user := TestUser(t, repo, org.PublicId)
+func TestRepository_DisassociateAccounts(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 
-// 	createAccountsFn := func() []string {
-// 		require.NoError(t, conn.Where("iam_user_id = ?", user.PublicId).Delete(allocAccount()).Error)
-// 		results := []string{}
-// 		for i := 0; i < 1; i++ {
-// 			a := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-// 			results = append(results, a.PublicId)
-// 		}
-// 		return results
-// 	}
-// 	type args struct {
-// 		accountIdsFn        func() []string
-// 		userId              string
-// 		userVersionOverride *uint32
-// 		opt                 []Option
-// 	}
-// 	tests := []struct {
-// 		name        string
-// 		args        args
-// 		wantErr     bool
-// 		wantErrCode errors.Code
-// 	}{
-// 		{
-// 			name: "valid",
-// 			args: args{
-// 				userId:       user.PublicId,
-// 				accountIdsFn: createAccountsFn,
-// 			},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name: "associated-with-diff-user",
-// 			args: args{
-// 				userId: user.PublicId,
-// 				accountIdsFn: func() []string {
-// 					ids := createAccountsFn()
-// 					u := TestUser(t, repo, org.PublicId)
-// 					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
-// 					ids = append(ids, a.PublicId)
-// 					return ids
-// 				},
-// 			},
-// 			wantErr:     true,
-// 			wantErrCode: errors.AccountAlreadyAssociated,
-// 		},
-// 		{
-// 			name: "bad-version",
-// 			args: args{
-// 				userVersionOverride: func() *uint32 {
-// 					i := uint32(22)
-// 					return &i
-// 				}(),
-// 				userId:       user.PublicId,
-// 				accountIdsFn: createAccountsFn,
-// 			},
-// 			wantErr:     true,
-// 			wantErrCode: errors.MultipleRecords,
-// 		},
-// 		{
-// 			name: "zero-version",
-// 			args: args{
-// 				userVersionOverride: func() *uint32 {
-// 					i := uint32(0)
-// 					return &i
-// 				}(),
-// 				userId:       user.PublicId,
-// 				accountIdsFn: createAccountsFn,
-// 			},
-// 			wantErr:     true,
-// 			wantErrCode: errors.InvalidParameter,
-// 		},
-// 		{
-// 			name: "no-accounts",
-// 			args: args{
-// 				userId:       user.PublicId,
-// 				accountIdsFn: func() []string { return nil },
-// 			},
-// 			wantErr:     true,
-// 			wantErrCode: errors.InvalidParameter,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			assert, require := assert.New(t), require.New(t)
-// 			accountIds := tt.args.accountIdsFn()
+	user := iam.TestUser(t, repo, org.PublicId)
 
-// 			origUser, _, err := repo.LookupUser(context.Background(), user.PublicId)
-// 			require.NoError(err)
+	createAccountsFn := func(prefix string) []string {
+		require.NoError(t, conn.Where("iam_user_id = ?", user.PublicId).Delete(allocAuthAccount()).Error)
+		results := []string{}
+		for i := 0; i < 1; i++ {
+			authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("%s-alice-rp-%d", prefix, i), "fido",
+				oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+				oidc.WithSigningAlgs(oidc.RS256),
+				oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+			a := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf("acct-%d", i))
+			user, _, err := repo.LookupUser(context.Background(), user.PublicId)
+			require.NoError(t, err)
+			added, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, []string{a.PublicId})
+			require.NoError(t, err)
+			require.Contains(t, added, a.PublicId)
+			results = append(results, a.PublicId)
+		}
+		return results
+	}
+	type args struct {
+		accountIdsFn        func() []string
+		userId              string
+		userVersionOverride *uint32
+		opt                 []iam.Option
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantErr     bool
+		wantErrCode errors.Code
+	}{
+		{
+			name: "valid",
+			args: args{
+				userId:       user.PublicId,
+				accountIdsFn: func() []string { return createAccountsFn("valid") },
+			},
+			wantErr: false,
+		},
+		{
+			name: "associated-with-diff-user",
+			args: args{
+				userId: user.PublicId,
+				accountIdsFn: func() []string {
+					ids := createAccountsFn("associated-with-diff-user")
+					authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "associated-with-diff-user-alice-rp", "fido",
+						oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+						oidc.WithSigningAlgs(oidc.RS256),
+						oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+					u := iam.TestUser(t, repo, org.PublicId)
+					a := oidc.TestAccount(t, conn, authMethod, "already-associated")
+					added, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{a.PublicId})
+					require.NoError(t, err)
+					require.Contains(t, added, a.PublicId)
+					ids = append(ids, a.PublicId)
+					return ids
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.AccountAlreadyAssociated,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				userVersionOverride: func() *uint32 {
+					i := uint32(22)
+					return &i
+				}(),
+				userId:       user.PublicId,
+				accountIdsFn: func() []string { return createAccountsFn("bad-version") },
+			},
+			wantErr:     true,
+			wantErrCode: errors.MultipleRecords,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				userVersionOverride: func() *uint32 {
+					i := uint32(0)
+					return &i
+				}(),
+				userId:       user.PublicId,
+				accountIdsFn: func() []string { return createAccountsFn("zero-version") },
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "no-accounts",
+			args: args{
+				userId:       user.PublicId,
+				accountIdsFn: func() []string { return nil },
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			accountIds := tt.args.accountIdsFn()
 
-// 			version := origUser.Version
-// 			if tt.args.userVersionOverride != nil {
-// 				version = *tt.args.userVersionOverride
-// 			}
+			origUser, _, err := repo.LookupUser(context.Background(), user.PublicId)
+			require.NoError(err)
 
-// 			got, err := repo.DeleteUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
-// 			if tt.wantErr {
-// 				require.Error(err)
-// 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
-// 				return
-// 			}
-// 			require.NoError(err)
-// 			err = db.TestVerifyOplog(t, rw, tt.args.userId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-// 			assert.NoError(err)
-// 			for _, id := range got {
-// 				err = db.TestVerifyOplog(t, rw, id, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-// 				assert.NoError(err)
-// 			}
-// 			foundIds, err := repo.ListUserAccounts(context.Background(), tt.args.userId)
-// 			require.NoError(err)
-// 			for _, id := range accountIds {
-// 				assert.True(!strutil.StrListContains(foundIds, id))
-// 			}
+			version := origUser.Version
+			if tt.args.userVersionOverride != nil {
+				version = *tt.args.userVersionOverride
+			}
 
-// 			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
-// 			require.NoError(err)
-// 			assert.Equal(version+1, u.Version)
-// 		})
-// 	}
-// }
+			got, err := repo.DeleteUserAccounts(context.Background(), tt.args.userId, version, accountIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err)
+				return
+			}
+			require.NoError(err)
+			err = db.TestVerifyOplog(t, rw, tt.args.userId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+			for _, id := range got {
+				err = db.TestVerifyOplog(t, rw, id, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+			foundIds, err := repo.ListUserAccounts(context.Background(), tt.args.userId)
+			require.NoError(err)
+			for _, id := range accountIds {
+				assert.True(!strutil.StrListContains(foundIds, id))
+			}
+
+			u, _, err := repo.LookupUser(context.Background(), tt.args.userId)
+			require.NoError(err)
+			assert.Equal(version+1, u.Version)
+		})
+	}
+}
 
 // func TestRepository_SetAssociatedAccounts(t *testing.T) {
 // 	t.Parallel()
