@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -18,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateUser(t *testing.T) {
@@ -592,143 +595,182 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 	assert.Equal(t, total, len(got))
 }
 
-// func TestRepository_LookupUserWithLogin(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	rw := db.New(conn)
-// 	wrapper := db.TestWrapper(t)
-// 	repo := TestRepo(t, conn, wrapper)
+func TestRepository_LookupUserWithLogin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
 
-// 	id := testId(t)
-// 	org, _ := TestScopes(t, repo)
-// 	authMethodId := testAuthMethod(t, conn, org.PublicId)
-// 	TestSetPrimaryAuthMethod(t, repo, org, authMethodId)
-// 	newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, "")
+	id := testId(t)
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
 
-// 	authMethodId2 := testAuthMethod(t, conn, org.PublicId)
-// 	newAuthAcctWithoutVivify := testAccount(t, conn, org.PublicId, authMethodId2, "")
+	iam.TestSetPrimaryAuthMethod(t, repo, org, authMethod.PublicId)
 
-// 	user := TestUser(t, repo, org.PublicId, WithName("existing-"+id))
-// 	existingUserWithAcctWithVivify := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
-// 	require.Equal(t, user.PublicId, existingUserWithAcctWithVivify.IamUserId)
+	// an account with no assoc user to test auto-vivify for the primary auth method.
+	newAuthAcct := oidc.TestAccount(t, conn, authMethod, "acct-1", oidc.WithFullName("acct-1"), oidc.WithEmail("acct-1@example.com"))
 
-// 	existingUserWithAcctNoVivify := testAccount(t, conn, org.PublicId, authMethodId2, user.PublicId)
+	// a 2nd auth method which will NOT be the primary auth method
+	authMethod2 := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "alice-rp-2", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
 
-// 	type args struct {
-// 		withAccountId string
-// 		opt           []Option
-// 	}
-// 	tests := []struct {
-// 		name            string
-// 		args            args
-// 		wantName        string
-// 		wantDescription string
-// 		wantErr         bool
-// 		wantErrIs       errors.Code
-// 		wantUser        *User
-// 	}{
-// 		{
-// 			name: "valid",
-// 			args: args{
-// 				withAccountId: newAuthAcct.PublicId,
-// 				opt: []Option{
-// 					WithName("valid-" + id),
-// 					WithDescription("valid-" + id),
-// 				},
-// 			},
-// 			wantName:        "valid-" + id,
-// 			wantDescription: "valid-" + id,
-// 			wantErr:         false,
-// 		},
-// 		{
-// 			name: "new-acct-without-vivify",
-// 			args: args{
-// 				withAccountId: newAuthAcctWithoutVivify.PublicId,
-// 			},
-// 			wantErr:   true,
-// 			wantErrIs: errors.RecordNotFound,
-// 		},
-// 		{
-// 			name: "missing auth acct id",
-// 			args: args{
-// 				withAccountId: "",
-// 			},
-// 			wantErr:   true,
-// 			wantErrIs: errors.InvalidParameter,
-// 		},
-// 		{
-// 			name: "existing-user-with-account-with-vivify",
-// 			args: args{
-// 				withAccountId: existingUserWithAcctWithVivify.PublicId,
-// 			},
-// 			wantErr:  false,
-// 			wantName: "existing-" + id,
-// 			wantUser: user,
-// 		},
-// 		{
-// 			name: "existing-user-with-account-no-vivify",
-// 			args: args{
-// 				withAccountId: existingUserWithAcctNoVivify.PublicId,
-// 				opt:           []Option{},
-// 			},
-// 			wantErr:  false,
-// 			wantName: "existing-" + id,
-// 			wantUser: user,
-// 		},
-// 		{
-// 			name: "bad-auth-account-id",
-// 			args: args{
-// 				withAccountId: id,
-// 			},
-// 			wantErr:   true,
-// 			wantErrIs: errors.RecordNotFound,
-// 		},
-// 		{
-// 			name: "bad-auth-account-id-with-vivify",
-// 			args: args{
-// 				withAccountId: id,
-// 				opt:           []Option{},
-// 			},
-// 			wantErr:   true,
-// 			wantErrIs: errors.RecordNotFound,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			assert, require := assert.New(t), require.New(t)
-// 			dbassert := dbassert.New(t, conn.DB())
-// 			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)
-// 			if tt.wantErr {
-// 				require.Error(err)
-// 				assert.Nil(got)
-// 				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
-// 				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
-// 					// need to assert that userid in auth_account is still null
-// 					acct := allocAccount()
-// 					acct.PublicId = tt.args.withAccountId
-// 					dbassert.IsNull(&acct, "IamUserId")
-// 				}
-// 				return
-// 			}
-// 			require.NoError(err)
-// 			if tt.wantName != "" {
-// 				assert.Equal(tt.wantName, got.Name)
-// 			}
-// 			if tt.wantDescription != "" {
-// 				assert.Equal(tt.wantDescription, got.Description)
-// 			}
-// 			require.NotEmpty(got.PublicId)
-// 			if tt.wantUser != nil {
-// 				assert.True(proto.Equal(tt.wantUser.User, got.User))
-// 			}
-// 			acct := allocAccount()
-// 			acct.PublicId = tt.args.withAccountId
-// 			err = rw.LookupByPublicId(context.Background(), &acct)
-// 			require.NoError(err)
-// 			assert.Equal(got.PublicId, acct.IamUserId)
-// 		})
-// 	}
-// }
+	// an account with no assoc user to test non-primary auth methods do not auto-vivify
+	newAuthAcctWithoutVivify := oidc.TestAccount(t, conn, authMethod2, "acct-2", oidc.WithFullName("acct-2"), oidc.WithEmail("acct-2@example.com"))
+
+	user := iam.TestUser(t, repo, org.PublicId, iam.WithName("existing-"+id))
+	existingUserWithAcctWithVivify := oidc.TestAccount(t, conn, authMethod, "acct-3", oidc.WithFullName("acct-3"), oidc.WithEmail("acct-3@example.com"))
+	added, err := repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, []string{existingUserWithAcctWithVivify.PublicId})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(added))
+	foundAcct := allocAuthAccount()
+	foundAcct.PublicId = existingUserWithAcctWithVivify.PublicId
+	require.NoError(t, rw.LookupById(context.Background(), &foundAcct))
+	require.Equal(t, user.PublicId, foundAcct.IamUserId)
+
+	// we need to set these primary acct values on the user, so the test
+	// comparisons will work properly.
+	user.LoginName = "acct-3"
+	user.FullName = "acct-3"
+	user.Email = "acct-3@example.com"
+
+	existingUserWithAcctNoVivify := oidc.TestAccount(t, conn, authMethod2, "acct-4", oidc.WithFullName("acct-4"), oidc.WithEmail("acct-4@example.com"))
+	user, _, err = repo.LookupUser(context.Background(), user.PublicId)
+	require.NoError(t, err)
+	added, err = repo.AddUserAccounts(context.Background(), user.PublicId, user.Version, []string{existingUserWithAcctNoVivify.PublicId})
+	require.NoError(t, err)
+	require.Equal(t, 2, len(added))
+	foundAcct.PublicId = existingUserWithAcctNoVivify.PublicId
+	require.NoError(t, rw.LookupById(context.Background(), &foundAcct, db.WithWhere("iam_user_id = ?", user.PublicId)))
+	require.Equal(t, user.PublicId, foundAcct.IamUserId)
+
+	type args struct {
+		withAccountId string
+		opt           []iam.Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantName        string
+		wantDescription string
+		wantErr         bool
+		wantErrIs       errors.Code
+		wantUser        *iam.User
+	}{
+		{
+			name: "valid",
+			args: args{
+				withAccountId: newAuthAcct.PublicId,
+				opt: []iam.Option{
+					iam.WithName("valid-" + id),
+					iam.WithDescription("valid-" + id),
+				},
+			},
+			wantName:        "valid-" + id,
+			wantDescription: "valid-" + id,
+			wantErr:         false,
+		},
+		{
+			name: "new-acct-without-vivify",
+			args: args{
+				withAccountId: newAuthAcctWithoutVivify.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: errors.RecordNotFound,
+		},
+		{
+			name: "missing auth acct id",
+			args: args{
+				withAccountId: "",
+			},
+			wantErr:   true,
+			wantErrIs: errors.InvalidParameter,
+		},
+		{
+			name: "existing-user-with-account-with-vivify",
+			args: args{
+				withAccountId: existingUserWithAcctWithVivify.PublicId,
+			},
+			wantErr:  false,
+			wantName: "existing-" + id,
+			wantUser: user,
+		},
+		{
+			name: "existing-user-with-account-no-vivify",
+			args: args{
+				withAccountId: existingUserWithAcctNoVivify.PublicId,
+				opt:           []iam.Option{},
+			},
+			wantErr:  false,
+			wantName: "existing-" + id,
+			wantUser: user,
+		},
+		{
+			name: "bad-auth-account-id",
+			args: args{
+				withAccountId: id,
+			},
+			wantErr:   true,
+			wantErrIs: errors.RecordNotFound,
+		},
+		{
+			name: "bad-auth-account-id-with-vivify",
+			args: args{
+				withAccountId: id,
+				opt:           []iam.Option{},
+			},
+			wantErr:   true,
+			wantErrIs: errors.RecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			dbassert := dbassert.New(t, conn.DB())
+
+			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				assert.Truef(errors.Match(errors.T(tt.wantErrIs), err), "unexpected error %s", err.Error())
+				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
+					// need to assert that userid in auth_account is still null
+					acct := allocAuthAccount()
+					acct.PublicId = tt.args.withAccountId
+					dbassert.IsNull(&acct, "IamUserId")
+				}
+				return
+			}
+			require.NoError(err)
+			if tt.wantName != "" {
+				assert.Equal(tt.wantName, got.Name)
+			}
+			if tt.wantDescription != "" {
+				assert.Equal(tt.wantDescription, got.Description)
+			}
+			require.NotEmpty(got.PublicId)
+			if tt.wantUser != nil {
+				tt.wantUser.Version = got.User.Version
+				tt.wantUser.CreateTime = got.User.CreateTime
+				tt.wantUser.UpdateTime = got.User.UpdateTime
+				assert.Empty(cmp.Diff(got.User, tt.wantUser.User, protocmp.Transform()), "got %q, wanted %q", got.User, tt.wantUser.User)
+			}
+			acct := allocAuthAccount()
+			acct.PublicId = tt.args.withAccountId
+			err = rw.LookupByPublicId(context.Background(), &acct)
+			require.NoError(err)
+			assert.Equal(got.PublicId, acct.IamUserId)
+		})
+	}
+}
 
 // func TestRepository_AssociateAccounts(t *testing.T) {
 // 	t.Parallel()
@@ -1202,4 +1244,23 @@ func testId(t *testing.T) string {
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	return id
+}
+
+type testAuthAccount struct {
+	*store.Account
+	tableName string `gorm:"-"`
+}
+
+func allocAuthAccount() testAuthAccount {
+	return testAuthAccount{
+		Account: &store.Account{},
+	}
+}
+
+// TableName returns the tablename to override the default gorm table name.
+func (a *testAuthAccount) TableName() string {
+	if a.tableName != "" {
+		return a.tableName
+	}
+	return "auth_account"
 }
