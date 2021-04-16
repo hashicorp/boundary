@@ -100,7 +100,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return &pbs.ListRolesResponse{}, nil
 	}
 
-	items, err := s.listFromRepo(ctx, scopeIds)
+	items, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +403,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Role, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -415,7 +415,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Rol
 	var outRl []*pb.Role
 	for _, g := range rl {
 		// TODO: Attach principals and grants to ListRoles response.
-		outRl = append(outRl, toProto(g, nil, nil))
+		outRl = append(outRl, toProto(g, nil, nil, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outRl, nil
 }
@@ -583,13 +583,11 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant) *pb.Role {
+func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant, opt ...handlers.Option) *pb.Role {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Role{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -597,41 +595,46 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	for _, p := range principals {
-		principal := &pb.Principal{
-			Id:      p.GetPrincipalId(),
-			Type:    p.GetType(),
-			ScopeId: p.GetPrincipalScopeId(),
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.Version
+		for _, p := range principals {
+			principal := &pb.Principal{
+				Id:      p.GetPrincipalId(),
+				Type:    p.GetType(),
+				ScopeId: p.GetPrincipalScopeId(),
+			}
+			out.Principals = append(out.Principals, principal)
+			out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
 		}
-		out.Principals = append(out.Principals, principal)
-		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
-	}
-	for _, g := range grants {
-		out.GrantStrings = append(out.GrantStrings, g.GetRawGrant())
-		parsed, err := perms.Parse(in.GetGrantScopeId(), g.GetRawGrant())
-		if err != nil {
-			// This should never happen as we validate on the way in, but let's
-			// return what we can since we are still returning the raw grant
-			out.Grants = append(out.Grants, &pb.Grant{
-				Raw:       g.GetRawGrant(),
-				Canonical: "<parse_error>",
-				Json:      nil,
-			})
-		} else {
-			_, actions := parsed.Actions()
-			out.Grants = append(out.Grants, &pb.Grant{
-				Raw:       g.GetRawGrant(),
-				Canonical: g.GetCanonicalGrant(),
-				Json: &pb.GrantJson{
-					Id:      parsed.Id(),
-					Type:    parsed.Type().String(),
-					Actions: actions,
-				},
-			})
+		for _, g := range grants {
+			out.GrantStrings = append(out.GrantStrings, g.GetRawGrant())
+			parsed, err := perms.Parse(in.GetGrantScopeId(), g.GetRawGrant())
+			if err != nil {
+				// This should never happen as we validate on the way in, but let's
+				// return what we can since we are still returning the raw grant
+				out.Grants = append(out.Grants, &pb.Grant{
+					Raw:       g.GetRawGrant(),
+					Canonical: "<parse_error>",
+					Json:      nil,
+				})
+			} else {
+				_, actions := parsed.Actions()
+				out.Grants = append(out.Grants, &pb.Grant{
+					Raw:       g.GetRawGrant(),
+					Canonical: g.GetCanonicalGrant(),
+					Json: &pb.GrantJson{
+						Id:      parsed.Id(),
+						Type:    parsed.Type().String(),
+						Actions: actions,
+					},
+				})
+			}
 		}
-	}
-	if in.GetGrantScopeId() != "" {
-		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
+		if in.GetGrantScopeId() != "" {
+			out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
+		}
 	}
 	return &out
 }

@@ -294,14 +294,29 @@ func TestList(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
+			// Test the non-anon case
+			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err))
-			} else {
-				require.NoError(gErr)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test the anon case
+			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.PrincipalIds)
+				require.Nil(item.Principals)
+				require.Nil(item.Grants)
+				require.Nil(item.GrantStrings)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
