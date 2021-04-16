@@ -340,6 +340,7 @@ func TestListPassword(t *testing.T) {
 			}
 			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
@@ -492,6 +493,7 @@ func TestListOidc(t *testing.T) {
 			}
 			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)

@@ -372,6 +372,7 @@ func TestList(t *testing.T) {
 			// Now check with anonymous user
 			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)

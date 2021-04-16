@@ -353,6 +353,7 @@ func TestList(t *testing.T) {
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)
@@ -467,6 +468,7 @@ func TestList(t *testing.T) {
 			// Now test with anonymous listing
 			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)

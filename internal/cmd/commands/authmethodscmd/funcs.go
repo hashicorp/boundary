@@ -90,7 +90,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
 			)
 		}
-		if true && m.Version > 0 {
+		if m.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:              %d", m.Version),
 			)
