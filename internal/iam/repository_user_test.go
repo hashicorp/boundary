@@ -569,28 +569,28 @@ func TestRepository_ListUsers(t *testing.T) {
 	}
 }
 
-// func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
-// 	t.Parallel()
-// 	conn, _ := db.TestSetup(t, "postgres")
-// 	wrapper := db.TestWrapper(t)
-// 	repo := TestRepo(t, conn, wrapper)
-// 	org, _ := TestScopes(t, repo)
+func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, repo)
 
-// 	require.NoError(t, conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(allocUser()).Error)
+	require.NoError(t, conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(iam.AllocUser()).Error)
 
-// 	const numPerScope = 10
-// 	var total int = 3 // anon, auth, recovery
-// 	for i := 0; i < numPerScope; i++ {
-// 		TestUser(t, repo, "global")
-// 		total++
-// 		TestUser(t, repo, org.GetPublicId())
-// 		total++
-// 	}
+	const numPerScope = 10
+	var total int = 3 // anon, auth, recovery
+	for i := 0; i < numPerScope; i++ {
+		iam.TestUser(t, repo, "global")
+		total++
+		iam.TestUser(t, repo, org.GetPublicId())
+		total++
+	}
 
-// 	got, err := repo.ListUsers(context.Background(), []string{"global", org.GetPublicId()})
-// 	require.NoError(t, err)
-// 	assert.Equal(t, total, len(got))
-// }
+	got, err := repo.ListUsers(context.Background(), []string{"global", org.GetPublicId()})
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
+}
 
 // func TestRepository_LookupUserWithLogin(t *testing.T) {
 // 	t.Parallel()
