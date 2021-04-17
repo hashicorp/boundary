@@ -366,7 +366,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		fieldMaskPaths,
 		[]string{
 			"TlsSkipVerify",
-			"CaCert",
 		},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {

@@ -306,7 +306,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 	// Add tests for changing and deleting :
 	// - [ ] vault address
 	// - [ ] vault token
-	// - [ ] ca certificate
+	// - [x] ca certificate
 	// - [ ] client certificate
 	// - [x] namespace
 	// - [x] tls skip verify
@@ -831,7 +831,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 
 		// Delete CA Cert
 		orig.CaCert = nil
-		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, orig, 1, []string{"cacert"})
+		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, orig, 2, []string{"cacert"})
 		assert.NoError(err)
 		assert.Equal(1, gotCount2, "count of updated records")
 		require.NotNil(got2)
