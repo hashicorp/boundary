@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -86,8 +87,9 @@ type Service struct {
 
 // NewService returns a project service which handles project related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
+	const op = "scopes.(Service).NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -155,7 +157,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return &pbs.ListScopesResponse{}, nil
 	}
 
-	pl, err := s.listFromRepo(ctx, scopeIds)
+	pl, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +288,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) 
 }
 
 func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, req *pbs.CreateScopeRequest) (*pb.Scope, error) {
+	const op = "scopes.(Service).createInRepo"
 	item := req.GetItem()
 	var opts []iam.Option
 	if item.GetName() != nil {
@@ -315,7 +318,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	}
 	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create scope: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create scope"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create scope but no error returned from repository.")
@@ -324,6 +327,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 }
 
 func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
+	const op = "scope.(Service).updateInRepo"
 	var opts []iam.Option
 	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
 	if desc := item.GetDescription(); desc != nil {
@@ -374,7 +378,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	}
 	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update project: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update project"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist or incorrect version provided.", scopeId)
@@ -383,13 +387,14 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
+	const op = "scope.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
 	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, fmt.Errorf("unable to delete scope: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete scope"))
 	}
 	return rows > 0, nil
 }
@@ -402,7 +407,7 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -414,7 +419,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Sco
 
 	var outPl []*pb.Scope
 	for _, scp := range scps {
-		outPl = append(outPl, ToProto(scp))
+		outPl = append(outPl, ToProto(scp, handlers.WithAnonymousListing(anonUser)))
 	}
 	SortScopes(outPl)
 	return outPl, nil
@@ -459,14 +464,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func ToProto(in *iam.Scope) *pb.Scope {
+func ToProto(in *iam.Scope, opt ...handlers.Option) *pb.Scope {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Scope{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetParentId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		Type:        in.GetType(),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetParentId(),
+		Type:    in.GetType(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -476,6 +479,11 @@ func ToProto(in *iam.Scope) *pb.Scope {
 	}
 	if in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
 	}
 
 	return &out
