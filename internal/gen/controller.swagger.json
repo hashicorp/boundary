@@ -3658,6 +3658,11 @@
           "type": "string",
           "title": "Output only. email is a string that maps to the user's account email from\nthe scope's primary auth method",
           "readOnly": true
+        },
+        "primary_account_id": {
+          "type": "string",
+          "title": "Output only. primary_account_id is a string that maps to the user's account\npublic_id from the scope's primary auth method",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"

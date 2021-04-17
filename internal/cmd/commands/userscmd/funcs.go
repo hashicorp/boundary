@@ -179,19 +179,24 @@ func (c *Command) printListTable(items []*users.User) string {
 				fmt.Sprintf("    Description:         %s", u.Description),
 			)
 		}
+		if u.PrimaryAccountId != "" {
+			output = append(output,
+				fmt.Sprintf("    Primary Account ID:  %s", u.PrimaryAccountId),
+			)
+		}
 		if u.LoginName != "" {
 			output = append(output,
 				fmt.Sprintf("    Login Name:          %s", u.LoginName),
 			)
 		}
-		if u.LoginName != "" {
+		if u.FullName != "" {
 			output = append(output,
-				fmt.Sprintf("     Full Name:          %s", u.FullName),
+				fmt.Sprintf("    Full Name:           %s", u.FullName),
 			)
 		}
 		if u.Email != "" {
 			output = append(output,
-				fmt.Sprintf("         Email:          %s", u.Email),
+				fmt.Sprintf("    Email:               %s", u.Email),
 			)
 		}
 
@@ -219,6 +224,9 @@ func printItemTable(in *users.User) string {
 	}
 	if in.Description != "" {
 		nonAttributeMap["Description"] = in.Description
+	}
+	if in.PrimaryAccountId != "" {
+		nonAttributeMap["PrimaryAccountId"] = in.PrimaryAccountId
 	}
 	if in.LoginName != "" {
 		nonAttributeMap["LoginName"] = in.LoginName

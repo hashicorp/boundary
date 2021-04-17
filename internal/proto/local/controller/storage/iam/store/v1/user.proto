@@ -50,5 +50,9 @@ message User {
   // the scope's primary auth method
   // @inject_tag: `gorm:"-"`
   string email = 110 [json_name = "email"];
-  ;
+
+  // Output only. primary_account_id is a string that maps to the user's account
+  // public_id from the scope's primary auth method
+  // @inject_tag: `gorm:"-"`
+  string primary_account_id = 120 [json_name = "primary_account_id"];
 }

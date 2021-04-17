@@ -309,7 +309,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			u := iam.TestUser(t, repo, org.PublicId, tt.newUserOpts...)
 			acctCount := 10
 			accountIds := make([]string, 0, acctCount)
-			var wantEmail, wantFullName string
+			var wantEmail, wantFullName, wantPrimaryAccountId string
 			var authMethod *oidc.AuthMethod
 			for i := 0; i < acctCount; i++ {
 				switch i % 2 {
@@ -320,6 +320,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 						oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
 					wantEmail, wantFullName = fmt.Sprintf("%s-%d@example.com", tt.name, i), fmt.Sprintf("%s-%d", tt.name, i)
 					aa := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
+					wantPrimaryAccountId = aa.PublicId
 					accountIds = append(accountIds, aa.PublicId)
 				default:
 					pwAms := password.TestAuthMethods(t, conn, org.PublicId, 1)
@@ -387,6 +388,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			assert.Equal(accountIds, acctIdsAfterUpdate)
 			assert.Equal(wantFullName, userAfterUpdate.FullName)
 			assert.Equal(wantEmail, userAfterUpdate.Email)
+			assert.Equal(wantPrimaryAccountId, userAfterUpdate.PrimaryAccountId)
 
 			foundUser, foundAccountIds, err := repo.LookupUser(context.Background(), u.PublicId)
 			require.NoError(err)
@@ -556,16 +558,24 @@ func TestRepository_ListUsers(t *testing.T) {
 			wantErr: false,
 		},
 	}
+	type userInfo struct {
+		email         string
+		fullName      string
+		primaryAcctId string
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'").Delete(iam.AllocUser()).Error)
 			testUsers := []*iam.User{}
-			wantEmail, wantFullName := fmt.Sprintf("%s@example.com", tt.name), tt.name
+			wantUserInfo := map[string]userInfo{}
 			for i := 0; i < tt.createCnt; i++ {
+				wantEmail, wantFullName := fmt.Sprintf("%s-%d@example.com", tt.name, i), fmt.Sprintf("%s-%d", tt.name, i)
 				u := iam.TestUser(t, repo, org.PublicId)
 				testUsers = append(testUsers, u)
 				a := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
+				wantUserInfo[u.PublicId] = userInfo{email: wantEmail, fullName: wantFullName, primaryAcctId: a.PublicId}
+
 				_, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{a.PublicId})
 				require.NoError(err)
 			}
@@ -578,8 +588,11 @@ func TestRepository_ListUsers(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
 			for _, u := range got {
-				assert.Equal(wantFullName, u.FullName)
-				assert.Equal(wantEmail, u.Email)
+				assert.Equal(wantUserInfo[u.PublicId], userInfo{
+					email:         u.Email,
+					fullName:      u.FullName,
+					primaryAcctId: u.PrimaryAccountId,
+				})
 			}
 		})
 	}

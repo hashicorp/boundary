@@ -466,6 +466,9 @@ func toProto(in *iam.User, accts []string) *pb.User {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if in.GetPrimaryAccountId() != "" {
+		out.PrimaryAccountId = &wrapperspb.StringValue{Value: in.GetPrimaryAccountId()}
+	}
 	if in.GetLoginName() != "" {
 		out.LoginName = &wrapperspb.StringValue{Value: in.GetLoginName()}
 	}

@@ -64,4 +64,8 @@ message User {
   // Output only. email is a string that maps to the user's account email from
   // the scope's primary auth method
   google.protobuf.StringValue email = 130 [json_name = "email"];
+
+  // Output only. primary_account_id is a string that maps to the user's account
+  // public_id from the scope's primary auth method
+  google.protobuf.StringValue primary_account_id = 140 [json_name = "primary_account_id"];
 }
