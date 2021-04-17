@@ -573,19 +573,17 @@ func TestRepository_ListUsers(t *testing.T) {
 				u := iam.TestUser(t, repo, org.PublicId)
 				testUsers = append(testUsers, u)
 				wantEmail, wantFullName := fmt.Sprintf("%s-%d@example.com", tt.name, i), fmt.Sprintf("%s-%d", tt.name, i)
-				switch i % 2 {
-				case 0:
-					a := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
-					wantUserInfo[u.PublicId] = userInfo{email: wantEmail, fullName: wantFullName, primaryAcctId: a.PublicId}
-					_, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{a.PublicId})
-					require.NoError(err)
-				default:
-					pwAms := password.TestAuthMethods(t, conn, org.PublicId, 1)
-					require.Equal(1, len(pwAms))
-					pwAcct := password.TestAccount(t, conn, pwAms[0].PublicId, "name1")
-					_, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{pwAcct.PublicId})
-					require.NoError(err)
-				}
+				a := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
+				wantUserInfo[u.PublicId] = userInfo{email: wantEmail, fullName: wantFullName, primaryAcctId: a.PublicId}
+				_, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, []string{a.PublicId})
+				require.NoError(err)
+
+				pwAms := password.TestAuthMethods(t, conn, org.PublicId, 1)
+				require.Equal(1, len(pwAms))
+				pwAcct := password.TestAccount(t, conn, pwAms[0].PublicId, "name1")
+				_, err = repo.AddUserAccounts(context.Background(), u.PublicId, u.Version+1, []string{pwAcct.PublicId})
+				require.NoError(err)
+
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
 			got, err := repo.ListUsers(context.Background(), []string{tt.args.withOrgId}, tt.args.opt...)
