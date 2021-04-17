@@ -179,6 +179,22 @@ func (c *Command) printListTable(items []*users.User) string {
 				fmt.Sprintf("    Description:         %s", u.Description),
 			)
 		}
+		if u.LoginName != "" {
+			output = append(output,
+				fmt.Sprintf("    Login Name:          %s", u.LoginName),
+			)
+		}
+		if u.LoginName != "" {
+			output = append(output,
+				fmt.Sprintf("     Full Name:          %s", u.FullName),
+			)
+		}
+		if u.Email != "" {
+			output = append(output,
+				fmt.Sprintf("         Email:          %s", u.Email),
+			)
+		}
+
 		if len(u.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -203,6 +219,15 @@ func printItemTable(in *users.User) string {
 	}
 	if in.Description != "" {
 		nonAttributeMap["Description"] = in.Description
+	}
+	if in.LoginName != "" {
+		nonAttributeMap["LoginName"] = in.LoginName
+	}
+	if in.FullName != "" {
+		nonAttributeMap["FullName"] = in.FullName
+	}
+	if in.Email != "" {
+		nonAttributeMap["Email"] = in.Email
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
