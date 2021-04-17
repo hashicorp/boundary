@@ -189,6 +189,7 @@ type TestVaultServer struct {
 	Addr      string
 
 	CaCert     []byte
+	ServerCert []byte
 	ClientCert []byte
 	ClientKey  []byte
 }
@@ -290,6 +291,7 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 	}
 
 	serverCert := testServerCert(t, testCaCert(t), "localhost")
+	server.ServerCert = serverCert.Cert.Cert
 	server.CaCert = serverCert.CA.Cert
 
 	dataSrcDir, err := ioutil.TempDir("", strings.ReplaceAll(t.Name(), "/", "-"))

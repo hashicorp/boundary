@@ -326,13 +326,29 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 
-	// TODO(mgaffney) 04/2021: If token or vault address are changed,
-	// connect to vault server and test token
+	// TODO(mgaffney) 04/2021: If token or vault address,
+	// connect to vault server and test token.
 
+	// TODO(mgaffney) 04/2021:
+	// If token is updated
+	// 	if current token has leases
+	// 	  set current token status to 'maintaining'
+	// 	else
+	// 	  revoke current token and set status to 'revoked'
+
+	// TODO(mgaffney) 04/2021: Fields to handle:
+	// - ca cert
+	// - client cert
+	// - vault address
+	// - vault token
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
+		case strings.EqualFold("Namespace", f):
+		case strings.EqualFold("TlsServerName", f):
+		case strings.EqualFold("TlsSkipVerify", f):
+		case strings.EqualFold("CaCert", f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
@@ -340,11 +356,18 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":        cs.Name,
-			"Description": cs.Description,
+			"Name":          cs.Name,
+			"Description":   cs.Description,
+			"Namespace":     cs.Namespace,
+			"TlsServerName": cs.TlsServerName,
+			"TlsSkipVerify": cs.TlsSkipVerify,
+			"CaCert":        cs.CaCert,
 		},
 		fieldMaskPaths,
-		nil,
+		[]string{
+			"TlsSkipVerify",
+			"CaCert",
+		},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
