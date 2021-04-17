@@ -14,13 +14,27 @@ import (
 
 // CreateCredentialStore inserts cs into the repository and returns a new
 // CredentialStore containing the credential store's PublicId. cs is not
-// changed. cs must contain a valid ScopeId. cs must not contain a
-// PublicId. The PublicId is generated and assigned by this method.
+// changed. cs must not contain a PublicId. The PublicId is generated and
+// assigned by this method. cs must contain a valid ScopeId, VaultAddress,
+// and Vault token. The Vault token must be renewable, periodic, and
+// orphaned. CreateCredentialStore calls the /auth/token/renew-self and
+// /auth/token/lookup-self Vault endpoints.
 //
 // Both cs.Name and cs.Description are optional. If cs.Name is set, it must
-// be unique within cs.ScopeId.
+// be unique within cs.ScopeId. Both cs.CreateTime and cs.UpdateTime are
+// ignored.
 //
-// Both cs.CreateTime and cs.UpdateTime are ignored.
+// For more information about the required properties of the Vault token see:
+// https://www.vaultproject.io/api-docs/auth/token#period,
+// https://www.vaultproject.io/api-docs/auth/token#renewable,
+// https://www.vaultproject.io/docs/concepts/tokens#token-hierarchies-and-orphan-tokens,
+// https://www.vaultproject.io/docs/concepts/tokens#periodic-tokens, and
+// https://www.vaultproject.io/docs/concepts/tokens#token-time-to-live-periodic-tokens-and-explicit-max-ttls.
+//
+// For more information about the Vault endpoints called by
+// CreateCredentialStore see:
+// https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self and
+// https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
 func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialStore, _ ...Option) (*CredentialStore, error) {
 	const op = "vault.(Repository).CreateCredentialStore"
 	if cs == nil {
