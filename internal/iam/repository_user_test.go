@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -306,22 +307,33 @@ func TestRepository_UpdateUser(t *testing.T) {
 			}
 
 			u := iam.TestUser(t, repo, org.PublicId, tt.newUserOpts...)
-			acctCount := 3
+			acctCount := 10
 			accountIds := make([]string, 0, acctCount)
 			var wantEmail, wantFullName string
 			var authMethod *oidc.AuthMethod
 			for i := 0; i < acctCount; i++ {
-				authMethod = oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("alice-rp-%d", i), "fido",
-					oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
-					oidc.WithSigningAlgs(oidc.RS256),
-					oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
-				wantEmail, wantFullName = fmt.Sprintf("%s-%d@example.com", tt.name, i), fmt.Sprintf("%s-%d", tt.name, i)
-				aa := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
-				accountIds = append(accountIds, aa.PublicId)
+				switch i % 2 {
+				case 0:
+					authMethod = oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("alice-rp-%d", i), "fido",
+						oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+						oidc.WithSigningAlgs(oidc.RS256),
+						oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+					wantEmail, wantFullName = fmt.Sprintf("%s-%d@example.com", tt.name, i), fmt.Sprintf("%s-%d", tt.name, i)
+					aa := oidc.TestAccount(t, conn, authMethod, fmt.Sprintf(tt.name, i), oidc.WithFullName(wantFullName), oidc.WithEmail(wantEmail))
+					accountIds = append(accountIds, aa.PublicId)
+				default:
+					pwAms := password.TestAuthMethods(t, conn, org.PublicId, 1)
+					require.Equal(1, len(pwAms))
+					pwAcct := password.TestAccount(t, conn, pwAms[0].PublicId, "name1")
+					accountIds = append(accountIds, pwAcct.PublicId)
+				}
 			}
+			require.Equal(acctCount, len(accountIds))
 			var s *iam.Scope
 			s, err = repo.LookupScope(context.Background(), org.PublicId)
 			require.NoError(err)
+			// we need a primary auth method, so let's just pick the last oidc
+			// one created.
 			iam.TestSetPrimaryAuthMethod(t, repo, s, authMethod.PublicId)
 
 			sort.Strings(accountIds)
