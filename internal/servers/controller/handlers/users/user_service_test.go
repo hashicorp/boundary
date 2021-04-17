@@ -699,8 +699,8 @@ func TestAddAccount(t *testing.T) {
 	accts := make([]*password.Account, 0, acctCnt)
 	for i := 0; i < acctCnt; i++ {
 		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-		newAcct := password.TestAccounts(t, conn, amId, 1)
-		accts = append(accts, newAcct[0])
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
 	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
@@ -844,8 +844,8 @@ func TestSetAccount(t *testing.T) {
 	accts := make([]*password.Account, 0, acctCnt)
 	for i := 0; i < acctCnt; i++ {
 		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-		newAcct := password.TestAccounts(t, conn, amId, 1)
-		accts = append(accts, newAcct[0])
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
 	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
@@ -990,8 +990,8 @@ func TestRemoveAccount(t *testing.T) {
 	accts := make([]*password.Account, 0, acctCnt)
 	for i := 0; i < acctCnt; i++ {
 		amId := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0].GetPublicId()
-		newAcct := password.TestAccounts(t, conn, amId, 1)
-		accts = append(accts, newAcct[0])
+		newAcct := password.TestAccount(t, conn, amId, "name1")
+		accts = append(accts, newAcct)
 	}
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)

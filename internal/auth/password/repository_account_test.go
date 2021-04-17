@@ -349,7 +349,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
@@ -405,7 +405,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)

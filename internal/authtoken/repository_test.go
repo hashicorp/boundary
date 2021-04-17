@@ -188,7 +188,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
-	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	aAcct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	iam.TestSetPrimaryAuthMethod(t, repo, org1, am.PublicId)
 	u1 := iam.TestUser(t, repo, org1.PublicId, iam.WithAccountIds(aAcct.PublicId))
 
