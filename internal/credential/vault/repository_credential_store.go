@@ -3,8 +3,10 @@ package vault
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -292,3 +294,91 @@ func (agg *credentialStoreAgg) TableName() string { return "credential_vault_sto
 
 // GetPublicId returns the public id.
 func (agg *credentialStoreAgg) GetPublicId() string { return agg.PublicId }
+
+// UpdateCredentialStore updates the repository entry for cs.PublicId with
+// the values in cs for the fields listed in fieldMaskPaths. It returns a
+// new CredentialStore containing the updated values and a count of the
+// number of records updated. cs is not changed.
+//
+// cs must contain a valid PublicId. Only cs.Name and cs.Description can be
+// updated. If cs.Name is set to a non-empty string, it must be unique
+// within cs.ScopeId.
+//
+// An attribute of cs will be set to NULL in the database if the attribute
+// in cs is the zero value and it is included in fieldMaskPaths.
+//
+// TODO(mgaffney) 04/2021: Add interactions with Vault to godoc
+func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialStore, version uint32, fieldMaskPaths []string, opt ...Option) (*CredentialStore, int, error) {
+	const op = "vault.(Repository).UpdateCredentialStore"
+	if cs == nil {
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing CredentialStore")
+	}
+	if cs.CredentialStore == nil {
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded CredentialStore")
+	}
+	if cs.PublicId == "" {
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	if version == 0 {
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+	}
+	if cs.ScopeId == "" {
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
+
+	// TODO(mgaffney) 04/2021: If token or vault address are changed,
+	// connect to vault server and test token
+
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("Name", f):
+		case strings.EqualFold("Description", f):
+		default:
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"Name":        cs.Name,
+			"Description": cs.Description,
+		},
+		fieldMaskPaths,
+		nil,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+			errors.WithMsg(("unable to get oplog wrapper")))
+	}
+
+	var rowsUpdated int
+	var returnedCredentialStore *CredentialStore
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedCredentialStore = cs.clone()
+			var err error
+			rowsUpdated, err = w.Update(ctx, returnedCredentialStore, dbMask, nullFields,
+				db.WithOplog(oplogWrapper, cs.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithVersion(&version))
+			if err == nil && rowsUpdated > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+				fmt.Sprintf("name %s already exists: %s", cs.Name, cs.PublicId))
+		}
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(cs.PublicId))
+	}
+
+	return returnedCredentialStore, rowsUpdated, nil
+}
