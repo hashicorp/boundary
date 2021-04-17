@@ -41,7 +41,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	job2Id, err := sched.RegisterJob(context.Background(), tj2, "code2")
 	require.NoError(err)
 
-	sched.Start()
+	sched.Start(context.Background())
 
 	// Wait for scheduler to run both jobs
 	<-job1Ready
@@ -80,6 +80,51 @@ func TestSchedulerWorkflow(t *testing.T) {
 	sched.Shutdown()
 }
 
+func TestSchedulerShutdown(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iam.TestRepo(t, conn, wrapper)
+
+	server := testController(t, conn, wrapper)
+	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+
+	jobReady := make(chan struct{})
+	jobDone := make(chan struct{})
+	fn := func(ctx context.Context) error {
+		jobReady <- struct{}{}
+
+		// Block until context is cancelled
+		<-ctx.Done()
+
+		jobDone <- struct{}{}
+		return nil
+	}
+	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
+	_, err := sched.RegisterJob(context.Background(), tj, "code2")
+	require.NoError(err)
+
+	sched.Start(context.Background())
+
+	// Wait for scheduler to run job
+	<-jobReady
+
+	sched.l.RLock()
+	assert.Len(sched.runningJobs, 1)
+	sched.l.RUnlock()
+
+	// Verify job is not done
+	select {
+	case <-jobDone:
+		t.Fatal("expected job to be blocking on context")
+	default:
+	}
+
+	sched.Shutdown()
+	// Now that sched is shutdown all job context's should get cancelled
+	<-jobDone
+}
+
 func TestSchedulerCancelCtx(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -104,7 +149,8 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	_, err := sched.RegisterJob(context.Background(), tj, "code2")
 	require.NoError(err)
 
-	sched.Start()
+	baseCtx, baseCnl := context.WithCancel(context.Background())
+	sched.Start(baseCtx)
 
 	// Wait for scheduler to run job
 	<-jobReady
@@ -120,7 +166,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	default:
 	}
 
-	sched.Shutdown()
-	// Now that sched is shutdown all job context's should get cancelled
+	// Cancel the base context and all job context's should be cancelled and exit
+	baseCnl()
 	<-jobDone
 }

@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	jobRepo "github.com/hashicorp/boundary/internal/scheduler/job"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/go-hclog"
 	ua "go.uber.org/atomic"
 )
+
+type jobRepoFactory func() (*job.Repository, error)
 
 type runningJob struct {
 	runId     string
@@ -20,7 +22,7 @@ type runningJob struct {
 // Scheduler is used to register and run recurring jobs on the controller.
 type Scheduler struct {
 	serverId  string
-	jobRepoFn jobRepo.JobRepoFactory
+	jobRepoFn jobRepoFactory
 	logger    hclog.Logger
 
 	registeredJobs *sync.Map
@@ -28,6 +30,7 @@ type Scheduler struct {
 	l              sync.RWMutex
 
 	started         ua.Bool
+	stopping        ua.Bool
 	baseContext     context.Context
 	baseCancel      context.CancelFunc
 	runJobsLimit    uint
@@ -43,7 +46,7 @@ type Scheduler struct {
 // • logger must be provided and is used to log errors that occur during scheduling and running of jobs
 //
 // WithRunJobsLimit and WithRunJobsInterval are the only valid options.
-func New(serverId string, jobRepoFn jobRepo.JobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
+func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
@@ -75,13 +78,23 @@ func New(serverId string, jobRepoFn jobRepo.JobRepoFactory, logger hclog.Logger,
 //
 // The returned JobId is unique to the provide job and code.
 // All options are ignored.
-func (s *Scheduler) RegisterJob(ctx context.Context, job Job, code string, _ ...Option) (JobId, error) {
+func (s *Scheduler) RegisterJob(ctx context.Context, j Job, code string, _ ...Option) (JobId, error) {
 	const op = "scheduler.(Scheduler).RegisterJob"
-	if err := validateJob(job); err != nil {
+	if err := validateJob(j); err != nil {
 		return "", errors.Wrap(err, op)
 	}
 	if code == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing code")
+	}
+
+	jobId, err := job.NewJobId(j.Name(), code)
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+
+	if _, ok := s.registeredJobs.Load(jobId); ok {
+		// Job already registered
+		return JobId(jobId), nil
 	}
 
 	repo, err := s.jobRepoFn()
@@ -89,13 +102,13 @@ func (s *Scheduler) RegisterJob(ctx context.Context, job Job, code string, _ ...
 		return "", errors.Wrap(err, op)
 	}
 
-	j, err := repo.CreateJob(ctx, job.Name(), code, job.Description())
-	if err != nil {
+	_, err = repo.CreateJob(ctx, j.Name(), code, j.Description())
+	if err != nil && !errors.IsUniqueError(err) {
 		return "", errors.Wrap(err, op)
 	}
-	s.registeredJobs.Store(JobId(j.PrivateId), job)
+	s.registeredJobs.Store(JobId(jobId), j)
 
-	return JobId(j.PrivateId), nil
+	return JobId(jobId), nil
 }
 
 // UpdateJobNextRun sets the next scheduled run time for the provided jobId
@@ -109,6 +122,10 @@ func (s *Scheduler) UpdateJobNextRun(ctx context.Context, jobId JobId, nextRunIn
 	const op = "scheduler.(Scheduler).UpdateJobNextRun"
 	if jobId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing job id")
+	}
+	_, ok := s.registeredJobs.Load(jobId)
+	if !ok {
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("job %q not registered", jobId))
 	}
 	repo, err := s.jobRepoFn()
 	if err != nil {
@@ -124,17 +141,16 @@ func (s *Scheduler) UpdateJobNextRun(ctx context.Context, jobId JobId, nextRunIn
 
 // Start begins the scheduling loop that will query the repository for jobs to run and
 // run them in a goroutine.
-func (s *Scheduler) Start() {
-	if s.started.Load() {
+func (s *Scheduler) Start(ctx context.Context) {
+	if !s.started.CAS(s.started.Load(), true) {
 		s.logger.Debug("scheduler already started, skipping")
 		return
 	}
 
-	s.baseContext, s.baseCancel = context.WithCancel(context.Background())
+	s.baseContext, s.baseCancel = context.WithCancel(ctx)
 	go s.start()
 	// TODO (lruch): start go routine to monitor and update progress of running jobs
 	// TODO (lruch): add watchdogs to monitor defunct jobs
-	s.started.Store(true)
 }
 
 func (s *Scheduler) start() {
@@ -155,7 +171,7 @@ func (s *Scheduler) start() {
 				break
 			}
 
-			runs, err := repo.RunJobs(s.baseContext, s.serverId, jobRepo.WithRunJobsLimit(s.runJobsLimit))
+			runs, err := repo.RunJobs(s.baseContext, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
 			if err != nil {
 				s.logger.Error("error getting jobs to run from repo", "error", err)
 				break
@@ -177,7 +193,7 @@ func (s *Scheduler) start() {
 	}
 }
 
-func (s *Scheduler) runJob(r *jobRepo.Run) error {
+func (s *Scheduler) runJob(r *job.Run) error {
 	jobId := JobId(r.JobId)
 	j, ok := s.registeredJobs.Load(jobId)
 	job := j.(Job)
@@ -191,11 +207,12 @@ func (s *Scheduler) runJob(r *jobRepo.Run) error {
 		s.l.Unlock()
 		return fmt.Errorf("job (%v: %v) is already running", jobId, job.Name())
 	}
-	jobContext, jobCancel := context.WithCancel(context.Background())
+	jobContext, jobCancel := context.WithCancel(s.baseContext)
 	s.runningJobs[jobId] = runningJob{runId: r.PrivateId, cancelCtx: jobCancel}
 	s.l.Unlock()
 
 	go func() {
+		defer jobCancel()
 		runErr := job.Run(jobContext)
 		repo, err := s.jobRepoFn()
 		if err != nil {
@@ -232,10 +249,15 @@ func (s *Scheduler) runJob(r *jobRepo.Run) error {
 // Shutdown cancels all running jobs and stops scheduling new jobs.
 func (s *Scheduler) Shutdown() {
 	if !s.started.Load() {
-		s.logger.Debug("scheduler already shut down, skipping")
+		s.logger.Debug("scheduler not started, skipping")
+		return
+	}
+	if !s.stopping.CAS(s.stopping.Load(), true) {
+		s.logger.Debug("scheduler already shutting down, skipping")
 		return
 	}
 
+	s.baseCancel()
 	s.l.Lock()
 	for jId, j := range s.runningJobs {
 		j.cancelCtx()
@@ -243,6 +265,6 @@ func (s *Scheduler) Shutdown() {
 	}
 	s.l.Unlock()
 
-	s.baseCancel()
 	s.started.Store(false)
+	s.stopping.Store(false)
 }

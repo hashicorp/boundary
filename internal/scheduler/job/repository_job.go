@@ -41,7 +41,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 		return nil, errors.New(errors.InvalidParameter, op, "missing description")
 	}
 
-	id, err := newJobId(name, code)
+	id, err := NewJobId(name, code)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}

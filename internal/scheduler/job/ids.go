@@ -10,8 +10,10 @@ const (
 	JobPrefix = "job"
 )
 
-func newJobId(name, code string) (string, error) {
-	const op = "job.newJobId"
+// NewJobId generates a pseudo random id seeded on the name and code parameters.
+// The id is prefixed with "job_".
+func NewJobId(name, code string) (string, error) {
+	const op = "job.NewJobId"
 	if name == "" {
 		return "", errors.New(errors.InvalidParameter, op, "missing name")
 	}

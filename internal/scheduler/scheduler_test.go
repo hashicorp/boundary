@@ -29,7 +29,7 @@ func TestScheduler_New(t *testing.T) {
 
 	type args struct {
 		serverId    string
-		jobRepo     job.JobRepoFactory
+		jobRepo     jobRepoFactory
 		looger      hclog.Logger
 		runLimit    uint
 		runInterval time.Duration
@@ -259,6 +259,52 @@ func TestScheduler_RegisterJob(t *testing.T) {
 			assert.Equal(tt.args.code, dbJob.Code)
 		})
 	}
+	t.Run("multiple-same-job", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		job := testJob{
+			name:        "name",
+			description: "description",
+		}
+		jobId, err := sched.RegisterJob(context.Background(), job, "code")
+		require.NoError(err)
+		assert.NotEmpty(jobId)
+
+		// Registering the same job/code should not return an error and should return the same jobId
+		jobId1, err := sched.RegisterJob(context.Background(), job, "code")
+		require.NoError(err)
+		assert.NotEmpty(jobId1)
+		assert.Equal(jobId, jobId1)
+
+		// Registering the same job with a different code should return a different jobId
+		jobId2, err := sched.RegisterJob(context.Background(), job, "code1")
+		require.NoError(err)
+		assert.NotEmpty(jobId2)
+		assert.NotEqual(jobId, jobId2)
+	})
+	t.Run("multiple-schedulers-registering-same-job", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		job := testJob{
+			name:        "name",
+			description: "description",
+		}
+		jobId, err := sched.RegisterJob(context.Background(), job, "code")
+		require.NoError(err)
+		assert.NotEmpty(jobId)
+		_, ok := sched.registeredJobs.Load(jobId)
+		assert.True(ok)
+
+		sched1 := testScheduler(t, conn, wrapper, server.PrivateId)
+		// Verify job is not registered on second scheduler
+		_, ok = sched1.registeredJobs.Load(jobId)
+		assert.False(ok)
+
+		// Registering job on second scheduler should not return an error and have same id as first scheduler
+		jobId1, err := sched1.RegisterJob(context.Background(), job, "code")
+		require.NoError(err)
+		assert.Equal(jobId, jobId1)
+		_, ok = sched.registeredJobs.Load(jobId)
+		assert.True(ok)
+	})
 }
 
 func TestScheduler_UpdateJobNextRun(t *testing.T) {
@@ -278,8 +324,19 @@ func TestScheduler_UpdateJobNextRun(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
 		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: missing job id: parameter violation: error #100", err.Error())
 	})
+	t.Run("job-not-registered", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		err := sched.UpdateJobNextRun(context.Background(), "fake-job-id", time.Hour)
+		require.Error(err)
+		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
+		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: job \"fake-job-id\" not registered: parameter violation: error #100", err.Error())
+	})
 	t.Run("job-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+
+		// Insert fake job to bypass registration check
+		sched.registeredJobs.Store(JobId("fake-job-id"), nil)
 
 		err := sched.UpdateJobNextRun(context.Background(), "fake-job-id", time.Hour)
 		require.Error(err)
@@ -326,7 +383,7 @@ func TestScheduler_StartStop(t *testing.T) {
 	sched := testScheduler(t, conn, wrapper, server.PrivateId)
 
 	assert.False(sched.started.Load())
-	sched.Start()
+	sched.Start(context.Background())
 	assert.True(sched.started.Load())
 	assert.NotNil(sched.baseContext)
 	assert.NotNil(sched.baseCancel)
