@@ -258,11 +258,18 @@ begin;
     ('credential_vault_library', 1),
     ('credential_vault_lease', 1) ;
 
-
-     create view credential_vault_store_agg as
+     create view credential_vault_store_client_private as
      with
      current_tokens as (
-        select *
+        select token_sha256,
+               token, -- encrypted
+               store_id,
+               create_time,
+               update_time,
+               last_renewal_time,
+               expiration_time,
+               key_id,
+               status
           from credential_vault_token
          where status = 'current'
      )
@@ -278,16 +285,53 @@ begin;
             store.ca_cert           as ca_cert,
             store.tls_server_name   as tls_server_name,
             store.tls_skip_verify   as tls_skip_verify,
+            store.public_id         as store_id,
             token.token_sha256      as token_sha256,
-            token.last_renewal_time as token_last_renewal_time,
-            token.expiration_time   as token_expiration_time,
+            token.token             as token, -- encrypted
             token.create_time       as token_create_time,
             token.update_time       as token_update_time,
-            cert.certificate        as client_certificate
+            token.last_renewal_time as token_last_renewal_time,
+            token.expiration_time   as token_expiration_time,
+            token.key_id            as token_key_id,
+            token.status            as token_status,
+            cert.certificate        as client_certificate,
+            cert.certificate_key    as client_certificate_key, -- encrypted
+            cert.key_id             as client_certificate_key_id
        from credential_vault_store store
   left join current_tokens token
          on store.public_id = token.store_id
   left join credential_vault_client_certificate cert
          on store.public_id = cert.store_id;
+  comment on view credential_vault_store_client_private is
+    'credential_vault_store_client_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_store_agg_public as
+     select public_id,
+            scope_id,
+            name,
+            description,
+            create_time,
+            update_time,
+            version,
+            vault_address,
+            namespace,
+            ca_cert,
+            tls_server_name,
+            tls_skip_verify,
+            store_id,
+            token_sha256,
+            token_create_time,
+            token_update_time,
+            token_last_renewal_time,
+            token_expiration_time,
+            token_key_id,
+            token_status,
+            client_certificate,
+            client_certificate_key_id
+       from credential_vault_store_client_private;
+  comment on view credential_vault_store_agg_public is
+    'credential_vault_store_agg_public is a view where each row contains a credential store. '
+    'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
 commit;

@@ -226,7 +226,7 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
-	agg := new(credentialStoreAgg)
+	agg := new(credentialStoreAggPublic)
 	agg.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, agg); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -268,7 +268,7 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 	return cs, nil
 }
 
-type credentialStoreAgg struct {
+type credentialStoreAggPublic struct {
 	PublicId             string `gorm:"primary_key"`
 	ScopeId              string
 	Name                 string
@@ -290,10 +290,10 @@ type credentialStoreAgg struct {
 }
 
 // TableName returns the table name for gorm.
-func (agg *credentialStoreAgg) TableName() string { return "credential_vault_store_agg" }
+func (agg *credentialStoreAggPublic) TableName() string { return "credential_vault_store_agg_public" }
 
 // GetPublicId returns the public id.
-func (agg *credentialStoreAgg) GetPublicId() string { return agg.PublicId }
+func (agg *credentialStoreAggPublic) GetPublicId() string { return agg.PublicId }
 
 // UpdateCredentialStore updates the repository entry for cs.PublicId with
 // the values in cs for the fields listed in fieldMaskPaths. It returns a
@@ -349,6 +349,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		case strings.EqualFold("TlsServerName", f):
 		case strings.EqualFold("TlsSkipVerify", f):
 		case strings.EqualFold("CaCert", f):
+		case strings.EqualFold("Token", f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
