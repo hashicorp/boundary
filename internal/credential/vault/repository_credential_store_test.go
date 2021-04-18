@@ -121,7 +121,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		name      string
 		tls       TestVaultTLS
 		tokenOpts []TestOption
-		wantIsErr errors.Code
+		wantErr   errors.Code
 	}{
 		{
 			name: "no-tls-valid-token",
@@ -137,17 +137,17 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		{
 			name:      "no-tls-token-not-renewable",
 			tokenOpts: []TestOption{TestRenewableToken(t, false)},
-			wantIsErr: errors.VaultTokenNotRenewable,
+			wantErr:   errors.VaultTokenNotRenewable,
 		},
 		{
 			name:      "no-tls-token-not-orphaned",
 			tokenOpts: []TestOption{TestOrphanToken(t, false)},
-			wantIsErr: errors.VaultTokenNotOrphaned,
+			wantErr:   errors.VaultTokenNotOrphaned,
 		},
 		{
 			name:      "no-tls-token-not-periodic",
 			tokenOpts: []TestOption{TestPeriodicToken(t, false)},
-			wantIsErr: errors.VaultTokenNotPeriodic,
+			wantErr:   errors.VaultTokenNotPeriodic,
 		},
 	}
 	for _, tt := range tests {
@@ -182,8 +182,8 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			require.NotNil(credStoreIn)
 			got, err := repo.CreateCredentialStore(ctx, credStoreIn)
 
-			if tt.wantIsErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
 				if got != nil {
 					err := db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
@@ -472,34 +472,34 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		masks     []string
 		want      *CredentialStore
 		wantCount int
-		wantIsErr errors.Code
+		wantErr   errors.Code
 	}{
 		{
 			name: "nil-credential-store",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{},
 			},
-			chgFn:     makeNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:   makeNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
 		},
 		{
 			name: "nil-embedded-credential-store",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{},
 			},
-			chgFn:     makeEmbeddedNil(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidParameter,
+			chgFn:   makeEmbeddedNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
 		},
 		{
 			name: "no-public-id",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{},
 			},
-			chgFn:     deletePublicId(),
-			masks:     []string{"Name", "Description"},
-			wantIsErr: errors.InvalidPublicId,
+			chgFn:   deletePublicId(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidPublicId,
 		},
 		{
 			name: "updating-non-existent-credential-store",
@@ -508,9 +508,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
-			masks:     []string{"Name"},
-			wantIsErr: errors.RecordNotFound,
+			chgFn:   combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:   []string{"Name"},
+			wantErr: errors.RecordNotFound,
 		},
 		{
 			name: "empty-field-mask",
@@ -519,8 +519,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			wantIsErr: errors.EmptyFieldMask,
+			chgFn:   changeName("test-update-name-repo"),
+			wantErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
@@ -529,9 +529,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			wantErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "unknown-field-in-field-mask",
@@ -540,9 +540,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 					Name: "test-name-repo",
 				},
 			},
-			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"Bilbo"},
-			wantIsErr: errors.InvalidFieldMask,
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"Bilbo"},
+			wantErr: errors.InvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -822,8 +822,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 				orig = tt.chgFn(orig)
 			}
 			got, gotCount, err := repo.UpdateCredentialStore(ctx, orig, 1, tt.masks)
-			if tt.wantIsErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
