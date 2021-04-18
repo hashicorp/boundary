@@ -312,79 +312,76 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 	// - [x] tls skip verify
 	// - [x] tls server name
 
-	/*
-			changeNamespace := func(n string) func(*CredentialStore) *CredentialStore {
-				return func(cs *CredentialStore) *CredentialStore {
-					cs.Namespace = n
-					return cs
-				}
-			}
-
-			changeTlsServerName := func(n string) func(*CredentialStore) *CredentialStore {
-				return func(cs *CredentialStore) *CredentialStore {
-					cs.TlsServerName = n
-					return cs
-				}
-			}
-
-		changeTlsSkipVerify := func(t bool) func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				cs.TlsSkipVerify = t
-				return cs
-			}
+	changeNamespace := func(n string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.Namespace = n
+			return cs
 		}
-	*/
+	}
 
-	/*
-		changeName := func(n string) func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				cs.Name = n
-				return cs
-			}
+	changeTlsServerName := func(n string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.TlsServerName = n
+			return cs
 		}
+	}
 
-		changeDescription := func(d string) func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				cs.Description = d
-				return cs
-			}
+	changeTlsSkipVerify := func(t bool) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.TlsSkipVerify = t
+			return cs
 		}
+	}
 
-		makeNil := func() func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				return nil
-			}
+	changeName := func(n string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.Name = n
+			return cs
 		}
+	}
 
-		makeEmbeddedNil := func() func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				return &CredentialStore{}
-			}
+	changeDescription := func(d string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.Description = d
+			return cs
 		}
+	}
 
-		deletePublicId := func() func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				cs.PublicId = ""
-				return cs
-			}
+	makeNil := func() func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			return nil
 		}
+	}
 
-		nonExistentPublicId := func() func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				cs.PublicId = "abcd_OOOOOOOOOO"
-				return cs
-			}
+	makeEmbeddedNil := func() func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			return &CredentialStore{}
 		}
+	}
 
-		combine := func(fns ...func(cs *CredentialStore) *CredentialStore) func(*CredentialStore) *CredentialStore {
-			return func(cs *CredentialStore) *CredentialStore {
-				for _, fn := range fns {
-					cs = fn(cs)
-				}
-				return cs
-			}
+	deletePublicId := func() func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.PublicId = ""
+			return cs
 		}
-	*/
+	}
+
+	nonExistentPublicId := func() func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.PublicId = "abcd_OOOOOOOOOO"
+			return cs
+		}
+	}
+
+	combine := func(fns ...func(cs *CredentialStore) *CredentialStore) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			for _, fn := range fns {
+				cs = fn(cs)
+			}
+			return cs
+		}
+	}
+
 	tests := []struct {
 		name      string
 		orig      *CredentialStore
@@ -394,322 +391,320 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		wantCount int
 		wantIsErr errors.Code
 	}{
-		/*
-					{
-						name: "nil-credential-store",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{},
-						},
-						chgFn:     makeNil(),
-						masks:     []string{"Name", "Description"},
-						wantIsErr: errors.InvalidParameter,
-					},
-					{
-						name: "nil-embedded-credential-store",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{},
-						},
-						chgFn:     makeEmbeddedNil(),
-						masks:     []string{"Name", "Description"},
-						wantIsErr: errors.InvalidParameter,
-					},
-					{
-						name: "no-public-id",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{},
-						},
-						chgFn:     deletePublicId(),
-						masks:     []string{"Name", "Description"},
-						wantIsErr: errors.InvalidPublicId,
-					},
-					{
-						name: "updating-non-existent-credential-store",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
-						masks:     []string{"Name"},
-						wantIsErr: errors.RecordNotFound,
-					},
-					{
-						name: "empty-field-mask",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						chgFn:     changeName("test-update-name-repo"),
-						wantIsErr: errors.EmptyFieldMask,
-					},
-					{
-						name: "read-only-fields-in-field-mask",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						chgFn:     changeName("test-update-name-repo"),
-						masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
-						wantIsErr: errors.InvalidFieldMask,
-					},
-					{
-						name: "unknown-field-in-field-mask",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						chgFn:     changeName("test-update-name-repo"),
-						masks:     []string{"Bilbo"},
-						wantIsErr: errors.InvalidFieldMask,
-					},
-					{
-						name: "change-name",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						chgFn: changeName("test-update-name-repo"),
-						masks: []string{"Name"},
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-update-name-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "change-description",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Description: "test-description-repo",
-							},
-						},
-						chgFn: changeDescription("test-update-description-repo"),
-						masks: []string{"Description"},
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Description: "test-update-description-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "change-name-and-description",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
-						masks: []string{"Name", "Description"},
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-update-name-repo",
-								Description: "test-update-description-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "delete-name",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						masks: []string{"Name"},
-						chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Description: "test-description-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "delete-description",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						masks: []string{"Description"},
-						chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name: "test-name-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "do-not-delete-name",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						masks: []string{"Description"},
-						chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-update-description-repo",
-							},
-						},
-						wantCount: 1,
-					},
-					{
-						name: "do-not-delete-description",
-						orig: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						masks: []string{"Name"},
-						chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-						want: &CredentialStore{
-							CredentialStore: &store.CredentialStore{
-								Name:        "test-update-name-repo",
-								Description: "test-description-repo",
-							},
-						},
-						wantCount: 1,
-					},
-				{
-					name: "change-namespace",
-					orig: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							Namespace: "test-namespace",
-						},
-					},
-					chgFn: changeNamespace("test-update-namespace"),
-					masks: []string{"namespace"},
-					want: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							Namespace: "test-update-namespace",
-						},
-					},
-					wantCount: 1,
-				},
-				{
-					name: "delete-namespace",
-					orig: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							Namespace: "test-namespace",
-						},
-					},
-					chgFn: changeNamespace(""),
-					masks: []string{"namespace"},
-					want: &CredentialStore{
-						CredentialStore: &store.CredentialStore{},
-					},
-					wantCount: 1,
-				},
-				{
-					name: "change-tls-server-name",
-					orig: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							TlsServerName: "tls-server-name",
-						},
-					},
-					chgFn: changeTlsServerName("tls-server-name-update"),
-					masks: []string{"TlsServerName"},
-					want: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							TlsServerName: "tls-server-name-update",
-						},
-					},
-					wantCount: 1,
-				},
-				{
-					name: "delete-tls-server-name",
-					orig: &CredentialStore{
-						CredentialStore: &store.CredentialStore{
-							TlsServerName: "tls-server-name",
-						},
-					},
-					chgFn: changeTlsServerName(""),
-					masks: []string{"TlsServerName"},
-					want: &CredentialStore{
-						CredentialStore: &store.CredentialStore{},
-					},
-					wantCount: 1,
-				},
-			{
-				name: "tls-skip-verify-false2true",
-				orig: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: false,
-					},
-				},
-				chgFn: changeTlsSkipVerify(true),
-				masks: []string{"TlsSkipVerify"},
-				want: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: true,
-					},
-				},
-				wantCount: 1,
+		{
+			name: "nil-credential-store",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
 			},
-			{
-				name: "tls-skip-verify-true2false",
-				orig: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: true,
-					},
-				},
-				chgFn: changeTlsSkipVerify(false),
-				masks: []string{"TlsSkipVerify"},
-				want: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: false,
-					},
-				},
-				wantCount: 1,
+			chgFn:     makeNil(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "nil-embedded-credential-store",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
 			},
-			{
-				name: "tls-skip-verify-false2false",
-				orig: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: false,
-					},
-				},
-				chgFn: changeTlsSkipVerify(false),
-				masks: []string{"TlsSkipVerify"},
-				want: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: false,
-					},
-				},
-				wantCount: 1,
+			chgFn:     makeEmbeddedNil(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: errors.InvalidParameter,
+		},
+		{
+			name: "no-public-id",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
 			},
-			{
-				name: "tls-skip-verify-true2true",
-				orig: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: true,
-					},
+			chgFn:     deletePublicId(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: errors.InvalidPublicId,
+		},
+		{
+			name: "updating-non-existent-credential-store",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
 				},
-				chgFn: changeTlsSkipVerify(true),
-				masks: []string{"TlsSkipVerify"},
-				want: &CredentialStore{
-					CredentialStore: &store.CredentialStore{
-						TlsSkipVerify: true,
-					},
-				},
-				wantCount: 1,
 			},
-		*/
+			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:     []string{"Name"},
+			wantIsErr: errors.RecordNotFound,
+		},
+		{
+			name: "empty-field-mask",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			wantIsErr: errors.EmptyFieldMask,
+		},
+		{
+			name: "read-only-fields-in-field-mask",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			wantIsErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "unknown-field-in-field-mask",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"Bilbo"},
+			wantIsErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "change-name",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-update-name-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-description",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: changeDescription("test-update-description-repo"),
+			masks: []string{"Description"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			masks: []string{"Name", "Description"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-name",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Description: "test-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-description",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name: "test-name-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-name",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-description",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-namespace",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Namespace: "test-namespace",
+				},
+			},
+			chgFn: changeNamespace("test-update-namespace"),
+			masks: []string{"namespace"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Namespace: "test-update-namespace",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-namespace",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Namespace: "test-namespace",
+				},
+			},
+			chgFn: changeNamespace(""),
+			masks: []string{"namespace"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-tls-server-name",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsServerName: "tls-server-name",
+				},
+			},
+			chgFn: changeTlsServerName("tls-server-name-update"),
+			masks: []string{"TlsServerName"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsServerName: "tls-server-name-update",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-tls-server-name",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsServerName: "tls-server-name",
+				},
+			},
+			chgFn: changeTlsServerName(""),
+			masks: []string{"TlsServerName"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "tls-skip-verify-false2true",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: false,
+				},
+			},
+			chgFn: changeTlsSkipVerify(true),
+			masks: []string{"TlsSkipVerify"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: true,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "tls-skip-verify-true2false",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: true,
+				},
+			},
+			chgFn: changeTlsSkipVerify(false),
+			masks: []string{"TlsSkipVerify"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: false,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "tls-skip-verify-false2false",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: false,
+				},
+			},
+			chgFn: changeTlsSkipVerify(false),
+			masks: []string{"TlsSkipVerify"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: false,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "tls-skip-verify-true2true",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: true,
+				},
+			},
+			chgFn: changeTlsSkipVerify(true),
+			masks: []string{"TlsSkipVerify"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					TlsSkipVerify: true,
+				},
+			},
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -841,114 +836,112 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		dbassert.IsNull(got2, "CaCert")
 	})
 
-	/*
-			t.Run("invalid-duplicate-names", func(t *testing.T) {
-				assert, require := assert.New(t), require.New(t)
-				ctx := context.Background()
-				kms := kms.TestKms(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms)
-				assert.NoError(err)
-				require.NotNil(repo)
+	t.Run("invalid-duplicate-names", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		require.NotNil(repo)
 
-				name := "test-dup-name"
-				_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-				css := TestCredentialStores(t, conn, wrapper, prj.PublicId, 2)
+		name := "test-dup-name"
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		css := TestCredentialStores(t, conn, wrapper, prj.PublicId, 2)
 
-				csA, csB := css[0], css[1]
+		csA, csB := css[0], css[1]
 
-				csA.Name = name
-				got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
-				assert.NoError(err)
-				require.NotNil(got1)
-				assert.Equal(name, got1.Name)
-				assert.Equal(1, gotCount1, "row count")
-				assert.NoError(db.TestVerifyOplog(t, rw, csA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+		csA.Name = name
+		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(name, got1.Name)
+		assert.Equal(1, gotCount1, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, csA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
-				csB.Name = name
-				got2, gotCount2, err := repo.UpdateCredentialStore(ctx, csB, 1, []string{"name"})
-				assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
-				assert.Nil(got2)
-				assert.Equal(db.NoRowsAffected, gotCount2, "row count")
-			})
+		csB.Name = name
+		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, csB, 1, []string{"name"})
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
+		assert.Nil(got2)
+		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
+	})
 
-		t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
-			assert.NoError(err)
-			require.NotNil(repo)
+	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		require.NotNil(repo)
 
-			vs, cleanup := NewTestVaultServer(t, TestNoTLS)
-			defer cleanup()
+		vs, cleanup := NewTestVaultServer(t, TestNoTLS)
+		defer cleanup()
 
-			token1, err := vs.CreateToken(t).TokenID()
-			require.NoError(err)
-			require.NotEmpty(token1)
+		token1, err := vs.CreateToken(t).TokenID()
+		require.NoError(err)
+		require.NotEmpty(token1)
 
-			token2, err := vs.CreateToken(t).TokenID()
-			require.NoError(err)
-			require.NotEmpty(token2)
+		token2, err := vs.CreateToken(t).TokenID()
+		require.NoError(err)
+		require.NotEmpty(token2)
 
-			org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			in := &CredentialStore{
-				inputToken: []byte(token1),
-				CredentialStore: &store.CredentialStore{
-					Name:         "test-name-repo",
-					VaultAddress: vs.Addr,
-				},
-			}
-			in2 := in.clone()
-			in2.inputToken = []byte(token2)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		in := &CredentialStore{
+			inputToken: []byte(token1),
+			CredentialStore: &store.CredentialStore{
+				Name:         "test-name-repo",
+				VaultAddress: vs.Addr,
+			},
+		}
+		in2 := in.clone()
+		in2.inputToken = []byte(token2)
 
-			in.ScopeId = prj.GetPublicId()
-			got, err := repo.CreateCredentialStore(ctx, in)
-			assert.NoError(err)
-			require.NotNil(got)
-			assertPublicId(t, CredentialStorePrefix, got.PublicId)
-			assert.NotSame(in, got)
-			assert.Equal(in.Name, got.Name)
-			assert.Equal(in.Description, got.Description)
+		in.ScopeId = prj.GetPublicId()
+		got, err := repo.CreateCredentialStore(ctx, in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, CredentialStorePrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
 
-			in2.ScopeId = org.GetPublicId()
-			in2.Name = "first-name"
-			got2, err := repo.CreateCredentialStore(ctx, in2)
-			assert.NoError(err)
-			require.NotNil(got2)
-			got2.Name = got.Name
-			got3, gotCount3, err := repo.UpdateCredentialStore(ctx, got2, 1, []string{"name"})
-			assert.NoError(err)
-			require.NotNil(got3)
-			assert.NotSame(got2, got3)
-			assert.Equal(got.Name, got3.Name)
-			assert.Equal(got2.Description, got3.Description)
-			assert.Equal(1, gotCount3, "row count")
-		})
+		in2.ScopeId = org.GetPublicId()
+		in2.Name = "first-name"
+		got2, err := repo.CreateCredentialStore(ctx, in2)
+		assert.NoError(err)
+		require.NotNil(got2)
+		got2.Name = got.Name
+		got3, gotCount3, err := repo.UpdateCredentialStore(ctx, got2, 1, []string{"name"})
+		assert.NoError(err)
+		require.NotNil(got3)
+		assert.NotSame(got2, got3)
+		assert.Equal(got.Name, got3.Name)
+		assert.Equal(got2.Description, got3.Description)
+		assert.Equal(1, gotCount3, "row count")
+	})
 
-			t.Run("change-scope-id", func(t *testing.T) {
-				assert, require := assert.New(t), require.New(t)
-				ctx := context.Background()
-				kms := kms.TestKms(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms)
-				assert.NoError(err)
-				require.NotNil(repo)
+	t.Run("change-scope-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		require.NotNil(repo)
 
-				iamRepo := iam.TestRepo(t, conn, wrapper)
-				_, prj1 := iam.TestScopes(t, iamRepo)
-				_, prj2 := iam.TestScopes(t, iamRepo)
-				csA, csB := TestCredentialStores(t, conn, wrapper, prj1.PublicId, 1)[0], TestCredentialStores(t, conn, wrapper, prj2.PublicId, 1)[0]
-				assert.NotEqual(csA.ScopeId, csB.ScopeId)
-				orig := csA.clone()
+		iamRepo := iam.TestRepo(t, conn, wrapper)
+		_, prj1 := iam.TestScopes(t, iamRepo)
+		_, prj2 := iam.TestScopes(t, iamRepo)
+		csA, csB := TestCredentialStores(t, conn, wrapper, prj1.PublicId, 1)[0], TestCredentialStores(t, conn, wrapper, prj2.PublicId, 1)[0]
+		assert.NotEqual(csA.ScopeId, csB.ScopeId)
+		orig := csA.clone()
 
-				csA.ScopeId = csB.ScopeId
-				assert.Equal(csA.ScopeId, csB.ScopeId)
+		csA.ScopeId = csB.ScopeId
+		assert.Equal(csA.ScopeId, csB.ScopeId)
 
-				got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
 
-				assert.NoError(err)
-				require.NotNil(got1)
-				assert.Equal(orig.ScopeId, got1.ScopeId)
-				assert.Equal(1, gotCount1, "row count")
-			})
-	*/
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(orig.ScopeId, got1.ScopeId)
+		assert.Equal(1, gotCount1, "row count")
+	})
 }
