@@ -6394,7 +6394,7 @@ create table credential_vault_store (
             store.tls_skip_verify   as tls_skip_verify,
             store.public_id         as store_id,
             token.token_sha256      as token_sha256,
-            token.token             as token, -- encrypted
+            token.token             as ct_token, -- encrypted
             token.create_time       as token_create_time,
             token.update_time       as token_update_time,
             token.last_renewal_time as token_last_renewal_time,
@@ -6402,7 +6402,7 @@ create table credential_vault_store (
             token.key_id            as token_key_id,
             token.status            as token_status,
             cert.certificate        as client_certificate,
-            cert.certificate_key    as client_certificate_key, -- encrypted
+            cert.certificate_key    as ct_client_certificate_key, -- encrypted
             cert.key_id             as client_certificate_key_id
        from credential_vault_store store
   left join current_tokens token
@@ -6426,16 +6426,12 @@ create table credential_vault_store (
             ca_cert,
             tls_server_name,
             tls_skip_verify,
-            store_id,
             token_sha256,
             token_create_time,
             token_update_time,
             token_last_renewal_time,
             token_expiration_time,
-            token_key_id,
-            token_status,
-            client_certificate,
-            client_certificate_key_id
+            client_certificate
        from credential_vault_store_client_private;
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '

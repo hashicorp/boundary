@@ -222,11 +222,11 @@ func validateTokenLookup(op errors.Op, s *vault.Secret) error {
 // LookupCredentialStore returns the CredentialStore for publicId. Returns
 // nil, nil if no CredentialStore is found for publicId.
 func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string, _ ...Option) (*CredentialStore, error) {
-	const op = "vault.LookupCredentialStore"
+	const op = "vault.(Repository).LookupCredentialStore"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
-	agg := new(credentialStoreAggPublic)
+	agg := allocCredentialStoreAggPublic()
 	agg.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, agg); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -234,7 +234,35 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
+	return agg.toCredentialStore(), nil
+}
 
+type credentialStoreAggPublic struct {
+	PublicId             string `gorm:"primary_key"`
+	ScopeId              string
+	Name                 string
+	Description          string
+	CreateTime           *timestamp.Timestamp
+	UpdateTime           *timestamp.Timestamp
+	Version              uint32
+	VaultAddress         string
+	Namespace            string
+	CaCert               []byte
+	TlsServerName        string
+	TlsSkipVerify        bool
+	TokenSha256          []byte
+	TokenCreateTime      *timestamp.Timestamp
+	TokenUpdateTime      *timestamp.Timestamp
+	TokenLastRenewalTime *timestamp.Timestamp
+	TokenExpirationTime  *timestamp.Timestamp
+	ClientCertificate    []byte
+}
+
+func allocCredentialStoreAggPublic() *credentialStoreAggPublic {
+	return &credentialStoreAggPublic{}
+}
+
+func (agg *credentialStoreAggPublic) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
 	cs.PublicId = agg.PublicId
 	cs.ScopeId = agg.ScopeId
@@ -264,29 +292,7 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 		cert.Certificate = agg.ClientCertificate
 		cs.clientCert = cert
 	}
-
-	return cs, nil
-}
-
-type credentialStoreAggPublic struct {
-	PublicId             string `gorm:"primary_key"`
-	ScopeId              string
-	Name                 string
-	Description          string
-	CreateTime           *timestamp.Timestamp
-	UpdateTime           *timestamp.Timestamp
-	Version              uint32
-	VaultAddress         string
-	Namespace            string
-	CaCert               []byte
-	TlsServerName        string
-	TlsSkipVerify        bool
-	TokenSha256          []byte
-	TokenLastRenewalTime *timestamp.Timestamp
-	TokenExpirationTime  *timestamp.Timestamp
-	TokenCreateTime      *timestamp.Timestamp
-	TokenUpdateTime      *timestamp.Timestamp
-	ClientCertificate    []byte
+	return cs
 }
 
 // TableName returns the table name for gorm.
@@ -404,4 +410,114 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	return returnedCredentialStore, rowsUpdated, nil
+}
+
+func (r *Repository) lookupPrivateCredentialStore(ctx context.Context, publicId string) (*CredentialStore, error) {
+	const op = "vault.(Repository).lookupPrivateCredentialStore"
+	if publicId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+	}
+	pcs := allocPrivateCredentialStore()
+	pcs.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, pcs); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+	}
+
+	databaseWrapper, err := r.kms.GetWrapper(ctx, pcs.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
+	}
+
+	cs := pcs.toCredentialStore()
+	if cs.privateToken != nil {
+		if err := cs.privateToken.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+	}
+	if cs.privateClientCert != nil {
+		if err := cs.privateClientCert.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+	}
+	return cs, nil
+}
+
+type privateCredentialStore struct {
+	PublicId               string `gorm:"primary_key"`
+	ScopeId                string
+	Name                   string
+	Description            string
+	CreateTime             *timestamp.Timestamp
+	UpdateTime             *timestamp.Timestamp
+	Version                uint32
+	VaultAddress           string
+	Namespace              string
+	CaCert                 []byte
+	TlsServerName          string
+	TlsSkipVerify          bool
+	StoreId                string
+	TokenSha256            []byte
+	CtToken                []byte
+	TokenCreateTime        *timestamp.Timestamp
+	TokenUpdateTime        *timestamp.Timestamp
+	TokenLastRenewalTime   *timestamp.Timestamp
+	TokenExpirationTime    *timestamp.Timestamp
+	TokenKeyId             string
+	TokenStatus            string
+	ClientCertificate      []byte
+	CtClientCertificateKey []byte
+	ClientCertificateKeyId string
+}
+
+func allocPrivateCredentialStore() *privateCredentialStore {
+	return &privateCredentialStore{}
+}
+
+func (pcs *privateCredentialStore) toCredentialStore() *CredentialStore {
+	cs := allocCredentialStore()
+	cs.PublicId = pcs.PublicId
+	cs.ScopeId = pcs.ScopeId
+	cs.Name = pcs.Name
+	cs.Description = pcs.Description
+	cs.CreateTime = pcs.CreateTime
+	cs.UpdateTime = pcs.UpdateTime
+	cs.Version = pcs.Version
+	cs.VaultAddress = pcs.VaultAddress
+	cs.Namespace = pcs.Namespace
+	cs.CaCert = pcs.CaCert
+	cs.TlsServerName = pcs.TlsServerName
+	cs.TlsSkipVerify = pcs.TlsSkipVerify
+	if pcs.TokenSha256 != nil {
+		tk := allocToken()
+		tk.StoreId = pcs.StoreId
+		tk.TokenSha256 = pcs.TokenSha256
+		tk.LastRenewalTime = pcs.TokenLastRenewalTime
+		tk.ExpirationTime = pcs.TokenExpirationTime
+		tk.CreateTime = pcs.TokenCreateTime
+		tk.UpdateTime = pcs.TokenUpdateTime
+		tk.CtToken = pcs.CtToken
+		tk.KeyId = pcs.TokenKeyId
+		tk.Status = pcs.TokenStatus
+		cs.privateToken = tk
+	}
+	if pcs.ClientCertificate != nil {
+		cert := allocClientCertificate()
+		cert.StoreId = pcs.StoreId
+		cert.Certificate = pcs.ClientCertificate
+		cert.CtCertificateKey = pcs.CtClientCertificateKey
+		cert.KeyId = pcs.ClientCertificateKeyId
+		cs.privateClientCert = cert
+	}
+	return cs
+}
+
+// GetPublicId returns the public id.
+func (pcs *privateCredentialStore) GetPublicId() string { return pcs.PublicId }
+
+// TableName returns the table name for gorm.
+func (pcs *privateCredentialStore) TableName() string {
+	return "credential_vault_store_client_private"
 }

@@ -15,6 +15,9 @@ type CredentialStore struct {
 	clientCert  *ClientCertificate `gorm:"-"`
 	inputToken  []byte             `gorm:"-"`
 	outputToken *Token             `gorm:"-"`
+
+	privateClientCert *ClientCertificate `gorm:"-"`
+	privateToken      *Token             `gorm:"-"`
 }
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
