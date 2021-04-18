@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -32,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
+func createDefaultUserAndRepo(t *testing.T, withAccts bool) (*iam.User, []string, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -42,11 +43,43 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 	}
 	o, _ := iam.TestScopes(t, repo)
 	u := iam.TestUser(t, repo, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return u, repoFn
+
+	switch withAccts {
+	case false:
+		return u, nil, repoFn
+	default:
+		require := require.New(t)
+		ctx := context.Background()
+		kmsCache := kms.TestKms(t, conn, wrap)
+		databaseWrap, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(err)
+		primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, o.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice-eve-smith.com")[0]),
+			oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost:9200")[0]),
+			oidc.WithSigningAlgs(oidc.RS256),
+		)
+		iam.TestSetPrimaryAuthMethod(t, repo, o, primaryAm.PublicId)
+
+		oidcAcct := oidc.TestAccount(t, conn, primaryAm, "alice", oidc.WithFullName("Alice Eve Smith"), oidc.WithEmail("alice@smith.com"))
+
+		secondaryAm := password.TestAuthMethods(t, conn, o.PublicId, 1)
+		require.Len(secondaryAm, 1)
+		pwAcct := password.TestAccount(t, conn, secondaryAm[0].PublicId, "alice")
+
+		added, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
+		require.NoError(err)
+		require.Len(added, 2)
+
+		// reload the user with their accounts
+		u, accts, err := repo.LookupUser(ctx, u.PublicId)
+		require.NoError(err)
+		return u, accts, repoFn
+	}
 }
 
 func TestGet(t *testing.T) {
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, uAccts, repoFn := createDefaultUserAndRepo(t, true)
+
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
 	}
@@ -59,8 +92,14 @@ func TestGet(t *testing.T) {
 		Description:       &wrapperspb.StringValue{Value: u.GetDescription()},
 		CreatedTime:       u.CreateTime.GetTimestamp(),
 		UpdatedTime:       u.UpdateTime.GetTimestamp(),
-		Version:           1,
+		Version:           u.Version,
 		AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+		LoginName:         &wrappers.StringValue{Value: u.LoginName},
+		FullName:          &wrapperspb.StringValue{Value: u.GetFullName()},
+		Email:             &wrapperspb.StringValue{Value: u.GetEmail()},
+		PrimaryAccountId:  &wrapperspb.StringValue{Value: u.PrimaryAccountId},
+		AccountIds:        uAccts,
+		Accounts:          []*pb.Account{{Id: uAccts[0], ScopeId: u.ScopeId}, {Id: uAccts[1], ScopeId: u.ScopeId}},
 	}
 
 	cases := []struct {
@@ -125,6 +164,19 @@ func TestList(t *testing.T) {
 	oNoUsers, _ := iam.TestScopes(t, repo)
 	oWithUsers, _ := iam.TestScopes(t, repo)
 
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrap, err := kmsCache.GetWrapper(context.Background(), oWithUsers.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	primaryAm := oidc.TestAuthMethod(t, conn, databaseWrap, oWithUsers.PublicId, oidc.ActivePublicState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice-eve-smith.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost:9200")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+	)
+	iam.TestSetPrimaryAuthMethod(t, repo, oWithUsers, primaryAm.PublicId)
+
+	secondaryAm := password.TestAuthMethods(t, conn, oWithUsers.PublicId, 1)
+	require.Len(t, secondaryAm, 1)
+
 	s, err := users.NewService(repoFn)
 	require.NoError(t, err)
 
@@ -149,14 +201,27 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 		u, err := repo.CreateUser(context.Background(), newU)
 		require.NoError(t, err)
+		oidcAcct := oidc.TestAccount(t, conn, primaryAm, fmt.Sprintf("alice+%d", i), oidc.WithFullName("Alice Eve Smith"), oidc.WithEmail("alice@smith.com"))
+		pwAcct := password.TestAccount(t, conn, secondaryAm[0].PublicId, fmt.Sprintf("alice+%d", i))
+
+		added, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, []string{oidcAcct.PublicId, pwAcct.PublicId})
+		require.NoError(t, err)
+		require.Len(t, added, 2)
+
+		u, _, err = repo.LookupUser(ctx, u.PublicId)
+		require.NoError(t, err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:                u.GetPublicId(),
 			ScopeId:           u.GetScopeId(),
 			Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:       u.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
-			Version:           1,
+			Version:           2,
 			AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+			LoginName:         &wrappers.StringValue{Value: oidcAcct.Subject},
+			FullName:          &wrapperspb.StringValue{Value: oidcAcct.GetFullName()},
+			Email:             &wrapperspb.StringValue{Value: oidcAcct.GetEmail()},
+			PrimaryAccountId:  &wrapperspb.StringValue{Value: oidcAcct.PublicId},
 		})
 	}
 
@@ -245,7 +310,7 @@ func (s sortableUsers) Less(i, j int) bool { return s.users[i].GetId() < s.users
 func (s sortableUsers) Swap(i, j int)      { s.users[i], s.users[j] = s.users[j], s.users[i] }
 
 func TestDelete(t *testing.T) {
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
 	s, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -292,7 +357,7 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
 
 	s, err := users.NewService(repoFn)
 	require.NoError(err, "Error when getting new user service")
@@ -308,7 +373,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultUser, repoFn := createDefaultUserAndRepo(t)
+	defaultUser, _, repoFn := createDefaultUserAndRepo(t, false)
 	defaultCreated := defaultUser.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
@@ -414,7 +479,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	u, repoFn := createDefaultUserAndRepo(t)
+	u, _, repoFn := createDefaultUserAndRepo(t, false)
 	tested, err := users.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
