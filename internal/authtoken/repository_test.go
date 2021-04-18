@@ -795,7 +795,7 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 		authMethods := password.TestAuthMethods(t, conn, org.PublicId, 1)
 		authMethodId := authMethods[0].PublicId
 
-		accts := password.TestAccounts(t, conn, authMethodId, cnt)
+		accts := password.TestMultipleAccounts(t, conn, authMethodId, cnt)
 		for i := 0; i < cnt; i++ {
 			at := allocAuthToken()
 			id, err := NewAuthTokenId()

@@ -236,7 +236,7 @@ func TestListPassword(t *testing.T) {
 	amNoAccounts, amSomeAccounts, amOtherAccounts := ams[0], ams[1], ams[2]
 
 	var wantSomeAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestMultipleAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
 			Id:                aa.GetPublicId(),
 			AuthMethodId:      aa.GetAuthMethodId(),
@@ -251,7 +251,7 @@ func TestListPassword(t *testing.T) {
 	}
 
 	var wantOtherAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestMultipleAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
 			Id:                aa.GetPublicId(),
 			AuthMethodId:      aa.GetAuthMethodId(),

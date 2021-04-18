@@ -462,8 +462,8 @@ func TestRepository_ListAccounts(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
-	accounts1 := TestAccounts(t, conn, authMethods[0].GetPublicId(), 3)
-	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
+	accounts1 := TestMultipleAccounts(t, conn, authMethods[0].GetPublicId(), 3)
+	accounts2 := TestMultipleAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
 
 	tests := []struct {
@@ -522,7 +522,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	accountCount := 10
-	_ = TestAccounts(t, conn, am.GetPublicId(), accountCount)
+	_ = TestMultipleAccounts(t, conn, am.GetPublicId(), accountCount)
 
 	tests := []struct {
 		name     string
@@ -982,7 +982,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		name := "test-dup-name"
 		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
-		acts := TestAccounts(t, conn, am.PublicId, 2)
+		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
 		aa := acts[0]
 		ab := acts[1]
@@ -1060,7 +1060,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		loginName := "kazmierczak12"
 		org, _ := iam.TestScopes(t, iamRepo)
 		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
-		acts := TestAccounts(t, conn, am.PublicId, 2)
+		acts := TestMultipleAccounts(t, conn, am.PublicId, 2)
 
 		aa := acts[0]
 		ab := acts[1]
@@ -1137,8 +1137,8 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		ama := ams[0]
 		amb := ams[1]
 
-		aa := TestAccounts(t, conn, ama.PublicId, 1)[0]
-		ab := TestAccounts(t, conn, amb.PublicId, 1)[0]
+		aa := TestMultipleAccounts(t, conn, ama.PublicId, 1)[0]
+		ab := TestMultipleAccounts(t, conn, amb.PublicId, 1)[0]
 
 		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
 		orig := aa.clone()
