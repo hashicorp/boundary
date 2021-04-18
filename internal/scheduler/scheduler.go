@@ -202,6 +202,11 @@ func (s *Scheduler) runJob(r *job.Run) error {
 		return fmt.Errorf("job (%v: %v) not registered on scheduler", jobId, job.Name())
 	}
 
+	repo, err := s.jobRepoFn()
+	if err != nil {
+		return fmt.Errorf("failed to create job repository: %w", err)
+	}
+
 	s.l.Lock()
 	if _, ok := s.runningJobs[jobId]; ok {
 		s.l.Unlock()
@@ -214,17 +219,6 @@ func (s *Scheduler) runJob(r *job.Run) error {
 	go func() {
 		defer jobCancel()
 		runErr := job.Run(jobContext)
-		repo, err := s.jobRepoFn()
-		if err != nil {
-			// Failed to create repo needed update run.  Best option is to log error,
-			// delete running job and return.
-			s.logger.Error("error creating job repo after job run", "error", err)
-			s.l.Lock()
-			delete(s.runningJobs, jobId)
-			s.l.Unlock()
-			return
-		}
-
 		switch runErr {
 		case nil:
 			s.logger.Debug(fmt.Sprintf("job run %q for job (%v: %v) complete", r.PrivateId, jobId, job.Name()))
