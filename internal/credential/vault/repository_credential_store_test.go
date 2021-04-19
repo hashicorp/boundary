@@ -1028,3 +1028,101 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(1, gotCount1, "row count")
 	})
 }
+
+func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	// TODO(mgaffney) 04/2021:
+	// - [ ] old token expired, new token valid - old token still expired
+	// - [ ] old token current, new token valid - old token maintaining
+	// - [ ] old token current, new token invalid - old token current, return error
+	// 		- lookup fails
+	// 		- not orphaned, not renewable, not periodic
+
+	tests := []struct {
+		name               string
+		newTokenOpts       []TestOption
+		wantOldTokenStatus Status
+		wantCount          int
+		wantErr            errors.Code
+	}{
+		{
+			name:               "valid",
+			wantOldTokenStatus: StatusMaintaining,
+			wantCount:          1,
+		},
+		// {
+		// 	name:         "token-not-renewable",
+		// 	newTokenOpts: []TestOption{TestRenewableToken(t, false)},
+		// 	wantErr:      errors.VaultTokenNotRenewable,
+		// },
+		// {
+		// 	name:         "token-not-orphaned",
+		// 	newTokenOpts: []TestOption{TestOrphanToken(t, false)},
+		// 	wantErr:    errors.VaultTokenNotOrphaned,
+		// },
+		// {
+		// 	name:         "token-not-periodic",
+		// 	newTokenOpts: []TestOption{TestPeriodicToken(t, false)},
+		// 	wantErr:    errors.VaultTokenNotPeriodic,
+		// },
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			require.NoError(err)
+			require.NotNil(repo)
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+			v, cleanup := NewTestVaultServer(t, TestNoTLS)
+			defer cleanup()
+			origSecret := v.CreateToken(t)
+			origToken := origSecret.Auth.ClientToken
+
+			// create
+			origIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(origToken))
+			assert.NoError(err)
+			require.NotNil(origIn)
+
+			orig, err := repo.CreateCredentialStore(ctx, origIn)
+			assert.NoError(err)
+			require.NotNil(orig)
+
+			// update
+			updateSecret := v.CreateToken(t, tt.newTokenOpts...)
+			updateToken := updateSecret.Auth.ClientToken
+
+			updateIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(updateToken))
+			assert.NoError(err)
+			require.NotNil(updateIn)
+			updateIn.PublicId = orig.GetPublicId()
+			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"token"})
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Equal(tt.wantCount, gotCount, "row count")
+				assert.Nil(got)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(1, gotCount)
+			assert.NotNil(got)
+
+			var tokens []*Token
+			require.NoError(rw.SearchWhere(ctx, &tokens, "store_id = ?", []interface{}{orig.GetPublicId()}))
+			assert.Len(tokens, 2)
+
+			lookup, err := repo.LookupCredentialStore(ctx, orig.GetPublicId())
+			assert.NoError(err)
+			require.NotNil(lookup)
+			require.NotNil(orig.outputToken)
+			require.NotNil(got.outputToken)
+			assert.NotEqual(orig.outputToken.TokenSha256, got.outputToken.TokenSha256)
+		})
+	}
+}

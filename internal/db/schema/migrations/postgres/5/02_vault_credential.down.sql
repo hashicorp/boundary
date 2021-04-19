@@ -15,5 +15,7 @@ begin;
   drop table credential_vault_token_status_enm;
   drop table credential_vault_store;
 
+  drop function insert_credential_vault_token;
+
 commit;
 

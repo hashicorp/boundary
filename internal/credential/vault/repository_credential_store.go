@@ -161,6 +161,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, newToken.oplogMessage(db.CreateOp))
 
+			newCredentialStore.inputToken = nil
+			newToken.Token.Token = nil
+			newToken.Token.CtToken = nil
+			newCredentialStore.outputToken = newToken
+
 			// insert client certificate (if exists)
 			if cs.clientCert != nil {
 				newClientCertificate = cs.clientCert.clone()
@@ -169,6 +174,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 					return errors.Wrap(err, op)
 				}
 				msgs = append(msgs, &clientCertOplogMsg)
+
+				newClientCertificate.CertificateKey = nil
+				newClientCertificate.CtCertificateKey = nil
+				newCredentialStore.clientCert = newClientCertificate
+
 			}
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_CREATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
@@ -433,6 +443,29 @@ func (pcs *privateCredentialStore) decrypt(ctx context.Context, cipher wrapping.
 	return nil
 }
 
+func (pcs *privateCredentialStore) client() (*client, error) {
+	const op = "vault.(privateCredentialStore).client"
+	clientConfig := &clientConfig{
+		Addr:          pcs.VaultAddress,
+		Token:         string(pcs.Token),
+		CaCert:        pcs.CaCert,
+		TlsServerName: pcs.TlsServerName,
+		TlsSkipVerify: pcs.TlsSkipVerify,
+		Namespace:     pcs.Namespace,
+	}
+
+	if pcs.ClientCertificateKey != nil {
+		clientConfig.ClientCert = pcs.ClientCertificate
+		clientConfig.ClientKey = pcs.ClientCertificateKey
+	}
+
+	client, err := newClient(clientConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
+	}
+	return client, nil
+}
+
 // GetPublicId returns the public id.
 func (pcs *privateCredentialStore) GetPublicId() string { return pcs.PublicId }
 
@@ -487,6 +520,8 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	// - client cert
 	// - vault address
 	// - vault token
+
+	var updateToken bool
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("Name", f):
@@ -496,6 +531,9 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		case strings.EqualFold("TlsSkipVerify", f):
 		case strings.EqualFold("CaCert", f):
 		case strings.EqualFold("Token", f):
+			if len(cs.inputToken) != 0 {
+				updateToken = true
+			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
@@ -509,6 +547,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			"TlsServerName": cs.TlsServerName,
 			"TlsSkipVerify": cs.TlsSkipVerify,
 			"CaCert":        cs.CaCert,
+			"Token":         cs.inputToken,
 		},
 		fieldMaskPaths,
 		[]string{
@@ -518,24 +557,135 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
 	}
+	var filteredDbMask, filteredNullFields []string
+	for _, f := range dbMask {
+		switch {
+		case strings.EqualFold("Token", f):
+		default:
+			filteredDbMask = append(filteredDbMask, f)
+		}
+	}
+	for _, f := range nullFields {
+		switch {
+		case strings.EqualFold("Token", f):
+		default:
+			filteredNullFields = append(filteredNullFields, f)
+		}
+	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
-			errors.WithMsg(("unable to get oplog wrapper")))
+		return nil, db.NoRowsAffected,
+			errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg(("unable to get oplog wrapper")))
+	}
+	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, db.NoRowsAffected,
+			errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
+	}
+
+	var token *Token
+	if updateToken {
+		pcs, err := r.lookupPrivateCredentialStore(ctx, cs.GetPublicId())
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to credential store"))
+		}
+
+		client, err := pcs.client()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+		client.SwapToken(string(cs.inputToken))
+
+		tokenLookup, err := client.LookupToken()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
+		}
+		if err := validateTokenLookup(op, tokenLookup); err != nil {
+			return nil, db.NoRowsAffected, err
+		}
+
+		renewedToken, err := client.RenewToken()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
+		}
+
+		tokenExpires, err := renewedToken.TokenTTL()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
+		}
+
+		token, err = newToken(cs.GetPublicId(), cs.inputToken, tokenExpires)
+		if err != nil {
+			return nil, db.NoRowsAffected, err
+		}
+
+		// encrypt token
+		if err := token.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
 	}
 
 	var rowsUpdated int
+	var returnedToken *Token
 	var returnedCredentialStore *CredentialStore
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 3)
+			ticket, err := w.GetTicket(cs)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			}
+
 			returnedCredentialStore = cs.clone()
-			var err error
-			rowsUpdated, err = w.Update(ctx, returnedCredentialStore, dbMask, nullFields,
-				db.WithOplog(oplogWrapper, cs.oplog(oplog.OpType_OP_TYPE_UPDATE)),
-				db.WithVersion(&version))
-			if err == nil && rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			var csOplogMsg oplog.Message
+
+			switch {
+			case len(filteredDbMask) == 0 && len(filteredNullFields) == 0:
+				// the credential store's fields are not being updated,
+				// just it's token or client certificate, so we need to
+				// just update the credential store's version.
+				returnedCredentialStore.Version = uint32(version) + 1
+				rowsUpdated, err = w.Update(ctx, returnedCredentialStore, []string{"Version"}, nil, db.NewOplogMsg(&csOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store version"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store version and %d rows updated", rowsUpdated))
+				}
+			default:
+				rowsUpdated, err = w.Update(ctx, returnedCredentialStore, filteredDbMask, filteredNullFields, db.NewOplogMsg(&csOplogMsg), db.WithVersion(&version))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
+				}
+				if rowsUpdated != 1 {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store and %d rows updated", rowsUpdated))
+				}
+			}
+			msgs = append(msgs, &csOplogMsg)
+
+			if updateToken {
+				returnedToken = token.clone()
+				query, values := returnedToken.insertQuery()
+				rows, err := w.Exec(ctx, query, values)
+				if err != nil {
+					return errors.Wrap(err, op)
+				}
+				if rows > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 token would have been created")
+				}
+				msgs = append(msgs, returnedToken.oplogMessage(db.CreateOp))
+
+				returnedCredentialStore.inputToken = nil
+				returnedToken.Token.Token = nil
+				returnedToken.Token.CtToken = nil
+				returnedCredentialStore.outputToken = returnedToken
+
+			}
+
+			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return err
 		},

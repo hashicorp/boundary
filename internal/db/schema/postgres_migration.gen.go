@@ -6228,6 +6228,24 @@ create table credential_vault_store (
   create trigger immutable_columns before update on credential_vault_token
     for each row execute procedure immutable_columns('token_sha256', 'token', 'store_id','create_time');
 
+  -- insert_credential_vault_token() is a before insert trigger
+  -- function for credential_vault_token that changes the status of the current
+  -- token to 'maintaining'
+  create or replace function insert_credential_vault_token()
+    returns trigger
+  as $$
+  begin
+    update credential_vault_token
+       set status   = 'maintaining'
+     where store_id = new.store_id
+       and status   = 'current';
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_credential_vault_token before insert on credential_vault_token
+    for each row execute procedure insert_credential_vault_token();
+
   create table credential_vault_client_certificate (
     store_id wt_public_id primary key
       constraint credential_vault_store_fkey
