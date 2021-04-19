@@ -4,6 +4,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* cli/api/sdk: New User's attributes for: 
+  * Primary Account ID
+  * Login Name
+  * Full Name 
+  * Email    
+
+  These new user attributes correspond to attributes
+  from the user's primary auth method account.  These attributes will be empty
+  when the user has no account in the primary auth method for their scope.
+
+
 ### Bug Fixes
 
 * cors: Fix allowing all origins by default
