@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -94,10 +93,10 @@ func TestGet(t *testing.T) {
 		UpdatedTime:       u.UpdateTime.GetTimestamp(),
 		Version:           u.Version,
 		AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
-		LoginName:         &wrappers.StringValue{Value: u.LoginName},
-		FullName:          &wrapperspb.StringValue{Value: u.GetFullName()},
-		Email:             &wrapperspb.StringValue{Value: u.GetEmail()},
-		PrimaryAccountId:  &wrapperspb.StringValue{Value: u.PrimaryAccountId},
+		LoginName:         u.LoginName,
+		FullName:          u.GetFullName(),
+		Email:             u.GetEmail(),
+		PrimaryAccountId:  u.GetPrimaryAccountId(),
 		AccountIds:        uAccts,
 		Accounts:          []*pb.Account{{Id: uAccts[0], ScopeId: u.ScopeId}, {Id: uAccts[1], ScopeId: u.ScopeId}},
 	}
@@ -218,10 +217,10 @@ func TestList(t *testing.T) {
 			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
 			Version:           2,
 			AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
-			LoginName:         &wrappers.StringValue{Value: oidcAcct.Subject},
-			FullName:          &wrapperspb.StringValue{Value: oidcAcct.GetFullName()},
-			Email:             &wrapperspb.StringValue{Value: oidcAcct.GetEmail()},
-			PrimaryAccountId:  &wrapperspb.StringValue{Value: oidcAcct.PublicId},
+			LoginName:         oidcAcct.GetSubject(),
+			FullName:          oidcAcct.GetFullName(),
+			Email:             oidcAcct.GetEmail(),
+			PrimaryAccountId:  oidcAcct.GetPublicId(),
 		})
 	}
 

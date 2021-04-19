@@ -474,16 +474,16 @@ func toProto(in *iam.User, accts []string) *pb.User {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	if in.GetPrimaryAccountId() != "" {
-		out.PrimaryAccountId = &wrapperspb.StringValue{Value: in.GetPrimaryAccountId()}
+		out.PrimaryAccountId = in.GetPrimaryAccountId()
 	}
 	if in.GetLoginName() != "" {
-		out.LoginName = &wrapperspb.StringValue{Value: in.GetLoginName()}
+		out.LoginName = in.GetLoginName()
 	}
 	if in.GetFullName() != "" {
-		out.FullName = &wrapperspb.StringValue{Value: in.GetFullName()}
+		out.FullName = in.GetFullName()
 	}
 	if in.GetEmail() != "" {
-		out.Email = &wrapperspb.StringValue{Value: in.GetEmail()}
+		out.Email = in.GetEmail()
 	}
 	for _, a := range accts {
 		out.Accounts = append(out.Accounts, &pb.Account{
