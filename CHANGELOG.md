@@ -4,6 +4,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Anonymous listing: As an update to the behavior introduced in 0.2.0 for auth
+  methods and scopes, when listing all types of resources without authentication
+  (that is, as the anonymous user `u_anon`), only some information is returned
+  -- type, scope, name, description, and possibly some others depending on the
+  resource type. Although in many cases listing would not be granted to the
+  anonymous user for resources, this prevents specific configuration information
+  from being returned if it is.
+
 ### New and Improved
 
 * actions: The new `no-op` action allows a grant to be given to a principals
@@ -12,12 +22,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   used to allow principals to see values in list results without also giving
   `read` or other capabilities on the resources. The default scope permissions
   have been updated to convey `no-op,list` instead of `read,list`.
-  [PR](https://github.com/hashicorp/boundary/pull/1138)
+  ([PR](https://github.com/hashicorp/boundary/pull/1138))
+* listing: Return only specific fields when listing is occurring by the
+  anonymous user; this enhances the behavior introduced in 0.2.0 to all other
+  resource types ([PR](https://github.com/hashicorp/boundary/pull/1150))
 
 ### Bug Fixes
 
 * cors: Fix allowing all origins by default
-  [PR](https://github.com/hashicorp/boundary/pull/1134)
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
 
 ## 0.2.0 (2021/04/14)
 
@@ -64,19 +77,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   update, delete, and list (see new cli `oidc` subcommands available on CRUDL
   operations for examples), as well as the ability to authenticate against it
   via the SDK, CLI, admin UI, and desktop client.
-  [PR](https://github.com/hashicorp/boundary/pull/1090)
+  ([PR](https://github.com/hashicorp/boundary/pull/1090))
 * server: When performing recursive listing, `list` action is no longer required
   to be granted to the calling user. Instead, the given scope acts as the root
   point (so only results under that scope will be shown), and `list` grant is
-  evaluated per-scope. [PR](https://github.com/hashicorp/boundary/pull/1016)
+  evaluated per-scope. ([PR](https://github.com/hashicorp/boundary/pull/1016))
 * database init: If the database is already initialized, return 0 as the exit
   code. This matches how the `database migrate` command works.
-  [PR](https://github.com/hashicorp/boundary/pull/1033)
+  ([PR](https://github.com/hashicorp/boundary/pull/1033))
 
 ### Bug Fixes
 
 * server: Roles for auto generated scopes are now generated at database init.
-  [PR](https://github.com/hashicorp/boundary/pull/996)
+  ([PR](https://github.com/hashicorp/boundary/pull/996))
 * cli: Don't panic on certain commands when outputting in `json` format
   ([Issue](https://github.com/hashicorp/boundary/pull/992),
   [PR](https://github.com/hashicorp/boundary/pull/1095))
@@ -113,25 +126,25 @@ to call out in this changelog. The full set of open issues is on GitHub.
   `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
   This higher-level response object contains the map and body, and also exposes
   `StatusCode()` in place of indivdidual resources.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: Error return codes have been standardized across CLI commands. An error
   code of `1` indicates an error generated from the actual controller API; an
   error code of `2` is an error encountered due to the CLI command's logic; and
   an error code of `3` indicates an error that was caused due to user input to
   the command. (There is some nuance sometimes whether an error is really due to
   user input or not, but we attempt to be consistent.)
-  [PR](https://github.com/hashicorp/boundary/pull/976)
+  ([PR](https://github.com/hashicorp/boundary/pull/976))
 
 ### New and Improved
 
