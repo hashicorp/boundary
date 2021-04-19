@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2020,
+		binarySchemaVersion: 3001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5596,6 +5596,7 @@ create view iam_acct_info as
 select 
     aa.iam_user_id,
     oa.subject as login_name,
+    oa.public_id as primary_account_id,
     oa.full_name as full_name,
     oa.email as email
 from 	
@@ -5608,6 +5609,7 @@ where
 union 
 select 
     aa.iam_user_id,
+    pa.public_id as primary_account_id,
     pa.login_name,
     '' as full_name,
     '' as email
@@ -5619,6 +5621,7 @@ where
     aa.public_id = pa.public_id and 
     aa.auth_method_id = s.primary_auth_method_id;
 
+    
 -- iam_user_acct_info provides a simple way to retrieve entries that include
 -- both the iam_user fields with an outer join to the user's account info.
 create view iam_user_acct_info as
@@ -5630,6 +5633,7 @@ select
     u.create_time,
     u.update_time,
     u.version,
+    i.primary_account_id,
     i.login_name,
     i.full_name,
     i.email
@@ -5867,6 +5871,13 @@ from
   left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
 comment on view auth_password_method_with_is_primary is
 'password auth method with an is_primary_auth_method bool';
+`),
+			3001: []byte(`
+-- this constraint is intended to ensure that a user cannot have more than one
+-- account per auth_method
+alter table auth_account
+  add constraint auth_account_auth_method_id_public_id_uq
+    unique(auth_method_id, iam_user_id);
 `),
 		},
 	}

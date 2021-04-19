@@ -3643,6 +3643,26 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
+        },
+        "login_name": {
+          "type": "string",
+          "title": "Output only. login_name is a string that maps to the user's account \"login\nname\" from the scope's primary auth method",
+          "readOnly": true
+        },
+        "full_name": {
+          "type": "string",
+          "title": "Output only. full_name is a string that maps to the user's account name\nfrom the scope's primary auth method",
+          "readOnly": true
+        },
+        "email": {
+          "type": "string",
+          "title": "Output only. email is a string that maps to the user's account email from\nthe scope's primary auth method",
+          "readOnly": true
+        },
+        "primary_account_id": {
+          "type": "string",
+          "title": "Output only. primary_account_id is a string that maps to the user's account\npublic_id from the scope's primary auth method",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"

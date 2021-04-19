@@ -26,6 +26,7 @@ create view iam_acct_info as
 select 
     aa.iam_user_id,
     oa.subject as login_name,
+    oa.public_id as primary_account_id,
     oa.full_name as full_name,
     oa.email as email
 from 	
@@ -38,6 +39,7 @@ where
 union 
 select 
     aa.iam_user_id,
+    pa.public_id as primary_account_id,
     pa.login_name,
     '' as full_name,
     '' as email
@@ -49,6 +51,7 @@ where
     aa.public_id = pa.public_id and 
     aa.auth_method_id = s.primary_auth_method_id;
 
+    
 -- iam_user_acct_info provides a simple way to retrieve entries that include
 -- both the iam_user fields with an outer join to the user's account info.
 create view iam_user_acct_info as
@@ -60,6 +63,7 @@ select
     u.create_time,
     u.update_time,
     u.version,
+    i.primary_account_id,
     i.login_name,
     i.full_name,
     i.email
