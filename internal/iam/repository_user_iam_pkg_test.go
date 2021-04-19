@@ -52,6 +52,19 @@ func TestRepository_associateUserWithAccounts(t *testing.T) {
 			},
 		},
 		{
+			name: "two-accounts",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, repo, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					a2 := testAccount(t, conn, org.PublicId, authMethodId, "")
+					return Ids{user: u.PublicId, accts: []string{a.PublicId, a2.PublicId}}
+				}(),
+			},
+			wantErr:     true,
+			wantErrCode: errors.NotUnique,
+		},
+		{
 			name: "missing-acctId",
 			args: args{
 				Ids: func() Ids {
