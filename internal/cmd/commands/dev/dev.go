@@ -30,6 +30,9 @@ var (
 type Command struct {
 	*base.Server
 
+	UI         cli.Ui
+	ShutdownCh chan struct{}
+
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
 	ReloadedCh    chan struct{}
@@ -61,6 +64,16 @@ type Command struct {
 	flagDatabaseUrl                  string
 	flagDatabaseImage                string
 	flagDisableDatabaseDestruction   bool
+}
+
+func NewCommand(server base.Server, ui cli.Ui) *Command {
+	ret := &Command{
+		Server:          &server,
+		UI:              ui,
+		flagCombineLogs: true,
+	}
+
+	return ret
 }
 
 func (c *Command) Synopsis() string {
@@ -438,7 +451,7 @@ func (c *Command) Run(args []string) int {
 		if c.flagDatabaseImage != "" {
 			opts = append(opts, docker.WithDatabaseImage(c.flagDatabaseImage))
 			if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
-				c.UI.Error(fmt.Errorf("Error creating dev database container (in c.flagDatabaseImage): %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
 				return base.CommandCliError
 			}
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())

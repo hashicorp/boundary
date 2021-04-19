@@ -44,7 +44,7 @@ func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, cont
 		}
 
 	default:
-		panic(fmt.Sprintf("unknown dialect %q", dialect))
+		fmt.Errorf("unknown dialect %q", dialect)
 	}
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
