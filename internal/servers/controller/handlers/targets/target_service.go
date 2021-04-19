@@ -144,7 +144,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -692,7 +692,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -703,7 +703,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Tar
 	}
 	var outUl []*pb.Target
 	for _, u := range ul {
-		o, err := toProto(u, nil)
+		o, err := toProto(u, nil, handlers.WithAnonymousListing(anonUser))
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert value to proto: %v.", err)
 		}
@@ -822,16 +822,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	return ret
 }
 
-func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
+func toProto(in target.Target, m []*target.TargetSet, opt ...handlers.Option) (*pb.Target, error) {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.Target{
-		Id:                     in.GetPublicId(),
-		ScopeId:                in.GetScopeId(),
-		CreatedTime:            in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:            in.GetUpdateTime().GetTimestamp(),
-		Version:                in.GetVersion(),
-		Type:                   target.TcpTargetType.String(),
-		SessionMaxSeconds:      wrapperspb.UInt32(in.GetSessionMaxSeconds()),
-		SessionConnectionLimit: wrapperspb.Int32(in.GetSessionConnectionLimit()),
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
+		Type:    target.TcpTargetType.String(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -839,6 +835,16 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
+	if anonListing {
+		return &out, nil
+	}
+
+	out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	out.Version = in.GetVersion()
+	out.SessionMaxSeconds = wrapperspb.UInt32(in.GetSessionMaxSeconds())
+	out.SessionConnectionLimit = wrapperspb.Int32(in.GetSessionConnectionLimit())
+
 	if in.GetWorkerFilter() != "" {
 		out.WorkerFilter = wrapperspb.String(in.GetWorkerFilter())
 	}

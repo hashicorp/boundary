@@ -410,6 +410,7 @@ func TestList(t *testing.T) {
 
 			// Test with anon user
 			got, gErr = s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				require.Empty(item.Version)
