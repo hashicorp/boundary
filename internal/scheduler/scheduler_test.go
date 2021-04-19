@@ -293,7 +293,8 @@ func TestScheduler_RegisterJob(t *testing.T) {
 		_, ok := sched.registeredJobs.Load(jobId)
 		assert.True(ok)
 
-		sched1 := testScheduler(t, conn, wrapper, server.PrivateId)
+		server1 := testController(t, conn, wrapper)
+		sched1 := testScheduler(t, conn, wrapper, server1.PrivateId)
 		// Verify job is not registered on second scheduler
 		_, ok = sched1.registeredJobs.Load(jobId)
 		assert.False(ok)
