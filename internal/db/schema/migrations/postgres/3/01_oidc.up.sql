@@ -18,11 +18,19 @@ create table auth_oidc_scope (
     constraint scope_must_be_less_than_1024_chars
       check(length(trim(scope)) < 1024)
     constraint scope_must_not_be_openid -- the default scope is not allowed, since it's redundant
-      check(trim(scope) != 'openid'),
+      check(lower(trim(scope)) != 'openid'),
   primary key(oidc_method_id, scope)
 );
 comment on table auth_oidc_scope is
 'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
+
+
+
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_scope
+  for each row execute procedure default_create_time();
 
 commit;
