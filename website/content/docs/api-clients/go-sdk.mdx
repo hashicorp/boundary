@@ -48,7 +48,7 @@ The [authenticate
 method](https://github.com/hashicorp/boundary/blob/main/api/authmethods/authenticate.go)
 uses a basic `map[string]interface{}` to pass credential information, in order
 to eventually support multiple auth method types. For this example, we assume
-you're using the password auth method, and so we create a credentials
+you're using the password auth method, and so we create an attributes
 map to pass this data:
 
 ```go
