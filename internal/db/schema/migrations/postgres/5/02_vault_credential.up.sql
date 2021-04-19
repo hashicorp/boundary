@@ -162,7 +162,7 @@ begin;
     'A credential_vault_store can have 0 or 1 client certificates.';
 
   create trigger immutable_columns before update on credential_vault_client_certificate
-    for each row execute procedure immutable_columns('scope_id', 'certificate', 'certificate_key');
+    for each row execute procedure immutable_columns('store_id');
 
   create table credential_vault_library (
     public_id wt_public_id primary key,
