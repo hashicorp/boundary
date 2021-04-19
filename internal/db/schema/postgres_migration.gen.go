@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 2020,
+		binarySchemaVersion: 3001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5867,6 +5867,30 @@ from
   left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
 comment on view auth_password_method_with_is_primary is
 'password auth method with an is_primary_auth_method bool';
+`),
+			3001: []byte(`
+-- auth_oidc_scope entries are the optional scopes for a specific oidc auth
+-- method.  There can be 0 or more for each parent oidc auth method.  If an auth
+-- method has any scopes, they will be added to provider requests along with the
+-- default of "openid". 
+create table auth_oidc_scope (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  scope text not null
+    constraint scope_must_not_be_empty
+       check(length(trim(scope)) > 0) 
+    constraint scope_must_be_less_than_1024_chars
+      check(length(trim(scope)) < 1024)
+    constraint scope_must_not_be_openid -- the default scope is not allowed, since it's redundant
+      check(trim(scope) != 'openid'),
+  primary key(oidc_method_id, scope)
+);
+comment on table auth_oidc_aud_claim is
+'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 `),
 		},
 	}
