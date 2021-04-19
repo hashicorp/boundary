@@ -87,7 +87,7 @@ We can use the credentials object we created to execute `Authenticate()` on this
 ```go
 authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
 if err != nil {
-  fmt.Printf("ERROR: %v\n", err.Error())
+  return err
 }
 ```
 
