@@ -385,13 +385,14 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 
 	// TODO(mgaffney) 04/2021:
 	// Add tests for changing and deleting :
-	// - [ ] vault address
-	// - [ ] vault token
-	// - [x] ca certificate
 	// - [ ] client certificate
-	// - [x] namespace
-	// - [x] tls skip verify
-	// - [x] tls server name
+
+	changeVaultAddress := func(n string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.VaultAddress = n
+			return cs
+		}
+	}
 
 	changeNamespace := func(n string) func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
@@ -786,6 +787,29 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			},
 			wantCount: 1,
 		},
+		{
+			name: "change-vault-address",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
+			},
+			chgFn: changeVaultAddress("https://vault2.nowhere.com"),
+			masks: []string{"VaultAddress"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					VaultAddress: "https://vault2.nowhere.com",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-vault-address",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{},
+			},
+			chgFn:   changeVaultAddress(""),
+			masks:   []string{"VaultAddress"},
+			wantErr: errors.NotNull,
+		},
 	}
 
 	for _, tt := range tests {
@@ -805,6 +829,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			defer cleanup()
 
 			tt.orig.VaultAddress = vs.Addr
+			if tt.want != nil && tt.want.VaultAddress == "" {
+				tt.want.VaultAddress = vs.Addr
+			}
 
 			secret := vs.CreateToken(t)
 			token, err := secret.TokenID()
@@ -859,6 +886,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			}
 
 			assert.Equal(tt.want.TlsSkipVerify, got.TlsSkipVerify)
+
+			assert.Equal(tt.want.VaultAddress, got.VaultAddress)
 
 			if tt.wantCount > 0 {
 				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))

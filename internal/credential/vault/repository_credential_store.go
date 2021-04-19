@@ -530,6 +530,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		case strings.EqualFold("TlsServerName", f):
 		case strings.EqualFold("TlsSkipVerify", f):
 		case strings.EqualFold("CaCert", f):
+		case strings.EqualFold("VaultAddress", f):
 		case strings.EqualFold("Token", f):
 			if len(cs.inputToken) != 0 {
 				updateToken = true
@@ -547,6 +548,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			"TlsServerName": cs.TlsServerName,
 			"TlsSkipVerify": cs.TlsSkipVerify,
 			"CaCert":        cs.CaCert,
+			"VaultAddress":  cs.VaultAddress,
 			"Token":         cs.inputToken,
 		},
 		fieldMaskPaths,
