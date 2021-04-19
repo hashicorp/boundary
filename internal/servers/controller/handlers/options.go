@@ -20,6 +20,7 @@ type Option func(*options)
 type options struct {
 	withDiscardUnknownFields bool
 	WithLogger               hclog.Logger
+	WithAnonymousListing     bool
 }
 
 func getDefaultOptions() options {
@@ -39,5 +40,13 @@ func WithDiscardUnknownFields(discard bool) Option {
 func WithLogger(logger hclog.Logger) Option {
 	return func(o *options) {
 		o.WithLogger = logger
+	}
+}
+
+// WithAnonymousListing provides an option when creating responses to only include those
+// desired for listing to anonymous users.
+func WithAnonymousListing(anonListing bool) Option {
+	return func(o *options) {
+		o.WithAnonymousListing = anonListing
 	}
 }

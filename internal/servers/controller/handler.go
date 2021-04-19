@@ -283,9 +283,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		case len(allowedOrigins) == 0:
 			// not valid
 
-		case len(allowedOrigins) == 1 &&
-			(allowedOrigins[0] == "*" ||
-				allowedOrigins[0] == "serve://boundary"):
+		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
 			valid = true
 
 		default:

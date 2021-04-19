@@ -59,8 +59,9 @@ var _ pbs.HostServiceServer = Service{}
 // NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
+	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil static repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -189,6 +190,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
+	const op = "hosts.(Service).createInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -205,24 +207,16 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for creation: %v.", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for creation"))
 	}
 
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, err := repo.CreateHost(ctx, scopeId, h)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host: %v.", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to create host"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")
@@ -231,6 +225,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
+	const op = "hosts.(Service).updateInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
@@ -247,11 +242,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host for update: %v.", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -264,11 +255,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, fmt.Errorf("unable to update host: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist or incorrect version provided.", id)
@@ -277,17 +264,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "hosts.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, err
 	}
 	rows, err := repo.DeleteHost(ctx, scopeId, id)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return false, e
-		}
-		return false, fmt.Errorf("unable to delete host: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
