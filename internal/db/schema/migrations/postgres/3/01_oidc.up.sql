@@ -21,7 +21,7 @@ create table auth_oidc_scope (
       check(trim(scope) != 'openid'),
   primary key(oidc_method_id, scope)
 );
-comment on table auth_oidc_aud_claim is
+comment on table auth_oidc_scope is
 'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
 
