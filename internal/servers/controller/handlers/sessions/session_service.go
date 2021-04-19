@@ -301,6 +301,7 @@ func toProto(in *session.Session, opt ...handlers.Option) *pb.Session {
 			Id:       in.GetPublicId(),
 			ScopeId:  in.ScopeId,
 			TargetId: in.TargetId,
+			Type:     target.SubtypeFromId(in.TargetId).String(),
 		}
 	}
 	out := pb.Session{
