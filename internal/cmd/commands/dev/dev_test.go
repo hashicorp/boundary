@@ -1,6 +1,8 @@
 package dev
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -33,9 +35,9 @@ func TestDev_DatabaseImage(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		wrapper2 := db.TestWrapper(t)
 		opts := &controller.TestControllerOpts{
-			RootKms:               wrapper,
-			WorkerAuthKms:         wrapper2,
-			DisableScopesCreation: true,
+			RootKms:                 wrapper,
+			WorkerAuthKms:           wrapper2,
+			DisableDatabaseCreation: true,
 		}
 		tc := controller.NewTestController(t, opts)
 		server := tc.Server()
@@ -45,13 +47,18 @@ func TestDev_DatabaseImage(t *testing.T) {
 		args := []string{
 			"-database-image=" + tt.args,
 		}
-		code := c.Run(args)
-		// t.Logf()
-		if code != tt.out {
-			t.Fatalf("unexpected exit int returned, want %d got %d, err %q", tt.out, code, ui.ErrorWriter.String())
-		}
-		tc.Shutdown()
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			code := c.Run(args)
+			fmt.Println("code")
+			t.Log(code)
+			wg.Done()
+		}()
+
+		tc.Shutdown()
+		wg.Wait()
 	}
 
 }

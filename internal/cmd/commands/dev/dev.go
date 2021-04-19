@@ -454,8 +454,6 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
 				return base.CommandCliError
 			}
-			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
-			return base.CommandCliError
 		}
 		if !c.flagDisableDatabaseDestruction {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
