@@ -14,7 +14,7 @@ import (
 
 // UpdateFields will create a map[string]interface of the update values to be
 // sent to the db.  The map keys will be the field names for the fields to be
-// updated.   The caller provided fieldMaskPaths and setToNullPaths must not
+// updated.  The caller provided fieldMaskPaths and setToNullPaths must not
 // intersect.  fieldMaskPaths and setToNullPaths cannot both be zero len.
 func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []string) (map[string]interface{}, error) {
 	const op = "common.UpdateFields"
@@ -108,7 +108,7 @@ func findMissingPaths(paths []string, foundPaths map[string]struct{}) []string {
 }
 
 // Intersection is a case-insensitive search for intersecting values.  Returns
-// []string of the Intersection with values in lowercase, and  map[string]string
+// []string of the Intersection with values in lowercase, and map[string]string
 // of the original av and bv, with the key set to uppercase and value set to the
 // original
 func Intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
@@ -141,7 +141,7 @@ func Intersection(av, bv []string) ([]string, map[string]string, map[string]stri
 
 // BuildUpdatePaths takes a map of field names to field values, field masks,
 // fields allowed to be zero value, and returns both a list of field names to
-// udpate and a list of field names that should be set to null.
+// update and a list of field names that should be set to null.
 func BuildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string, allowZeroFields []string) (masks []string, nulls []string) {
 	for f, v := range fieldValues {
 		if !contains(fieldMask, f) {
