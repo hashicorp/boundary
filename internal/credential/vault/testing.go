@@ -135,12 +135,6 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 		assert.NoError(err)
 		require.NotNil(inToken)
 
-		if i > 0 {
-			// only one 'current' token is allowed
-			// mark additional tokens as maintaining
-			inToken.Status = string(StatusMaintaining)
-		}
-
 		require.NoError(inToken.encrypt(ctx, databaseWrapper))
 		query, queryValues := inToken.insertQuery()
 
