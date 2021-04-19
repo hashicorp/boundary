@@ -144,16 +144,12 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 				// return err, which will result in a rollback of the update
 				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
 				reader: reader,
 				writer: w,
 				kms:    r.kms,
-				// intentionally not setting the defaultLimit, so we'll get all
-				// the account ids without a limit
+				// intentionally not setting the defaultLimit
 			}
-			// we need to get the primary account info along with the user, so
-			// we use lookupUser(...) to do so.
 			returnedUser, err = txRepo.lookupUser(ctx, user.PublicId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current user after update"))
@@ -313,16 +309,12 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op)
 			}
-			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
 				reader: reader,
 				writer: w,
 				kms:    r.kms,
-				// intentionally not setting the defaultLimit, so we'll get all
-				// the account ids without a limit
+				// intentionally not setting the defaultLimit
 			}
-			// we need to get the primary account info along with the user, so
-			// we use lookupUser(...) to do so.
 			obtainedUser, err = txRepo.lookupUser(ctx, obtainedUser.PublicId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve user"))
