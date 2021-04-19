@@ -1,4 +1,4 @@
-import VERSION from 'data/version.js'
+import { VERSION, DESKTOP_VERSION } from 'data/version.js'
 import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 import { productName, productSlug } from 'data/metadata'
@@ -62,7 +62,7 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
         ]}
         productName={productName}
         productId={productSlug}
-        latestVersion={VERSION[productSlug]}
+        latestVersion={VERSION}
         getStartedLinks={[
           {
             label: 'Install Boundary',
@@ -95,7 +95,7 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
         }}
         merchandisingSlot={
           <MerchDesktopClient
-            version={VERSION[DESKTOP_BINARY_SLUG]}
+            version={DESKTOP_VERSION}
             releases={desktopReleases}
           />
         }
