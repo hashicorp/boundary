@@ -676,7 +676,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 	for _, accountId := range accountIds {
 		acct := allocAccount()
 		acct.PublicId = accountId
-		err := reader.LookupByPublicId(context.Background(), &acct)
+		err := reader.LookupByPublicId(ctx, &acct)
 		if err != nil {
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
