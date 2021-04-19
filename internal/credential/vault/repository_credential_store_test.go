@@ -229,8 +229,6 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, badId)
 
-	// TODO(mgaffney) 04/2021: Add test for credential stores with no
-	// 'current' token
 	tests := []struct {
 		name           string
 		id             string
@@ -1034,13 +1032,6 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	// TODO(mgaffney) 04/2021:
-	// - [ ] old token expired, new token valid - old token still expired
-	// - [ ] old token current, new token valid - old token maintaining
-	// - [ ] old token current, new token invalid - old token current, return error
-	// 		- lookup fails
-	// 		- not orphaned, not renewable, not periodic
-
 	tests := []struct {
 		name               string
 		newTokenOpts       []TestOption
@@ -1053,21 +1044,21 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			wantOldTokenStatus: StatusMaintaining,
 			wantCount:          1,
 		},
-		// {
-		// 	name:         "token-not-renewable",
-		// 	newTokenOpts: []TestOption{TestRenewableToken(t, false)},
-		// 	wantErr:      errors.VaultTokenNotRenewable,
-		// },
-		// {
-		// 	name:         "token-not-orphaned",
-		// 	newTokenOpts: []TestOption{TestOrphanToken(t, false)},
-		// 	wantErr:    errors.VaultTokenNotOrphaned,
-		// },
-		// {
-		// 	name:         "token-not-periodic",
-		// 	newTokenOpts: []TestOption{TestPeriodicToken(t, false)},
-		// 	wantErr:    errors.VaultTokenNotPeriodic,
-		// },
+		{
+			name:         "token-not-renewable",
+			newTokenOpts: []TestOption{TestRenewableToken(t, false)},
+			wantErr:      errors.VaultTokenNotRenewable,
+		},
+		{
+			name:         "token-not-orphaned",
+			newTokenOpts: []TestOption{TestOrphanToken(t, false)},
+			wantErr:      errors.VaultTokenNotOrphaned,
+		},
+		{
+			name:         "token-not-periodic",
+			newTokenOpts: []TestOption{TestPeriodicToken(t, false)},
+			wantErr:      errors.VaultTokenNotPeriodic,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
