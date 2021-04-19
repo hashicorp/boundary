@@ -296,32 +296,26 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 func toProto(in *session.Session, opt ...handlers.Option) *pb.Session {
 	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
-	if anonListing {
-		return &pb.Session{
-			Id:       in.GetPublicId(),
-			ScopeId:  in.ScopeId,
-			TargetId: in.TargetId,
-			Type:     target.SubtypeFromId(in.TargetId).String(),
-		}
-	}
 	out := pb.Session{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.ScopeId,
-		TargetId:    in.TargetId,
-		Version:     in.Version,
-		UserId:      in.UserId,
-		HostId:      in.HostId,
-		HostSetId:   in.HostSetId,
-		AuthTokenId: in.AuthTokenId,
-		Endpoint:    in.Endpoint,
-		Type:        target.SubtypeFromId(in.TargetId).String(),
+		Id:       in.GetPublicId(),
+		ScopeId:  in.ScopeId,
+		TargetId: in.TargetId,
+		Type:     target.SubtypeFromId(in.TargetId).String(),
+	}
+	if !anonListing {
+		out.Version = in.Version
+		out.UserId = in.UserId
+		out.HostId = in.HostId
+		out.HostSetId = in.HostSetId
+		out.AuthTokenId = in.AuthTokenId
+		out.Endpoint = in.Endpoint
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
-		CreatedTime:       in.CreateTime.GetTimestamp(),
-		UpdatedTime:       in.UpdateTime.GetTimestamp(),
-		ExpirationTime:    in.ExpirationTime.GetTimestamp(),
-		Certificate:       in.Certificate,
-		TerminationReason: in.TerminationReason,
+		out.CreatedTime = in.CreateTime.GetTimestamp()
+		out.UpdatedTime = in.UpdateTime.GetTimestamp()
+		out.ExpirationTime = in.ExpirationTime.GetTimestamp()
+		out.Certificate = in.Certificate
+		out.TerminationReason = in.TerminationReason
 	}
 	if len(in.States) > 0 {
 		out.Status = in.States[0].Status.String()

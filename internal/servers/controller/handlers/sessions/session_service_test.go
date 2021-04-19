@@ -424,7 +424,6 @@ func TestList(t *testing.T) {
 				require.Nil(item.UpdatedTime)
 				require.Empty(item.Certificate)
 				require.Empty(item.TerminationReason)
-				require.Nil(item.States)
 			}
 		})
 	}
