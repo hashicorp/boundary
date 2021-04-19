@@ -40,7 +40,7 @@ First, we need to create a client from the Boundary API and set the address to r
 // The default address points to the default dev mode address
 client, err := api.NewClient(nil)
 if err != nil {
-  fmt.Printf("ERROR: %v\n", err.Error())
+  return err
 }
 ```
 
