@@ -164,7 +164,7 @@ func (c *Command) printListTable(items []*users.User) string {
 				fmt.Sprintf("    Scope ID:            %s", u.Scope.Id),
 			)
 		}
-		if true {
+		if u.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", u.Version),
 			)

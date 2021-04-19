@@ -162,7 +162,7 @@ func TestList(t *testing.T) {
 	}
 
 	// Populate these users into the total
-	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId())
+	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId(), auth.WithUserId("u_auth"))
 	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
@@ -213,12 +213,27 @@ func TestList(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
+			// Test with non-anon user
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			// Test with anon user
+
+			got, gErr = s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Empty(item.Version)
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Nil(item.Accounts)
+				require.Nil(item.AccountIds)
+			}
 		})
 	}
 }

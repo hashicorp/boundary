@@ -99,7 +99,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		return &pbs.ListUsersResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.User, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.User, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -351,7 +351,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Use
 	}
 	var outUl []*pb.User
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u, nil))
+		outUl = append(outUl, toProto(u, nil, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outUl, nil
 }
@@ -452,14 +452,11 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *iam.User, accts []string) *pb.User {
+func toProto(in *iam.User, accts []string, opt ...handlers.Option) *pb.User {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
 	out := pb.User{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
-		AccountIds:  accts,
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -467,12 +464,18 @@ func toProto(in *iam.User, accts []string) *pb.User {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	for _, a := range accts {
-		out.Accounts = append(out.Accounts, &pb.Account{
-			Id: a,
-			// TODO: Update this when an account can be associated with a user from a different scope.
-			ScopeId: in.GetScopeId(),
-		})
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.GetVersion()
+		out.AccountIds = accts
+		for _, a := range accts {
+			out.Accounts = append(out.Accounts, &pb.Account{
+				Id: a,
+				// TODO: Update this when an account can be associated with a user from a different scope.
+				ScopeId: in.GetScopeId(),
+			})
+		}
 	}
 	return &out
 }
