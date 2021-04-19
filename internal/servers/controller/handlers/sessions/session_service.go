@@ -122,7 +122,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return &pbs.ListSessionsResponse{}, nil
 	}
 
-	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
+	seslist, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -219,18 +219,18 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	return toProto(sess), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*pb.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	seslist, err := repo.ListSessions(ctx, opts...)
+	seslist, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
 	var outSl []*pb.Session
 	for _, ses := range seslist {
-		outSl = append(outSl, toProto(ses))
+		outSl = append(outSl, toProto(ses, handlers.WithAnonymousListing(anonUser)))
 	}
 	return outSl, nil
 }
@@ -294,7 +294,15 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *session.Session) *pb.Session {
+func toProto(in *session.Session, opt ...handlers.Option) *pb.Session {
+	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	if anonListing {
+		return &pb.Session{
+			Id:       in.GetPublicId(),
+			ScopeId:  in.ScopeId,
+			TargetId: in.TargetId,
+		}
+	}
 	out := pb.Session{
 		Id:          in.GetPublicId(),
 		ScopeId:     in.ScopeId,
