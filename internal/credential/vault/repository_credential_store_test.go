@@ -370,14 +370,11 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
 
-			assert.Nil(got.outputToken)
-			require.NotNil(got.privateToken)
-			assert.Equal([]byte(token), got.privateToken.GetToken())
+			assert.Equal([]byte(token), got.Token)
 
 			if tt.tls == TestClientTLS {
-				assert.Nil(got.clientCert)
-				require.NotNil(got.privateClientCert)
-				assert.Equal(v.ClientKey, got.privateClientCert.CertificateKey)
+				require.NotNil(got.ClientCertificateKey)
+				assert.Equal(v.ClientKey, got.ClientCertificateKey)
 			}
 		})
 	}
