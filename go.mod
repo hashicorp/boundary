@@ -2,13 +2,16 @@ module github.com/hashicorp/boundary
 
 go 1.16
 
+replace github.com/hashicorp/boundary/api => ./api
+
+replace github.com/hashicorp/boundary/sdk => ./sdk
+
 require (
 	github.com/armon/go-metrics v0.3.6
 	github.com/bufbuild/buf v0.37.0
 	github.com/dhui/dktest v0.3.4
 	github.com/fatih/color v1.10.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
-	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2

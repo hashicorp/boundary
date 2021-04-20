@@ -95,11 +95,12 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+	const op = "accounts.NewService"
 	if pwRepo == nil {
-		return Service{}, fmt.Errorf("nil password repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
 	}
 	if oidcRepo == nil {
-		return Service{}, fmt.Errorf("nil oidc repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing oidc repository provided")
 	}
 	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
@@ -284,9 +285,9 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 }
 
 func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
-	const op = "account_service.(Serivce).createPwInRepo"
+	const op = "accounts.(Service).createPwInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+		return nil, errors.New(errors.InvalidParameter, op, "missing item")
 	}
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
@@ -315,7 +316,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	}
 	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a, createOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create user: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
@@ -324,9 +325,9 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 }
 
 func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*oidc.Account, error) {
-	const op = "account_service.(Service).createOidcInRepo"
+	const op = "accounts.(Service).createOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+		return nil, errors.New(errors.InvalidParameter, op, "missing item")
 	}
 	var opts []oidc.Option
 	if item.GetName() != nil {
@@ -367,16 +368,16 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 }
 
 func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*pb.Account, error) {
-	const op = "account_service.(Service).createInRepo"
+	const op = "accounts.(Service).createInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil item")
+		return nil, errors.New(errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.Account
 	switch auth.SubtypeFromId(am.GetPublicId()) {
 	case auth.PasswordSubtype:
 		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -385,7 +386,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	case auth.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -396,6 +397,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 }
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
+	const op = "accounts.(Service).updatePwInRepo"
 	u, err := toStoragePwAccount(authMethId, item)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for update: %v.", err)
@@ -410,7 +412,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
@@ -419,7 +421,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
-		return nil, fmt.Errorf("unable to update auth method: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
@@ -428,7 +430,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 }
 
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
-	const op = "account_service.(Service).updateOidcInRepo"
+	const op = "accounts.(Service).updateOidcInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
@@ -449,11 +451,11 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update account: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update account"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
@@ -462,12 +464,13 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (*pb.Account, error) {
+	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
 	switch auth.SubtypeFromId(req.GetId()) {
 	case auth.PasswordSubtype:
 		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		if a == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
@@ -476,7 +479,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	case auth.OidcSubtype:
 		a, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		if a == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
@@ -487,6 +490,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "accounts.(Service).deleteFromRepo"
 	var rows int
 	var err error
 	switch auth.SubtypeFromId(id) {
@@ -507,7 +511,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete account: %w", err)
+		return false, errors.Wrap(err, op)
 	}
 	return rows > 0, nil
 }
@@ -552,9 +556,10 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 }
 
 func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
+	const op = "account.(Service).changePasswordInRepo"
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
@@ -568,7 +573,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
-		return nil, fmt.Errorf("unable to change password: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
@@ -577,9 +582,11 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 }
 
 func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
+	const op = "accounts.(Service).setPasswordInRepo"
+
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, err := repo.SetPassword(ctx, scopeId, id, pw, version)
 	if err != nil {
@@ -590,7 +597,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}
-		return nil, fmt.Errorf("unable to set password: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	return toProto(out)
 }
@@ -710,7 +717,7 @@ func toProto(in auth.Account) (*pb.Account, error) {
 }
 
 func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
-	const op = "account_service.toStoragePwAccount"
+	const op = "accounts.toStoragePwAccount"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
 	}
@@ -744,7 +751,7 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
-	const op = "account_service.validateGetRequest"
+	const op = "accounts.validateGetRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -752,7 +759,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
-	const op = "account_service.validateCreateRequest"
+	const op = "accounts.validateCreateRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -807,7 +814,7 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
-	const op = "account_service.validateUpdateRequest"
+	const op = "accounts.validateUpdateRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -848,7 +855,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
-	const op = "account_service.validateDeleteRequest"
+	const op = "accounts.validateDeleteRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -856,7 +863,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
-	const op = "account_service.validateListRequest"
+	const op = "accounts.validateListRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -874,7 +881,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 }
 
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
-	const op = "account_service.validateChangePasswordRequest"
+	const op = "accounts.validateChangePasswordRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
@@ -898,7 +905,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 }
 
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
-	const op = "account_service.validateSetPasswordRequest"
+	const op = "accounts.validateSetPasswordRequest"
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}

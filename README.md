@@ -97,7 +97,7 @@ This will build Boundary. (The first time this is run it will fetch and compile
 UI assets; which will take a few extra minutes.) Once complete, run Boundary in
 `dev` mode:
 
-  ```./$GOPATH/bin/boundary dev```
+  ```$GOPATH/bin/boundary dev```
 
 Please note that development may require other tools; to install the set of
 tools at the versions used by the Boundary team, run:
