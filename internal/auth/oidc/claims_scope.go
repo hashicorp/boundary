@@ -6,6 +6,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// defaultClaimsScopeTableName defines the default table name for an ClaimsScope
+const defaultClaimsScopeTableName = "auth_oidc_scope"
+
 // ClaimsScope defines optional OIDC scope values that are used to request
 // claims, in addition to the default scope of "openid".
 //
@@ -60,7 +63,7 @@ func (s *ClaimsScope) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return defaultAudClaimTableName
+	return defaultClaimsScopeTableName
 }
 
 // SetTableName sets the table name.
