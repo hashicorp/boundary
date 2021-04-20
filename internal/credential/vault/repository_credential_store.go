@@ -766,3 +766,48 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 	}
 	return credentialStores, nil
 }
+
+// DeleteCredentialStore deletes publicId from the repository and returns
+// the number of records deleted. All options are ignored.
+func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string, _ ...Option) (int, error) {
+	const op = "vault.(Repository).DeleteCredentialStore"
+	if publicId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+	}
+
+	cs := allocCredentialStore()
+	cs.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, cs); err != nil {
+		if errors.IsNotFoundError(err) {
+			return db.NoRowsAffected, nil
+		}
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+	}
+	if cs.ScopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			dcs := cs.clone()
+			rowsDeleted, err = w.Delete(ctx, dcs, db.WithOplog(oplogWrapper, cs.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			if err == nil && rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 CredentialStore would have been deleted")
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", cs.PublicId)))
+	}
+
+	return rowsDeleted, nil
+}
