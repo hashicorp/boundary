@@ -651,6 +651,78 @@ func (x *Certificate) GetCreateTime() *timestamp.Timestamp {
 	return nil
 }
 
+// ClaimsScope entries are optional OIDC scope values that are used to request
+// claims, in addition to the default scope of "openid".
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+type ClaimsScope struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: `gorm:"primary_key"`
+	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
+	// scope is an OIDC scope
+	// @inject_tag: `gorm:"column:scope;primary_key"`
+	Scope string `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty" gorm:"column:scope;primary_key"`
+	// The create_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+}
+
+func (x *ClaimsScope) Reset() {
+	*x = ClaimsScope{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ClaimsScope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimsScope) ProtoMessage() {}
+
+func (x *ClaimsScope) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimsScope.ProtoReflect.Descriptor instead.
+func (*ClaimsScope) Descriptor() ([]byte, []int) {
+	return file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ClaimsScope) GetOidcMethodId() string {
+	if x != nil {
+		return x.OidcMethodId
+	}
+	return ""
+}
+
+func (x *ClaimsScope) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *ClaimsScope) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
 var File_controller_storage_auth_oidc_store_v1_oidc_proto protoreflect.FileDescriptor
 
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = []byte{
@@ -800,12 +872,21 @@ var file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = []byte{
 	0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f,
 	0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d,
 	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74,
-	0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x42,
-	0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61,
-	0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79,
-	0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x6f,
-	0x69, 0x64, 0x63, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x22,
+	0x96, 0x01, 0x0a, 0x0b, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x12,
+	0x24, 0x0a, 0x0e, 0x6f, 0x69, 0x64, 0x63, 0x5f, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x5f, 0x69,
+	0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x6f, 0x69, 0x64, 0x63, 0x4d, 0x65, 0x74,
+	0x68, 0x6f, 0x64, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x18, 0x14,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x12, 0x4b, 0x0a, 0x0b, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74,
+	0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e,
+	0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72,
+	0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70,
+	0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e,
+	0x61, 0x6c, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x6f, 0x69, 0x64, 0x63, 0x2f, 0x73, 0x74, 0x6f,
+	0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -820,28 +901,30 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescGZIP() []byte 
 	return file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescData
 }
 
-var file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_goTypes = []interface{}{
 	(*AuthMethod)(nil),          // 0: controller.storage.auth.oidc.store.v1.AuthMethod
 	(*Account)(nil),             // 1: controller.storage.auth.oidc.store.v1.Account
 	(*SigningAlg)(nil),          // 2: controller.storage.auth.oidc.store.v1.SigningAlg
 	(*AudClaim)(nil),            // 3: controller.storage.auth.oidc.store.v1.AudClaim
 	(*Certificate)(nil),         // 4: controller.storage.auth.oidc.store.v1.Certificate
-	(*timestamp.Timestamp)(nil), // 5: controller.storage.timestamp.v1.Timestamp
+	(*ClaimsScope)(nil),         // 5: controller.storage.auth.oidc.store.v1.ClaimsScope
+	(*timestamp.Timestamp)(nil), // 6: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_depIdxs = []int32{
-	5, // 0: controller.storage.auth.oidc.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 1: controller.storage.auth.oidc.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 2: controller.storage.auth.oidc.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 3: controller.storage.auth.oidc.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 4: controller.storage.auth.oidc.store.v1.SigningAlg.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 5: controller.storage.auth.oidc.store.v1.AudClaim.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	5, // 6: controller.storage.auth.oidc.store.v1.Certificate.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 0: controller.storage.auth.oidc.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 1: controller.storage.auth.oidc.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 2: controller.storage.auth.oidc.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 3: controller.storage.auth.oidc.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 4: controller.storage.auth.oidc.store.v1.SigningAlg.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 5: controller.storage.auth.oidc.store.v1.AudClaim.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 6: controller.storage.auth.oidc.store.v1.Certificate.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	6, // 7: controller.storage.auth.oidc.store.v1.ClaimsScope.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_auth_oidc_store_v1_oidc_proto_init() }
@@ -910,6 +993,18 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ClaimsScope); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -917,7 +1012,7 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
