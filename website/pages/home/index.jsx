@@ -18,6 +18,10 @@ export default function HomePage() {
               'https://learn.hashicorp.com/collections/boundary/getting-started',
             external: true,
           },
+          {
+            title: 'Download macOS Client',
+            url: '/downloads#desktop',
+          },
         ]}
         uiVideo={{
           url: 'https://www.datocms-assets.com/2885/1614100050-hero-ui.mp4',
