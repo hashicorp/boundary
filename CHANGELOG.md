@@ -14,7 +14,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
   These new user attributes correspond to attributes
   from the user's primary auth method account.  These attributes will be empty
-  when the user has no account in the primary auth method for their scope.
+  when the user has no account in the primary auth method for their scope, or
+  there is no designated primary auth method for their scope. 
 
 
 ### Bug Fixes
