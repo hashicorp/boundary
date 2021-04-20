@@ -58,6 +58,11 @@ type SessionDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for SessionDeleteResult
+func (n SessionDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n SessionDeleteResult) GetResponse() *api.Response {
 	return n.response
 }

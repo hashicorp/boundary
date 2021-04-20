@@ -4,7 +4,6 @@ package authtokenscmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/hashicorp/boundary/api"
@@ -169,8 +168,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	existed := true
-
 	var result api.GenericResult
 
 	var listResult api.GenericListResult
@@ -181,11 +178,7 @@ func (c *Command) Run(args []string) int {
 		result, err = authtokensClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = authtokensClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
-			existed = false
-			err = nil
-		}
+		result, err = authtokensClient.Delete(c.Context, c.FlagId, opts...)
 
 	case "list":
 		listResult, err = authtokensClient.List(c.Context, c.FlagScopeId, opts...)
@@ -217,17 +210,12 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
+			if ok := c.PrintJsonItem(result); !ok {
+				return base.CommandCliError
+			}
 
 		case "table":
-			output := "The delete operation completed successfully"
-			switch existed {
-			case true:
-				output += "."
-			default:
-				output += ", however the resource did not exist at the time."
-			}
-			c.UI.Output(output)
+			c.UI.Output("The delete operation completed successfully.")
 		}
 
 		return base.CommandSuccess

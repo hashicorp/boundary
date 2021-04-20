@@ -327,9 +327,6 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	{{ if hasAction .StdActions "delete" }}
-	existed := true
-	{{ end }}
 	var result api.GenericResult
 	{{ if hasAction .StdActions "list" }}
 	var listResult api.GenericListResult
@@ -351,11 +348,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":
-		_, err = {{ $input.Pkg}}Client.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
-			existed = false
-			err = nil
-		}
+		result, err = {{ $input.Pkg }}Client.Delete(c.Context, c.FlagId, opts...)
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
@@ -390,17 +383,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
+			if ok := c.PrintJsonItem(result); !ok {
+				return base.CommandCliError
+			}
 
 		case "table":
-			output := "The delete operation completed successfully"
-			switch existed {
-			case true:
-				output += "."
-			default:
-				output += ", however the resource did not exist at the time."
-			}
-			c.UI.Output(output)
+			c.UI.Output("The delete operation completed successfully.")
 		}
 
 		return base.CommandSuccess

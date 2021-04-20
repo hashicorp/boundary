@@ -238,7 +238,7 @@ func (c *Command) PrintJsonItem(result api.GenericResult) bool {
 	}
 	output := struct {
 		StatusCode int             `json:"status_code"`
-		Item       json.RawMessage `json:"item"`
+		Item       json.RawMessage `json:"item,omitempty"`
 	}{
 		StatusCode: resp.HttpResponse().StatusCode,
 		Item:       resp.Body.Bytes(),

@@ -4,7 +4,6 @@ package accountscmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/hashicorp/boundary/api"
@@ -206,8 +205,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	existed := true
-
 	var result api.GenericResult
 
 	var listResult api.GenericListResult
@@ -218,11 +215,7 @@ func (c *Command) Run(args []string) int {
 		result, err = accountsClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = accountsClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
-			existed = false
-			err = nil
-		}
+		result, err = accountsClient.Delete(c.Context, c.FlagId, opts...)
 
 	case "list":
 		listResult, err = accountsClient.List(c.Context, c.FlagAuthMethodId, opts...)
@@ -254,17 +247,12 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
+			if ok := c.PrintJsonItem(result); !ok {
+				return base.CommandCliError
+			}
 
 		case "table":
-			output := "The delete operation completed successfully"
-			switch existed {
-			case true:
-				output += "."
-			default:
-				output += ", however the resource did not exist at the time."
-			}
-			c.UI.Output(output)
+			c.UI.Output("The delete operation completed successfully.")
 		}
 
 		return base.CommandSuccess
