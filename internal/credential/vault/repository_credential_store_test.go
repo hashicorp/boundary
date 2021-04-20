@@ -1270,3 +1270,30 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	assert, require := assert.New(t), require.New(t)
+	repo, err := NewRepository(rw, rw, kms)
+	assert.NoError(err)
+	require.NotNil(repo)
+
+	const numPerScope = 10
+	var prjs []string
+	var total int
+	for i := 0; i < numPerScope; i++ {
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prjs = append(prjs, prj.GetPublicId())
+		TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), numPerScope)
+		total += numPerScope
+	}
+
+	got, err := repo.ListCredentialStores(context.Background(), prjs)
+	require.NoError(err)
+	assert.Equal(total, len(got))
+}

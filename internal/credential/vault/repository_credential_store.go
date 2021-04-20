@@ -745,3 +745,24 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	return returnedCredentialStore, rowsUpdated, nil
 }
+
+// ListCredentialStores returns a slice of CredentialStores for the
+// scopeIds. WithLimit is the only option supported.
+func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string, opt ...Option) ([]*CredentialStore, error) {
+	const op = "vault.(Repository).ListCredentialStores"
+	if len(scopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "no scopeIds")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var credentialStores []*CredentialStore
+	err := r.reader.SearchWhere(ctx, &credentialStores, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return credentialStores, nil
+}
