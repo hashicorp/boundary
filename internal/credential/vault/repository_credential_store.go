@@ -267,7 +267,7 @@ type credentialStoreAggPublic struct {
 	TokenUpdateTime      *timestamp.Timestamp
 	TokenLastRenewalTime *timestamp.Timestamp
 	TokenExpirationTime  *timestamp.Timestamp
-	ClientCertificate    []byte
+	ClientCert           []byte
 }
 
 func allocCredentialStoreAggPublic() *credentialStoreAggPublic {
@@ -299,9 +299,9 @@ func (agg *credentialStoreAggPublic) toCredentialStore() *CredentialStore {
 		cs.outputToken = tk
 	}
 
-	if agg.ClientCertificate != nil {
+	if agg.ClientCert != nil {
 		cert := allocClientCertificate()
-		cert.Certificate = agg.ClientCertificate
+		cert.Certificate = agg.ClientCert
 		cs.clientCert = cert
 	}
 	return cs
@@ -340,32 +340,32 @@ func (r *Repository) lookupPrivateCredentialStore(ctx context.Context, publicId 
 }
 
 type privateCredentialStore struct {
-	PublicId               string `gorm:"primary_key"`
-	ScopeId                string
-	Name                   string
-	Description            string
-	CreateTime             *timestamp.Timestamp
-	UpdateTime             *timestamp.Timestamp
-	Version                uint32
-	VaultAddress           string
-	Namespace              string
-	CaCert                 []byte
-	TlsServerName          string
-	TlsSkipVerify          bool
-	StoreId                string
-	TokenSha256            []byte
-	Token                  []byte
-	CtToken                []byte
-	TokenCreateTime        *timestamp.Timestamp
-	TokenUpdateTime        *timestamp.Timestamp
-	TokenLastRenewalTime   *timestamp.Timestamp
-	TokenExpirationTime    *timestamp.Timestamp
-	TokenKeyId             string
-	TokenStatus            string
-	ClientCertificate      []byte
-	ClientCertificateKeyId string
-	ClientCertificateKey   []byte
-	CtClientCertificateKey []byte
+	PublicId             string `gorm:"primary_key"`
+	ScopeId              string
+	Name                 string
+	Description          string
+	CreateTime           *timestamp.Timestamp
+	UpdateTime           *timestamp.Timestamp
+	Version              uint32
+	VaultAddress         string
+	Namespace            string
+	CaCert               []byte
+	TlsServerName        string
+	TlsSkipVerify        bool
+	StoreId              string
+	TokenSha256          []byte
+	Token                []byte
+	CtToken              []byte
+	TokenCreateTime      *timestamp.Timestamp
+	TokenUpdateTime      *timestamp.Timestamp
+	TokenLastRenewalTime *timestamp.Timestamp
+	TokenExpirationTime  *timestamp.Timestamp
+	TokenKeyId           string
+	TokenStatus          string
+	ClientCert           []byte
+	ClientKeyId          string
+	ClientKey            []byte
+	CtClientKey          []byte
 }
 
 func allocPrivateCredentialStore() *privateCredentialStore {
@@ -399,12 +399,12 @@ func (pcs *privateCredentialStore) toCredentialStore() *CredentialStore {
 		tk.Status = pcs.TokenStatus
 		cs.privateToken = tk
 	}
-	if pcs.ClientCertificate != nil {
+	if pcs.ClientCert != nil {
 		cert := allocClientCertificate()
 		cert.StoreId = pcs.StoreId
-		cert.Certificate = pcs.ClientCertificate
-		cert.CtCertificateKey = pcs.CtClientCertificateKey
-		cert.KeyId = pcs.ClientCertificateKeyId
+		cert.Certificate = pcs.ClientCert
+		cert.CtCertificateKey = pcs.CtClientKey
+		cert.KeyId = pcs.ClientKeyId
 		cs.privateClientCert = cert
 	}
 	return cs
@@ -422,23 +422,23 @@ func (pcs *privateCredentialStore) decrypt(ctx context.Context, cipher wrapping.
 			CtToken: pcs.CtToken,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
 		}
 		pcs.Token = ptkv.Token
 	}
 
-	if pcs.CtClientCertificateKey != nil {
+	if pcs.CtClientKey != nil && pcs.ClientCert != nil {
 		type pck struct {
-			ClientCertificateKey   []byte `wrapping:"pt,client_certificate_key_data"`
-			CtClientCertificateKey []byte `wrapping:"ct,client_certificate_key_data"`
+			Key   []byte `wrapping:"pt,key_data"`
+			CtKey []byte `wrapping:"ct,key_data"`
 		}
 		pckv := &pck{
-			CtClientCertificateKey: pcs.CtClientCertificateKey,
+			CtKey: pcs.CtClientKey,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
 		}
-		pcs.ClientCertificateKey = pckv.ClientCertificateKey
+		pcs.ClientKey = pckv.Key
 	}
 	return nil
 }
@@ -454,9 +454,9 @@ func (pcs *privateCredentialStore) client() (*client, error) {
 		Namespace:     pcs.Namespace,
 	}
 
-	if pcs.ClientCertificateKey != nil {
-		clientConfig.ClientCert = pcs.ClientCertificate
-		clientConfig.ClientKey = pcs.ClientCertificateKey
+	if pcs.ClientKey != nil {
+		clientConfig.ClientCert = pcs.ClientCert
+		clientConfig.ClientKey = pcs.ClientKey
 	}
 
 	client, err := newClient(clientConfig)
@@ -479,15 +479,17 @@ func (pcs *privateCredentialStore) TableName() string {
 // new CredentialStore containing the updated values and a count of the
 // number of records updated. cs is not changed.
 //
-// cs must contain a valid PublicId. Only cs.Name and cs.Description can be
-// updated. If cs.Name is set to a non-empty string, it must be unique
-// within cs.ScopeId.
+// cs must contain a valid PublicId. Only Name, Description, Namespace,
+// TlsServerName, TlsSkipVerify, CaCert, VaultAddress, Token, and
+// ClientCertificate can be changed. If cs.Name is set to a non-empty
+// string, it must be unique within cs.ScopeId. If Token is changed, the
+// new token must have the same properties defined in CreateCredentialStore
+// and UpdateCredentialStore calls the same Vault endpoints described in
+// CreateCredentialStore.
 //
 // An attribute of cs will be set to NULL in the database if the attribute
 // in cs is the zero value and it is included in fieldMaskPaths.
-//
-// TODO(mgaffney) 04/2021: Add interactions with Vault to godoc
-func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialStore, version uint32, fieldMaskPaths []string, opt ...Option) (*CredentialStore, int, error) {
+func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialStore, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialStore, int, error) {
 	const op = "vault.(Repository).UpdateCredentialStore"
 	if cs == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing CredentialStore")
@@ -504,24 +506,10 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	if cs.ScopeId == "" {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
+	cs = cs.clone()
 
-	// TODO(mgaffney) 04/2021: If token or vault address,
-	// connect to vault server and test token.
-
-	// TODO(mgaffney) 04/2021:
-	// If token is updated
-	// 	if current token has leases
-	// 	  set current token status to 'maintaining'
-	// 	else
-	// 	  revoke current token and set status to 'revoked'
-
-	// TODO(mgaffney) 04/2021: Fields to handle:
-	// - ca cert
-	// - client cert
-	// - vault address
-	// - vault token
-
-	var updateToken bool
+	var updateToken, updateClientCert, deleteClientCert bool
+	var clientCertPlaceholder []byte
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("Name", f):
@@ -535,6 +523,15 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			if len(cs.inputToken) != 0 {
 				updateToken = true
 			}
+		case strings.EqualFold("ClientCertificate", f):
+			if cs.clientCert != nil &&
+				len(cs.clientCert.Certificate) != 0 &&
+				len(cs.clientCert.CertificateKey) != 0 {
+				clientCertPlaceholder = cs.clientCert.Certificate
+				updateClientCert = true
+			} else {
+				deleteClientCert = true
+			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
@@ -542,14 +539,15 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":          cs.Name,
-			"Description":   cs.Description,
-			"Namespace":     cs.Namespace,
-			"TlsServerName": cs.TlsServerName,
-			"TlsSkipVerify": cs.TlsSkipVerify,
-			"CaCert":        cs.CaCert,
-			"VaultAddress":  cs.VaultAddress,
-			"Token":         cs.inputToken,
+			"Name":              cs.Name,
+			"Description":       cs.Description,
+			"Namespace":         cs.Namespace,
+			"TlsServerName":     cs.TlsServerName,
+			"TlsSkipVerify":     cs.TlsSkipVerify,
+			"CaCert":            cs.CaCert,
+			"VaultAddress":      cs.VaultAddress,
+			"Token":             cs.inputToken,
+			"ClientCertificate": clientCertPlaceholder,
 		},
 		fieldMaskPaths,
 		[]string{
@@ -563,6 +561,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	for _, f := range dbMask {
 		switch {
 		case strings.EqualFold("Token", f):
+		case strings.EqualFold("ClientCertificate", f):
 		default:
 			filteredDbMask = append(filteredDbMask, f)
 		}
@@ -570,6 +569,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	for _, f := range nullFields {
 		switch {
 		case strings.EqualFold("Token", f):
+		case strings.EqualFold("ClientCertificate", f):
 		default:
 			filteredNullFields = append(filteredNullFields, f)
 		}
@@ -578,7 +578,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected,
-			errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg(("unable to get oplog wrapper")))
+			errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -628,8 +628,22 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 
+	var clientCert *ClientCertificate
+	switch {
+	case updateClientCert:
+		cs.clientCert.StoreId = cs.GetPublicId()
+		if err := cs.clientCert.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+		clientCert = cs.clientCert
+	case deleteClientCert:
+		clientCert = allocClientCertificate()
+		clientCert.StoreId = cs.GetPublicId()
+	}
+
 	var rowsUpdated int
 	var returnedToken *Token
+	var returnedClientCert *ClientCertificate
 	var returnedCredentialStore *CredentialStore
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
@@ -647,7 +661,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				// the credential store's fields are not being updated,
 				// just it's token or client certificate, so we need to
 				// just update the credential store's version.
-				returnedCredentialStore.Version = uint32(version) + 1
+				returnedCredentialStore.Version = version + 1
 				rowsUpdated, err = w.Update(ctx, returnedCredentialStore, []string{"Version"}, nil, db.NewOplogMsg(&csOplogMsg), db.WithVersion(&version))
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store version"))
@@ -683,6 +697,34 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				returnedToken.Token.CtToken = nil
 				returnedCredentialStore.outputToken = returnedToken
 
+			}
+
+			switch {
+			case deleteClientCert:
+				returnedClientCert = clientCert.clone()
+				query, values := returnedClientCert.deleteQuery()
+				rows, err := w.Exec(ctx, query, values)
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete client certificate"))
+				}
+				if rows > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 client certificate would have been deleted")
+				}
+				msgs = append(msgs, returnedClientCert.oplogMessage(db.DeleteOp))
+			case updateClientCert:
+				returnedClientCert = clientCert.clone()
+				query, values := returnedClientCert.insertQuery()
+				rows, err := w.Exec(ctx, query, values)
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to update client certificate"))
+				}
+				if rows > 1 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 client certificate would have been upserted")
+				}
+				returnedClientCert.CertificateKey = nil
+				returnedClientCert.CtCertificateKey = nil
+				returnedCredentialStore.clientCert = returnedClientCert
+				msgs = append(msgs, returnedClientCert.oplogMessage(db.CreateOp))
 			}
 
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)

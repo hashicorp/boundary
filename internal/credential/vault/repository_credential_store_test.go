@@ -31,8 +31,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-		v, cleanup := NewTestVaultServer(t, TestNoTLS)
-		defer cleanup()
+		v := NewTestVaultServer(t, TestNoTLS)
 		secret := v.CreateToken(t)
 		token := secret.Auth.ClientToken
 
@@ -65,8 +64,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-		v, cleanup := NewTestVaultServer(t, TestNoTLS)
-		defer cleanup()
+		v := NewTestVaultServer(t, TestNoTLS)
 
 		secret1 := v.CreateToken(t)
 		token1 := secret1.Auth.ClientToken
@@ -136,17 +134,17 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		},
 		{
 			name:      "no-tls-token-not-renewable",
-			tokenOpts: []TestOption{TestRenewableToken(t, false)},
+			tokenOpts: []TestOption{TestRenewableToken(false)},
 			wantErr:   errors.VaultTokenNotRenewable,
 		},
 		{
 			name:      "no-tls-token-not-orphaned",
-			tokenOpts: []TestOption{TestOrphanToken(t, false)},
+			tokenOpts: []TestOption{TestOrphanToken(false)},
 			wantErr:   errors.VaultTokenNotOrphaned,
 		},
 		{
 			name:      "no-tls-token-not-periodic",
-			tokenOpts: []TestOption{TestPeriodicToken(t, false)},
+			tokenOpts: []TestOption{TestPeriodicToken(false)},
 			wantErr:   errors.VaultTokenNotPeriodic,
 		},
 	}
@@ -161,8 +159,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v, cleanup := NewTestVaultServer(t, tt.tls)
-			defer cleanup()
+			v := NewTestVaultServer(t, tt.tls)
 			secret := v.CreateToken(t, tt.tokenOpts...)
 			token := secret.Auth.ClientToken
 
@@ -328,8 +325,7 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v, cleanup := NewTestVaultServer(t, tt.tls)
-			defer cleanup()
+			v := NewTestVaultServer(t, tt.tls)
 
 			var opts []Option
 			if tt.tls == TestServerTLS {
@@ -371,8 +367,8 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			assert.Equal([]byte(token), got.Token)
 
 			if tt.tls == TestClientTLS {
-				require.NotNil(got.ClientCertificateKey)
-				assert.Equal(v.ClientKey, got.ClientCertificateKey)
+				require.NotNil(got.ClientKey)
+				assert.Equal(v.ClientKey, got.ClientKey)
 			}
 		})
 	}
@@ -382,10 +378,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
-	// TODO(mgaffney) 04/2021:
-	// Add tests for changing and deleting :
-	// - [ ] client certificate
 
 	changeVaultAddress := func(n string) func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
@@ -825,8 +817,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			tt.orig.ScopeId = prj.GetPublicId()
 
-			vs, cleanup := NewTestVaultServer(t, TestNoTLS)
-			defer cleanup()
+			vs := NewTestVaultServer(t, TestNoTLS)
 
 			tt.orig.VaultAddress = vs.Addr
 			if tt.want != nil && tt.want.VaultAddress == "" {
@@ -903,8 +894,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		vs, cleanup := NewTestVaultServer(t, TestServerTLS)
-		defer cleanup()
+		vs := NewTestVaultServer(t, TestServerTLS)
 
 		secret := vs.CreateToken(t)
 		token, err := secret.TokenID()
@@ -983,8 +973,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		vs, cleanup := NewTestVaultServer(t, TestNoTLS)
-		defer cleanup()
+		vs := NewTestVaultServer(t, TestNoTLS)
 
 		token1, err := vs.CreateToken(t).TokenID()
 		require.NoError(err)
@@ -1075,17 +1064,17 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 		},
 		{
 			name:         "token-not-renewable",
-			newTokenOpts: []TestOption{TestRenewableToken(t, false)},
+			newTokenOpts: []TestOption{TestRenewableToken(false)},
 			wantErr:      errors.VaultTokenNotRenewable,
 		},
 		{
 			name:         "token-not-orphaned",
-			newTokenOpts: []TestOption{TestOrphanToken(t, false)},
+			newTokenOpts: []TestOption{TestOrphanToken(false)},
 			wantErr:      errors.VaultTokenNotOrphaned,
 		},
 		{
 			name:         "token-not-periodic",
-			newTokenOpts: []TestOption{TestPeriodicToken(t, false)},
+			newTokenOpts: []TestOption{TestPeriodicToken(false)},
 			wantErr:      errors.VaultTokenNotPeriodic,
 		},
 	}
@@ -1100,8 +1089,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v, cleanup := NewTestVaultServer(t, TestNoTLS)
-			defer cleanup()
+			v := NewTestVaultServer(t, TestNoTLS)
 			origSecret := v.CreateToken(t)
 			origToken := origSecret.Auth.ClientToken
 
@@ -1143,6 +1131,142 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(orig.outputToken)
 			require.NotNil(got.outputToken)
 			assert.NotEqual(orig.outputToken.TokenSha256, got.outputToken.TokenSha256)
+		})
+	}
+}
+
+func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	existingClientCert := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
+		clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
+		require.NoError(t, err)
+		return clientCert
+	}
+
+	newClientCert := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
+		cb := testClientCert(t, v.clientCertBundle.CA)
+		return cb.Cert.ClientCertificate(t)
+	}
+
+	// newClientCertFromServerCA  is useful for when v is configured with
+	// TestServerTLS. It uses the server CA to create a new client
+	// certificate since the v will not have a clientCertBundle.
+	newClientCertFromServerCA := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
+		cb := testClientCert(t, v.serverCertBundle.CA)
+		return cb.Cert.ClientCertificate(t)
+	}
+
+	nilClientCert := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
+		return nil
+	}
+
+	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore) {
+		assert.Equal(t, updated.Certificate, pcs.ClientCert, "updated certificate")
+		assert.Equal(t, updated.CertificateKey, pcs.ClientKey, "updated certificate key")
+	}
+
+	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore) {
+		assert.Nil(t, updated, "updated certificate")
+		assert.Nil(t, pcs.ClientCert, "pcs ClientCert")
+		assert.Nil(t, pcs.ClientKey, "pcs ClientKey")
+		assert.Nil(t, pcs.CtClientKey, "pcs CtClientKey")
+	}
+
+	tests := []struct {
+		name      string
+		tls       TestVaultTLS
+		origFn    func(t *testing.T, v *TestVaultServer) *ClientCertificate
+		updateFn  func(t *testing.T, v *TestVaultServer) *ClientCertificate
+		wantFn    func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore)
+		wantCount int
+		wantErr   errors.Code
+	}{
+		{
+			name:      "ClientCert-to-ClientCert",
+			tls:       TestClientTLS,
+			origFn:    existingClientCert,
+			updateFn:  newClientCert,
+			wantFn:    assertUpdated,
+			wantCount: 1,
+		},
+		{
+			name:      "ClientCert-to-null",
+			tls:       TestClientTLS,
+			origFn:    existingClientCert,
+			updateFn:  nilClientCert,
+			wantFn:    assertDeleted,
+			wantCount: 1,
+		},
+		{
+			name:      "null-to-ClientCert",
+			tls:       TestServerTLS,
+			origFn:    nilClientCert,
+			updateFn:  newClientCertFromServerCA,
+			wantFn:    assertUpdated,
+			wantCount: 1,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			require.NoError(err)
+			require.NotNil(repo)
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+			v := NewTestVaultServer(t, tt.tls)
+
+			var opts []Option
+			if tt.tls == TestServerTLS {
+				opts = append(opts, WithCACert(v.CaCert))
+			}
+			if tt.tls == TestClientTLS {
+				opts = append(opts, WithCACert(v.CaCert))
+				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
+				require.NoError(err)
+				opts = append(opts, WithClientCert(clientCert))
+			}
+
+			origSecret := v.CreateToken(t)
+			origToken := origSecret.Auth.ClientToken
+			origClientCert := tt.origFn(t, v)
+			opts = append(opts, WithClientCert(origClientCert))
+
+			// create
+			origIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(origToken), opts...)
+			assert.NoError(err)
+			require.NotNil(origIn)
+
+			orig, err := repo.CreateCredentialStore(ctx, origIn)
+			assert.NoError(err)
+			require.NotNil(orig)
+
+			// update
+			updateClientCert := tt.updateFn(t, v)
+
+			updateIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte("ignore"), WithClientCert(updateClientCert))
+			assert.NoError(err)
+			require.NotNil(updateIn)
+			updateIn.PublicId = orig.GetPublicId()
+			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"ClientCertificate"})
+			assert.Equal(tt.wantCount, gotCount, "row count")
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(got)
+
+			pcs, err := repo.lookupPrivateCredentialStore(ctx, orig.GetPublicId())
+			require.NoError(err)
+			tt.wantFn(t, origClientCert, updateClientCert, pcs)
 		})
 	}
 }

@@ -109,6 +109,3 @@ func (cs *CredentialStore) Token() *Token {
 func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 	return cs.clientCert
 }
-
-// TODO(mgaffney) 04/2021: add private method to renew token (maybe here or
-// could be a new unexported struct)

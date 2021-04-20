@@ -22,8 +22,7 @@ func Test_newClient(t *testing.T) {
 
 func TestClient_RenewToken(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	v, cleanup := NewTestVaultServer(t, TestNoTLS)
-	defer cleanup()
+	v := NewTestVaultServer(t, TestNoTLS)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)
@@ -78,8 +77,7 @@ func tokenExpirationTime(t *testing.T, s *vault.Secret) time.Time {
 
 func TestClient_LookupToken(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	v, cleanup := NewTestVaultServer(t, TestNoTLS)
-	defer cleanup()
+	v := NewTestVaultServer(t, TestNoTLS)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)

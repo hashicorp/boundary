@@ -129,19 +129,19 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		},
 		{
 			name:        "NotPeriodic",
-			opts:        []TestOption{TestPeriodicToken(t, false)},
+			opts:        []TestOption{TestPeriodicToken(false)},
 			tokenChkFn:  combine(assertIsRenewable(), assertIsOrphan()),
 			lookupChkFn: assertIsNotPeriodic(),
 		},
 		{
 			name:        "NotOrphaned",
-			opts:        []TestOption{TestOrphanToken(t, false)},
+			opts:        []TestOption{TestOrphanToken(false)},
 			tokenChkFn:  combine(assertIsRenewable(), assertIsNotOrphan()),
 			lookupChkFn: assertIsPeriodic(),
 		},
 		{
 			name:        "NotRenewable",
-			opts:        []TestOption{TestRenewableToken(t, false)},
+			opts:        []TestOption{TestRenewableToken(false)},
 			tokenChkFn:  combine(assertIsNotRenewable(), assertIsOrphan()),
 			lookupChkFn: assertIsPeriodic(),
 		},
@@ -150,8 +150,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			v, cleanup := NewTestVaultServer(t, TestNoTLS)
-			defer cleanup()
+			v := NewTestVaultServer(t, TestNoTLS)
 			require.NotNil(v)
 			secret := v.CreateToken(t, tt.opts...)
 			require.NotNil(secret)
@@ -182,8 +181,7 @@ func TestNewVaultServer(t *testing.T) {
 	t.Parallel()
 	t.Run("TestNoTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v, cleanup := NewTestVaultServer(t, TestNoTLS)
-		defer cleanup()
+		v := NewTestVaultServer(t, TestNoTLS)
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -201,8 +199,7 @@ func TestNewVaultServer(t *testing.T) {
 	})
 	t.Run("TestServerTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v, cleanup := NewTestVaultServer(t, TestServerTLS)
-		defer cleanup()
+		v := NewTestVaultServer(t, TestServerTLS)
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -222,8 +219,7 @@ func TestNewVaultServer(t *testing.T) {
 	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v, cleanup := NewTestVaultServer(t, TestClientTLS)
-		defer cleanup()
+		v := NewTestVaultServer(t, TestClientTLS)
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)

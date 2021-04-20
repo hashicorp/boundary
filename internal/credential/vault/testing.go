@@ -90,7 +90,7 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 // libraries in the provided DB with the provided store id. If any errors
 // are encountered during the creation of the credential libraries, the
 // test will fail.
-func TestCredentialLibraries(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -186,11 +186,13 @@ type TestVaultServer struct {
 	ServerCert []byte
 	ClientCert []byte
 	ClientKey  []byte
+
+	serverCertBundle *testCertBundle
+	clientCertBundle *testCertBundle
 }
 
-// NewTestVaultServer creates and returns a TestVaultServer and a cleanup
-// function which must be called when the vault server is no longer needed.
-func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) (*TestVaultServer, func()) {
+// NewTestVaultServer creates and returns a TestVaultServer.
+func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
 	t.Helper()
 
 	switch testTls {
@@ -219,9 +221,9 @@ func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) (*TestVaultServer, f
 
 	resource, err := pool.RunWithOptions(dockerOptions)
 	require.NoError(err)
-	cleanup := func() {
+	t.Cleanup(func() {
 		cleanupResource(t, pool, resource)
-	}
+	})
 	server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
 
 	vConfig := vault.DefaultConfig()
@@ -238,10 +240,10 @@ func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) (*TestVaultServer, f
 		return nil
 	})
 	require.NoError(err)
-	return server, cleanup
+	return server
 }
 
-func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer, func()) {
+func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
 	t.Helper()
 	const (
 		serverTlsTemplate = `{
@@ -285,32 +287,29 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 	}
 
 	serverCert := testServerCert(t, testCaCert(t), "localhost")
+	server.serverCertBundle = serverCert
 	server.ServerCert = serverCert.Cert.Cert
 	server.CaCert = serverCert.CA.Cert
 
-	dataSrcDir, err := ioutil.TempDir("", strings.ReplaceAll(t.Name(), "/", "-"))
-	require.NoError(err)
-	t.Log(dataSrcDir)
+	dataSrcDir := t.TempDir()
 	require.NoError(os.Chmod(dataSrcDir, 0o777))
-	cleanupDataDir := func() {
-		os.RemoveAll(dataSrcDir) // clean up
-	}
 
 	caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-	ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777)
+	require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
 	certFn := filepath.Join(dataSrcDir, "certificate.pem")
-	ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777)
+	require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
 	keyFn := filepath.Join(dataSrcDir, "key.pem")
-	ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777)
+	require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
 
 	var clientCert *testCertBundle
 	if testTls == TestClientTLS {
 		template = clientTlsTemplate
 		clientCert = testClientCert(t, testCaCert(t))
+		server.clientCertBundle = clientCert
 		server.ClientCert = clientCert.Cert.Cert
 		server.ClientKey = clientCert.Cert.Key
 		clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-		ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777)
+		require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
 	}
 
 	env := []string{
@@ -329,13 +328,11 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 
 	resource, err := pool.RunWithOptions(dockerOptions)
 	if !assert.NoError(err) {
-		cleanupDataDir()
 		t.FailNow()
 	}
-	cleanup := func() {
+	t.Cleanup(func() {
 		cleanupResource(t, pool, resource)
-		cleanupDataDir()
-	}
+	})
 	server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
 
 	vConfig := vault.DefaultConfig()
@@ -346,27 +343,18 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 		CACertificate: serverCert.CA.Cert,
 	}
 
-	if !assert.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig)) {
-		cleanup()
-		t.FailNow()
-	}
+	require.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig))
 
 	if testTls == TestClientTLS {
 		vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
-		if !assert.NoError(err) {
-			cleanup()
-			t.FailNow()
-		}
+		require.NoError(err)
 		clientTLSConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			return &vaultClientCert, nil
 		}
 	}
 
 	client, err := vault.NewClient(vConfig)
-	if !assert.NoError(err) {
-		cleanup()
-		t.FailNow()
-	}
+	require.NoError(err)
 	client.SetToken(server.RootToken)
 
 	err = pool.Retry(func() error {
@@ -375,11 +363,8 @@ func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) (*TestVaultServer
 		}
 		return nil
 	})
-	if !assert.NoError(err) {
-		cleanup()
-		t.FailNow()
-	}
-	return server, cleanup
+	require.NoError(err)
+	return server
 }
 
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
@@ -407,9 +392,16 @@ type testCert struct {
 	priv        *ecdsa.PrivateKey
 }
 
+func (tc *testCert) ClientCertificate(t *testing.T) *ClientCertificate {
+	t.Helper()
+	c, err := NewClientCertificate(tc.Cert, tc.Key)
+	require.NoError(t, err)
+	return c
+}
+
 type testCertBundle struct {
-	CA   testCert
-	Cert testCert
+	CA   *testCert
+	Cert *testCert
 }
 
 // testCaCert will generate a test x509 CA cert.
@@ -523,8 +515,8 @@ func testServerCert(t *testing.T, ca *testCert, hosts ...string) *testCertBundle
 	}
 
 	return &testCertBundle{
-		CA:   *ca,
-		Cert: *serverCert,
+		CA:   ca,
+		Cert: serverCert,
 	}
 }
 
@@ -572,7 +564,7 @@ func testClientCert(t *testing.T, ca *testCert) *testCertBundle {
 	k, err := x509.MarshalECPrivateKey(priv)
 	require.NoError(err)
 
-	serverCert := &testCert{
+	clientCert := &testCert{
 		Cert:        pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}),
 		Key:         pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: k}),
 		certificate: c,
@@ -580,8 +572,8 @@ func testClientCert(t *testing.T, ca *testCert) *testCertBundle {
 	}
 
 	return &testCertBundle{
-		CA:   *ca,
-		Cert: *serverCert,
+		CA:   ca,
+		Cert: clientCert,
 	}
 }
 
@@ -617,7 +609,7 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 
 // TestOrphanToken sets the token orphan option to b.
 // The orphan option is true by default.
-func TestOrphanToken(t *testing.T, b bool) TestOption {
+func TestOrphanToken(b bool) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.orphan = b
@@ -626,7 +618,7 @@ func TestOrphanToken(t *testing.T, b bool) TestOption {
 
 // TestPeriodicToken sets the token periodic option to b.
 // The periodic option is true by default.
-func TestPeriodicToken(t *testing.T, b bool) TestOption {
+func TestPeriodicToken(b bool) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.periodic = b
@@ -635,7 +627,7 @@ func TestPeriodicToken(t *testing.T, b bool) TestOption {
 
 // TestRenewableToken sets the token renewable option to b.
 // The renewable option is true by default.
-func TestRenewableToken(t *testing.T, b bool) TestOption {
+func TestRenewableToken(b bool) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.renewable = b

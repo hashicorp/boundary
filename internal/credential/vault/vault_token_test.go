@@ -113,16 +113,6 @@ func TestToken_New(t *testing.T) {
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
 			require.NoError(got.decrypt(ctx, databaseWrapper))
-
-			// TODO(mgaffney) 04/2021: Move to repository tests
-			/*
-				got.CreateTime = insertedToken.CreateTime
-				got.UpdateTime = insertedToken.UpdateTime
-				got.LastRenewalTime = insertedToken.LastRenewalTime
-				got.ExpirationTime = insertedToken.ExpirationTime
-
-				assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
-			*/
 		})
 	}
 }

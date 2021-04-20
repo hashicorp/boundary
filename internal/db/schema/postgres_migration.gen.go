@@ -6419,9 +6419,9 @@ create table credential_vault_store (
             token.expiration_time   as token_expiration_time,
             token.key_id            as token_key_id,
             token.status            as token_status,
-            cert.certificate        as client_certificate,
-            cert.certificate_key    as ct_client_certificate_key, -- encrypted
-            cert.key_id             as client_certificate_key_id
+            cert.certificate        as client_cert,
+            cert.certificate_key    as ct_client_key, -- encrypted
+            cert.key_id             as client_key_id
        from credential_vault_store store
   left join current_tokens token
          on store.public_id = token.store_id
@@ -6449,7 +6449,7 @@ create table credential_vault_store (
             token_update_time,
             token_last_renewal_time,
             token_expiration_time,
-            client_certificate
+            client_cert
        from credential_vault_store_client_private;
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
