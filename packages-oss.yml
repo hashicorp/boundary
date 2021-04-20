@@ -68,9 +68,7 @@ layers:
            | tee /etc/apt/sources.list.d/yarn.list \
           && apt-get update \
           && apt-get install -yq yarn zip \
-          && rm -rf /var/lib/apt/lists/* \
-          && go get github.com/go-bindata/go-bindata/v3/go-bindata \
-          && go-bindata --version
+          && rm -rf /var/lib/apt/lists/*
 
   - name: ui
     source-include: internal/ui/VERSION
@@ -84,12 +82,7 @@ layers:
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
           && yarn install \
-          && yarn build:ui:admin; ) \
-          && TARGET=internal/ui/assets.go \
-          && UIDIR="$DIR/ui/admin/dist" \
-          && go-bindata -fs -o "$TARGET" -pkg ui \
-             -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
-          && rm -rf "$DIR"
+          && yarn build:ui:admin; )
 
   - name: go-modules
     source-include: "go.mod go.sum */go.mod */go.sum"
