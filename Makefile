@@ -67,7 +67,7 @@ build-ui:
 	./scripts/uiclone.sh && ./scripts/uigen.sh
 
 build-ui-ifne:
-ifeq (,$(wildcard internal/ui/assets.go))
+ifeq (,$(wildcard internal/ui/.tmp/boundary-ui))
 	@echo "==> No UI assets found, building..."
 	@$(MAKE) build-ui
 else

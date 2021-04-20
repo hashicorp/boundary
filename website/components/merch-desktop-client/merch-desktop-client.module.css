@@ -1,0 +1,52 @@
+.container {
+  width: 100%;
+  border: 1px solid var(--gray-6);
+  display: flex;
+  justify-content: center;
+  min-height: 193px;
+  padding: 40px 50px;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-content: center;
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray-4);
+  font-weight: bold;
+}
+
+.platformVersion {
+  display: flex;
+  align-content: center;
+  justify-content: center;
+
+  & .logo {
+    margin-right: 20px;
+  }
+
+  & .version {
+    align-self: center;
+  }
+}
+
+.downloadLinks {
+  color: var(--brand);
+
+  & a {
+    margin-right: 20px;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}
