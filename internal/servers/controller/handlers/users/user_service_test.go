@@ -1060,6 +1060,7 @@ func TestRemoveAccount(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
+
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
