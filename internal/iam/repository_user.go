@@ -39,17 +39,16 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 		u.PublicId = id
 	}
 
-	// there's no need to use r.lookupUser(...) here because the new user cannot
+	// There's no need to use r.lookupUser(...) here, because the new user cannot
 	// be associated with any accounts yet.  Why would you typically want to
 	// call r.lookupUser(...) here vs returning the create resource?  Well, the
 	// created resource doesn't include the user's primary account info (email,
 	// full name, etc), since you can't run DML against the view which does
 	// provide these output only attributes.  But in this case, there's no way a
 	// newly created user could have any accounts, so we don't need to use
-	// r.lookupUser(...) to return a user resource that includes those read-only
-	// values.  I'm adding this comment so a future version of myself doesn't
-	// come along and decide to start using r.lookupUser(...) here which would
-	// just be an unnecessary database look.  You're welcome future me.
+	// r.lookupUser(...). I'm adding this comment so a future version of myself
+	// doesn't come along and decide to start using r.lookupUser(...) here which
+	// would just be an unnecessary database lookup.  You're welcome future me.
 	resource, err := r.create(ctx, u)
 	if err != nil {
 		if errors.IsUniqueError(err) {
