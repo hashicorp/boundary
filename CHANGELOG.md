@@ -4,6 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* cli/json: When outputting from the CLI in JSON format, the resource
+  information under `item` or `items` (depending on the action) now exactly
+  matches the JSON sent across the wire by the controller, as opposed to
+  matching the Go SDK representation which could result in some extra fields
+  being shown or fields having Go-specific types.
+
+### New and Improved
+
+* cli/json: Use the 
+
 ### Bug Fixes
 
 * cors: Fix allowing all origins by default

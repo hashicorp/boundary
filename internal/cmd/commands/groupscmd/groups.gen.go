@@ -311,25 +311,14 @@ func (c *Command) Run(args []string) int {
 		return base.CommandSuccess
 
 	case "list":
-		listedItems := listResult.GetItems().([]*groups.Group)
 		switch base.Format(c.UI) {
 		case "json":
-			switch {
-
-			case len(listedItems) == 0:
-				c.UI.Output("null")
-
-			default:
-				items := make([]interface{}, len(listedItems))
-				for i, v := range listedItems {
-					items[i] = v
-				}
-				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return base.CommandCliError
-				}
+			if ok := c.PrintJsonItems(listResult); !ok {
+				return base.CommandCliError
 			}
 
 		case "table":
+			listedItems := listResult.GetItems().([]*groups.Group)
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
@@ -337,13 +326,13 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	item := result.GetItem().(*groups.Group)
 	switch base.Format(c.UI) {
 	case "table":
+		item := result.GetItem().(*groups.Group)
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}

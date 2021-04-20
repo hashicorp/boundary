@@ -214,13 +214,13 @@ func (c *PasswordCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*accounts.Account)
 	switch base.Format(c.UI) {
 	case "table":
+		item := result.GetItem().(*accounts.Account)
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}

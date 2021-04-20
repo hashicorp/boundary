@@ -407,25 +407,14 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
 		switch base.Format(c.UI) {
 		case "json":
-			switch {
-			
-			case len(listedItems) == 0:
-				c.UI.Output("null")
-			
-			default:
-				items := make([]interface{}, len(listedItems))
-				for i, v := range listedItems {
-					items[i] = v
-				}
-				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return base.CommandCliError
-				}
+			if ok := c.PrintJsonItems(listResult); !ok {
+				return base.CommandCliError
 			}
 
 		case "table":
+			listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
@@ -434,13 +423,13 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	item := result.GetItem().(*{{ .Pkg }}.{{ camelCase .ResourceType }})
 	switch base.Format(c.UI) {
 	case "table":
+		item := result.GetItem().(*{{ .Pkg }}.{{ camelCase .ResourceType }})
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}
