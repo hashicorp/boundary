@@ -75,7 +75,7 @@ layers:
     dockerfile: |
       RUN \
           SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
-          && DIR=internal/ui/source/boundary-ui \
+          && DIR=internal/ui/.tmp/boundary-ui \
           && mkdir -p "$(dirname "$DIR")" \
           && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
           && ( cd "$DIR" \
