@@ -243,7 +243,6 @@ func (c *Command) PrintJsonItem(result api.GenericResult) bool {
 		StatusCode: resp.HttpResponse().StatusCode,
 		Item:       resp.Body.Bytes(),
 	}
-	output.Item = nil
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error formatting as JSON: %w", err))
