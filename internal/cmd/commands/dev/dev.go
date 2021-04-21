@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -30,8 +31,8 @@ var (
 type Command struct {
 	*base.Server
 
-	UI         cli.Ui
-	ShutdownCh chan struct{}
+	UI      cli.Ui
+	Context context.Context
 
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
@@ -67,11 +68,20 @@ type Command struct {
 }
 
 func NewCommand(server base.Server, ui cli.Ui) *Command {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	ret := &Command{
-		Server:          &server,
-		UI:              ui,
-		flagCombineLogs: true,
+		Server:                &server,
+		UI:                    ui,
+		flagCombineLogs:       true,
+		flagTargetDefaultPort: 9200,
+		Context:               ctx,
 	}
+
+	go func() {
+		<-ret.ShutdownCh
+		cancel()
+	}()
 
 	return ret
 }
@@ -281,8 +291,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	// childShutdownCh := make(chan struct{})
-
 	c.Config, err = config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
@@ -464,9 +472,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-
-		//todo (schristoff): hmmm
-		//If no database container image is specified, postgres is used
 		opts = append(opts, docker.WithDatabaseImage("postgres"))
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())

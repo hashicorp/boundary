@@ -1,11 +1,11 @@
 package dev
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/mitchellh/cli"
 )
@@ -13,30 +13,29 @@ import (
 func TestDev_DatabaseImage(t *testing.T) {
 	t.Helper()
 	test := []struct {
+		name string
 		args string
 		out  int
 	}{
 		{
+			"repo and tag",
 			"postgres:latest",
-			1,
+			0,
 		},
 		{
+			"typo",
 			"pogrest",
-			2,
+			3,
 		},
 		{
+			"repo",
 			"postgres",
-			1,
+			0,
 		},
 	}
 
 	for _, tt := range test {
-		//kms errors if we do not make a new one each time
-		wrapper := db.TestWrapper(t)
-		wrapper2 := db.TestWrapper(t)
 		opts := &controller.TestControllerOpts{
-			RootKms:                 wrapper,
-			WorkerAuthKms:           wrapper2,
 			DisableDatabaseCreation: true,
 		}
 		tc := controller.NewTestController(t, opts)
@@ -50,13 +49,16 @@ func TestDev_DatabaseImage(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(1)
+		var code int
+
 		go func() {
-			code := c.Run(args)
-			fmt.Println("code")
-			t.Log(code)
+			code = c.Run(args)
+			assert.Equal(t, tt.out, code, "did not receive expected exit code", tt.name)
+			t.Log(ui.ErrorWriter.String())
 			wg.Done()
 		}()
 
+		server.DestroyDevDatabase()
 		tc.Shutdown()
 		wg.Wait()
 	}
