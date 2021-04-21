@@ -56,7 +56,7 @@ func Test_Ids(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.True(strings.HasPrefix(got, JobPrefix+"_"))
+			assert.True(strings.HasPrefix(got, jobPrefix+"_"))
 		})
 	}
 

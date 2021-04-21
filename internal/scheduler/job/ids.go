@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	// JobPrefix is the prefix of all generated Job private ids
-	JobPrefix = "job"
+	// jobPrefix is the prefix of all generated Job private ids
+	jobPrefix = "job"
 )
 
 // NewJobId generates a pseudo random id seeded on the name and code parameters.
@@ -21,7 +21,7 @@ func NewJobId(name, code string) (string, error) {
 		return "", errors.New(errors.InvalidParameter, op, "missing code")
 	}
 
-	id, err := db.NewPrivateId(JobPrefix, db.WithPrngValues([]string{name, code}))
+	id, err := db.NewPrivateId(jobPrefix, db.WithPrngValues([]string{name, code}))
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
