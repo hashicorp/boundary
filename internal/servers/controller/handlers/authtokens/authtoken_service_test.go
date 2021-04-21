@@ -273,7 +273,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: at.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthTokenResponse{},
 		},
 		{
 			name:  "Delete bad token id",
