@@ -6,15 +6,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* controller/api: `delete` actions now result in a `204` status code and no body
+  when successful. This was not the case previously due to a technical
+  limitation which has now been solved.
 * cli/json: When outputting from the CLI in JSON format, the resource
   information under `item` or `items` (depending on the action) now exactly
   matches the JSON sent across the wire by the controller, as opposed to
   matching the Go SDK representation which could result in some extra fields
-  being shown or fields having Go-specific types.
-
-### New and Improved
-
-* cli/json: Use the 
+  being shown or fields having Go-specific types. This includes `delete` actions
+  which previously would show an object indicating existence, but now show no
+  `item` on success or the API's `404` error.
+* cli: When using a `delete` command we now either show success or treat the
+  `404` error the same as any other `404` error, that is, it results in a
+  non-zero status code and an error message. This makes `delete` actions behave
+  the same as other commands, all of which pass through errors to the CLI. Given
+  `-format json` capability, it's relatively easy to perform a check to see
+  whether an error was `404` or something else.
 
 ### Bug Fixes
 
