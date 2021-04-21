@@ -116,6 +116,85 @@ func TestRepository_CreateUser(t *testing.T) {
 	}
 }
 
+// TestRepository_LookupUser_WithDifferentPrimaryAuthMethods ensures that the
+// when different auth method types are primary, the correct primary account
+// info is returned from Repository.LookupUser(...)
+func TestRepository_LookupUser_WithDifferentPrimaryAuthMethods(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, repo)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	var accountIds []string
+	oidcAm := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, "alice-rp", "fido",
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]),
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "http://localhost")[0]))
+	aa := oidc.TestAccount(t, conn, oidcAm, "alice", oidc.WithFullName("alice eve smith"), oidc.WithEmail("alice@example.com"))
+	accountIds = append(accountIds, aa.PublicId)
+
+	pwAms := password.TestAuthMethods(t, conn, org.PublicId, 1)
+	require.Equal(t, 1, len(pwAms))
+	pwAcct := password.TestAccount(t, conn, pwAms[0].PublicId, "want-login-name")
+	accountIds = append(accountIds, pwAcct.PublicId)
+
+	u := iam.TestUser(t, repo, org.PublicId)
+	newAccts, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, accountIds)
+	require.NoError(t, err)
+	sort.Strings(newAccts)
+	require.Equal(t, accountIds, newAccts)
+
+	tests := []struct {
+		name                string
+		primaryAuthMethodId string
+		wantLoginName       string
+		wantPrimaryAcctId   string
+		wantFullName        string
+		wantEmail           string
+	}{
+		{
+			name:                "oidc",
+			primaryAuthMethodId: oidcAm.PublicId,
+			wantLoginName:       "alice",
+			wantPrimaryAcctId:   aa.PublicId,
+			wantFullName:        "alice eve smith",
+			wantEmail:           "alice@example.com",
+		},
+		{
+			name:                "password",
+			primaryAuthMethodId: pwAms[0].PublicId,
+			wantLoginName:       "want-login-name",
+			wantPrimaryAcctId:   pwAcct.PublicId,
+			wantFullName:        "",
+			wantEmail:           "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := repo.LookupScope(context.Background(), org.PublicId)
+			require.NoError(err)
+			iam.TestSetPrimaryAuthMethod(t, repo, s, tt.primaryAuthMethodId)
+
+			got, gotAccts, err := repo.LookupUser(ctx, u.PublicId)
+			require.NoError(err)
+
+			sort.Strings(gotAccts)
+			assert.Equal(accountIds, gotAccts)
+
+			assert.Equal(tt.wantLoginName, got.LoginName)
+			assert.Equal(tt.wantPrimaryAcctId, got.PrimaryAccountId)
+			assert.Equal(tt.wantFullName, got.FullName)
+			assert.Equal(tt.wantEmail, got.Email)
+		})
+	}
+}
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
