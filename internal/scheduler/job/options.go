@@ -25,6 +25,7 @@ type options struct {
 	withLimit        int
 	withName         string
 	withCode         string
+	withServerId     string
 }
 
 func getDefaultOptions() options {
@@ -71,5 +72,12 @@ func WithName(n string) Option {
 func WithCode(c string) Option {
 	return func(o *options) {
 		o.withCode = c
+	}
+}
+
+// WithServerId provides an option to provide the server id to match when calling InterruptRuns
+func WithServerId(id string) Option {
+	return func(o *options) {
+		o.withServerId = id
 	}
 }

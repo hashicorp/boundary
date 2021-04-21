@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,14 +54,33 @@ func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *serv
 	return controller
 }
 
+func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{}) {
+	jobReady := make(chan struct{})
+	jobDone := make(chan struct{})
+	fn := func(ctx context.Context) error {
+		jobReady <- struct{}{}
+
+		// Block until context is cancelled
+		<-ctx.Done()
+
+		jobDone <- struct{}{}
+		return nil
+	}
+	return fn, jobReady, jobDone
+}
+
 type testJob struct {
 	nextRunIn         time.Duration
 	name, description string
 	fn                func(context.Context) error
+	statusFn          func() JobStatus
 }
 
 func (j testJob) Status() JobStatus {
-	return JobStatus{}
+	if j.statusFn == nil {
+		return JobStatus{}
+	}
+	return j.statusFn()
 }
 
 func (j testJob) Run(ctx context.Context) error {
@@ -77,4 +97,13 @@ func (j testJob) Name() string {
 
 func (j testJob) Description() string {
 	return j.description
+}
+
+func mapLen(sm *sync.Map) int {
+	count := 0
+	sm.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }

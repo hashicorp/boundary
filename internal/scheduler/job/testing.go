@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -30,19 +31,46 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrappe
 	return job
 }
 
-var testRunQuery = `
-	insert into job_run (
-	  job_id, server_id
-	)
-	values (?,?)
-	returning *;
-`
-
 func testRun(conn *gorm.DB, jId, cId string) (*Run, error) {
+	query := `
+		insert into job_run (
+		  job_id, server_id
+		)
+		values (?,?)
+		returning *;
+	`
 	rw := db.New(conn)
 	run := allocRun()
 
-	rows, err := rw.Query(context.Background(), testRunQuery, []interface{}{jId, cId})
+	rows, err := rw.Query(context.Background(), query, []interface{}{jId, cId})
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		return nil, fmt.Errorf("expected to rows")
+	}
+
+	err = rw.ScanRows(rows, run)
+	if err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
+
+	return run, nil
+}
+
+func testRunWithUpdateTime(conn *gorm.DB, jId, cId string, updateTime time.Time) (*Run, error) {
+	query := `
+		insert into job_run (
+		  job_id, server_id, update_time
+		)
+		values (?,?, ?)
+		returning *;
+	`
+	rw := db.New(conn)
+	run := allocRun()
+
+	rows, err := rw.Query(context.Background(), query, []interface{}{jId, cId, updateTime})
 	if err != nil {
 		return nil, err
 	}

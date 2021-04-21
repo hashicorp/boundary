@@ -9,6 +9,7 @@ import (
 )
 
 func TestJob_SetTableName(t *testing.T) {
+	t.Parallel()
 	defaultTableName := "job"
 	tests := []struct {
 		name        string

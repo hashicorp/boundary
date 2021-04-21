@@ -17,6 +17,7 @@ import (
 )
 
 func TestScheduler_New(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -30,7 +31,7 @@ func TestScheduler_New(t *testing.T) {
 	type args struct {
 		serverId    string
 		jobRepo     jobRepoFactory
-		looger      hclog.Logger
+		logger      hclog.Logger
 		runLimit    uint
 		runInterval time.Duration
 	}
@@ -73,7 +74,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				looger:   hclog.L(),
+				logger:   hclog.L(),
 			},
 			want: args{
 				serverId:    "test-server",
@@ -86,7 +87,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				looger:   hclog.L(),
+				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -102,7 +103,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				looger:   hclog.L(),
+				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsLimit(20),
@@ -118,7 +119,7 @@ func TestScheduler_New(t *testing.T) {
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
-				looger:   hclog.L(),
+				logger:   hclog.L(),
 			},
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
@@ -136,7 +137,7 @@ func TestScheduler_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.args.looger, tt.opts...)
+			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.args.logger, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -157,6 +158,7 @@ func TestScheduler_New(t *testing.T) {
 }
 
 func TestScheduler_RegisterJob(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -261,33 +263,33 @@ func TestScheduler_RegisterJob(t *testing.T) {
 	}
 	t.Run("multiple-same-job", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		job := testJob{
+		tj := testJob{
 			name:        "name",
 			description: "description",
 		}
-		jobId, err := sched.RegisterJob(context.Background(), job, "code")
+		jobId, err := sched.RegisterJob(context.Background(), tj, "code")
 		require.NoError(err)
 		assert.NotEmpty(jobId)
 
 		// Registering the same job/code should not return an error and should return the same jobId
-		jobId1, err := sched.RegisterJob(context.Background(), job, "code")
+		jobId1, err := sched.RegisterJob(context.Background(), tj, "code")
 		require.NoError(err)
 		assert.NotEmpty(jobId1)
 		assert.Equal(jobId, jobId1)
 
 		// Registering the same job with a different code should return a different jobId
-		jobId2, err := sched.RegisterJob(context.Background(), job, "code1")
+		jobId2, err := sched.RegisterJob(context.Background(), tj, "code1")
 		require.NoError(err)
 		assert.NotEmpty(jobId2)
 		assert.NotEqual(jobId, jobId2)
 	})
 	t.Run("multiple-schedulers-registering-same-job", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		job := testJob{
+		tj := testJob{
 			name:        "name",
 			description: "description",
 		}
-		jobId, err := sched.RegisterJob(context.Background(), job, "code")
+		jobId, err := sched.RegisterJob(context.Background(), tj, "code")
 		require.NoError(err)
 		assert.NotEmpty(jobId)
 		_, ok := sched.registeredJobs.Load(jobId)
@@ -300,7 +302,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 		assert.False(ok)
 
 		// Registering job on second scheduler should not return an error and have same id as first scheduler
-		jobId1, err := sched1.RegisterJob(context.Background(), job, "code")
+		jobId1, err := sched1.RegisterJob(context.Background(), tj, "code")
 		require.NoError(err)
 		assert.Equal(jobId, jobId1)
 		_, ok = sched.registeredJobs.Load(jobId)
@@ -309,6 +311,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 }
 
 func TestScheduler_UpdateJobNextRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -324,14 +327,6 @@ func TestScheduler_UpdateJobNextRun(t *testing.T) {
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
 		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: missing job id: parameter violation: error #100", err.Error())
-	})
-	t.Run("job-not-registered", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-
-		err := sched.UpdateJobNextRun(context.Background(), "fake-job-id", time.Hour)
-		require.Error(err)
-		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
-		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: job \"fake-job-id\" not registered: parameter violation: error #100", err.Error())
 	})
 	t.Run("job-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -372,60 +367,4 @@ func TestScheduler_UpdateJobNextRun(t *testing.T) {
 		// Verify job run time in repo is at least 1 hour later than the previous run time
 		assert.True(previousNextRun+int64(time.Hour.Seconds()) <= dbJob.NextScheduledRun.Timestamp.GetSeconds())
 	})
-}
-
-func TestScheduler_StartStop(t *testing.T) {
-	assert := assert.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	iam.TestRepo(t, conn, wrapper)
-
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId)
-
-	assert.False(sched.started.Load())
-	sched.Start(context.Background())
-	assert.True(sched.started.Load())
-	assert.NotNil(sched.baseContext)
-	assert.NotNil(sched.baseCancel)
-
-	// verify baseContext
-	select {
-	case <-sched.baseContext.Done():
-		t.Fatal("expected base context to not be done, but it was")
-	default:
-	}
-
-	// Add some fake running jobs
-	context1, cancelFunc1 := context.WithCancel(context.Background())
-	context2, cancelFunc2 := context.WithCancel(context.Background())
-	sched.l.Lock()
-	sched.runningJobs["job1"] = runningJob{runId: "run1", cancelCtx: cancelFunc1}
-	sched.runningJobs["job2"] = runningJob{runId: "run2", cancelCtx: cancelFunc2}
-	sched.l.Unlock()
-
-	sched.Shutdown()
-	assert.False(sched.started.Load())
-	sched.l.RLock()
-	assert.Len(sched.runningJobs, 0)
-	sched.l.RUnlock()
-
-	// verify baseContext has been cancelled
-	select {
-	case <-sched.baseContext.Done():
-	default:
-		t.Fatal("expected base context to be cancelled, but it was not")
-	}
-
-	// verify both job context's where cancelled
-	select {
-	case <-context1.Done():
-	default:
-		t.Fatal("expected context1 to be cancelled, but it was not")
-	}
-	select {
-	case <-context2.Done():
-	default:
-		t.Fatal("expected context2 to be cancelled, but it was not")
-	}
 }

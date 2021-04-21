@@ -158,6 +158,9 @@ func (c *Controller) Start() error {
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+	if err := c.scheduler.Start(c.baseContext); err != nil {
+		return fmt.Errorf("error starting scheduler: %w", err)
+	}
 
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
@@ -167,7 +170,6 @@ func (c *Controller) Start() error {
 	c.startRecoveryNonceCleanupTicking(c.baseContext)
 	c.startTerminateCompletedSessionsTicking(c.baseContext)
 	c.startCloseExpiredPendingTokens(c.baseContext)
-	// TODO (lruch): c.scheduler.Start()
 	c.started.Store(true)
 
 	return nil
@@ -179,7 +181,6 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 		return nil
 	}
 	c.baseCancel()
-	// TODO (lruch): c.scheduler.Shutdown()
 	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}

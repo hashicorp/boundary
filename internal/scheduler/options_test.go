@@ -38,4 +38,32 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithMonitorInterval", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithMonitorInterval(time.Hour))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withMonitorInterval = time.Hour
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithZeroMonitorInterval", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithMonitorInterval(0))
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithInterruptThreshold", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithInterruptThreshold(time.Hour))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withInterruptThreshold = time.Hour
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithZeroInterruptThreshold", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithInterruptThreshold(0))
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+	})
 }

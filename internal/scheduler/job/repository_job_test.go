@@ -21,6 +21,7 @@ import (
 )
 
 func TestRepository_CreateJob(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -166,6 +167,7 @@ func TestRepository_CreateJob(t *testing.T) {
 }
 
 func TestRepository_LookupJob(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -231,6 +233,7 @@ func TestRepository_LookupJob(t *testing.T) {
 }
 
 func TestRepository_deleteJob(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -288,6 +291,7 @@ func TestRepository_deleteJob(t *testing.T) {
 }
 
 func TestRepository_ListJobs(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -378,6 +382,7 @@ func TestRepository_ListJobs(t *testing.T) {
 }
 
 func TestRepository_ListJobs_Limits(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -449,6 +454,7 @@ func TestRepository_ListJobs_Limits(t *testing.T) {
 }
 
 func TestRepository_UpdateJobNextRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

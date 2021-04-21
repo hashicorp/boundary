@@ -74,3 +74,16 @@ const failRunQuery = `
 	  and status = 'running'
 	returning *;
 `
+
+const interruptRunsQuery = `
+	update
+	  job_run
+	set 
+	  status = 'interrupted',
+	  end_time = current_timestamp
+	where
+	  update_time <= wt_add_seconds_to_now(?)
+	  and status = 'running'
+      %s
+	returning *;
+`

@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 )
 
 func TestRepository_RunJobs(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -111,6 +113,7 @@ func TestRepository_RunJobs(t *testing.T) {
 }
 
 func TestRepository_RunJobs_Limits(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -171,6 +174,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 }
 
 func TestRepository_RunJobsOrder(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -225,6 +229,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 }
 
 func TestRepository_UpdateProgress(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -254,7 +259,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			wantErrMsg:  "job.(Repository).UpdateProgress: missing run id: parameter violation: error #100",
 		},
 		{
-			name: "status-already-final",
+			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
@@ -264,7 +269,33 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run is already in a final run state: integrity violation: error #115",
+			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run was in a final run state: interrupted: integrity violation: error #115",
+		},
+		{
+			name: "status-already-failed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Failed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run was in a final run state: failed: integrity violation: error #115",
+		},
+		{
+			name: "status-already-completed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Completed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run was in a final run state: completed: integrity violation: error #115",
 		},
 		{
 			name: "valid-no-changes",
@@ -403,11 +434,12 @@ func TestRepository_UpdateProgress(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateProgress: run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).UpdateProgress: db.DoTx: job.(Repository).UpdateProgress: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
 	})
 }
 
 func TestRepository_CompleteRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -432,7 +464,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			wantErrMsg:  "job.(Repository).CompleteRun: missing run id: parameter violation: error #100",
 		},
 		{
-			name: "status-already-final",
+			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
@@ -440,10 +472,35 @@ func TestRepository_CompleteRun(t *testing.T) {
 					Status:   Interrupted.string(),
 				},
 			},
-			nextRunIn:   time.Hour,
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run is already in a final run state: integrity violation: error #115",
+			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run was in a final run state: interrupted: integrity violation: error #115",
+		},
+		{
+			name: "status-already-failed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Failed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run was in a final run state: failed: integrity violation: error #115",
+		},
+		{
+			name: "status-already-completed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Completed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run was in a final run state: completed: integrity violation: error #115",
 		},
 		{
 			name: "valid",
@@ -529,11 +586,12 @@ func TestRepository_CompleteRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).CompleteRun: run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).CompleteRun: db.DoTx: job.(Repository).CompleteRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
 	})
 }
 
 func TestRepository_FailRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -557,7 +615,7 @@ func TestRepository_FailRun(t *testing.T) {
 			wantErrMsg:  "job.(Repository).FailRun: missing run id: parameter violation: error #100",
 		},
 		{
-			name: "status-already-final",
+			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
 					JobId:    job.PrivateId,
@@ -567,7 +625,33 @@ func TestRepository_FailRun(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidJobRunState,
-			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run is already in a final run state: integrity violation: error #115",
+			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run was in a final run state: interrupted: integrity violation: error #115",
+		},
+		{
+			name: "status-already-failed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Failed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run was in a final run state: failed: integrity violation: error #115",
+		},
+		{
+			name: "status-already-completed",
+			orig: &Run{
+				JobRun: &store.JobRun{
+					JobId:    job.PrivateId,
+					ServerId: server.PrivateId,
+					Status:   Completed.string(),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidJobRunState,
+			wantErrMsg:  "job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run was in a final run state: completed: integrity violation: error #115",
 		},
 		{
 			name: "valid",
@@ -635,11 +719,351 @@ func TestRepository_FailRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).FailRun: run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).FailRun: db.DoTx: job.(Repository).FailRun: job run \"fake-run-id\" does not exist: db.LookupById: record not found, search issue: error #1100", err.Error())
 	})
 }
 
+func TestRepository_InterruptRuns(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	server := testController(t, conn, wrapper)
+	job1 := testJob(t, conn, "job1", "code", "description", wrapper)
+	job2 := testJob(t, conn, "job2", "code", "description", wrapper)
+	job3 := testJob(t, conn, "job3", "code", "description", wrapper)
+	job4 := testJob(t, conn, "job4", "code", "description", wrapper)
+
+	// Each test creates 4 runs with update_times of 1, 3, 5 and 7 hours in the past
+	tests := []struct {
+		name               string
+		threshold          time.Duration
+		expectedInterrupts []string
+	}{
+		{
+			name:               "with-0-threshold",
+			threshold:          0,
+			expectedInterrupts: []string{job1.PrivateId, job2.PrivateId, job3.PrivateId, job4.PrivateId},
+		},
+		{
+			name:               "threshold-longer-than-all-runs",
+			threshold:          24 * time.Hour,
+			expectedInterrupts: []string{},
+		},
+		{
+			name:               "with-6-hour-threshold",
+			threshold:          6 * time.Hour,
+			expectedInterrupts: []string{job4.PrivateId},
+		},
+		{
+			name:               "with-4-hour-threshold",
+			threshold:          4 * time.Hour,
+			expectedInterrupts: []string{job3.PrivateId, job4.PrivateId},
+		},
+		{
+			name:               "with-2-hour-threshold",
+			threshold:          2 * time.Hour,
+			expectedInterrupts: []string{job2.PrivateId, job3.PrivateId, job4.PrivateId},
+		},
+		{
+			name:               "with-30-minute-threshold",
+			threshold:          30 * time.Minute,
+			expectedInterrupts: []string{job1.PrivateId, job2.PrivateId, job3.PrivateId, job4.PrivateId},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, kmsCache)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			// Insert test runs with a forced update time
+			_, err = testRunWithUpdateTime(conn, job1.PrivateId, server.PrivateId, time.Now().Add(-1*time.Hour))
+			require.NoError(err)
+			_, err = testRunWithUpdateTime(conn, job2.PrivateId, server.PrivateId, time.Now().Add(-3*time.Hour))
+			require.NoError(err)
+			_, err = testRunWithUpdateTime(conn, job3.PrivateId, server.PrivateId, time.Now().Add(-5*time.Hour))
+			require.NoError(err)
+			_, err = testRunWithUpdateTime(conn, job4.PrivateId, server.PrivateId, time.Now().Add(-7*time.Hour))
+			require.NoError(err)
+
+			runs, err := repo.InterruptRuns(context.Background(), tt.threshold)
+			require.NoError(err)
+			assert.Equal(len(runs), len(tt.expectedInterrupts))
+			for _, jobId := range tt.expectedInterrupts {
+				var gotRun bool
+				for _, run := range runs {
+					if run.JobId == jobId {
+						gotRun = true
+						break
+					}
+				}
+				assert.True(gotRun)
+			}
+
+			// Interrupt all runs for next test
+			_, err = repo.InterruptRuns(context.Background(), 0)
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_InterruptServerRuns(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	server1 := testController(t, conn, wrapper)
+	server2 := testController(t, conn, wrapper)
+	server3 := testController(t, conn, wrapper)
+	job1 := testJob(t, conn, "job1", "code", "description", wrapper)
+	job2 := testJob(t, conn, "job2", "code", "description", wrapper)
+	job3 := testJob(t, conn, "job3", "code", "description", wrapper)
+
+	type args struct {
+		serverId     string
+		opts         []Option
+		expectedJobs []*Job
+	}
+	tests := []struct {
+		name       string
+		runs       []args
+		interrupts []args
+	}{
+		{
+			name: "all-runs",
+			runs: []args{
+				{
+					serverId:     server1.PrivateId,
+					opts:         []Option{WithRunJobsLimit(3)},
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+			},
+			interrupts: []args{
+				{
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+			},
+		},
+		{
+			name: "all-runs-on-single-server-with-server-id",
+			runs: []args{
+				{
+					serverId:     server2.PrivateId,
+					opts:         []Option{WithRunJobsLimit(3)},
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+			},
+			interrupts: []args{
+				{
+					opts:         []Option{WithServerId(server1.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+				{
+					opts:         []Option{WithServerId(server2.PrivateId)},
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+				{
+					opts:         []Option{WithServerId(server3.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+			},
+		},
+		{
+			name: "no-runs",
+			runs: []args{},
+			interrupts: []args{
+				{
+					expectedJobs: []*Job{},
+				},
+			},
+		},
+		{
+			name: "no-runs-with-server-ids",
+			runs: []args{},
+			interrupts: []args{
+				{
+					opts:         []Option{WithServerId(server1.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+				{
+					opts:         []Option{WithServerId(server2.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+				{
+					opts:         []Option{WithServerId(server3.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+			},
+		},
+		{
+			name: "multiple-servers-interrupt-all",
+			runs: []args{
+				{
+					serverId:     server1.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job1},
+				},
+				{
+					serverId:     server2.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job2},
+				},
+				{
+					serverId:     server3.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job3},
+				},
+			},
+			interrupts: []args{
+				{
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+			},
+		},
+		{
+			name: "multiple-servers-with-server-id",
+			runs: []args{
+				{
+					serverId:     server1.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job1},
+				},
+				{
+					serverId:     server2.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job2},
+				},
+				{
+					serverId:     server3.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job3},
+				},
+			},
+			interrupts: []args{
+				{
+					opts:         []Option{WithServerId(server1.PrivateId)},
+					expectedJobs: []*Job{job1},
+				},
+				{
+					opts:         []Option{WithServerId(server2.PrivateId)},
+					expectedJobs: []*Job{job2},
+				},
+				{
+					opts:         []Option{WithServerId(server3.PrivateId)},
+					expectedJobs: []*Job{job3},
+				},
+			},
+		},
+		{
+			name: "multiple-servers-distributed-runs",
+			runs: []args{
+				{
+					serverId:     server1.PrivateId,
+					opts:         []Option{WithRunJobsLimit(2)},
+					expectedJobs: []*Job{job1, job2},
+				},
+				{
+					serverId:     server2.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job3},
+				},
+				{
+					serverId:     server3.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{},
+				},
+			},
+			interrupts: []args{
+				{
+					opts:         []Option{WithServerId(server1.PrivateId)},
+					expectedJobs: []*Job{job1, job2},
+				},
+				{
+					opts:         []Option{WithServerId(server2.PrivateId)},
+					expectedJobs: []*Job{job3},
+				},
+				{
+					opts:         []Option{WithServerId(server3.PrivateId)},
+					expectedJobs: []*Job{},
+				},
+			},
+		},
+		{
+			name: "multiple-servers-distributed-runs-interrupt-all",
+			runs: []args{
+				{
+					serverId:     server1.PrivateId,
+					opts:         []Option{WithRunJobsLimit(2)},
+					expectedJobs: []*Job{job1, job2},
+				},
+				{
+					serverId:     server2.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{job3},
+				},
+				{
+					serverId:     server3.PrivateId,
+					opts:         []Option{WithRunJobsLimit(1)},
+					expectedJobs: []*Job{},
+				},
+			},
+			interrupts: []args{
+				{
+					expectedJobs: []*Job{job1, job2, job3},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			repo, err := NewRepository(rw, rw, kmsCache)
+			require.NoError(err)
+
+			for _, r := range tt.runs {
+				runs, err := repo.RunJobs(context.Background(), r.serverId, r.opts...)
+				require.NoError(err)
+				assert.Len(runs, len(r.expectedJobs))
+				sort.Slice(runs, func(i, j int) bool { return runs[i].JobId < runs[j].JobId })
+				sort.Slice(r.expectedJobs, func(i, j int) bool { return r.expectedJobs[i].PrivateId < r.expectedJobs[j].PrivateId })
+				for i := range runs {
+					assert.Equal(runs[i].JobId, r.expectedJobs[i].PrivateId)
+					assert.Equal(Running.string(), runs[i].Status)
+				}
+			}
+
+			for _, interrupt := range tt.interrupts {
+				runs, err := repo.InterruptRuns(context.Background(), 0, interrupt.opts...)
+				require.NoError(err)
+				require.Len(runs, len(interrupt.expectedJobs))
+				sort.Slice(runs, func(i, j int) bool { return runs[i].JobId < runs[j].JobId })
+				sort.Slice(interrupt.expectedJobs, func(i, j int) bool { return interrupt.expectedJobs[i].PrivateId < interrupt.expectedJobs[j].PrivateId })
+				for i := range runs {
+					assert.Equal(runs[i].JobId, interrupt.expectedJobs[i].PrivateId)
+					assert.Equal(Interrupted.string(), runs[i].Status)
+				}
+			}
+
+			// Interrupt any remaining runs for next test
+			_, err = repo.InterruptRuns(context.Background(), 0)
+			assert.NoError(err)
+		})
+	}
+}
+
 func TestRepository_DuplicateJobRun(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -680,6 +1104,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 }
 
 func TestRepository_LookupJobRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -738,6 +1163,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 }
 
 func TestRepository_deleteJobRun(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

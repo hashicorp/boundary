@@ -13,6 +13,7 @@ import (
 )
 
 func TestJobWorkflow(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")

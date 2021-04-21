@@ -36,12 +36,6 @@ type Job interface {
 
 // JobStatus defines the struct that must be returned by the Job.Status() method.
 type JobStatus struct {
-	// Running indicates if the job is currently running or not
-	Running bool
-
-	// Runtime indicates how long the job has been running
-	Runtime time.Duration
-
 	// Completed and Total are used to indicate job progress,
 	// each job implementation will determine the definition of
 	// progress by calculating both Completed and Total.
