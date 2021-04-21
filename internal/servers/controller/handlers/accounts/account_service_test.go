@@ -123,7 +123,7 @@ func TestGet(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	pwA := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	pwA := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
 	pwWireAccount := pb.Account{
 		Id:                pwA.GetPublicId(),
@@ -238,7 +238,7 @@ func TestListPassword(t *testing.T) {
 	amNoAccounts, amSomeAccounts, amOtherAccounts := ams[0], ams[1], ams[2]
 
 	var wantSomeAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestMultipleAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
 			Id:                aa.GetPublicId(),
 			AuthMethodId:      aa.GetAuthMethodId(),
@@ -253,7 +253,7 @@ func TestListPassword(t *testing.T) {
 	}
 
 	var wantOtherAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestMultipleAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
 			Id:                aa.GetPublicId(),
 			AuthMethodId:      aa.GetAuthMethodId(),
@@ -489,7 +489,7 @@ func TestDelete(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am1 := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
+	ac := password.TestAccount(t, conn, am1.GetPublicId(), "name1")
 
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -579,7 +579,7 @@ func TestDelete_twice(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	ac := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	ac := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
 	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 	require.NoError(err, "Error when getting new user service")
@@ -613,7 +613,7 @@ func TestCreatePassword(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	defaultAccount := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	defaultAccount := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	defaultCreated := defaultAccount.GetCreateTime().GetTimestamp()
 	require.NoError(t, err, "Error converting proto to timestamp.")
 

@@ -7,12 +7,15 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const global = "global"
 
 func TestCustom(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -24,13 +27,18 @@ func TestCustom(t *testing.T) {
 	client.SetToken(token.Token)
 	uClient := users.NewClient(client)
 	aClient := accounts.NewClient(client)
+	amClient := authmethods.NewClient(client)
 
-	usr1, err := uClient.Create(tc.Context(), "global")
+	userAm, err := amClient.Create(tc.Context(), "password", global,
+		authmethods.WithName("bar"))
+	require.NoError(err)
+
+	usr1, err := uClient.Create(tc.Context(), global)
 	require.NoError(err)
 
 	acct1, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname"))
 	require.NoError(err)
-	acct2, err := aClient.Create(tc.Context(), token.AuthMethodId, accounts.WithPasswordAccountLoginName("accountname2"))
+	acct2, err := aClient.Create(tc.Context(), userAm.Item.Id, accounts.WithPasswordAccountLoginName("accountname2"))
 	require.NoError(err)
 
 	addResult, err := uClient.AddAccounts(tc.Context(), usr1.Item.Id, 0, []string{acct1.Item.Id, acct2.Item.Id}, users.WithAutomaticVersioning(true))
