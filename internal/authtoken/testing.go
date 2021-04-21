@@ -17,7 +17,7 @@ func TestAuthToken(t *testing.T, conn *gorm.DB, kms *kms.Kms, scopeId string, op
 	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
 	// auth account is only used to join auth method to user.
 	// We don't do anything else with the auth account in the test setup.
-	acct := password.TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
 	ctx := context.Background()
 	rw := db.New(conn)
