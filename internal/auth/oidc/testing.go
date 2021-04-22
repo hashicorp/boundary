@@ -137,6 +137,9 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 		sort.Slice(am.Certificates, func(a, b int) bool {
 			return am.Certificates[a] < am.Certificates[b]
 		})
+		sort.Slice(am.ClaimsScopes, func(a, b int) bool {
+			return am.ClaimsScopes[a] < am.ClaimsScopes[b]
+		})
 	}
 }
 
