@@ -165,7 +165,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
-	// Check to see if we need to verify Read vs. just ReadSelf
+	// Check to see if we need to verify Cancel vs. just CancelSelf
 	if ses.GetUserId() != authResults.UserId {
 		if !authzdActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()

@@ -517,7 +517,8 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	b.Info["generated target id"] = b.DevTargetId
 
 	// If we have an unprivileged dev user, add user to the role that grants
-	// list/read:self/cancel:self, and an authorize-session role
+	// list/read:self/cancel:self on sessions, read:self/delete:self/list on
+	// tokens, and an authorize-session role
 	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
