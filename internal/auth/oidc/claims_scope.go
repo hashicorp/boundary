@@ -40,6 +40,9 @@ func (cs *ClaimsScope) validate(caller errors.Op) error {
 	if cs.Scope == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing claims scope")
 	}
+	if cs.Scope == "openid" {
+		return errors.New(errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
+	}
 	return nil
 }
 
