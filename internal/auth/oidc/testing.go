@@ -97,6 +97,17 @@ func TestAuthMethod(
 		require.NoError(err)
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
+	if len(opts.withClaimsScopes) > 0 {
+		newClaimsScopes := make([]interface{}, 0, len(opts.withClaimsScopes))
+		for _, cs := range opts.withClaimsScopes {
+			s, err := NewClaimsScope(authMethod.PublicId, cs)
+			require.NoError(err)
+			newClaimsScopes = append(newClaimsScopes, s)
+		}
+		err := rw.CreateItems(ctx, newClaimsScopes)
+		require.NoError(err)
+		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
+	}
 
 	authMethod.OperationalState = string(state)
 	rowsUpdated, err := rw.Update(ctx, authMethod, []string{"OperationalState"}, nil)
