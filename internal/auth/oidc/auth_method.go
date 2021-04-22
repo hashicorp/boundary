@@ -274,9 +274,10 @@ func (am *AuthMethod) isComplete() error {
 }
 
 type convertedValues struct {
-	Algs  []interface{}
-	Auds  []interface{}
-	Certs []interface{}
+	Algs   []interface{}
+	Auds   []interface{}
+	Certs  []interface{}
+	Scopes []interface{}
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -287,7 +288,7 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addAuds, addCerts []interface{}
+	var addAlgs, addAuds, addCerts, addScopes []interface{}
 	if addAlgs, err = am.convertSigningAlgs(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -297,10 +298,14 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 	if addCerts, err = am.convertCertificates(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	if addScopes, err = am.convertClaimsScopes(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
 	return &convertedValues{
-		Algs:  addAlgs,
-		Auds:  addAuds,
-		Certs: addCerts,
+		Algs:   addAlgs,
+		Auds:   addAuds,
+		Certs:  addCerts,
+		Scopes: addScopes,
 	}, nil
 }
 
@@ -353,6 +358,25 @@ func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
 	newInterfaces := make([]interface{}, 0, len(am.Certificates))
 	for _, cert := range am.Certificates {
 		obj, err := NewCertificate(am.PublicId, cert)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+// convertClaimsScopes converts the embedded claims scopes from []string
+// to []interface{} where each slice element is a *ClaimsScope. It will return an
+// error if the AuthMethod's public id is not set.
+func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertClaimsScopes"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.ClaimsScopes))
+	for _, cs := range am.ClaimsScopes {
+		obj, err := NewClaimsScope(am.PublicId, cs)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
