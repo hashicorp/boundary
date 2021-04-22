@@ -58,6 +58,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithCertificates(certs...),
 					WithName("alice's restaurant"),
 					WithDescription("it's a good place to eat"),
+					WithClaimsScopes("email", "profile"),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -90,6 +91,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithCertificates(certs...),
 					WithName("alice's restaurant with a twist"),
 					WithDescription("it's an okay but kinda weird place to eat"),
+					WithClaimsScopes("email", "profile"),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -123,6 +125,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithCertificates(certs...),
 					WithName("alice's restaurant is bad"),
 					WithDescription("their food is awful"),
+					WithClaimsScopes("email", "profile"),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
