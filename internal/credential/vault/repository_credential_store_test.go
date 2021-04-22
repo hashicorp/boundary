@@ -139,9 +139,9 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			wantIsErr: errors.VaultTokenNotRenewable,
 		},
 		{
-			name:      "no-tls-token-not-orphaned",
+			name:      "no-tls-token-not-orphan",
 			tokenOpts: []TestOption{TestOrphanToken(t, false)},
-			wantIsErr: errors.VaultTokenNotOrphaned,
+			wantIsErr: errors.VaultTokenNotOrphan,
 		},
 		{
 			name:      "no-tls-token-not-periodic",
