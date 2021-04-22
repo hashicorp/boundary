@@ -26,7 +26,7 @@ func Test_Ids(t *testing.T) {
 			name:        "missing-name",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.newJobId: missing name: parameter violation: error #100",
+			wantErrMsg:  "job.NewJobId: missing name: parameter violation: error #100",
 		},
 		{
 			name: "missing-code",
@@ -35,7 +35,7 @@ func Test_Ids(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.newJobId: missing code: parameter violation: error #100",
+			wantErrMsg:  "job.NewJobId: missing code: parameter violation: error #100",
 		},
 		{
 			name: "valid",
@@ -48,7 +48,7 @@ func Test_Ids(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newJobId(tt.args.name, tt.args.code)
+			got, err := NewJobId(tt.args.name, tt.args.code)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -56,33 +56,33 @@ func Test_Ids(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.True(strings.HasPrefix(got, JobPrefix+"_"))
+			assert.True(strings.HasPrefix(got, jobPrefix+"_"))
 		})
 	}
 
 	t.Run("sameName", func(t *testing.T) {
-		id, err := newJobId("name", "code")
+		id, err := NewJobId("name", "code")
 		require.NoError(t, err)
 
-		id1, err := newJobId("name", "code")
+		id1, err := NewJobId("name", "code")
 		require.NoError(t, err)
 
 		assert.Equal(t, id, id1)
 	})
 	t.Run("differentName", func(t *testing.T) {
-		id, err := newJobId("name", "code")
+		id, err := NewJobId("name", "code")
 		require.NoError(t, err)
 
-		id1, err := newJobId("different name", "code")
+		id1, err := NewJobId("different name", "code")
 		require.NoError(t, err)
 
 		assert.NotEqual(t, id, id1)
 	})
 	t.Run("differentCode", func(t *testing.T) {
-		id, err := newJobId("name", "code")
+		id, err := NewJobId("name", "code")
 		require.NoError(t, err)
 
-		id1, err := newJobId("name", "different code")
+		id1, err := NewJobId("name", "different code")
 		require.NoError(t, err)
 
 		assert.NotEqual(t, id, id1)

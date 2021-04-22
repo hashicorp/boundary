@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/job/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -505,7 +505,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			nextRunIn := int64(tt.nextRunIn.Round(time.Second).Seconds())
 			assert.True(nextRunAt >= previousRunEnd+nextRunIn,
 				fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run end time (%d) incremented by %d",
-					nextRunAt, previousRunEnd, tt.nextRunIn))
+					nextRunAt, previousRunEnd, nextRunIn))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)

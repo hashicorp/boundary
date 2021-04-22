@@ -22,6 +22,9 @@ type Option func(*options)
 type options struct {
 	withNextRunIn    time.Duration
 	withRunJobsLimit uint
+	withLimit        int
+	withName         string
+	withCode         string
 }
 
 func getDefaultOptions() options {
@@ -45,5 +48,28 @@ func WithRunJobsLimit(l uint) Option {
 		if o.withRunJobsLimit == 0 {
 			o.withRunJobsLimit = defaultRunJobsLimit
 		}
+	}
+}
+
+// WithLimit provides an option to provide a limit for ListJobs. Intentionally
+// allowing negative integers. If WithLimit < 0, then unlimited results are
+// returned. If WithLimit == 0, then default limits are used for results.
+func WithLimit(l int) Option {
+	return func(o *options) {
+		o.withLimit = l
+	}
+}
+
+// WithName provides an option to provide the name to match when calling ListJobs
+func WithName(n string) Option {
+	return func(o *options) {
+		o.withName = n
+	}
+}
+
+// WithCode provides an option to provide the code to match when calling ListJobs
+func WithCode(c string) Option {
+	return func(o *options) {
+		o.withCode = c
 	}
 }

@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -40,7 +41,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 		return nil, errors.New(errors.InvalidParameter, op, "missing description")
 	}
 
-	id, err := newJobId(name, code)
+	id, err := NewJobId(name, code)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -99,6 +100,63 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 	return j, nil
 }
 
+// UpdateJobNextRun updates the Job repository entry for the privateId
+// setting the job's NextScheduledRun to the current database time incremented by
+// the nextRunIn parameter.
+//
+// All options are ignored.
+func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nextRunIn time.Duration, _ ...Option) (*Job, error) {
+	const op = "job.(Repository).UpdateJobNextRun"
+	if privateId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	job := allocJob()
+	job.PrivateId = privateId
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", job.PrivateId)))
+			}
+			defer rows.Close()
+
+			var rowCnt int
+			for rows.Next() {
+				if rowCnt > 0 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+				}
+				rowCnt++
+				err = r.ScanRows(rows, job)
+				if err != nil {
+					_ = rows.Close()
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows"))
+				}
+			}
+			if rowCnt == 0 {
+				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", privateId))
+			}
+
+			// Write job update to oplog
+			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, job)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return job, nil
+}
+
 // LookupJob will look up a job in the repository using the privateId. If the job is not
 // found, it will return nil, nil.
 //
@@ -118,6 +176,34 @@ func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Optio
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return j, nil
+}
+
+// ListJobs returns a slice of Jobs.
+//
+// WithName, WithCode and WithLimit are the only valid options.
+func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error) {
+	const op = "job.(Repository).ListJobs"
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var args []interface{}
+	var where []string
+	if opts.withName != "" {
+		where, args = append(where, "name = ?"), append(args, opts.withName)
+	}
+	if opts.withCode != "" {
+		where, args = append(where, "code = ?"), append(args, opts.withCode)
+	}
+
+	var jobs []*Job
+	err := r.reader.SearchWhere(ctx, &jobs, strings.Join(where, " and "), args, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return jobs, nil
 }
 
 // deleteJob deletes the job for the provided id from the repository

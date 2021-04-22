@@ -1,4 +1,4 @@
-package job
+package scheduler
 
 import (
 	"testing"
@@ -10,14 +10,6 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
-	t.Run("WithNextRunIn", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithNextRunIn(time.Hour))
-		testOpts := getDefaultOptions()
-		assert.NotEqual(opts, testOpts)
-		testOpts.withNextRunIn = time.Hour
-		assert.Equal(opts, testOpts)
-	})
 	t.Run("WithRunJobsLimit", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithRunJobsLimit(10))
@@ -31,6 +23,19 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithRunJobsLimit(0))
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-		assert.Equal(uint(defaultRunJobsLimit), opts.withRunJobsLimit)
+	})
+	t.Run("WithRunJobsInterval", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRunJobsInterval(time.Hour))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withRunJobInterval = time.Hour
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithZeroRunJobsInterval", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRunJobsInterval(0))
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
 	})
 }

@@ -3,13 +3,13 @@ package job
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/job/store"
+	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRun_SetTableName(t *testing.T) {
-	defaultTableName := "job_run"
+func TestJob_SetTableName(t *testing.T) {
+	defaultTableName := "job"
 	tests := []struct {
 		name        string
 		initialName string
@@ -32,12 +32,12 @@ func TestRun_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := &Run{
-				JobRun: &store.JobRun{},
+			def := &Job{
+				Job: &store.Job{},
 			}
 			require.Equal(defaultTableName, def.TableName())
-			s := &Run{
-				JobRun:    &store.JobRun{},
+			s := &Job{
+				Job:       &store.Job{},
 				tableName: tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)

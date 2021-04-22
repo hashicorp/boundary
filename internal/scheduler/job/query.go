@@ -29,13 +29,14 @@ const createJobQuery = `
 	returning *;
 `
 
-const setNextScheduleRunQuery = `
+const setNextScheduledRunQuery = `
 	update
 	  job
 	set
 	  next_scheduled_run = wt_add_seconds_to_now(?)
 	where
-	  private_id = ?;
+	  private_id = ?
+	returning *;
 `
 
 const updateProgressQuery = `

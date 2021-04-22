@@ -193,29 +193,27 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 
 			job := allocJob()
 			job.PrivateId = run.JobId
-			rowsAffected, err := w.Exec(ctx, setNextScheduleRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			rows, err = w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
 			}
-			if rowsAffected == 0 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("unable to set next scheduled run time for job: %s", run.JobId))
-			}
-			if rowsAffected > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+			defer rows.Close()
+
+			rowCnt = 0
+			for rows.Next() {
+				if rowCnt > 0 {
+					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+				}
+				rowCnt++
+				err = r.ScanRows(rows, job)
+				if err != nil {
+					_ = rows.Close()
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+				}
 			}
 
-			// Write Job update to oplog
-			ticket, err := w.GetTicket(job)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-			}
-			msg := oplog.Message{
-				Message:        interface{}(job).(proto.Message),
-				TypeName:       job.TableName(),
-				OpType:         oplog.OpType_OP_TYPE_UPDATE,
-				FieldMaskPaths: []string{"NextScheduledRun"},
-			}
-			err = w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, job.oplog(oplog.OpType_OP_TYPE_UPDATE), []*oplog.Message{&msg})
+			// Write job update to oplog
+			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, job)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}

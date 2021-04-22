@@ -25,6 +25,7 @@ func TestRepository_New(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        args
+		opts        []Option
 		want        *Repository
 		wantErr     bool
 		wantErrCode errors.Code
@@ -38,9 +39,27 @@ func TestRepository_New(t *testing.T) {
 				kms: kmsCache,
 			},
 			want: &Repository{
-				reader: rw,
-				writer: rw,
-				kms:    kmsCache,
+				reader:       rw,
+				writer:       rw,
+				kms:          kmsCache,
+				defaultLimit: db.DefaultLimit,
+			},
+		},
+		{
+			name: "valid-with-limit",
+			args: args{
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
+			},
+			opts: []Option{
+				WithLimit(10),
+			},
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				kms:          kmsCache,
+				defaultLimit: 10,
 			},
 		},
 		{
@@ -96,7 +115,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
