@@ -116,7 +116,7 @@ message AuthMethod {
   // These are Value Objects that will be stored as ClaimsScope messages, and
   // are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScope" that: "attributes.claims_scopes" }];
+  repeated string claims_scopes = 200;  // TODO: [(custom_options.v1.mask_mapping) = { this: "ClaimsScope" that: "attributes.claims_scopes" }]
 }
 
 // Account represents an OIDC account
