@@ -323,7 +323,7 @@ func TestArgon2Credential_New(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
-	accts := TestAccounts(t, conn, aut.PublicId, 5)
+	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
 
 	type args struct {
