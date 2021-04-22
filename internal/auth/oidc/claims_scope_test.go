@@ -18,6 +18,16 @@ func TestClaimsScope_Create(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "my-dogs-name",
+		WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+
 	type args struct {
 		authMethodId string
 		claimsScope  string
@@ -29,7 +39,61 @@ func TestClaimsScope_Create(t *testing.T) {
 		createWantErrMatch *errors.Template
 		want               *ClaimsScope
 		wantErrMatch       *errors.Template
-	}{}
+	}{
+		{
+			name: "valid",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				claimsScope:  "profile",
+			},
+			createResource: true,
+			want: func() *ClaimsScope {
+				want := AllocClaimsScope()
+				want.OidcMethodId = testAuthMethod.PublicId
+				want.Scope = "profile"
+				return &want
+			}(),
+		},
+		{
+			name: "dup",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				claimsScope:  "profile",
+			},
+			createResource: true,
+			want: func() *ClaimsScope {
+				want := AllocClaimsScope()
+				want.OidcMethodId = testAuthMethod.PublicId
+				want.Scope = "profile"
+				return &want
+			}(),
+			createWantErrMatch: errors.T(errors.NotUnique),
+		},
+		{
+			name: "empty-auth-method",
+			args: args{
+				authMethodId: "",
+				claimsScope:  "empty-auth-method",
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "empty-aud",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				claimsScope:  "",
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "openid-default-error",
+			args: args{
+				authMethodId: testAuthMethod.PublicId,
+				claimsScope:  "openid",
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
@@ -46,7 +110,7 @@ func TestClaimsScope_Create(t *testing.T) {
 				err := rw.Create(ctx, got)
 				if tt.createWantErrMatch != nil {
 					require.Error(err)
-					assert.Truef(errors.Match(tt.createWantErrMatch, err), "wanted error %s and got: %s", tt.wantErrMatch.Code, err.Error())
+					assert.Truef(errors.Match(tt.createWantErrMatch, err), "wanted error %s and got: %s", tt.createWantErrMatch.Code, err.Error())
 					return
 				}
 				assert.NoError(err)
