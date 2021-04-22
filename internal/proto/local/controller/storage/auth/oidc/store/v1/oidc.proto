@@ -111,6 +111,12 @@ message AuthMethod {
   // as a complete set.
   // @inject_tag: `gorm:"-"`
   repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.idp_ca_certs" }];
+
+  // claims_scopes are the optional claims scopes a specific oidc auth method.
+  // These are Value Objects that will be stored as ClaimsScope messages, and
+  // are operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScope" that: "attributes.claims_scopes" }];
 }
 
 // Account represents an OIDC account
