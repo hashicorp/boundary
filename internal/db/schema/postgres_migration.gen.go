@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 3005,
+		binarySchemaVersion: 5005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5895,7 +5895,118 @@ alter table auth_account
   add constraint auth_account_auth_method_id_public_id_uq
     unique(auth_method_id, iam_user_id);
 `),
-			3001: []byte(`
+			3002: []byte(`
+drop view iam_user_acct_info;
+drop view iam_acct_info;
+
+-- iam_user_acct_info provides account info for users by determining which
+-- auth_method is designated as for "account info" in the user's scope via the
+-- scope's primary_auth_method_id.  Every sub-type of auth_account must be
+-- added to this view's union.
+create view iam_acct_info as
+select 
+    aa.iam_user_id,
+    oa.subject as login_name,
+    oa.public_id as primary_account_id,
+    oa.full_name as full_name,
+    oa.email as email
+from 	
+    iam_scope s,
+    auth_account aa,
+    auth_oidc_account oa
+where
+    aa.public_id = oa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id 
+union 
+select 
+    aa.iam_user_id,
+    pa.public_id as primary_account_id,
+    pa.login_name,
+    '' as full_name,
+    '' as email
+from
+    iam_scope s,
+    auth_account aa,
+    auth_password_account pa
+where
+    aa.public_id = pa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id;
+
+    
+-- iam_user_acct_info provides a simple way to retrieve entries that include
+-- both the iam_user fields with an outer join to the user's account info.
+create view iam_user_acct_info as
+select 
+    u.public_id,
+    u.scope_id,
+    u.name,
+    u.description, 
+    u.create_time,
+    u.update_time,
+    u.version,
+    i.primary_account_id,
+    i.login_name,
+    i.full_name,
+    i.email
+from 	
+	iam_user u
+left outer join iam_acct_info i on u.public_id = i.iam_user_id;
+`),
+			4001: []byte(`
+-- fix ordering of fields in iam_acct_info for auth_password_account select
+-- portion of union.  requires recreating both views because of deps.
+
+drop view iam_user_acct_info;
+drop view iam_acct_info;
+
+create view iam_acct_info as
+select 
+    aa.iam_user_id,
+    oa.subject as login_name,
+    oa.public_id as primary_account_id,
+    oa.full_name as full_name,
+    oa.email as email
+from 	
+    iam_scope s,
+    auth_account aa,
+    auth_oidc_account oa
+where
+    aa.public_id = oa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id 
+union 
+select 
+    aa.iam_user_id,
+    pa.login_name,
+    pa.public_id as primary_account_id,
+    '' as full_name,
+    '' as email
+from
+    iam_scope s,
+    auth_account aa,
+    auth_password_account pa
+where
+    aa.public_id = pa.public_id and 
+    aa.auth_method_id = s.primary_auth_method_id;
+
+
+create view iam_user_acct_info as
+select 
+    u.public_id,
+    u.scope_id,
+    u.name,
+    u.description, 
+    u.create_time,
+    u.update_time,
+    u.version,
+    i.primary_account_id,
+    i.login_name,
+    i.full_name,
+    i.email
+from 	
+	iam_user u
+left outer join iam_acct_info i on u.public_id = i.iam_user_id;
+`),
+			5001: []byte(`
 create table job (
          private_id wt_private_id primary key,
          name wt_name not null,
@@ -6004,64 +6115,7 @@ create table job (
 	  )
 	  select job_id, next_scheduled_run from final;
 `),
-			3002: []byte(`
-drop view iam_user_acct_info;
-drop view iam_acct_info;
-
--- iam_user_acct_info provides account info for users by determining which
--- auth_method is designated as for "account info" in the user's scope via the
--- scope's primary_auth_method_id.  Every sub-type of auth_account must be
--- added to this view's union.
-create view iam_acct_info as
-select 
-    aa.iam_user_id,
-    oa.subject as login_name,
-    oa.public_id as primary_account_id,
-    oa.full_name as full_name,
-    oa.email as email
-from 	
-    iam_scope s,
-    auth_account aa,
-    auth_oidc_account oa
-where
-    aa.public_id = oa.public_id and 
-    aa.auth_method_id = s.primary_auth_method_id 
-union 
-select 
-    aa.iam_user_id,
-    pa.public_id as primary_account_id,
-    pa.login_name,
-    '' as full_name,
-    '' as email
-from
-    iam_scope s,
-    auth_account aa,
-    auth_password_account pa
-where
-    aa.public_id = pa.public_id and 
-    aa.auth_method_id = s.primary_auth_method_id;
-
-    
--- iam_user_acct_info provides a simple way to retrieve entries that include
--- both the iam_user fields with an outer join to the user's account info.
-create view iam_user_acct_info as
-select 
-    u.public_id,
-    u.scope_id,
-    u.name,
-    u.description, 
-    u.create_time,
-    u.update_time,
-    u.version,
-    i.primary_account_id,
-    i.login_name,
-    i.full_name,
-    i.email
-from 	
-	iam_user u
-left outer join iam_acct_info i on u.public_id = i.iam_user_id;
-`),
-			3005: []byte(`
+			5005: []byte(`
 create function wt_add_seconds(sec integer, ts timestamp with time zone)
         returns timestamp with time zone
     as $$
