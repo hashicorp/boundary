@@ -39,6 +39,16 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 		u.PublicId = id
 	}
 
+	// There's no need to use r.lookupUser(...) here, because the new user cannot
+	// be associated with any accounts yet.  Why would you typically want to
+	// call r.lookupUser(...) here vs returning the create resource?  Well, the
+	// created resource doesn't include the user's primary account info (email,
+	// full name, etc), since you can't run DML against the view which does
+	// provide these output only attributes.  But in this case, there's no way a
+	// newly created user could have any accounts, so we don't need to use
+	// r.lookupUser(...). I'm adding this comment so a future version of myself
+	// doesn't come along and decide to start using r.lookupUser(...) here which
+	// would just be an unnecessary database lookup.  You're welcome future me.
 	resource, err := r.create(ctx, u)
 	if err != nil {
 		if errors.IsUniqueError(err) {
@@ -133,13 +143,15 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 				// return err, which will result in a rollback of the update
 				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
 				reader: reader,
 				writer: w,
 				kms:    r.kms,
-				// intentionally not setting the defaultLimit, so we'll get all
-				// the account ids without a limit
+				// intentionally not setting the defaultLimit
+			}
+			returnedUser, err = txRepo.lookupUser(ctx, user.PublicId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current user after update"))
 			}
 			currentAccountIds, err = txRepo.ListUserAccounts(ctx, user.PublicId)
 			if err != nil {
@@ -164,20 +176,15 @@ func (r *Repository) LookupUser(ctx context.Context, userId string, _ ...Option)
 	if userId == "" {
 		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-
-	user := allocUser()
-	user.PublicId = userId
-	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil, nil
-		}
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", userId)))
+	user, err := r.lookupUser(ctx, userId)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, op)
 	}
 	currentAccountIds, err := r.ListUserAccounts(ctx, userId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to retrieve current account ids"))
 	}
-	return &user, currentAccountIds, nil
+	return user, currentAccountIds, nil
 }
 
 // DeleteUser will delete a user from the repository
@@ -186,7 +193,7 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, _ ...O
 	if withPublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-	user := allocUser()
+	user := AllocUser()
 	user.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
@@ -204,8 +211,7 @@ func (r *Repository) ListUsers(ctx context.Context, withScopeIds []string, opt .
 	if len(withScopeIds) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
-	var users []*User
-	err := r.list(ctx, &users, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
+	users, err := r.getUsers(ctx, "", withScopeIds, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -266,7 +272,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
 			ticket, err := w.GetTicket(&acct)
 			if err != nil {
@@ -302,6 +308,16 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op)
 			}
+			txRepo := &Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+				// intentionally not setting the defaultLimit
+			}
+			obtainedUser, err = txRepo.lookupUser(ctx, obtainedUser.PublicId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve user"))
+			}
 			return nil
 		},
 	)
@@ -336,7 +352,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to query account %s", withAccountId)))
 	}
 	defer rows.Close()
-	u := allocUser()
+	u := AllocUser()
 	if rows.Next() {
 		err = r.reader.ScanRows(rows, &u)
 		if err != nil {
@@ -388,10 +404,7 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 		return nil, errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 
-	user := allocUser()
-	user.PublicId = userId
-
-	err := r.reader.LookupById(ctx, &user)
+	user, err := r.lookupUser(ctx, userId)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
@@ -406,11 +419,11 @@ func (r *Repository) AddUserAccounts(ctx context.Context, userId string, userVer
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			userTicket, err := w.GetTicket(&user)
+			userTicket, err := w.GetTicket(user)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedUser := allocUser()
+			updatedUser := AllocUser()
 			updatedUser.PublicId = userId
 			updatedUser.Version = userVersion + 1
 			var userOplogMsg oplog.Message
@@ -470,9 +483,7 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 		return nil, errors.New(errors.InvalidParameter, op, "missing account ids")
 	}
 
-	user := allocUser()
-	user.PublicId = userId
-	err := r.reader.LookupById(ctx, &user)
+	user, err := r.lookupUser(ctx, userId)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
@@ -487,11 +498,11 @@ func (r *Repository) DeleteUserAccounts(ctx context.Context, userId string, user
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			userTicket, err := w.GetTicket(&user)
+			userTicket, err := w.GetTicket(user)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedUser := allocUser()
+			updatedUser := AllocUser()
 			updatedUser.PublicId = userId
 			updatedUser.Version = userVersion + 1
 			var userOplogMsg oplog.Message
@@ -548,9 +559,7 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 		return nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 
-	user := allocUser()
-	user.PublicId = userId
-	err := r.reader.LookupById(ctx, &user)
+	user, err := r.lookupUser(ctx, userId)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup user %s", userId)))
 	}
@@ -585,11 +594,11 @@ func (r *Repository) SetUserAccounts(ctx context.Context, userId string, userVer
 				}
 				return nil
 			}
-			userTicket, err := w.GetTicket(&user)
+			userTicket, err := w.GetTicket(user)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedUser := allocUser()
+			updatedUser := AllocUser()
 			updatedUser.PublicId = userId
 			updatedUser.Version = userVersion + 1
 			var userOplogMsg oplog.Message
@@ -666,7 +675,7 @@ func associateUserWithAccounts(ctx context.Context, repoKms *kms.Kms, reader db.
 	for _, accountId := range accountIds {
 		acct := allocAccount()
 		acct.PublicId = accountId
-		err := reader.LookupByPublicId(context.Background(), &acct)
+		err := reader.LookupByPublicId(ctx, &acct)
 		if err != nil {
 			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup account %s", accountId)))
 		}
@@ -822,4 +831,68 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 		}
 	}
 	return associateIds, disassociateIds, nil
+}
+
+// lookupUser will lookup a single user and returns nil, nil when no user is found.
+func (r *Repository) lookupUser(ctx context.Context, userId string, opt ...Option) (*User, error) {
+	const op = "iam.(Repository).lookupUser"
+	users, err := r.getUsers(ctx, userId, nil, opt...)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	switch {
+	case len(users) == 0:
+		return nil, nil // not an error to return no rows for a lookup
+	case len(users) > 1:
+		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", userId))
+	default:
+		return users[0], nil
+	}
+}
+
+// getUsers allows the caller to specify to either lookup a specific User via
+// its ID or search for a set of Users within a set of scopes.  Passing both
+// scopeIds and a userId is an error.  The WithLimit option is supported and all
+// other options are ignored.
+//
+// When no record is found then it returns nil, nil
+func (r *Repository) getUsers(ctx context.Context, userId string, scopeIds []string, opt ...Option) ([]*User, error) {
+	const op = "iam.(Repository).getUsers"
+	if userId == "" && len(scopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing search criteria: both user id and scope ids are empty")
+	}
+	if userId != "" && len(scopeIds) > 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "searching for both a specific user id and scope ids is not supported")
+	}
+
+	opts := getOpts(opt...)
+	dbArgs := []db.Option{}
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	dbArgs = append(dbArgs, db.WithLimit(limit))
+
+	var args []interface{}
+	var where []string
+	switch {
+	case userId != "":
+		where, args = append(where, "public_id = ?"), append(args, userId)
+	default:
+		where, args = append(where, "scope_id in(?)"), append(args, scopeIds)
+	}
+	var usersAcctInfo []*userAccountInfo
+	err := r.reader.SearchWhere(ctx, &usersAcctInfo, strings.Join(where, " and "), args, dbArgs...)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if len(usersAcctInfo) == 0 { // we're done if nothing is found.
+		return nil, nil
+	}
+	users := make([]*User, 0, len(usersAcctInfo))
+	for _, u := range usersAcctInfo {
+		users = append(users, u.shallowConversion())
+	}
+	return users, nil
 }
