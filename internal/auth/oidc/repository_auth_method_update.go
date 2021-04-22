@@ -15,6 +15,24 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+const (
+	DisableDiscoveredConfigValidationField = "DisableDiscoveredConfigValidation"
+	VersionField                           = "Version"
+	NameField                              = "Name"
+	DescriptionField                       = "Description"
+	IssuerField                            = "Issuer"
+	ClientIdField                          = "ClientId"
+	ClientSecretField                      = "ClientSecret"
+	CtClientSecretField                    = "CtClientSecret"
+	ClientSecretHmacField                  = "ClientSecretHmac"
+	MaxAgeField                            = "MaxAge"
+	SigningAlgsField                       = "SigningAlgs"
+	ApiUrlField                            = "ApiUrl"
+	AudClaimsField                         = "AudClaims"
+	CertificatesField                      = "Certificates"
+	ClaimsScopesField                      = "ClaimsScopes"
+)
+
 // UpdateAuthMethod will retrieve the auth method from the repository,
 // and update it based on the field masks provided.
 //
@@ -70,16 +88,17 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":         am.Name,
-			"Description":  am.Description,
-			"Issuer":       am.Issuer,
-			"ClientId":     am.ClientId,
-			"ClientSecret": am.ClientSecret,
-			"MaxAge":       am.MaxAge,
-			"SigningAlgs":  am.SigningAlgs,
-			"ApiUrl":       am.ApiUrl,
-			"AudClaims":    am.AudClaims,
-			"Certificates": am.Certificates,
+			NameField:         am.Name,
+			DescriptionField:  am.Description,
+			IssuerField:       am.Issuer,
+			ClientIdField:     am.ClientId,
+			ClientSecretField: am.ClientSecret,
+			MaxAgeField:       am.MaxAge,
+			SigningAlgsField:  am.SigningAlgs,
+			ApiUrlField:       am.ApiUrl,
+			AudClaimsField:    am.AudClaims,
+			CertificatesField: am.Certificates,
+			ClaimsScopesField: am.ClaimsScopes,
 		},
 		fieldMaskPaths,
 		nil,
@@ -139,10 +158,15 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
+	addScopes, deleteScopes, err := valueObjectChanges(origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+	}
+
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch f {
-		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField:
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
@@ -150,7 +174,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	for _, f := range nullFields {
 		switch f {
-		case "SigningAlgs", "CallbackUrls", "AudClaims", "Certificates":
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField:
 			continue
 		default:
 			filteredNullFields = append(filteredNullFields, f)
@@ -165,17 +189,19 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(addCerts) == 0 &&
 		len(deleteCerts) == 0 &&
 		len(addAuds) == 0 &&
-		len(deleteAuds) == 0 {
+		len(deleteAuds) == 0 &&
+		len(addScopes) == 0 &&
+		len(deleteScopes) == 0 {
 		return origAm, db.NoRowsAffected, nil
 	}
 
 	// ClientSecret is a bit odd, because it uses the Struct wrapping, we need
 	// to add the encrypted fields to the dbMask or nullFields
-	if strutil.StrListContains(filteredDbMask, "ClientSecret") {
-		filteredDbMask = append(filteredDbMask, "CtClientSecret", "ClientSecretHmac")
+	if strutil.StrListContains(filteredDbMask, ClientSecretField) {
+		filteredDbMask = append(filteredDbMask, CtClientSecretField, ClientSecretHmacField)
 	}
-	if strutil.StrListContains(filteredNullFields, "ClientSecret") {
-		filteredNullFields = append(filteredNullFields, "CtClientSecret", "ClientSecretHmac")
+	if strutil.StrListContains(filteredNullFields, ClientSecretField) {
+		filteredNullFields = append(filteredNullFields, CtClientSecretField, ClientSecretHmacField)
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
@@ -213,7 +239,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				// method's version.
 				updatedAm = am.Clone()
 				updatedAm.Version = uint32(version) + 1
-				rowsUpdated, err = w.Update(ctx, updatedAm, []string{"Version", "DisableDiscoveredConfigValidation"}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
+				rowsUpdated, err = w.Update(ctx, updatedAm, []string{VersionField, DisableDiscoveredConfigValidationField}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
 				}
@@ -221,7 +247,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
 				}
 			default:
-				filteredDbMask = append(filteredDbMask, "DisableDiscoveredConfigValidation")
+				filteredDbMask = append(filteredDbMask, DisableDiscoveredConfigValidationField)
 				updatedAm = am.Clone()
 				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
@@ -275,7 +301,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteAudsOplogMsgs := make([]*oplog.Message, 0, len(deleteAuds))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteAudsOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to audiences URLs"))
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete audiences URLs"))
 				}
 				if rowsDeleted != len(deleteAuds) {
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("audiences deleted %d did not match request for %d", rowsDeleted, len(deleteAuds)))
@@ -288,6 +314,25 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to add audiences URLs"))
 				}
 				msgs = append(msgs, addAudsOplogMsgs...)
+			}
+
+			if len(deleteScopes) > 0 {
+				deleteScopesOplogMsgs := make([]*oplog.Message, 0, len(deleteScopes))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteScopes, db.NewOplogMsgs(&deleteScopesOplogMsgs))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete claims scopes"))
+				}
+				if rowsDeleted != len(deleteScopes) {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("claims scopes deleted %d did not match request for %d", rowsDeleted, len(deleteScopes)))
+				}
+				msgs = append(msgs, deleteScopesOplogMsgs...)
+			}
+			if len(addScopes) > 0 {
+				addScopesOplogMsgs := make([]*oplog.Message, 0, len(addScopes))
+				if err := w.CreateItems(ctx, addScopes, db.NewOplogMsgs(&addScopesOplogMsgs)); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to add claims scopes"))
+				}
+				msgs = append(msgs, addScopesOplogMsgs...)
 			}
 
 			metadata := updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)
@@ -325,15 +370,16 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 type voName string
 
 const (
-	SigningAlgVO  voName = "SigningAlgs"
-	CertificateVO voName = "Certificates"
-	AudClaimVO    voName = "AudClaims"
+	SigningAlgVO   voName = "SigningAlgs"
+	CertificateVO  voName = "Certificates"
+	AudClaimVO     voName = "AudClaims"
+	ClaimsScopesVO voName = "ClaimsScopes"
 )
 
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CertificateVO, AudClaimVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO:
 		return true
 	default:
 		return false
@@ -356,6 +402,10 @@ var supportedFactories = map[voName]factoryFunc{
 	AudClaimVO: func(publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(publicId, str)
+	},
+	ClaimsScopesVO: func(publicId string, i interface{}) (interface{}, error) {
+		str := fmt.Sprintf("%s", i)
+		return NewClaimsScope(publicId, str)
 	},
 }
 
@@ -446,16 +496,17 @@ func validateFieldMask(fieldMaskPaths []string) error {
 	const op = "validateFieldMask"
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("Name", f):
-		case strings.EqualFold("Description", f):
-		case strings.EqualFold("Issuer", f):
-		case strings.EqualFold("ClientId", f):
-		case strings.EqualFold("ClientSecret", f):
-		case strings.EqualFold("MaxAge", f):
-		case strings.EqualFold("SigningAlgs", f):
-		case strings.EqualFold("ApiUrl", f):
-		case strings.EqualFold("AudClaims", f):
-		case strings.EqualFold("Certificates", f):
+		case strings.EqualFold(NameField, f):
+		case strings.EqualFold(DescriptionField, f):
+		case strings.EqualFold(IssuerField, f):
+		case strings.EqualFold(ClientIdField, f):
+		case strings.EqualFold(ClientSecretField, f):
+		case strings.EqualFold(MaxAgeField, f):
+		case strings.EqualFold(SigningAlgsField, f):
+		case strings.EqualFold(ApiUrlField, f):
+		case strings.EqualFold(AudClaimsField, f):
+		case strings.EqualFold(CertificatesField, f):
+		case strings.EqualFold(ClaimsScopesField, f):
 		default:
 			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -468,21 +519,21 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 	cp := orig.Clone()
 	for _, f := range fieldMaskPaths {
 		switch f {
-		case "Name":
+		case NameField:
 			cp.Name = new.Name
-		case "Description":
+		case DescriptionField:
 			cp.Description = new.Description
-		case "Issuer":
+		case IssuerField:
 			cp.Issuer = new.Issuer
-		case "ClientId":
+		case ClientIdField:
 			cp.ClientId = new.ClientId
-		case "ClientSecret":
+		case ClientSecretField:
 			cp.ClientSecret = new.ClientSecret
-		case "MaxAge":
+		case MaxAgeField:
 			cp.MaxAge = new.MaxAge
-		case "ApiUrl":
+		case ApiUrlField:
 			cp.ApiUrl = new.ApiUrl
-		case "SigningAlgs":
+		case SigningAlgsField:
 			switch {
 			case len(new.SigningAlgs) == 0:
 				cp.SigningAlgs = nil
@@ -490,7 +541,7 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 				cp.SigningAlgs = make([]string, 0, len(new.SigningAlgs))
 				cp.SigningAlgs = append(cp.SigningAlgs, new.SigningAlgs...)
 			}
-		case "AudClaims":
+		case AudClaimsField:
 			switch {
 			case len(new.AudClaims) == 0:
 				cp.AudClaims = nil
@@ -498,13 +549,21 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 				cp.AudClaims = make([]string, 0, len(new.AudClaims))
 				cp.AudClaims = append(cp.AudClaims, new.AudClaims...)
 			}
-		case "Certificates":
+		case CertificatesField:
 			switch {
 			case len(new.Certificates) == 0:
 				cp.Certificates = nil
 			default:
 				cp.Certificates = make([]string, 0, len(new.Certificates))
 				cp.Certificates = append(cp.Certificates, new.Certificates...)
+			}
+		case ClaimsScopesField:
+			switch {
+			case len(new.ClaimsScopes) == 0:
+				cp.ClaimsScopes = nil
+			default:
+				cp.ClaimsScopes = make([]string, 0, len(new.ClaimsScopes))
+				cp.ClaimsScopes = append(cp.ClaimsScopes, new.ClaimsScopes...)
 			}
 		}
 	}
