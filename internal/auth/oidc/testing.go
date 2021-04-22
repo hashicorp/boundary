@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -32,6 +31,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
@@ -274,10 +274,8 @@ func testState(
 	require.NotNil(kms)
 
 	now := time.Now()
-	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
-	require.NoError(err)
-	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
-	require.NoError(err)
+	createTime := timestamppb.New(now.Truncate(time.Second))
+	exp := timestamppb.New(now.Add(expIn).Truncate(time.Second))
 
 	st := &request.State{
 		TokenRequestId:     tokenRequestId,
@@ -308,8 +306,7 @@ func TestTokenRequestId(
 	require := require.New(t)
 
 	now := time.Now()
-	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
-	require.NoError(err)
+	exp := timestamppb.New(now.Add(expIn).Truncate(time.Second))
 
 	reqTk := &request.Token{
 		RequestId:      tokenPublicId,
