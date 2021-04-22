@@ -58,7 +58,7 @@ type structInfo struct {
 	sliceSubTypes map[string]string
 
 	// outputOnly indicates that we shouldn't create options for setting members
-	// for this struct
+	// for mapping src field struct
 	outputOnly bool
 
 	// versionEnabled indicates that we should build a Version handler in
@@ -245,6 +245,16 @@ var inputStructs = []*structInfo{
 		subtypeName: "PasswordAuthMethod",
 	},
 	{
+		inProto:     &authmethods.OidcAuthMethodAttributes{},
+		outFile:     "authmethods/oidc_auth_method_attributes.gen.go",
+		subtypeName: "OidcAuthMethod",
+	},
+	{
+		inProto:     &authmethods.OidcAuthMethodAuthenticateStartResponse{},
+		outFile:     "authmethods/oidc_auth_method_authenticate_start_response.gen.go",
+		subtypeName: "OidcAuthMethod",
+	},
+	{
 		inProto: &authmethods.AuthMethod{},
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
@@ -266,6 +276,11 @@ var inputStructs = []*structInfo{
 		inProto:     &accounts.PasswordAccountAttributes{},
 		outFile:     "accounts/password_account_attributes.gen.go",
 		subtypeName: "PasswordAccount",
+	},
+	{
+		inProto:     &accounts.OidcAccountAttributes{},
+		outFile:     "accounts/oidc_account_attributes.gen.go",
+		subtypeName: "OidcAccount",
 	},
 	{
 		inProto: &accounts.Account{},

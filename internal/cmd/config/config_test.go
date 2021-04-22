@@ -82,6 +82,64 @@ func TestDevController(t *testing.T) {
 	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
 
 	assert.Equal(t, exp, actual)
+
+	// Do some CORS-specific testing
+	{
+		// CORS disabled
+		conf := `
+		listener "tcp" {
+			purpose = "api"
+			cors_enabled = false
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 := actual.Listeners[0]
+		assert.False(t, *l0.CorsEnabled)
+		assert.Empty(t, l0.CorsAllowedHeaders)
+
+		// Enabled with a wildcard
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+			cors_enabled = true
+			cors_allowed_origins = ["*"]
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.True(t, *l0.CorsEnabled)
+		assert.Equal(t, []string{"*"}, l0.CorsAllowedOrigins)
+		assert.Nil(t, l0.CorsDisableDefaultAllowedOriginValues)
+
+		// Disabled, default behavior
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.True(t, *l0.CorsEnabled)
+		assert.Equal(t, []string{desktopCorsOrigin}, l0.CorsAllowedOrigins)
+		assert.Nil(t, l0.CorsDisableDefaultAllowedOriginValues)
+
+		// Disabled, default behavior
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+			cors_disable_default_allowed_origin_values = true
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.Nil(t, l0.CorsEnabled)
+		assert.Empty(t, l0.CorsAllowedOrigins)
+		assert.True(t, *l0.CorsDisableDefaultAllowedOriginValues)
+	}
 }
 
 func TestDevWorker(t *testing.T) {

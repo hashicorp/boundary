@@ -37,10 +37,10 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
 	case "change-password":
-		return "Change the password on an account resource"
+		return "Change the password on an account"
 
 	case "set-password":
-		return "Directly set the password on an account resource"
+		return "Directly set the password on an account"
 
 	default:
 		return ""
@@ -115,7 +115,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]accounts.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.Option) bool {
 	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
 		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)

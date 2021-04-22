@@ -43,11 +43,12 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -66,7 +67,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -143,34 +144,33 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
+	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
-		}
-		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
+	if err != nil && !errors.IsNotFoundError(err) {
+		return nil, errors.Wrap(err, op)
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
 	return toProto(u), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete user: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
@@ -257,16 +257,16 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	return handlers.ValidateGetRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}

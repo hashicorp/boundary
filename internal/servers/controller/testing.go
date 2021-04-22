@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -129,9 +130,9 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
-		tc.b.DevAuthMethodId,
+		tc.b.DevPasswordAuthMethodId,
 		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevLoginName,
@@ -142,7 +143,12 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
-	return token.Item
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
@@ -150,9 +156,9 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.t.Error("no default auth method ID configured")
 		return nil
 	}
-	token, err := authmethods.NewClient(tc.Client()).Authenticate(
+	result, err := authmethods.NewClient(tc.Client()).Authenticate(
 		tc.Context(),
-		tc.b.DevAuthMethodId,
+		tc.b.DevPasswordAuthMethodId,
 		"login",
 		map[string]interface{}{
 			"login_name": tc.b.DevUnprivilegedLoginName,
@@ -163,7 +169,12 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.t.Error(fmt.Errorf("error logging in: %w", err))
 		return nil
 	}
-	return token.Item
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
+		tc.t.Error(fmt.Errorf("error unmarshaling token: %w", err))
+		return nil
+	}
+	return token
 }
 
 func (tc *TestController) addrs(purpose string) []string {
@@ -385,9 +396,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	if opts.DefaultAuthMethodId != "" {
-		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+		tc.b.DevPasswordAuthMethodId = opts.DefaultAuthMethodId
 	} else {
-		tc.b.DevAuthMethodId = DefaultTestAuthMethodId
+		tc.b.DevPasswordAuthMethodId = DefaultTestAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
@@ -429,7 +440,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	if opts.InitialResourcesSuffix != "" {
 		suffix := opts.InitialResourcesSuffix
-		tc.b.DevAuthMethodId = "ampw_" + suffix
+		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
 		tc.b.DevHostCatalogId = "hcst_" + suffix
 		tc.b.DevHostId = "hst_" + suffix
 		tc.b.DevHostSetId = "hsst_" + suffix
@@ -487,7 +498,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 					t.Fatal(err)
 				}
 				if !opts.DisableAuthMethodCreation {
-					if _, _, err := tc.b.CreateInitialAuthMethod(ctx); err != nil {
+					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
 					if !opts.DisableScopesCreation {
@@ -548,7 +559,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 	}
 	nextOpts := &TestControllerOpts{
 		DatabaseUrl:               tc.c.conf.DatabaseUrl,
-		DefaultAuthMethodId:       tc.c.conf.DevAuthMethodId,
+		DefaultAuthMethodId:       tc.c.conf.DevPasswordAuthMethodId,
 		RootKms:                   tc.c.conf.RootKms,
 		WorkerAuthKms:             tc.c.conf.WorkerAuthKms,
 		RecoveryKms:               tc.c.conf.RecoveryKms,

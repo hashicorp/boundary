@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/textproto"
 	"os"
 	"strings"
 	"time"
@@ -55,14 +58,15 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
-	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(commonWrappedHandler, nil)
+	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
+	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
 
 	return printablePathCheckHandler, nil
 }
 
 func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {
-	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using
-	// the a context now just in case this changes in the future
+	// Register*ServiceHandlerServer methods ignore the passed in ctx. Using it
+	// now however in case this changes in the future.
 	ctx := props.CancelCtx
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
@@ -103,14 +107,14 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, hs); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
+	accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account handler service: %w", err)
 	}
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+	authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, handlers.WithLogger(c.logger.Named("authmethod_service")))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
 	}
@@ -279,9 +283,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		case len(allowedOrigins) == 0:
 			// not valid
 
-		case len(allowedOrigins) == 1 &&
-			(allowedOrigins[0] == "*" ||
-				allowedOrigins[0] == "serve://boundary"):
+		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
 			valid = true
 
 		default:
@@ -315,6 +317,89 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.Header().Set("Access-Control-Max-Age", "300")
 			w.WriteHeader(http.StatusNoContent)
 			return
+		}
+
+		h.ServeHTTP(w, req)
+	})
+}
+
+type cmdAttrs struct {
+	Command    string      `json:"command,omitempty"`
+	Attributes interface{} `json:"attributes,omitempty"`
+}
+
+func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
+	logCallbackErrors := os.Getenv("BOUNDARY_LOG_CALLBACK_ERRORS") != ""
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// If this doesn't have a callback suffix on a supported action, serve
+		// normally
+		if !strings.HasSuffix(req.URL.Path, ":authenticate:callback") {
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		req.URL.Path = strings.TrimSuffix(req.URL.Path, ":callback")
+
+		// How we get the parameters changes based on the method. Right now only
+		// GET is supported with query args, but this can support POST with JSON
+		// or URL-encoded args. In those cases, the MIME type would have to be
+		// checked; for URL-encoded it'd use ParseForm like Get, and for JSON
+		// you'd use a json.RawMessage for Attributes consisting of the body. Or
+		// something very similar to that.
+		var useForm bool
+		switch req.Method {
+		case http.MethodGet:
+			if err := req.ParseForm(); err != nil {
+				if logCallbackErrors && c != nil {
+					c.logger.Trace("callback error", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+				}
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			useForm = true
+		}
+
+		attrs := &cmdAttrs{
+			Command: "callback",
+		}
+
+		switch {
+		case useForm:
+			if len(req.Form) > 0 {
+				values := make(map[string]interface{}, len(req.Form))
+				// This won't handle repeated values. That's fine, at least for now.
+				// We can address that if needed, which seems unlikely.
+				for k := range req.Form {
+					values[k] = req.Form.Get(k)
+				}
+				attrs.Attributes = values
+			}
+
+			attrBytes, err := json.Marshal(attrs)
+			if err != nil {
+				if logCallbackErrors && c != nil {
+					c.logger.Trace("callback error marshaling json", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			// If there is any existing body, close it as we're going to replace
+			// it. It shouldn't be populated in this code path, but you never
+			// know.
+			if req.Body != nil {
+				if err := req.Body.Close(); err != nil {
+					if logCallbackErrors && c != nil {
+						c.logger.Trace("callback error closing original request body", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+					}
+				}
+			}
+			bytesReader := bytes.NewReader(attrBytes)
+			req.Body = ioutil.NopCloser(bytesReader)
+			req.ContentLength = int64(bytesReader.Len())
+			req.Header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "application/json")
+			req.Method = http.MethodPost
 		}
 
 		h.ServeHTTP(w, req)

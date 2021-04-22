@@ -69,7 +69,8 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId                 string
+	DevPasswordAuthMethodId         string
+	DevOidcAuthMethodId             string
 	DevLoginName                    string
 	DevPassword                     string
 	DevUserId                       string
@@ -558,7 +559,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) er
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialAuthMethod(ctx); err != nil {
+	if _, _, err := b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 		return err
 	}
 

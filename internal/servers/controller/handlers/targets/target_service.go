@@ -88,20 +88,21 @@ func NewService(
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory) (Service, error) {
+	const op = "targets.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil target repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing target repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if serversRepoFn == nil {
-		return Service{}, fmt.Errorf("nil servers repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing servers repository")
 	}
 	if sessionRepoFn == nil {
-		return Service{}, fmt.Errorf("nil session repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
 	}
 	if staticHostRepoFn == nil {
-		return Service{}, fmt.Errorf("nil static host repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing static host repository")
 	}
 	return Service{
 		repoFn:           repoFn,
@@ -127,7 +128,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		// may have authorization on downstream scopes.
 		if authResults.Error == handlers.ForbiddenError() &&
 			req.GetRecursive() &&
-			authResults.Authenticated {
+			authResults.AuthenticationFinished {
 		} else {
 			return nil, authResults.Error
 		}
@@ -295,6 +296,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
 	}
@@ -496,7 +498,7 @@ HostSetIterationLoop:
 	case host.StaticSubtype:
 		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
-			return nil, fmt.Errorf("error looking up host: %w", err)
+			return nil, errors.New(errors.InvalidParameter, op, "errors looking up host")
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
@@ -590,6 +592,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error)
 }
 
 func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
+	const op = "targets.(Service).createInRepo"
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
 		opts = append(opts, target.WithDescription(item.GetDescription().GetValue()))
@@ -620,7 +623,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create target: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
@@ -629,6 +632,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
+	const op = "targets.(Service).updateInRepo"
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, target.WithDescription(desc.GetValue()))
@@ -668,7 +672,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update target: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -677,6 +681,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "targets.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -686,7 +691,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete target: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete target"))
 	}
 	return rows > 0, nil
 }
@@ -728,6 +733,7 @@ func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []str
 }
 
 func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+	const op = "targets.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -740,7 +746,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up target after setting host sets: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
@@ -749,6 +755,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 }
 
 func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+	const op = "targets.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -760,7 +767,7 @@ func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds [
 	}
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up target after removing host sets: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
@@ -866,13 +873,13 @@ func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetTargetRequest) error {
-	return handlers.ValidateGetRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, target.TcpTargetPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field is required to have a properly formatted project scope id."
 		}
 		if req.GetItem().GetName() == nil || req.GetItem().GetName().GetValue() == "" {
@@ -917,7 +924,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
-	return handlers.ValidateUpdateRequest(target.TcpTargetPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "name") && req.GetItem().GetName().GetValue() == "" {
 			badFields["name"] = "This field cannot be set to empty."
@@ -953,16 +960,16 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, target.TcpTargetPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
-	return handlers.ValidateDeleteRequest(target.TcpTargetPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, target.TcpTargetPrefix)
 }
 
 func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
@@ -977,7 +984,7 @@ func validateListRequest(req *pbs.ListTargetsRequest) error {
 
 func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -987,7 +994,7 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1000,14 +1007,14 @@ func validateAddRequest(req *pbs.AddTargetHostSetsRequest) error {
 
 func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1020,7 +1027,7 @@ func validateSetRequest(req *pbs.SetTargetHostSetsRequest) error {
 
 func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1030,7 +1037,7 @@ func validateRemoveRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 		badFields["host_set_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(static.HostSetPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) {
 			badFields["host_set_ids"] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1047,7 +1054,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 	scopeIdEmpty := req.GetScopeId() == ""
 	scopeNameEmpty := req.GetScopeName() == ""
 	if nameEmpty {
-		if !handlers.ValidId(target.TcpTargetPrefix, req.GetId()) {
+		if !handlers.ValidId(handlers.Id(req.GetId()), target.TcpTargetPrefix) {
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		if !scopeIdEmpty {

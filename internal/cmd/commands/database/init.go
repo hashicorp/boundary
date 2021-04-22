@@ -318,14 +318,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
-	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
+	am, user, err := c.srv.CreateInitialPasswordAuthMethod(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	authMethodInfo := &AuthInfo{
-		AuthMethodId:   c.srv.DevAuthMethodId,
+		AuthMethodId:   c.srv.DevPasswordAuthMethodId,
 		AuthMethodName: am.Name,
 		LoginName:      c.srv.DevLoginName,
 		Password:       c.srv.DevPassword,

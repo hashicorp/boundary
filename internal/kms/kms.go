@@ -2,7 +2,9 @@ package kms
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -12,6 +14,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/multiwrapper"
+	"golang.org/x/crypto/hkdf"
 )
 
 // ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
@@ -57,6 +60,8 @@ type Kms struct {
 	externalScopeCache      map[string]*ExternalWrappers
 	externalScopeCacheMutex sync.RWMutex
 
+	derivedPurposeCache sync.Map
+
 	repo *Repository
 }
 
@@ -81,6 +86,10 @@ func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
 // is exported.
 func (k *Kms) GetScopePurposeCache() *sync.Map {
 	return &k.scopePurposeCache
+}
+
+func (k *Kms) GetDerivedPurposeCache() *sync.Map {
+	return &k.derivedPurposeCache
 }
 
 // AddExternalWrappers allows setting the external keys.
@@ -151,7 +160,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions:
+	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc:
 	case KeyPurposeUnknown:
 		return nil, errors.New(errors.InvalidParameter, op, "missing key purpose")
 	default:
@@ -306,6 +315,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keys, err = repo.ListTokenKeys(ctx)
 	case KeyPurposeSessions:
 		keys, err = repo.ListSessionKeys(ctx)
+	case KeyPurposeOidc:
+		keys, err = repo.ListOidcKeys(ctx)
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -333,6 +344,8 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	case KeyPurposeSessions:
 		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
+	case KeyPurposeOidc:
+		keyVersions, err = repo.ListOidcKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
 	default:
 		return nil, errors.New(errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
 	}
@@ -362,4 +375,42 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	}
 
 	return multi, nil
+}
+
+// DerivedReader returns a reader from which keys can be read, using the
+// given wrapper, reader length limit, salt and context info. Salt and info can
+// be nil.
+//
+// Example:
+//	reader, _ := NewDerivedReader(wrapper, userId, jobId)
+// 	key := ed25519.GenerateKey(reader)
+func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byte) (*io.LimitedReader, error) {
+	const op = "kms.NewDerivedReader"
+	if wrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+	}
+	if lenLimit < 20 {
+		return nil, errors.New(errors.InvalidParameter, op, "lenLimit must be >= 20")
+	}
+	var aeadWrapper *aead.Wrapper
+	switch w := wrapper.(type) {
+	case *multiwrapper.MultiWrapper:
+		raw := w.WrapperForKeyID("__base__")
+		var ok bool
+		if aeadWrapper, ok = raw.(*aead.Wrapper); !ok {
+			return nil, errors.New(errors.InvalidParameter, op, "unexpected wrapper type from multiwrapper base")
+		}
+	case *aead.Wrapper:
+		if w.GetKeyBytes() == nil {
+			return nil, errors.New(errors.InvalidParameter, op, "aead wrapper missing bytes")
+		}
+		aeadWrapper = w
+	default:
+		return nil, errors.New(errors.InvalidParameter, op, "unknown wrapper type")
+	}
+	reader := hkdf.New(sha256.New, aeadWrapper.GetKeyBytes(), salt, info)
+	return &io.LimitedReader{
+		R: reader,
+		N: lenLimit,
+	}, nil
 }
