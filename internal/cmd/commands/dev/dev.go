@@ -2,10 +2,7 @@ package dev
 
 import (
 	"context"
-<<<<<<< HEAD
-=======
 	"crypto/ed25519"
->>>>>>> main
 	"fmt"
 	"net"
 	"net/url"
@@ -40,9 +37,6 @@ var (
 type Command struct {
 	*base.Server
 
-	UI      cli.Ui
-	Context context.Context
-
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
 	ReloadedCh    chan struct{}
@@ -76,25 +70,6 @@ type Command struct {
 	flagDatabaseUrl                  string
 	flagDatabaseImage                string
 	flagDisableDatabaseDestruction   bool
-}
-
-func NewCommand(server base.Server, ui cli.Ui) *Command {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ret := &Command{
-		Server:                &server,
-		UI:                    ui,
-		flagCombineLogs:       true,
-		flagTargetDefaultPort: 9200,
-		Context:               ctx,
-	}
-
-	go func() {
-		<-ret.ShutdownCh
-		cancel()
-	}()
-
-	return ret
 }
 
 func (c *Command) Synopsis() string {
