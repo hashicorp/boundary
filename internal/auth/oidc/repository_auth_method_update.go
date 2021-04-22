@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	OperationalStateField                  = "OperationalState"
 	DisableDiscoveredConfigValidationField = "DisableDiscoveredConfigValidation"
 	VersionField                           = "Version"
 	NameField                              = "Name"
