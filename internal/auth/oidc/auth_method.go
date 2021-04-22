@@ -106,6 +106,10 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 			a.SigningAlgs = append(a.SigningAlgs, string(alg))
 		}
 	}
+	if len(opts.withClaimsScopes) > 0 {
+		a.ClaimsScopes = make([]string, 0, len(opts.withClaimsScopes))
+		a.ClaimsScopes = append(a.ClaimsScopes, opts.withClaimsScopes...)
+	}
 
 	if a.OperationalState != string(InactiveState) {
 		if err := a.isComplete(); err != nil {
