@@ -117,7 +117,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	// encrypt
@@ -329,7 +329,7 @@ func (r *Repository) lookupPrivateCredentialStore(ctx context.Context, publicId 
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, pcs.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	if err := pcs.decrypt(ctx, databaseWrapper); err != nil {
@@ -578,12 +578,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected,
-			errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+			errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, db.NoRowsAffected,
-			errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"), errors.WithCode(errors.Encrypt))
+			errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	var token *Token

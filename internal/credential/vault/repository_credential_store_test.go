@@ -298,9 +298,8 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	tests := []struct {
-		name    string
-		tls     TestVaultTLS
-		wantErr errors.Code
+		name string
+		tls  TestVaultTLS
 	}{
 		{
 			name: "no-tls-valid-token",
@@ -355,11 +354,6 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			assert.Equal(orig.GetPublicId(), origLookup.GetPublicId())
 
 			got, err := repo.lookupPrivateCredentialStore(ctx, orig.GetPublicId())
-			if tt.wantErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
-				assert.Nil(got)
-				return
-			}
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
