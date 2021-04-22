@@ -25,7 +25,7 @@ func Test_LookupScope(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(foundScope.PublicId, user.ScopeId)
 
-		user2 := allocUser()
+		user2 := AllocUser()
 		user2.PublicId = user.PublicId
 		foundScope, err = LookupScope(context.Background(), w, user)
 		require.NoError(err)
@@ -46,7 +46,7 @@ func Test_LookupScope(t *testing.T) {
 		assert.Nil(s)
 		assert.Equal("iam.LookupScope: missing resource: parameter violation: error #100", err.Error())
 
-		user2 := allocUser()
+		user2 := AllocUser()
 		s, err = LookupScope(context.Background(), w, &user2)
 		assert.Nil(s)
 		assert.Contains(err.Error(), "iam.LookupScope: missing public id: parameter violation: error #100")
