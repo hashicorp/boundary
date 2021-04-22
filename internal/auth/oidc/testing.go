@@ -110,7 +110,7 @@ func TestAuthMethod(
 	}
 
 	authMethod.OperationalState = string(state)
-	rowsUpdated, err := rw.Update(ctx, authMethod, []string{"OperationalState"}, nil)
+	rowsUpdated, err := rw.Update(ctx, authMethod, []string{OperationalStateField}, nil)
 	require.NoError(err)
 	require.True(rowsUpdated == 0 || rowsUpdated == 1)
 
