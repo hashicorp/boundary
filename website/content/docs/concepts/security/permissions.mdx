@@ -36,6 +36,21 @@ level action infers being granted all subactions. Thus, if a grant conveys
 grant conveys `read:self`, it will match the API action `read:self` but will not
 match `read`.
 
+## The `no-op` Action
+
+Starting in Boundary 0.2.1 there is an action that can be granted called
+`no-op`. As might be apparent, `no-op` is not used for any real action in
+Boundary; the purpose of this action is for listing visibility. Boundary only
+shows resources in the output of a `list` action for which a user has at least
+one granted action. Thus, without `no-op`, in order for a resource to be visible
+in a list, a different action such as `read` would have to be granted to a user.
+This could result in exposing more information than desired, especially in the
+case of listing scopes and authentication methods so that users can perform
+initial authentication to Boundary (that is, granting access to `u_anon`).
+
+By granting the `no-op` action to users, they can see the resources in the
+output of a list command without needing other capability grants as well.
+
 ## Applicable Resource Types
 
 Boundary's [domain model](/docs/concepts/domain-model) is based on resource
