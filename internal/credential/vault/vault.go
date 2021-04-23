@@ -122,3 +122,11 @@ func (c *client) LookupToken() (*vault.Secret, error) {
 	}
 	return t, nil
 }
+
+// SwapToken replaces the token in the Vault client with t and returns the
+// token that was replaced.
+func (c *client) SwapToken(new string) (old string) {
+	old = c.cl.Token()
+	c.cl.SetToken(new)
+	return
+}

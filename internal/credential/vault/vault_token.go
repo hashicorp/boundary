@@ -138,7 +138,7 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 
 func (t *Token) oplogMessage(opType db.OpType) *oplog.Message {
 	msg := oplog.Message{
-		Message:  t,
+		Message:  t.clone(),
 		TypeName: t.TableName(),
 	}
 	switch opType {

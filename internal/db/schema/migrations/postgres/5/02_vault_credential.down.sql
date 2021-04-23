@@ -1,5 +1,8 @@
 begin;
 
+  drop view credential_vault_store_agg_public;
+  drop view credential_vault_store_client_private;
+
   delete from oplog_ticket
    where name in ('credential_vault_library',
                   'credential_vault_store',
@@ -11,6 +14,8 @@ begin;
   drop table credential_vault_token;
   drop table credential_vault_token_status_enm;
   drop table credential_vault_store;
+
+  drop function insert_credential_vault_token;
 
 commit;
 

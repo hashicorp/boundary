@@ -88,7 +88,6 @@ begin;
         on update cascade,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version,
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
@@ -113,9 +112,6 @@ begin;
     on credential_vault_token (store_id)
     where status = 'current';
 
-  create trigger update_version_column after update on credential_vault_token
-    for each row execute procedure update_version_column();
-
   create trigger update_time_column before update on credential_vault_token
     for each row execute procedure update_time_column();
 
@@ -124,6 +120,24 @@ begin;
 
   create trigger immutable_columns before update on credential_vault_token
     for each row execute procedure immutable_columns('token_sha256', 'token', 'store_id','create_time');
+
+  -- insert_credential_vault_token() is a before insert trigger
+  -- function for credential_vault_token that changes the status of the current
+  -- token to 'maintaining'
+  create or replace function insert_credential_vault_token()
+    returns trigger
+  as $$
+  begin
+    update credential_vault_token
+       set status   = 'maintaining'
+     where store_id = new.store_id
+       and status   = 'current';
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_credential_vault_token before insert on credential_vault_token
+    for each row execute procedure insert_credential_vault_token();
 
   create table credential_vault_client_certificate (
     store_id wt_public_id primary key
@@ -148,7 +162,7 @@ begin;
     'A credential_vault_store can have 0 or 1 client certificates.';
 
   create trigger immutable_columns before update on credential_vault_client_certificate
-    for each row execute procedure immutable_columns('scope_id', 'certificate', 'certificate_key');
+    for each row execute procedure immutable_columns('store_id');
 
   create table credential_vault_library (
     public_id wt_public_id primary key,
@@ -261,5 +275,77 @@ begin;
     ('credential_vault_store', 1),
     ('credential_vault_library', 1),
     ('credential_vault_lease', 1) ;
+
+     create view credential_vault_store_client_private as
+     with
+     current_tokens as (
+        select token_sha256,
+               token, -- encrypted
+               store_id,
+               create_time,
+               update_time,
+               last_renewal_time,
+               expiration_time,
+               key_id,
+               status
+          from credential_vault_token
+         where status = 'current'
+     )
+     select store.public_id         as public_id,
+            store.scope_id          as scope_id,
+            store.name              as name,
+            store.description       as description,
+            store.create_time       as create_time,
+            store.update_time       as update_time,
+            store.version           as version,
+            store.vault_address     as vault_address,
+            store.namespace         as namespace,
+            store.ca_cert           as ca_cert,
+            store.tls_server_name   as tls_server_name,
+            store.tls_skip_verify   as tls_skip_verify,
+            store.public_id         as store_id,
+            token.token_sha256      as token_sha256,
+            token.token             as ct_token, -- encrypted
+            token.create_time       as token_create_time,
+            token.update_time       as token_update_time,
+            token.last_renewal_time as token_last_renewal_time,
+            token.expiration_time   as token_expiration_time,
+            token.key_id            as token_key_id,
+            token.status            as token_status,
+            cert.certificate        as client_cert,
+            cert.certificate_key    as ct_client_key, -- encrypted
+            cert.key_id             as client_key_id
+       from credential_vault_store store
+  left join current_tokens token
+         on store.public_id = token.store_id
+  left join credential_vault_client_certificate cert
+         on store.public_id = cert.store_id;
+  comment on view credential_vault_store_client_private is
+    'credential_vault_store_client_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_store_agg_public as
+     select public_id,
+            scope_id,
+            name,
+            description,
+            create_time,
+            update_time,
+            version,
+            vault_address,
+            namespace,
+            ca_cert,
+            tls_server_name,
+            tls_skip_verify,
+            token_sha256,
+            token_create_time,
+            token_update_time,
+            token_last_renewal_time,
+            token_expiration_time,
+            client_cert
+       from credential_vault_store_client_private;
+  comment on view credential_vault_store_agg_public is
+    'credential_vault_store_agg_public is a view where each row contains a credential store. '
+    'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
 commit;

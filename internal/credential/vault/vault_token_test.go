@@ -18,7 +18,6 @@ import (
 func TestToken_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	rw := db.New(conn)
 
 	kkms := kms.TestKms(t, conn, wrapper)
 
@@ -113,29 +112,7 @@ func TestToken_New(t *testing.T) {
 			assert.Equal(want, got)
 
 			require.NoError(got.encrypt(ctx, databaseWrapper))
-
-			query, queryValues := got.insertQuery()
-
-			rows, err2 := rw.Exec(ctx, query, queryValues)
-			assert.Equal(1, rows)
-			assert.NoError(err2)
-
-			insertedToken := allocToken()
-			require.NoError(rw.LookupWhere(ctx, &insertedToken, "token_sha256 = ?", got.TokenSha256))
-			require.NoError(insertedToken.decrypt(ctx, databaseWrapper))
-
-			gotExpirationDuration := subtract(t, insertedToken.LastRenewalTime, insertedToken.ExpirationTime)
-			assert.Equal(tt.want.expiration, gotExpirationDuration)
-
-			// TODO(mgaffney) 04/2021: Move to repository tests
-			/*
-				got.CreateTime = insertedToken.CreateTime
-				got.UpdateTime = insertedToken.UpdateTime
-				got.LastRenewalTime = insertedToken.LastRenewalTime
-				got.ExpirationTime = insertedToken.ExpirationTime
-
-				assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
-			*/
+			require.NoError(got.decrypt(ctx, databaseWrapper))
 		})
 	}
 }

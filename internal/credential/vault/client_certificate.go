@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -83,4 +85,37 @@ func (c *ClientCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
+}
+
+func (c *ClientCertificate) insertQuery() (query string, queryValues []interface{}) {
+	query = upsertClientCertQuery
+	queryValues = []interface{}{
+		c.StoreId,
+		c.Certificate,
+		c.CtCertificateKey,
+		c.KeyId,
+	}
+	return
+}
+
+func (c *ClientCertificate) deleteQuery() (query string, queryValues []interface{}) {
+	query = deleteClientCertQuery
+	queryValues = []interface{}{
+		c.StoreId,
+	}
+	return
+}
+
+func (c *ClientCertificate) oplogMessage(opType db.OpType) *oplog.Message {
+	msg := oplog.Message{
+		Message:  c.clone(),
+		TypeName: c.TableName(),
+	}
+	switch opType {
+	case db.CreateOp, db.UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case db.DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	}
+	return &msg
 }
