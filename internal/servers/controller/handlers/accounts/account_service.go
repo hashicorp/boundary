@@ -52,6 +52,7 @@ var (
 	// individual resources
 	IdActions = map[auth.SubType]action.ActionSet{
 		auth.PasswordSubtype: {
+			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
@@ -59,6 +60,7 @@ var (
 			action.ChangePassword,
 		},
 		auth.OidcSubtype: {
+			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,

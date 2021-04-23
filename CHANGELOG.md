@@ -29,6 +29,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/1155))
 * api: Return `204` instead of an empty object on successful `delete` operations
   ([PR](https://github.com/hashicorp/boundary/pull/1155))
+* actions: The new `no-op` action allows a grant to be given to a principals
+  without conveying any actionable result. Since resources do not appear in list
+  results if the principal has no actions granted on that resource, this can be
+  used to allow principals to see values in list results without also giving
+  `read` or other capabilities on the resources. The default scope permissions
+  have been updated to convey `no-op,list` instead of `read,list`.
+  [PR](https://github.com/hashicorp/boundary/pull/1138)
+* cli/api/sdk: User resources have new attributes for:
+  * Primary Account ID
+  * Login Name
+  * Full Name
+  * Email
+  These new user attributes correspond to attributes from the user's primary
+  auth method account.  These attributes will be empty when the user has no
+  account in the primary auth method for their scope, or there is no designated
+  primary auth method for their scope. 
 
 ### Bug Fixes
 
