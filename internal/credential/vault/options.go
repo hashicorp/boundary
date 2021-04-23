@@ -22,10 +22,14 @@ type options struct {
 	withTlsServerName string
 	withTlsSkipVerify bool
 	withClientCert    *ClientCertificate
+	withMethod        Method
+	withRequestBody   string
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withMethod: MethodGet,
+	}
 }
 
 // WithDescription provides an optional description.
@@ -89,5 +93,21 @@ func WithTlsSkipVerify(skipVerify bool) Option {
 func WithClientCert(clientCert *ClientCertificate) Option {
 	return func(o *options) {
 		o.withClientCert = clientCert
+	}
+}
+
+// WithMethod provides an optional Method to use for communicating with
+// Vault.
+func WithMethod(m Method) Option {
+	return func(o *options) {
+		o.withMethod = m
+	}
+}
+
+// WithRequestBody provides an optional request body for sending to Vault
+// when requesting credentials using HTTP Post.
+func WithRequestBody(b string) Option {
+	return func(o *options) {
+		o.withRequestBody = b
 	}
 }
