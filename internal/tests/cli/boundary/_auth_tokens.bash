@@ -20,3 +20,15 @@ function token_id() {
   local tid=$1
   strip $(read_token $tid | jq '.item.id') 
 }
+
+function logout_cmd() {
+  boundary logout
+}
+
+function get_token() {
+  boundary config get-token
+}
+
+function read_token_no_keyring() {
+  boundary auth-tokens read -keyring-type=none -id $1
+}

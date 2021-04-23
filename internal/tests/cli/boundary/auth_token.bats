@@ -48,9 +48,25 @@ export NEW_USER='test'
 @test "boundary/token: can delete own token with id given" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
-  local tid=$(token_id "self")
-  run delete_token "$tid"
+  run token_id "self"
   [ "$status" -eq 0 ]
-  run read_token "$tid"
+  tid=$(echo "$output")
+  run delete_token $tid
+  [ "$status" -eq 0 ]
+  run read_token $tid
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/token/logout: can logout" {
+  run login $DEFAULT_UNPRIVILEGED_LOGIN
+  [ "$status" -eq 0 ]
+  run get_token
+  [ "$status" -eq 0 ]
+  local tid=$(token_id "self")
+  run logout_cmd
+  [ "$status" -eq 0 ]
+  run get_token
+  [ "$status" -eq 2 ]
+  run read_token_no_keyring $tid
   [ "$status" -eq 1 ]
 }

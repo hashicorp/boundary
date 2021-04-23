@@ -4,6 +4,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Permissions in new scope default roles have been updated to include support
+  for `list`, `read:self`, and `delete:self` on `auth-token` resources. This
+  allows a user to list and manage their own authentication tokens. (As is the
+  case with other resources, `list` will still be limited to returning tokens on
+  which the user has authorization to perform actions, so granting this
+  capability does not automatically give user the ability to list other users'
+  authentication tokens.)
+
 ### New and Improved
 
 * cli/api/sdk: New User's attributes for: 
@@ -16,6 +26,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   from the user's primary auth method account.  These attributes will be empty
   when the user has no account in the primary auth method for their scope, or
   there is no designated primary auth method for their scope. 
+* cli: Support for reading and deleting the user's own token via the new
+  `read:self` and `delete:self` actions on auth tokens. If no token ID is
+  provided, the stored token's ID will be used (after prompting), or `"self"`
+  can be set to the ID to trigger this behavior without prompting.
+  ([PR](https://github.com/hashicorp/boundary/pull/1162))
+* cli: New `logout` command deletes the current token in Boundary and forgets it
+  from the local system credential store
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
 
 
 ### Bug Fixes
