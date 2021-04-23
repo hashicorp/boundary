@@ -1,12 +1,59 @@
 package authtokenscmd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/sdk/strutil"
 )
+
+func init() {
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+}
+
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, _ *[]authtokens.Option) bool {
+	if c.Func != "delete" && c.Func != "read" {
+		if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
+			c.PrintCliError(errors.New("ID is required but not passed in via -id"))
+			return false
+		}
+		return true
+	}
+
+	if c.FlagId == "" {
+		fmt.Printf("No ID provided; %s the stored token? (Pass an ID of %q to suppress this question.) y/n: ", c.Func, "self")
+		var yesNo string
+		fmt.Scanf("%s", &yesNo)
+		switch yesNo {
+		case "y", "Y":
+			c.FlagId = "self"
+		default:
+			c.PrintCliError(errors.New(`"Y" or "y" not provided, refusing to continue`))
+			return false
+		}
+	}
+
+	if c.FlagId == "self" {
+		// We should have already read this and have it cached
+		client, err := c.Client()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error reading cached API client: %w", err))
+			return false
+		}
+		split := strings.Split(client.Token(), "_")
+		if len(split) < 3 {
+			c.PrintCliError(errors.New("Unexpected stored token format"))
+			return false
+		}
+		c.FlagId = strings.Join(split[0:2], "_")
+	}
+
+	return true
+}
 
 func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 	if len(items) == 0 {

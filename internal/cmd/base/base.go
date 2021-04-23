@@ -126,7 +126,7 @@ func MakeShutdownCh() chan struct{} {
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
 func (c *Command) Client(opt ...Option) (*api.Client, error) {
-	// Read the test client if present
+	// Read the cached client if present
 	if c.client != nil {
 		return c.client, nil
 	}

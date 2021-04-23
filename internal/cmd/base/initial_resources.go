@@ -62,6 +62,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		"id=*;type=scope;actions=list,read",
 		"id=*;type=auth-method;actions=authenticate,list",
 		"id={{account.id}};actions=read,change-password",
+		"id=*;type=auth-token;actions=list,read:self,delete:self",
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
