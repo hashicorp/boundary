@@ -40,6 +40,7 @@ const (
 	ReadSelf         Type = 31
 	CancelSelf       Type = 32
 	ChangeState      Type = 33
+	NoOp             Type = 34
 )
 
 var Map = map[string]Type{
@@ -76,6 +77,7 @@ var Map = map[string]Type{
 	ReadSelf.String():         ReadSelf,
 	CancelSelf.String():       CancelSelf,
 	ChangeState.String():      ChangeState,
+	NoOp.String():             NoOp,
 }
 
 func (a Type) String() string {
@@ -114,6 +116,7 @@ func (a Type) String() string {
 		"read:self",
 		"cancel:self",
 		"change-state",
+		"no-op",
 	}[a]
 }
 

@@ -32,6 +32,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"}
+
 func createDefaultUserAndRepo(t *testing.T, withAccts bool) (*iam.User, []string, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -92,7 +94,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:       u.CreateTime.GetTimestamp(),
 		UpdatedTime:       u.UpdateTime.GetTimestamp(),
 		Version:           u.Version,
-		AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+		AuthorizedActions: testAuthorizedActions,
 		LoginName:         u.LoginName,
 		FullName:          u.GetFullName(),
 		Email:             u.GetEmail(),
@@ -216,7 +218,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       u.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       u.GetUpdateTime().GetTimestamp(),
 			Version:           2,
-			AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+			AuthorizedActions: testAuthorizedActions,
 			LoginName:         oidcAcct.GetSubject(),
 			FullName:          oidcAcct.GetFullName(),
 			Email:             oidcAcct.GetEmail(),
@@ -396,7 +398,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -415,7 +417,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -523,7 +525,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -546,7 +548,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -599,7 +601,7 @@ func TestUpdate(t *testing.T) {
 					Scope:             &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -622,7 +624,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -645,7 +647,7 @@ func TestUpdate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:       u.GetCreateTime().GetTimestamp(),
-					AuthorizedActions: []string{"read", "update", "delete", "add-accounts", "set-accounts", "remove-accounts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -981,7 +983,8 @@ func TestSetAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				_, _ = iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 
 			tc.setup(usr)
@@ -1060,7 +1063,6 @@ func TestRemoveAccount(t *testing.T) {
 
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-
 	oidcAm := oidc.TestAuthMethod(
 		t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState,
 		"alice-rp", "fido",
@@ -1143,7 +1145,8 @@ func TestRemoveAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				_, _ = iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				require.NoError(t, err)
 			}()
 			tc.setup(usr)
 			req := &pbs.RemoveUserAccountsRequest{
