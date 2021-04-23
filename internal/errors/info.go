@@ -188,8 +188,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "external system unavailable",
 		Kind:    External,
 	},
-	VaultTokenNotOrphaned: {
-		Message: "vault token is not an orphaned token",
+	VaultTokenNotOrphan: {
+		Message: "vault token is not an orphan token",
 		Kind:    External,
 	},
 	VaultTokenNotPeriodic: {

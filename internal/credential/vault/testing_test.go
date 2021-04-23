@@ -134,7 +134,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 			lookupChkFn: assertIsNotPeriodic(),
 		},
 		{
-			name:        "NotOrphaned",
+			name:        "NotOrphan",
 			opts:        []TestOption{TestOrphanToken(false)},
 			tokenChkFn:  combine(assertIsRenewable(), assertIsNotOrphan()),
 			lookupChkFn: assertIsPeriodic(),
