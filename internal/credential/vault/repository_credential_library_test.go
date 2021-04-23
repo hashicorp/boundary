@@ -69,14 +69,16 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			name: "valid-no-options",
 			in: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
+					StoreId:    cs.GetPublicId(),
+					HttpMethod: "GET",
+					VaultPath:  "/some/path",
 				},
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
+					StoreId:    cs.GetPublicId(),
+					HttpMethod: "GET",
+					VaultPath:  "/some/path",
 				},
 			},
 		},
@@ -84,16 +86,18 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			name: "valid-with-name",
 			in: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					Name:      "test-name-repo",
-					VaultPath: "/some/path",
+					StoreId:    cs.GetPublicId(),
+					HttpMethod: "GET",
+					Name:       "test-name-repo",
+					VaultPath:  "/some/path",
 				},
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					Name:      "test-name-repo",
-					VaultPath: "/some/path",
+					StoreId:    cs.GetPublicId(),
+					HttpMethod: "GET",
+					Name:       "test-name-repo",
+					VaultPath:  "/some/path",
 				},
 			},
 		},
@@ -102,6 +106,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			in: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "GET",
 					Description: ("test-description-repo"),
 					VaultPath:   "/some/path",
 				},
@@ -109,6 +114,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "GET",
 					Description: ("test-description-repo"),
 					VaultPath:   "/some/path",
 				},
@@ -154,9 +160,10 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		in := &CredentialLibrary{
 			CredentialLibrary: &store.CredentialLibrary{
-				StoreId:   cs.GetPublicId(),
-				VaultPath: "/some/path",
-				Name:      "test-name-repo",
+				StoreId:    cs.GetPublicId(),
+				HttpMethod: "GET",
+				VaultPath:  "/some/path",
+				Name:       "test-name-repo",
 			},
 		}
 
@@ -189,8 +196,9 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 		in := &CredentialLibrary{
 			CredentialLibrary: &store.CredentialLibrary{
-				VaultPath: "/some/path",
-				Name:      "test-name-repo",
+				HttpMethod: "GET",
+				VaultPath:  "/some/path",
+				Name:       "test-name-repo",
 			},
 		}
 		in2 := in.clone()

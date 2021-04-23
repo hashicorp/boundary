@@ -10,6 +10,7 @@ begin;
 
   drop table credential_vault_lease;
   drop table credential_vault_library;
+  drop table credential_vault_http_method_enm;
   drop table credential_vault_client_certificate;
   drop table credential_vault_token;
   drop table credential_vault_token_status_enm;

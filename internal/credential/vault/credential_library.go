@@ -7,6 +7,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// A Method represents an HTTP method used for communicating with Vault.
+type Method string
+
+// HTTP methods use for communicating with Vault.
+const (
+	MethodGet  Method = "GET"
+	MethodPost Method = "POST"
+)
+
 // A CredentialLibrary contains a Vault path and is owned by a credential
 // store.
 type CredentialLibrary struct {
@@ -16,7 +25,7 @@ type CredentialLibrary struct {
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
 // for a Vault backend at vaultPath assigned to storeId.
-// Name and description are the only valid options.
+// Name, description, method, and request body are the only valid options.
 // All other options are ignored.
 func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*CredentialLibrary, error) {
 	const op = "vault.NewCredentialLibrary"
@@ -28,14 +37,21 @@ func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*Cre
 	}
 
 	opts := getOpts(opt...)
+	if opts.withRequestBody != "" && opts.withMethod != MethodPost {
+		return nil, errors.New(errors.InvalidParameter, op, "a request body is only allowed with an HTTP POST method")
+	}
+
 	l := &CredentialLibrary{
 		CredentialLibrary: &store.CredentialLibrary{
-			StoreId:     storeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			VaultPath:   vaultPath,
+			StoreId:         storeId,
+			Name:            opts.withName,
+			Description:     opts.withDescription,
+			VaultPath:       vaultPath,
+			HttpRequestBody: opts.withRequestBody,
+			HttpMethod:      string(opts.withMethod),
 		},
 	}
+
 	return l, nil
 }
 
