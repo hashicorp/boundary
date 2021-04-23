@@ -22,7 +22,7 @@ import (
 // changed. cs must not contain a PublicId. The PublicId is generated and
 // assigned by this method. cs must contain a valid ScopeId, VaultAddress,
 // and Vault token. The Vault token must be renewable, periodic, and
-// orphaned. CreateCredentialStore calls the /auth/token/renew-self and
+// orphan. CreateCredentialStore calls the /auth/token/renew-self and
 // /auth/token/lookup-self Vault endpoints.
 //
 // Both cs.Name and cs.Description are optional. If cs.Name is set, it must
@@ -214,14 +214,14 @@ func validateTokenLookup(op errors.Op, s *vault.Secret) error {
 	}
 
 	if s.Data["orphan"] == nil {
-		return errors.E(errors.WithCode(errors.VaultTokenNotOrphaned), errors.WithOp(op))
+		return errors.E(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
-	orphaned, err := parseutil.ParseBool(s.Data["orphan"])
+	orphan, err := parseutil.ParseBool(s.Data["orphan"])
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
-	if !orphaned {
-		return errors.E(errors.WithCode(errors.VaultTokenNotOrphaned), errors.WithOp(op))
+	if !orphan {
+		return errors.E(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
 
 	if s.Data["period"] == nil {

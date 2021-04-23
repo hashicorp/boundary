@@ -87,7 +87,7 @@ const (
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 
 	// Vault specific errors
-	VaultTokenNotOrphaned  Code = 3010 // VaultTokenNotOrphaned represents an error for a Vault token that is not an orphaned token
+	VaultTokenNotOrphan    Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
 	VaultTokenNotPeriodic  Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
 	VaultTokenNotRenewable Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
 )

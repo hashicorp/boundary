@@ -138,9 +138,9 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			wantErr:   errors.VaultTokenNotRenewable,
 		},
 		{
-			name:      "no-tls-token-not-orphaned",
+			name:      "no-tls-token-not-orphan",
 			tokenOpts: []TestOption{TestOrphanToken(false)},
-			wantErr:   errors.VaultTokenNotOrphaned,
+			wantErr:   errors.VaultTokenNotOrphan,
 		},
 		{
 			name:      "no-tls-token-not-periodic",
@@ -1062,9 +1062,9 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			wantErr:      errors.VaultTokenNotRenewable,
 		},
 		{
-			name:         "token-not-orphaned",
+			name:         "token-not-orphan",
 			newTokenOpts: []TestOption{TestOrphanToken(false)},
-			wantErr:      errors.VaultTokenNotOrphaned,
+			wantErr:      errors.VaultTokenNotOrphan,
 		},
 		{
 			name:         "token-not-periodic",

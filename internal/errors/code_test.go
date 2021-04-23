@@ -243,9 +243,9 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Unavailable,
 		},
 		{
-			name: "VaultTokenNotOrphaned",
-			c:    VaultTokenNotOrphaned,
-			want: VaultTokenNotOrphaned,
+			name: "VaultTokenNotOrphan",
+			c:    VaultTokenNotOrphan,
+			want: VaultTokenNotOrphan,
 		},
 		{
 			name: "VaultTokenNotPeriodic",
