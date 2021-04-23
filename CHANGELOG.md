@@ -9,6 +9,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * API `delete` actions now result in a `204` status code and no body when
   successful. This was not the case previously due to a technical limitation
   which has now been solved.
+* When using a `delete` command we now either show success or treat the `404`
+  error the same as any other `404` error, that is, it results in a non-zero
+  status code and an error message. This makes `delete` actions behave the same
+  as other commands, all of which pass through errors to the CLI. Given `-format
+  json` capability, it's relatively easy to perform a check to see whether an
+  error was `404` or something else from within scripts, in conjunction with
+  checking that the returned status code matches the API error status code
+  (`1`).
 * When outputting from the CLI in JSON format, the resource information under
   `item` or `items` (depending on the action) now exactly matches the JSON sent
   across the wire by the controller, as opposed to matching the Go SDK
@@ -16,12 +24,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   having Go-specific types. This includes `delete` actions which previously
   would show an object indicating existence, but now show no `item` on success
   or the API's `404` error.
-* When using a `delete` command we now either show success or treat the `404`
-  error the same as any other `404` error, that is, it results in a non-zero
-  status code and an error message. This makes `delete` actions behave the same
-  as other commands, all of which pass through errors to the CLI. Given `-format
-  json` capability, it's relatively easy to perform a check to see whether an
-  error was `404` or something else.
+* Permissions in new scope default roles have been updated to include support
+  for `list`, `read:self`, and `delete:self` on `auth-token` resources. This
+  allows a user to list and manage their own authentication tokens. (As is the
+  case with other resources, `list` will still be limited to returning tokens on
+  which the user has authorization to perform actions, so granting this
+  capability does not automatically give user the ability to list other users'
+  authentication tokens.)
 
 ### New and Improved
 
@@ -42,9 +51,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * Full Name
   * Email
   These new user attributes correspond to attributes from the user's primary
-  auth method account.  These attributes will be empty when the user has no
+  auth method account. These attributes will be empty when the user has no
   account in the primary auth method for their scope, or there is no designated
-  primary auth method for their scope. 
+  primary auth method for their scope.
+* cli: Support for reading and deleting the user's own token via the new
+  `read:self` and `delete:self` actions on auth tokens. If no token ID is
+  provided, the stored token's ID will be used (after prompting), or `"self"`
+  can be set to the ID to trigger this behavior without prompting.
+  ([PR](https://github.com/hashicorp/boundary/pull/1162))
+* cli: New `logout` command deletes the current token in Boundary and forgets it
+  from the local system credential store
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
 
 ### Bug Fixes
 
@@ -274,10 +291,11 @@ database migrate` command.
 
 * controller/worker: Require names to be all lowercase. This removes ambiguity
   or accidental mismatching when using upcoming filtering features.
-* api/cli: Due to visibility changes on collection listing, a list
-  will not include any resources if the user only has `list` as an authorized action.
-  As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
-  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
+* api/cli: Due to visibility changes on collection listing, a list will not
+  include any resources if the user only has `list` as an authorized action. As
+  a result `scope list`, which is used by the UI to populate the login scope
+  dropdown, will be empty if the role granting the `u_anon` user `list`
+  privileges is not updated to also contain a `read` action
 
 ### New and Improved
 
@@ -290,13 +308,14 @@ database migrate` command.
 * api/cli: Most resource types now support recursive listing, allowing listing
   to occur down a scope tree
   ([PR](https://github.com/hashicorp/boundary/pull/885))
-* cli: Add a `database migrate` command which updates a database's schema to 
-  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
+* cli: Add a `database migrate` command which updates a database's schema to the
+  version supported by the boundary binary
+  ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
-* controller/db: Correctly check if db init previously completed successfully 
-  when starting a controller or when running `database init` 
+* controller/db: Correctly check if db init previously completed successfully
+  when starting a controller or when running `database init`
   ([Issue](https://github.com/hashicorp/boundary/issues/805))
   ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
@@ -305,8 +324,8 @@ database migrate` command.
   fetches the current version
   ([Issue](https://github.com/hashicorp/boundary/issues/856))
   ([PR](https://github.com/hashicorp/boundary/pull/858))
-* db: Fix panic in `database init` when controller config block is missing 
-  ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
+* db: Fix panic in `database init` when controller config block is missing
+  ([Issue](https://github.com/hashicorp/boundary/issues/819))
   ([PR](https://github.com/hashicorp/boundary/pull/851))
 
 ## 0.1.4 (2021/01/05)
@@ -346,8 +365,8 @@ database migrate` command.
   ([PR](https://github.com/hashicorp/boundary/pull/831))
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
-* controller: Relax account login name constraints to allow dash as valid character 
-  ([Issue](https://github.com/hashicorp/boundary/issues/759))
+* controller: Relax account login name constraints to allow dash as valid
+  character ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
 * cli/connect/http: Pass endpoint address through to allow setting TLS server
   name directly in most cases

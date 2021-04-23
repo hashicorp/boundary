@@ -129,11 +129,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
-		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
-		return base.CommandUserError
-	}
-
 	var opts []authtokens.Option
 
 	if strutil.StrListContains(flagsMap[c.Func], "scope-id") {
