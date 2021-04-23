@@ -16,16 +16,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* cli/api/sdk: New User's attributes for: 
+* actions: The new `no-op` action allows a grant to be given to a principals
+  without conveying any actionable result. Since resources do not appear in list
+  results if the principal has no actions granted on that resource, this can be
+  used to allow principals to see values in list results without also giving
+  `read` or other capabilities on the resources. The default scope permissions
+  have been updated to convey `no-op,list` instead of `read,list`.
+  [PR](https://github.com/hashicorp/boundary/pull/1138)
+* cli/api/sdk: User resources have new attributes for:
   * Primary Account ID
   * Login Name
-  * Full Name 
-  * Email    
-
-  These new user attributes correspond to attributes
-  from the user's primary auth method account.  These attributes will be empty
-  when the user has no account in the primary auth method for their scope, or
-  there is no designated primary auth method for their scope. 
+  * Full Name
+  * Email
+  These new user attributes correspond to attributes from the user's primary
+  auth method account. These attributes will be empty when the user has no
+  account in the primary auth method for their scope, or there is no designated
+  primary auth method for their scope.
 * cli: Support for reading and deleting the user's own token via the new
   `read:self` and `delete:self` actions on auth tokens. If no token ID is
   provided, the stored token's ID will be used (after prompting), or `"self"`
@@ -34,7 +40,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: New `logout` command deletes the current token in Boundary and forgets it
   from the local system credential store
   ([PR](https://github.com/hashicorp/boundary/pull/1134))
-
 
 ### Bug Fixes
 
@@ -264,10 +269,11 @@ database migrate` command.
 
 * controller/worker: Require names to be all lowercase. This removes ambiguity
   or accidental mismatching when using upcoming filtering features.
-* api/cli: Due to visibility changes on collection listing, a list
-  will not include any resources if the user only has `list` as an authorized action.
-  As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
-  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
+* api/cli: Due to visibility changes on collection listing, a list will not
+  include any resources if the user only has `list` as an authorized action. As
+  a result `scope list`, which is used by the UI to populate the login scope
+  dropdown, will be empty if the role granting the `u_anon` user `list`
+  privileges is not updated to also contain a `read` action
 
 ### New and Improved
 
@@ -280,13 +286,14 @@ database migrate` command.
 * api/cli: Most resource types now support recursive listing, allowing listing
   to occur down a scope tree
   ([PR](https://github.com/hashicorp/boundary/pull/885))
-* cli: Add a `database migrate` command which updates a database's schema to 
-  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
+* cli: Add a `database migrate` command which updates a database's schema to the
+  version supported by the boundary binary
+  ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
-* controller/db: Correctly check if db init previously completed successfully 
-  when starting a controller or when running `database init` 
+* controller/db: Correctly check if db init previously completed successfully
+  when starting a controller or when running `database init`
   ([Issue](https://github.com/hashicorp/boundary/issues/805))
   ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
@@ -295,8 +302,8 @@ database migrate` command.
   fetches the current version
   ([Issue](https://github.com/hashicorp/boundary/issues/856))
   ([PR](https://github.com/hashicorp/boundary/pull/858))
-* db: Fix panic in `database init` when controller config block is missing 
-  ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
+* db: Fix panic in `database init` when controller config block is missing
+  ([Issue](https://github.com/hashicorp/boundary/issues/819))
   ([PR](https://github.com/hashicorp/boundary/pull/851))
 
 ## 0.1.4 (2021/01/05)
@@ -336,8 +343,8 @@ database migrate` command.
   ([PR](https://github.com/hashicorp/boundary/pull/831))
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
-* controller: Relax account login name constraints to allow dash as valid character 
-  ([Issue](https://github.com/hashicorp/boundary/issues/759))
+* controller: Relax account login name constraints to allow dash as valid
+  character ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
 * cli/connect/http: Pass endpoint address through to allow setting TLS server
   name directly in most cases

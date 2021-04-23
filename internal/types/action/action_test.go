@@ -91,6 +91,10 @@ func TestAction(t *testing.T) {
 			action: DeleteSelf,
 			want:   "delete:self",
 		},
+		{
+			action: NoOp,
+			want:   "no-op",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

@@ -43,6 +43,7 @@ const (
 	CancelSelf       Type = 32
 	ChangeState      Type = 33
 	DeleteSelf       Type = 34
+	NoOp             Type = 35
 )
 
 var Map = map[string]Type{
@@ -80,6 +81,7 @@ var Map = map[string]Type{
 	CancelSelf.String():       CancelSelf,
 	ChangeState.String():      ChangeState,
 	DeleteSelf.String():       DeleteSelf,
+	NoOp.String():             NoOp,
 }
 
 func (a Type) String() string {
@@ -119,6 +121,7 @@ func (a Type) String() string {
 		"cancel:self",
 		"change-state",
 		"delete:self",
+		"no-op",
 	}[a]
 }
 

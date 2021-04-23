@@ -28,6 +28,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
+
 func TestGetSelf(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -141,7 +143,7 @@ func TestGet(t *testing.T) {
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		AuthorizedActions:       []string{"read", "read:self", "delete", "delete:self"},
+		AuthorizedActions:       testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -285,7 +287,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			AuthorizedActions:       []string{"read", "read:self", "delete", "delete:self"},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 
@@ -304,7 +306,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			AuthorizedActions:       []string{"read", "read:self", "delete", "delete:self"},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 
@@ -323,7 +325,7 @@ func TestList(t *testing.T) {
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			AuthorizedActions:       []string{"read", "read:self", "delete", "delete:self"},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 

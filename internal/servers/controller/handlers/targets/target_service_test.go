@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -33,8 +32,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-host-sets", "set-host-sets", "remove-host-sets", "authorize-session"}
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
@@ -86,7 +88,7 @@ func TestGet(t *testing.T) {
 		Attributes:             new(structpb.Struct),
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(1),
-		AuthorizedActions:      targets.IdActions.Strings(),
+		AuthorizedActions:      testAuthorizedActions,
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -178,7 +180,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
-			AuthorizedActions:      targets.IdActions.Strings(),
+			AuthorizedActions:      testAuthorizedActions,
 		})
 		totalTars = append(totalTars, wantTars[i])
 		tar = target.TestTcpTarget(t, conn, otherProj.GetPublicId(), name, target.WithHostSets([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
@@ -194,7 +196,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
-			AuthorizedActions:      targets.IdActions.Strings(),
+			AuthorizedActions:      testAuthorizedActions,
 		})
 	}
 
@@ -388,7 +390,7 @@ func TestCreate(t *testing.T) {
 					}},
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(1),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 					WorkerFilter:           wrapperspb.String(`type == "bar"`),
 				},
 			},
@@ -433,7 +435,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -441,7 +443,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -531,8 +533,7 @@ func TestUpdate(t *testing.T) {
 		version++
 	}
 
-	hCreated, err := ptypes.Timestamp(tar.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Failed to convert proto to timestamp")
+	hCreated := tar.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateTargetRequest{
 		Id: tar.GetPublicId(),
 	}
@@ -576,7 +577,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -608,7 +609,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -693,7 +694,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -724,7 +725,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -755,7 +756,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -798,7 +799,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Target{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -811,7 +812,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Target{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -838,8 +839,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Failed to convert proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set updated after it was created
 				// TODO: This is currently failing.
 				assert.True(gotUpdateTime.After(hCreated), "Updated target should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
