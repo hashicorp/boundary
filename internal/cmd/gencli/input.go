@@ -155,7 +155,6 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:          "authtokens",
 			StdActions:   []string{"read", "delete", "list"},
 			Container:    "Scope",
-			HasId:        true,
 		},
 	},
 	"groups": {
