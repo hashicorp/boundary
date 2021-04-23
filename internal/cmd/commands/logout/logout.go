@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
@@ -93,13 +92,12 @@ func (c *LogoutCommand) Run(args []string) (ret int) {
 		return base.CommandUserError
 	}
 
-	split := strings.Split(client.Token(), "_")
-	if len(split) < 3 {
-		c.PrintCliError(errors.New("Unexpected stored token format."))
+	id, err := base.TokenIdFromToken(client.Token())
+	if err != nil {
+		c.PrintCliError(err)
 		return base.CommandUserError
 	}
 
-	id := strings.Join(split[0:2], "_")
 	authtokensClient := authtokens.NewClient(client)
 	_, err = authtokensClient.Delete(c.Context, id)
 	if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {

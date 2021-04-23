@@ -37,10 +37,8 @@ func TestGetSelf(t *testing.T) {
 	logger := hclog.New(nil)
 	kms := kms.TestKms(t, conn, wrap)
 
-	iamRepo := iam.TestRepo(t, conn, wrap)
-
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iamRepo, nil
+		return iam.TestRepo(t, conn, wrap), nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)

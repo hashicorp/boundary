@@ -3,13 +3,14 @@ package authtokenscmd
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/strutil"
 )
+
+const selfFlag = "self"
 
 func init() {
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
@@ -25,31 +26,30 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, _ *[]authtokens.Op
 	}
 
 	if c.FlagId == "" {
-		fmt.Printf("No ID provided; %s the stored token? (Pass an ID of %q to suppress this question.) y/n: ", c.Func, "self")
+		fmt.Printf("No ID provided; %s the stored token? (Pass an ID of %q to suppress this question.) y/n: ", c.Func, selfFlag)
 		var yesNo string
 		fmt.Scanf("%s", &yesNo)
 		switch yesNo {
 		case "y", "Y":
-			c.FlagId = "self"
+			c.FlagId = selfFlag
 		default:
 			c.PrintCliError(errors.New(`"Y" or "y" not provided, refusing to continue`))
 			return false
 		}
 	}
 
-	if c.FlagId == "self" {
+	if c.FlagId == selfFlag {
 		// We should have already read this and have it cached
 		client, err := c.Client()
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error reading cached API client: %w", err))
 			return false
 		}
-		split := strings.Split(client.Token(), "_")
-		if len(split) < 3 {
-			c.PrintCliError(errors.New("Unexpected stored token format"))
+		c.FlagId, err = base.TokenIdFromToken(client.Token())
+		if err != nil {
+			c.PrintCliError(err)
 			return false
 		}
-		c.FlagId = strings.Join(split[0:2], "_")
 	}
 
 	return true
