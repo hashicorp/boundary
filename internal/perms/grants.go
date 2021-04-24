@@ -385,6 +385,7 @@ func (g Grant) validateType() error {
 		resource.Role,
 		resource.AuthMethod,
 		resource.Account,
+		resource.AuthToken,
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,

@@ -52,6 +52,7 @@ func init() {
 	}
 
 	IdActions[auth.OidcSubtype] = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,

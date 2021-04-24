@@ -31,6 +31,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "cancel", "cancel:self"}
+
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -86,7 +88,7 @@ func TestGetSession(t *testing.T) {
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -299,7 +301,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -334,7 +336,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -477,7 +479,7 @@ func TestCancel(t *testing.T) {
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	version := wireSess.GetVersion()
