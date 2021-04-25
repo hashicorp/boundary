@@ -40,12 +40,14 @@ const (
 
 var (
 	pwAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
 		action.Authenticate.String(),
 	}
 	oidcAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
