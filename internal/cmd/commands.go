@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -536,6 +537,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}, nil
+		},
+
+		"logout": func() (cli.Command, error) {
+			return &logout.LogoutCommand{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 

@@ -36,6 +36,7 @@ import (
 
 var (
 	pwAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
@@ -43,6 +44,7 @@ var (
 		action.ChangePassword.String(),
 	}
 	oidcAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),

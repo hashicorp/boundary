@@ -195,6 +195,7 @@ func TestRepository_LookupUser_WithDifferentPrimaryAuthMethods(t *testing.T) {
 		})
 	}
 }
+
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
