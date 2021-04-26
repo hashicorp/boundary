@@ -82,6 +82,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 			ClientId:         clientId,
 			ClientSecret:     string(clientSecret),
 			MaxAge:           int32(opts.withMaxAge),
+			ClaimsScopes:     opts.withClaimsScopes,
 		},
 	}
 	if opts.withApiUrl != nil {
@@ -106,11 +107,6 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 			a.SigningAlgs = append(a.SigningAlgs, string(alg))
 		}
 	}
-	if len(opts.withClaimsScopes) > 0 {
-		a.ClaimsScopes = make([]string, 0, len(opts.withClaimsScopes))
-		a.ClaimsScopes = append(a.ClaimsScopes, opts.withClaimsScopes...)
-	}
-
 	if a.OperationalState != string(InactiveState) {
 		if err := a.isComplete(); err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
