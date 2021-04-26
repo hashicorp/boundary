@@ -85,4 +85,7 @@ const (
 
 	// External system errors are reserved codes 3000-3999
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
+
+	// OIDC authentication provided errors
+	OidcProviderCallbackError Code = 4000
 )

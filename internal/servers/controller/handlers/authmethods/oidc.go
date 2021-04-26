@@ -200,6 +200,9 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 // error details.
 func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcCallback"
+	// TODO: Return all errors (including the validate request based errors
+	//   in the redirect URL once we start looking at the url used for this
+	//   request instead of requiring the API URL to be set on the auth method.
 	if req == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
 	}
@@ -220,28 +223,32 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	}
 
 	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
-	errResponse := func(err error) *pbs.AuthenticateResponse {
+	errResponse := func(err error) (*pbs.AuthenticateResponse, error) {
 		u := make(url.Values)
-		// TODO: Decide how to format the domain error to match OIDC error format
-		u.Add("error", err.Error())
+		pbErr := handlers.ToApiError(err)
+		out, err := handlers.JSONMarshaler.Marshal(pbErr)
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to marshal the error for callback"))
+		}
+		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
 		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"final_redirect_url": structpb.NewStringValue(errRedirect),
 			},
-		}}
+		}}, nil
 	}
 
 	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
 	// Note that this conversion has already happened in the validate call so we don't expect errors here.
 	if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
-		return errResponse(err), nil
+		return errResponse(err)
 	}
 
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
-		// TODO: Package the OIDC error into the redirectUrl
-		return errResponse(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription())), nil
+		err := errors.New(errors.OidcProviderCallbackError, op, "failed authenticating", errors.WithWrap(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription())))
+		return errResponse(err)
 	}
 	finalRedirectUrl, err = oidc.Callback(
 		ctx,
@@ -252,14 +259,14 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		attrs.GetState(),
 		attrs.GetCode())
 	if err != nil {
-		return errResponse(errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err))), nil
+		return errResponse(errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err)))
 	}
 
 	respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
 		FinalRedirectUrl: finalRedirectUrl,
 	})
 	if err != nil {
-		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err))), nil
+		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err)))
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
