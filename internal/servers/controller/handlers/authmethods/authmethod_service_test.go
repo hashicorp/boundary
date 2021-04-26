@@ -570,6 +570,10 @@ func TestCreate(t *testing.T) {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 						return structpb.NewListValue(lv)
 					}(),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+						return structpb.NewListValue(lv)
+					}(),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -592,6 +596,10 @@ func TestCreate(t *testing.T) {
 						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+							return structpb.NewListValue(lv)
+						}(),
+						"claims_scopes": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
 							return structpb.NewListValue(lv)
 						}(),
 					}},

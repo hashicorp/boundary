@@ -677,6 +677,7 @@ func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMeth
 			State:             i.GetOperationalState(),
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
+			ClaimsScopes:      i.GetClaimsScopes(),
 		}
 		if i.DisableDiscoveredConfigValidation {
 			attrs.DisableDiscoveredConfigValidation = true
@@ -805,6 +806,14 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
+				if len(attrs.GetClaimsScopes()) > 0 {
+					for _, cs := range attrs.GetClaimsScopes() {
+						if cs == oidc.DefaultClaimsScope {
+							badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
+							break
+						}
+					}
+				}
 			}
 		default:
 			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
@@ -903,6 +912,14 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			if len(attrs.GetIdpCaCerts()) > 0 {
 				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
 					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+				}
+			}
+			if len(attrs.GetClaimsScopes()) > 0 {
+				for _, cs := range attrs.GetClaimsScopes() {
+					if cs == oidc.DefaultClaimsScope {
+						badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
+						break
+					}
 				}
 			}
 		default:
