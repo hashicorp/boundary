@@ -22,8 +22,11 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
+		action.ReadSelf,
 		action.Delete,
+		action.DeleteSelf,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -98,10 +101,17 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	for _, item := range ul {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		if authorizedActions.OnlySelf() && item.GetUserId() != authResults.UserId {
+			continue
+		}
+
+		item.AuthorizedActions = authorizedActions.Strings()
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -114,7 +124,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -122,6 +132,15 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	authzdActions := authResults.FetchActionSetForId(ctx, u.Id, IdActions)
+	// Check to see if we need to verify Read vs. just ReadSelf
+	if u.GetUserId() != authResults.UserId {
+		if !authzdActions.HasAction(action.Read) {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
@@ -132,11 +151,24 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.DeleteSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	at, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	authzdActions := authResults.FetchActionSetForId(ctx, at.Id, IdActions)
+	// Check to see if we need to verify Delete vs. just DeleteSelf
+	if at.GetUserId() != authResults.UserId {
+		if !authzdActions.HasAction(action.Delete) {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
+	_, err = s.deleteFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
