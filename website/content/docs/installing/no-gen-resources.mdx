@@ -13,7 +13,7 @@ targets are just some of the resources Boundary will generate unless you tell it
 
 In a production or long-running environment, these resources are not necessary, but without them, managing
 Boundary from scratch isn't straight forward. How do you create your first user and login to administer a Boundary
-deployment that has no authentication methods, users, accounts, etc? This section describes how to get your freshly
+deployment that has no authentication methods, users, accounts, etc.? This section describes how to get your freshly
 deployed Boundary installation off the ground for non-dev environments.
 
 ## Recovery KMS Workflow
@@ -291,9 +291,8 @@ resource "boundary_user" "myuser" {
 ### Create Roles to Manage Scopes
 
 The following describes the four baseline roles you'll need to create to manage resources within the org and project
-scopes created above. These roles are similar to the roles created for you in if generation had not been skipped during `boundary database init`, but declaring them explicitly
-allows you to manage them independently and fully within Terraform or on the CLI. This is useful if you want to lock
-them down more or have control over them in a declarative way.
+scopes created above. These roles are similar to the roles created for you if generation had not been skipped during `boundary database init` when executed with the `-skip-initial-login-role-creation` flag, Declaring roles explicitly
+allows you to manage them independently and fully within Terraform or via the CLI. In doing so, you can precisely define their access.
 
 The following example creates 4 roles:
 
