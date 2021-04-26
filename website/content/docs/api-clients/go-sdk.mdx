@@ -101,37 +101,32 @@ client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 Putting this all together:
 
 ```go
-package main
-
 import (
   "context"
-  "fmt"
 
   "github.com/hashicorp/boundary/api"
   "github.com/hashicorp/boundary/api/authmethods"
 )
 
-func main() {
-  credentials := map[string]interface{}{
-    "login_name": "admin",
-    "password":   "password",
-  }
-
-  // The default address points to the default dev mode address
-  client, err := api.NewClient(nil)
-  if err != nil {
-    fmt.Printf("ERROR: %v\n", err.Error())
-  }
-
-  amClient := authmethods.NewClient(client)
-  authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
-  if err != nil {
-    fmt.Printf("ERROR: %v\n", err.Error())
-  }
-
-  // pass this client to any other resource specific API resources
-  client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
+credentials := map[string]interface{}{
+  "login_name": "admin",
+  "password":   "password",
 }
+
+// The default address points to the default dev mode address
+client, err := api.NewClient(nil)
+if err != nil {
+  return err
+}
+
+amClient := authmethods.NewClient(client)
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
+if err != nil {
+  return err
+}
+
+// pass this client to any other resource specific API resources
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ```
 
 ### Recovery KMS Workflow
