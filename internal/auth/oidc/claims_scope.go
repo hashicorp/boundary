@@ -6,11 +6,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// defaultClaimsScopeTableName defines the default table name for an ClaimsScope
-const defaultClaimsScopeTableName = "auth_oidc_scope"
+const (
+	// defaultClaimsScopeTableName defines the default table name for an ClaimsScope
+	defaultClaimsScopeTableName = "auth_oidc_scope"
+
+	DefaultClaimsScope = "openid"
+)
 
 // ClaimsScope defines optional OIDC scope values that are used to request
-// claims, in addition to the default scope of "openid".
+// claims, in addition to the default scope of "openid" (see: DefaultClaimsScope).
 //
 // see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
 type ClaimsScope struct {
@@ -40,7 +44,7 @@ func (cs *ClaimsScope) validate(caller errors.Op) error {
 	if cs.Scope == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing claims scope")
 	}
-	if cs.Scope == "openid" {
+	if cs.Scope == DefaultClaimsScope {
 		return errors.New(errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
 	}
 	return nil
