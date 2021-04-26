@@ -56,8 +56,9 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.PublicId,
-					VaultPath: "vault/path",
+					StoreId:    cs.PublicId,
+					HttpMethod: "GET",
+					VaultPath:  "vault/path",
 				},
 			},
 		},
@@ -72,9 +73,10 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:   cs.PublicId,
-					VaultPath: "vault/path",
-					Name:      "test-name",
+					StoreId:    cs.PublicId,
+					HttpMethod: "GET",
+					VaultPath:  "vault/path",
+					Name:       "test-name",
 				},
 			},
 		},
@@ -90,10 +92,58 @@ func TestCredentialLibrary_New(t *testing.T) {
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.PublicId,
+					HttpMethod:  "GET",
 					VaultPath:   "vault/path",
 					Description: "test-description",
 				},
 			},
+		},
+		{
+			name: "valid-with-post-method",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodPost),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:    cs.PublicId,
+					HttpMethod: "POST",
+					VaultPath:  "vault/path",
+				},
+			},
+		},
+		{
+			name: "valid-with-post-method-and-body",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodPost),
+					WithRequestBody("body"),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.PublicId,
+					HttpMethod:      "POST",
+					VaultPath:       "vault/path",
+					HttpRequestBody: "body",
+				},
+			},
+		},
+		{
+			name: "invalid-get-method-with-body",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithRequestBody("body"),
+				},
+			},
+			wantErr: true,
 		},
 	}
 

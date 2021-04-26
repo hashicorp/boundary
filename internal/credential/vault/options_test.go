@@ -65,4 +65,22 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, cert, opts.withClientCert.Certificate)
 		assert.Equal(t, key, opts.withClientCert.CertificateKey)
 	})
+	t.Run("WithMethod_Default", func(t *testing.T) {
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withMethod = "GET"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithMethod_Post", func(t *testing.T) {
+		opts := getOpts(WithMethod(MethodPost))
+		testOpts := getDefaultOptions()
+		testOpts.withMethod = MethodPost
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithRequestBody", func(t *testing.T) {
+		opts := getOpts(WithRequestBody("body"))
+		testOpts := getDefaultOptions()
+		testOpts.withRequestBody = "body"
+		assert.Equal(t, opts, testOpts)
+	})
 }

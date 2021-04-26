@@ -164,6 +164,25 @@ begin;
   create trigger immutable_columns before update on credential_vault_client_certificate
     for each row execute procedure immutable_columns('store_id');
 
+  create table credential_vault_http_method_enm (
+    name text primary key
+      constraint only_predefined_http_methods_allowed
+      check (
+        name in (
+          'GET',
+          'POST'
+        )
+      )
+  );
+  comment on table credential_vault_http_method_enm is
+    'credential_vault_http_method_enm is an enumeration table for the http method used by a vault library when communicating with vault. '
+    'It contains rows for representing the HTTP GET and the HTTP POST methods.';
+
+  insert into credential_vault_http_method_enm (name)
+  values
+    ('GET'),
+    ('POST');
+
   create table credential_vault_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
@@ -179,6 +198,22 @@ begin;
     vault_path text not null
       constraint vault_path_must_not_be_empty
         check(length(trim(vault_path)) > 0),
+    http_method text not null
+      constraint credential_vault_http_method_enm_fkey
+        references credential_vault_http_method_enm (name)
+        on delete restrict
+        on update cascade,
+    http_request_body text
+      constraint http_request_body_only_allowed_with_post_method
+        check(
+          http_request_body is null
+          or
+          (
+            http_method = 'POST'
+            and
+            length(trim(http_request_body)) > 0
+          )
+        ),
     constraint credential_vault_library_store_id_name_uq
       unique(store_id, name),
     constraint credential_library_fkey
