@@ -1621,12 +1621,12 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 	s := getSetup(t)
 
 	directErrorCases := []struct {
-		name    string
-		req 	*pbs.AuthenticateRequest
+		name string
+		req  *pbs.AuthenticateRequest
 	}{
 		{
 			name: "No Code Or Error",
-			req : &pbs.AuthenticateRequest{
+			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
 				Attributes: func() *structpb.Struct {
@@ -1640,11 +1640,11 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 		},
 		{
 			name: "No Auth Method Id",
-			req : &pbs.AuthenticateRequest{
-				Command:      "callback",
+			req: &pbs.AuthenticateRequest{
+				Command: "callback",
 				Attributes: func() *structpb.Struct {
 					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
-						Code: "anythingworks",
+						Code:  "anythingworks",
 						State: "anything",
 					})
 					require.NoError(t, err)
@@ -1654,7 +1654,7 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 		},
 		{
 			name: "No State",
-			req : &pbs.AuthenticateRequest{
+			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
 				Attributes: func() *structpb.Struct {
@@ -1674,16 +1674,15 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 		})
 	}
 
-
 	redirectUrlErrorCases := []struct {
-		name    string
-		attrs   *pb.OidcAuthMethodAuthenticateCallbackRequest
+		name        string
+		attrs       *pb.OidcAuthMethodAuthenticateCallbackRequest
 		errorSubStr string
 	}{
 		{
 			name: "Cant decrypt state",
 			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
-				Code: "anythingworkshere",
+				Code:  "anythingworkshere",
 				State: "cant decrypt this!",
 			},
 			errorSubStr: url.QueryEscape("unable to decode message"),
@@ -1691,8 +1690,8 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 		{
 			name: "OIDC Error",
 			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
-				State: "foo",
-				Error: "some_error",
+				State:            "foo",
+				Error:            "some_error",
 				ErrorDescription: "error description",
 			},
 			errorSubStr: url.QueryEscape("error description"),
