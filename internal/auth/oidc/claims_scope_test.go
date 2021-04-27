@@ -89,7 +89,7 @@ func TestClaimsScope_Create(t *testing.T) {
 			name: "openid-default-error",
 			args: args{
 				authMethodId: testAuthMethod.PublicId,
-				claimsScope:  "openid",
+				claimsScope:  DefaultClaimsScope,
 			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
