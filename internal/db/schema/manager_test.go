@@ -17,7 +17,7 @@ import (
 func TestNewManager(t *testing.T) {
 	dialect := "postgres"
 
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -39,7 +39,7 @@ func TestNewManager(t *testing.T) {
 
 func TestCurrentState(t *testing.T) {
 	dialect := "postgres"
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 	c, u, _, err := docker.StartDbInDocker(opts)
 	t.Cleanup(func() {
 		if err := c(); err != nil {
@@ -81,7 +81,7 @@ func TestCurrentState(t *testing.T) {
 
 func TestRollForward(t *testing.T) {
 	dialect := "postgres"
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 	nState := createPartialMigrationState(oState, 8)
 	migrationStates[dialect] = nState
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 func TestRunMigration_canceledContext(t *testing.T) {
 	dialect := "postgres"
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 	nState.binarySchemaVersion = 10
 	nState.upMigrations[10] = []byte("SELECT 1 FROM NonExistantTable;")
 	migrationStates[dialect] = nState
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestManager_ExclusiveLock(t *testing.T) {
 func TestManager_SharedLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 
 	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
@@ -255,7 +255,8 @@ func TestManager_SharedLock(t *testing.T) {
 func Test_GetMigrationLog(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	c, u, _, err := docker.StartDbInDocker("postgres")
+	opts := docker.WithContainerImage("postgres")
+	c, u, _, err := docker.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

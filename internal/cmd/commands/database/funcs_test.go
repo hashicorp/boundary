@@ -29,7 +29,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "basic",
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -43,7 +43,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "old_version_table_used",
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -69,7 +69,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "cant_get_lock",
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -93,7 +93,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "basic_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -108,7 +108,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "old_version_table_used_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -136,7 +136,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "cant_get_lock_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithDatabaseImage(dialect)
+				opts := docker.WithContainerImage(dialect)
 				c, u, _, err := db.StartDbInDocker(opts)
 				require.NoError(t, err)
 				t.Cleanup(func() {
@@ -175,7 +175,7 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
-	opts := docker.WithDatabaseImage(dialect)
+	opts := docker.WithContainerImage(dialect)
 	c, u, _, err := db.StartDbInDocker(opts)
 	require.NoError(t, err)
 	t.Cleanup(func() {

@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -437,14 +436,14 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
-	var opts []docker.Option
+	var opts []base.Option
 	switch c.flagDatabaseUrl {
 	case "":
 		if c.flagDisableDatabaseDestruction {
-			opts = append(opts, docker.WithSkipDatabaseDestruction())
+			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
 		if c.flagDatabaseImage != "" {
-			opts = append(opts, docker.WithDatabaseImage(c.flagDatabaseImage))
+			opts = append(opts, base.WithContainerImage(c.flagDatabaseImage))
 			if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 				c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
 				return base.CommandCliError
@@ -459,7 +458,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-		opts = append(opts, docker.WithDatabaseImage("postgres"))
+		opts = append(opts, base.WithContainerImage("postgres"))
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError

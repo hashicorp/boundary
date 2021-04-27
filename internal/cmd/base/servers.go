@@ -462,29 +462,29 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) error {
+func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
 	var container, url, dialect string
 	var err error
 	var c func() error
 
-	opts := docker.GetOpts(opt...)
-	// opts.WithDatabaseImage could have repo:tag, so split it and only
+	opts := getOpts(opt...)
+	// opts.WithContainerImage could have repo:tag, so split it and only
 	// assign the repo to dialect
-	if opts.WithDatabaseImage == "" {
+	if opts.withContainerImage == "" {
 		dialect = "postgres"
 	} else {
-		separated := strings.Split(opts.WithDatabaseImage, ":")
+		separated := strings.Split(opts.withContainerImage, ":")
 		dialect = separated[0]
 	}
 
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = docker.StartDbInDocker(opt...)
+		c, url, container, err = docker.StartDbInDocker(docker.WithContainerImage(dialect))
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {
-			if !opts.WithSkipDatabaseDestruction {
+			if !opts.withSkipDatabaseDestruction {
 				if c != nil {
 					if err := c(); err != nil {
 						b.Logger.Error("error cleaning up docker container", "error", err)
@@ -552,7 +552,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) er
 		return err
 	}
 
-	if opts.WithSkipAuthMethodCreation {
+	if opts.withSkipAuthMethodCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.
 		c = func() error { return nil }
@@ -563,7 +563,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) er
 		return err
 	}
 
-	if opts.WithSkipScopesCreation {
+	if opts.withSkipScopesCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.
 		c = func() error { return nil }
@@ -574,7 +574,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) er
 		return err
 	}
 
-	if opts.WithSkipHostResourcesCreation {
+	if opts.withSkipHostResourcesCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.
 		c = func() error { return nil }
@@ -585,7 +585,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...docker.Option) er
 		return err
 	}
 
-	if opts.WithSkipTargetCreation {
+	if opts.withSkipTargetCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.
 		c = func() error { return nil }

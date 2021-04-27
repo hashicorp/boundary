@@ -31,7 +31,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 
 	switch opts.withTestDatabaseUrl {
 	case "":
-		opts := docker.WithDatabaseImage(dialect)
+		opts := docker.WithContainerImage(dialect)
 		cleanup, url, _, err = StartDbInDocker(opts)
 		if err != nil {
 			t.Fatal(err)

@@ -1,6 +1,6 @@
 package base
 
-//getOpts - iterate the inbound Options and return a struct.
+// getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
@@ -85,8 +85,8 @@ func WithSkipTargetCreation() Option {
 	}
 }
 
-func WithContainerImage(image string) Option {
+func WithContainerImage(name string) Option {
 	return func(o *Options) {
-		o.withContainerImage = image
+		o.withContainerImage = name
 	}
 }

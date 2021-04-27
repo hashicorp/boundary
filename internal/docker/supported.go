@@ -91,10 +91,10 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 // it into repo + tag. If a tag is not found, it sets the tag to latest
 func splitImage(opt ...Option) (string, string) {
 	opts := GetOpts(opt...)
-	if opts.WithDatabaseImage == "" {
+	if opts.withContainerImage == "" {
 		return "postgres", "latest"
 	}
-	separated := strings.Split(opts.WithDatabaseImage, ":")
+	separated := strings.Split(opts.withContainerImage, ":")
 	if len(separated) > 1 {
 		return separated[0], separated[1]
 

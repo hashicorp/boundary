@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	nkeyring "github.com/jefferai/keyring"
 	"github.com/mitchellh/cli"
@@ -126,13 +125,13 @@ func MakeShutdownCh() chan struct{} {
 
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
-func (c *Command) Client(opt ...docker.Option) (*api.Client, error) {
+func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	// Read the test client if present
 	if c.client != nil {
 		return c.client, nil
 	}
 
-	opts := docker.GetOpts(opt...)
+	opts := getOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {
@@ -236,7 +235,7 @@ func (c *Command) Client(opt ...docker.Option) (*api.Client, error) {
 		}
 	}
 
-	if opts.WithNoTokenValue {
+	if opts.withNoTokenValue {
 		c.client.SetToken("")
 	}
 

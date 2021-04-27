@@ -7,7 +7,7 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	opts := docker.WithDatabaseImage("postgres")
+	opts := docker.WithContainerImage("postgres")
 
 	cleanup, url, _, err := StartDbInDocker(opts)
 	if err != nil {
