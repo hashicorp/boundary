@@ -448,7 +448,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			if ok := c.PrintJsonItem(c.sar, item); !ok {
+			if ok := c.PrintJsonItem(c.sar); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil

@@ -175,7 +175,7 @@ func printItemTable(in *authmethods.AuthMethod) string {
 		)
 		for _, key := range keys {
 			ret = append(ret,
-				fmt.Sprintf("    %ss:", key),
+				fmt.Sprintf("    %s:", key),
 				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
 			)
 		}

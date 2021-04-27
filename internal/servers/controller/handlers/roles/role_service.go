@@ -64,8 +64,9 @@ type Service struct {
 
 // NewService returns a role service which handles role related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
+	const op = "roles.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -194,7 +195,7 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteRoleResponse{}, nil
+	return nil, nil
 }
 
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
@@ -324,6 +325,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*pb.Role, error) {
+	const op = "roles.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -344,7 +346,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	out, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create role: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
@@ -353,6 +355,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
+	const op = "roles.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -380,7 +383,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update role: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
@@ -389,6 +392,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "roles.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -398,7 +402,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete role: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete role"))
 	}
 	return rows > 0, nil
 }
@@ -421,6 +425,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 }
 
 func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).addPrincpleInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -432,7 +437,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after adding principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding principals to it.")
@@ -441,6 +446,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 }
 
 func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).setPrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -452,7 +458,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after setting principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting principals for it.")
@@ -461,6 +467,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 }
 
 func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).removePrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -472,7 +479,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after removing principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after removing principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing principals from it.")
@@ -481,6 +488,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 }
 
 func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "service.(Service).addGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -492,7 +500,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after adding grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding grants"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding grants to it.")
@@ -501,6 +509,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 }
 
 func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).setGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -516,7 +525,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after setting grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting grants"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting grants on it.")
@@ -525,6 +534,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 }
 
 func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).removeGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -536,7 +546,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after removing grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("uable to look up role after removing grant"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing grants from it.")

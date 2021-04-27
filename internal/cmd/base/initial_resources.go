@@ -62,6 +62,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		"id=*;type=scope;actions=list,no-op",
 		"id=*;type=auth-method;actions=authenticate,list",
 		"id={{account.id}};actions=read,change-password",
+		"id=*;type=auth-token;actions=list,read:self,delete:self",
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
@@ -517,7 +518,8 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	b.Info["generated target id"] = b.DevTargetId
 
 	// If we have an unprivileged dev user, add user to the role that grants
-	// list/read:self/cancel:self, and an authorize-session role
+	// list/read:self/cancel:self on sessions, read:self/delete:self/list on
+	// tokens, and an authorize-session role
 	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {

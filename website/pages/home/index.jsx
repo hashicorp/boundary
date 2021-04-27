@@ -18,6 +18,10 @@ export default function HomePage() {
               'https://learn.hashicorp.com/collections/boundary/getting-started',
             external: true,
           },
+          {
+            title: 'Download macOS Client',
+            url: '/downloads#desktop',
+          },
         ]}
         uiVideo={{
           url: 'https://www.datocms-assets.com/2885/1614100050-hero-ui.mp4',
@@ -146,7 +150,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: '/docs/common-workflows/manage-users-groups',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
                 },
               },
               {
@@ -158,7 +163,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: '/docs/common-workflows/manage-sessions',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
                 },
               },
             ]}

@@ -29,7 +29,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
 	newAuthTokId, err := NewAuthTokenId()
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
+	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	testAuthTokenId := func() string {

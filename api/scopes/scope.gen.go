@@ -50,6 +50,11 @@ type ScopeDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for ScopeDeleteResult
+func (n ScopeDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n ScopeDeleteResult) GetResponse() *api.Response {
 	return n.response
 }

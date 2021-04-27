@@ -300,7 +300,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
-			res: &pbs.DeleteTargetResponse{},
 		},
 		{
 			name:    "Delete Not Existing Target",
