@@ -27,6 +27,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -173,7 +174,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostSetResponse{}, nil
+	return nil, nil
 }
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.

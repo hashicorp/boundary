@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+
 func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -185,7 +187,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Org.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
@@ -199,7 +201,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
@@ -292,11 +294,11 @@ func TestList(t *testing.T) {
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 	oNoProjectsProto := scopes.ToProto(oNoProjects)
 	oNoProjectsProto.Scope = globalScope
-	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	oWithProjectsProto := scopes.ToProto(oWithProjects)
 	oWithProjectsProto.Scope = globalScope
-	oWithProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 	scopes.SortScopes(initialOrgs)
@@ -373,7 +375,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Org.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
@@ -394,7 +396,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
@@ -493,7 +495,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad project id Project",
@@ -517,7 +518,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad org id Org",
@@ -619,7 +619,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -643,7 +643,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -666,7 +666,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -689,7 +689,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -918,7 +918,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -945,7 +945,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -971,7 +971,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Global.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
@@ -997,7 +997,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1070,7 +1070,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1094,7 +1094,7 @@ func TestUpdate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1120,7 +1120,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1146,7 +1146,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},

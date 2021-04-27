@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -24,11 +23,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"}
 
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -86,7 +88,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:       or.CreateTime.GetTimestamp(),
 		UpdatedTime:       or.UpdateTime.GetTimestamp(),
 		Version:           or.GetVersion(),
-		AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	wantProjRole := &pb.Role{
@@ -99,7 +101,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:       pr.CreateTime.GetTimestamp(),
 		UpdatedTime:       pr.UpdateTime.GetTimestamp(),
 		Version:           pr.GetVersion(),
-		AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -201,7 +203,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:       or.GetUpdateTime().GetTimestamp(),
 			GrantScopeId:      &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
 			Version:           or.GetVersion(),
-			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalRoles = append(totalRoles, wantOrgRoles[i])
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
@@ -213,7 +215,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:       pr.GetUpdateTime().GetTimestamp(),
 			GrantScopeId:      &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
 			Version:           pr.GetVersion(),
-			AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalRoles = append(totalRoles, wantProjRoles[i])
 	}
@@ -323,7 +325,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Delete bad role id",
@@ -347,7 +348,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad Role id",
@@ -400,8 +400,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	defaultOrgRole, defaultProjRole, repoFn := createDefaultRolesAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultOrgRole.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultCreated := defaultOrgRole.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateRoleRequest{}
 
 	cases := []struct {
@@ -427,7 +426,7 @@ func TestCreate(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -448,7 +447,7 @@ func TestCreate(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -470,7 +469,7 @@ func TestCreate(t *testing.T) {
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					GrantScopeId:      &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -500,7 +499,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId:     defaultProjRole.GetScopeId(),
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -509,7 +508,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId:     defaultProjRole.GetScopeId(),
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -532,10 +531,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a role created after the test setup's default role
 				assert.True(gotCreateTime.After(defaultCreated), "New role should have been created after default role. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.After(defaultCreated), "New role should have been updated after default role. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
@@ -610,8 +607,7 @@ func TestUpdate(t *testing.T) {
 		}
 	}
 
-	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	created := or.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateRoleRequest{
 		Id: or.GetPublicId(),
 	}
@@ -649,7 +645,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -678,7 +674,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -708,7 +704,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -738,7 +734,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -799,7 +795,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -828,7 +824,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -857,7 +853,7 @@ func TestUpdate(t *testing.T) {
 					Grants:            []*pb.Grant{grant},
 					PrincipalIds:      []string{u.GetPublicId()},
 					Principals:        []*pb.Principal{principal},
-					AuthorizedActions: []string{"read", "update", "delete", "add-principals", "set-principals", "remove-principals", "add-grants", "set-grants", "remove-grants"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -897,7 +893,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Role{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -910,7 +906,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Role{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -976,7 +972,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateRole response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a role updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
