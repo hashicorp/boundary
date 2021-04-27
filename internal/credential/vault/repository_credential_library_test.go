@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -14,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateCredentialLibrary(t *testing.T) {
@@ -984,6 +987,135 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.want, got, "row count")
+		})
+	}
+}
+
+func TestRepository_ListCredentialLibraries(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+	csA, csB := css[0], css[1]
+
+	libs := TestCredentialLibraries(t, conn, wrapper, csA.GetPublicId(), 3)
+
+	tests := []struct {
+		name    string
+		in      string
+		opts    []Option
+		want    []*CredentialLibrary
+		wantErr errors.Code
+	}{
+		{
+			name:    "with-no-credential-store-id",
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "CredentialStore-with-no-libraries",
+			in:   csB.GetPublicId(),
+			want: []*CredentialLibrary{},
+		},
+		{
+			name: "CredentialStore-with-libraries",
+			in:   csA.GetPublicId(),
+			want: libs,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListCredentialLibraries(ctx, tt.in, tt.opts...)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			opts := []cmp.Option{
+				cmpopts.SortSlices(func(x, y *CredentialLibrary) bool { return x.PublicId < y.PublicId }),
+				protocmp.Transform(),
+			}
+			assert.Empty(cmp.Diff(tt.want, got, opts...))
+		})
+	}
+}
+
+func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	const count = 10
+	libs := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), count)
+
+	tests := []struct {
+		name     string
+		repoOpts []Option
+		listOpts []Option
+		wantLen  int
+	}{
+		{
+			name:    "with-no-limits",
+			wantLen: count,
+		},
+		{
+			name:     "with-repo-limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "with-negative-repo-limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "with-list-limit",
+			listOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "with-negative-list-limit",
+			listOpts: []Option{WithLimit(-1)},
+			wantLen:  count,
+		},
+		{
+			name:     "with-repo-smaller-than-list-limit",
+			repoOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(6)},
+			wantLen:  6,
+		},
+		{
+			name:     "with-repo-larger-than-list-limit",
+			repoOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(2)},
+			wantLen:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
+			require.NoError(err)
+			assert.Len(got, tt.wantLen)
 		})
 	}
 }

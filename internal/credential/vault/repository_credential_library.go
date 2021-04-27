@@ -220,3 +220,24 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string
 
 	return rowsDeleted, nil
 }
+
+// ListCredentialLibraries returns a slice of CredentialLibraries for the
+// storeId. WithLimit is the only option supported.
+func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*CredentialLibrary, error) {
+	const op = "vault.(Repository).ListCredentialLibraries"
+	if storeId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no storeId")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var libs []*CredentialLibrary
+	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return libs, nil
+}
