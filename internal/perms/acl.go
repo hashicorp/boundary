@@ -14,6 +14,7 @@ construction is thus synthesizing something reasonable from a set of Grants.
 */
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -32,9 +33,64 @@ type ACL struct {
 type ACLResults struct {
 	AuthenticationFinished bool
 	Authorized             bool
+	OutputFields           OutputFieldsMap
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
+}
+
+type OutputFieldsMap map[string]struct{}
+
+func (o OutputFieldsMap) AddFields(input OutputFieldsMap) (ret OutputFieldsMap, starField bool) {
+	switch {
+	case input == nil:
+		return
+	case o == nil:
+		ret = make(OutputFieldsMap, len(input))
+	default:
+		ret = o
+	}
+	for k := range input {
+		if k == "*" {
+			starField = true
+			ret = OutputFieldsMap{k: struct{}{}}
+			return
+		}
+		ret[k] = struct{}{}
+	}
+	return
+}
+
+func (o OutputFieldsMap) AddStrings(input []string) (ret OutputFieldsMap, starField bool) {
+	switch {
+	case input == nil:
+		return
+	case o == nil:
+		ret = make(OutputFieldsMap, len(input))
+	default:
+		ret = o
+	}
+	for _, k := range input {
+		if k == "*" {
+			starField = true
+			ret = OutputFieldsMap{k: struct{}{}}
+			return
+		}
+		ret[k] = struct{}{}
+	}
+	return
+}
+
+func (o OutputFieldsMap) Fields() (ret []string) {
+	if len(o) == 0 {
+		return
+	}
+	ret = make([]string, 0, len(o))
+	for f := range o {
+		ret = append(ret, f)
+	}
+	sort.Strings(ret)
+	return
 }
 
 // Resource defines something within boundary that requires authorization
@@ -94,6 +150,9 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			// with the next grant
 			continue
 		}
+
+		// We step through all grants, to fetch the full list of output fields.
+		// However, we shortcut if we find *
 		switch {
 		// id=<resource.id>;actions=<action> where ID cannot be a wildcard
 		case grant.id == r.Id &&
@@ -104,7 +163,10 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			aType != action.Create:
 
 			results.Authorized = true
-			return
+			var starField bool
+			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
+				return
+			}
 
 		// type=<resource.type>;actions=<action> when action is list(:self) or
 		// create. Must be a top level collection, otherwise must be one of the
@@ -118,7 +180,10 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 				aType == action.Create):
 
 			results.Authorized = true
-			return
+			var starField bool
+			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
+				return
+			}
 
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
 		// unknown but can be a wildcard to allow any resource at all
@@ -128,7 +193,10 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 				grant.typ == resource.All):
 
 			results.Authorized = true
-			return
+			var starField bool
+			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
+				return
+			}
 
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
 		// wildcard and this this is operating on a non-top-level type
@@ -139,7 +207,10 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			!topLevelType(r.Type):
 
 			results.Authorized = true
-			return
+			var starField bool
+			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
+				return
+			}
 		}
 	}
 	return
