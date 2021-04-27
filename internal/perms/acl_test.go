@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -304,6 +305,47 @@ func Test_ACLAllowed(t *testing.T) {
 			for _, aa := range test.actionsAuthorized {
 				assert.True(t, acl.Allowed(test.resource, aa.action).Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
 			}
+		})
+	}
+}
+
+func Test_ACLOutputFields(t *testing.T) {
+	t.Parallel()
+
+	type input struct {
+		name     string
+		grants   []string
+		resource Resource
+		action   action.Type
+		fields   []string
+	}
+	tests := []input{
+		{
+			name:     "default",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants:   []string{"id=bar;actions=read,update"},
+		},
+		{
+			name:     "single value",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants:   []string{"id=bar;actions=read,update;output_fields=id"},
+			fields:   []string{"id"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var grants []Grant
+			for _, g := range test.grants {
+				grant, err := Parse("o_myorg", g)
+				require.NoError(t, err)
+				grants = append(grants, grant)
+			}
+			acl := NewACL(grants...)
+			results := acl.Allowed(test.resource, test.action)
+			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
+			t.Logf(pretty.Sprint(grants))
+			t.Logf(pretty.Sprint(results.OutputFields.Fields()))
 		})
 	}
 }
