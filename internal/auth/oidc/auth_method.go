@@ -270,10 +270,10 @@ func (am *AuthMethod) isComplete() error {
 }
 
 type convertedValues struct {
-	Algs   []interface{}
-	Auds   []interface{}
-	Certs  []interface{}
-	Scopes []interface{}
+	Algs         []interface{}
+	Auds         []interface{}
+	Certs        []interface{}
+	ClaimsScopes []interface{}
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -298,10 +298,10 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.Wrap(err, op)
 	}
 	return &convertedValues{
-		Algs:   addAlgs,
-		Auds:   addAuds,
-		Certs:  addCerts,
-		Scopes: addScopes,
+		Algs:         addAlgs,
+		Auds:         addAuds,
+		Certs:        addCerts,
+		ClaimsScopes: addScopes,
 	}, nil
 }
 

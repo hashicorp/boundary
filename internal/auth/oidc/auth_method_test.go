@@ -592,10 +592,10 @@ func Test_convertValueObjects(t *testing.T) {
 			certs:        testCerts,
 			scopes:       testScopes,
 			wantValues: &convertedValues{
-				Algs:   testSigningAlgs,
-				Auds:   testAudiences,
-				Certs:  testCertificates,
-				Scopes: testClaimsScopes,
+				Algs:         testSigningAlgs,
+				Auds:         testAudiences,
+				Certs:        testCertificates,
+				ClaimsScopes: testClaimsScopes,
 			},
 		},
 		{
@@ -646,7 +646,7 @@ func Test_convertValueObjects(t *testing.T) {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
 			} else {
-				assert.Equal(tt.wantValues.Scopes, convertedScopes)
+				assert.Equal(tt.wantValues.ClaimsScopes, convertedScopes)
 			}
 
 			values, err := am.convertValueObjects()

@@ -70,7 +70,7 @@ select
   string_agg(distinct alg.signing_alg_name, '|') as algs,
   string_agg(distinct aud.aud_claim, '|') as auds,
   string_agg(distinct cert.certificate, '|') as certs,
-  string_agg(distinct cs.scope, '|') as scopes
+  string_agg(distinct cs.scope, '|') as claims_scopes
 from 	
   auth_oidc_method am 
   left outer join iam_scope               s     on am.public_id = s.primary_auth_method_id 

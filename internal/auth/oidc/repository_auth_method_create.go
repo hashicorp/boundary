@@ -105,9 +105,9 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 				}
 				msgs = append(msgs, certOplogMsgs...)
 			}
-			if len(vo.Scopes) > 0 {
-				scopesOplogMsgs := make([]*oplog.Message, 0, len(vo.Scopes))
-				if err := w.CreateItems(ctx, vo.Scopes, db.NewOplogMsgs(&scopesOplogMsgs)); err != nil {
+			if len(vo.ClaimsScopes) > 0 {
+				scopesOplogMsgs := make([]*oplog.Message, 0, len(vo.ClaimsScopes))
+				if err := w.CreateItems(ctx, vo.ClaimsScopes, db.NewOplogMsgs(&scopesOplogMsgs)); err != nil {
 					return err
 				}
 				msgs = append(msgs, scopesOplogMsgs...)
