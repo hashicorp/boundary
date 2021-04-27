@@ -931,3 +931,59 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeleteCredentialLibrary(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+
+	badId, err := newCredentialLibraryId()
+	require.NoError(t, err)
+	require.NotNil(t, badId)
+
+	tests := []struct {
+		name    string
+		in      string
+		want    int
+		wantErr errors.Code
+	}{
+		{
+			name: "found",
+			in:   l.GetPublicId(),
+			want: 1,
+		},
+		{
+			name: "not-found",
+			in:   badId,
+		},
+		{
+			name:    "empty-public-id",
+			in:      "",
+			wantErr: errors.InvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			got, err := repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.want, got, "row count")
+		})
+	}
+}

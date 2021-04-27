@@ -181,3 +181,42 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 	}
 	return l, nil
 }
+
+// DeleteCredentialLibrary deletes publicId from the repository and returns
+// the number of records deleted.
+func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string, publicId string, _ ...Option) (int, error) {
+	const op = "vault.(Repository).DeleteCredentialLibrary"
+	if publicId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+	}
+
+	l := allocCredentialLibrary()
+	l.PublicId = publicId
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var rowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			dl := l.clone()
+			rowsDeleted, err = w.Delete(ctx, dl, db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			if err == nil && rowsDeleted > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 CredentialLibrary would have been deleted")
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", l.PublicId)))
+	}
+
+	return rowsDeleted, nil
+}
