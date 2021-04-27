@@ -927,6 +927,24 @@ func TestCreate(t *testing.T) {
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "OIDC AuthMethod cant specify default claims scopes of openid",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"openid"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
