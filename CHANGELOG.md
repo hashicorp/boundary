@@ -6,6 +6,24 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* API `delete` actions now result in a `204` status code and no body when
+  successful. This was not the case previously due to a technical limitation
+  which has now been solved.
+* When using a `delete` command we now either show success or treat the `404`
+  error the same as any other `404` error, that is, it results in a non-zero
+  status code and an error message. This makes `delete` actions behave the same
+  as other commands, all of which pass through errors to the CLI. Given `-format
+  json` capability, it's relatively easy to perform a check to see whether an
+  error was `404` or something else from within scripts, in conjunction with
+  checking that the returned status code matches the API error status code
+  (`1`).
+* When outputting from the CLI in JSON format, the resource information under
+  `item` or `items` (depending on the action) now exactly matches the JSON sent
+  across the wire by the controller, as opposed to matching the Go SDK
+  representation which could result in some extra fields being shown or fields
+  having Go-specific types. This includes `delete` actions which previously
+  would show an object indicating existence, but now show no `item` on success
+  or the API's `404` error.
 * Permissions in new scope default roles have been updated to include support
   for `list`, `read:self`, and `delete:self` on `auth-token` resources. This
   allows a user to list and manage their own authentication tokens. (As is the
@@ -16,6 +34,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli: Match JSON format output with the across-the-wire API JSON format
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
+* api: Return `204` instead of an empty object on successful `delete` operations
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
 * actions: The new `no-op` action allows a grant to be given to a principals
   without conveying any actionable result. Since resources do not appear in list
   results if the principal has no actions granted on that resource, this can be

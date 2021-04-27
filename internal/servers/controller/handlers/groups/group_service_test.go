@@ -348,7 +348,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Delete bad group id",
@@ -372,7 +371,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad group id",

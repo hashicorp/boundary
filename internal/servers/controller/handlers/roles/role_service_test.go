@@ -325,7 +325,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: or.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Delete bad role id",
@@ -349,7 +348,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteRoleRequest{
 				Id: pr.GetPublicId(),
 			},
-			res: &pbs.DeleteRoleResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad Role id",
