@@ -235,7 +235,6 @@ func Test_TokenRequest(t *testing.T) {
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
 				exp := timestamppb.New(time.Now().Add(AttemptExpiration).Truncate(time.Second))
-				require.NoError(t, err)
 				reqTk := request.Token{
 					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
 				}
@@ -265,7 +264,6 @@ func Test_TokenRequest(t *testing.T) {
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
 				exp := timestamppb.New(time.Now().Add(AttemptExpiration).Truncate(time.Second))
-				require.NoError(t, err)
 				reqTk := request.Token{
 					RequestId:      "not-a-valid-id",
 					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
