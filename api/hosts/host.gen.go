@@ -51,6 +51,11 @@ type HostDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for HostDeleteResult
+func (n HostDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n HostDeleteResult) GetResponse() *api.Response {
 	return n.response
 }

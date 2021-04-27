@@ -54,6 +54,11 @@ type UserDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for UserDeleteResult
+func (n UserDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n UserDeleteResult) GetResponse() *api.Response {
 	return n.response
 }

@@ -50,6 +50,11 @@ type GroupDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for GroupDeleteResult
+func (n GroupDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n GroupDeleteResult) GetResponse() *api.Response {
 	return n.response
 }

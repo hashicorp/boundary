@@ -52,6 +52,11 @@ type AuthMethodDeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for AuthMethodDeleteResult
+func (n AuthMethodDeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n AuthMethodDeleteResult) GetResponse() *api.Response {
 	return n.response
 }
