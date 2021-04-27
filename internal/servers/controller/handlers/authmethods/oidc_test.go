@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"sort"
 	"testing"
@@ -1612,6 +1613,111 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			require.NotNil(m)
 			require.Contains(m, "token")
 			require.NotEmpty(m["token"])
+		})
+	}
+}
+
+func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
+	s := getSetup(t)
+
+	directErrorCases := []struct {
+		name    string
+		req 	*pbs.AuthenticateRequest
+	}{
+		{
+			name: "No Code Or Error",
+			req : &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Command:      "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						State: "anything",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name: "No Auth Method Id",
+			req : &pbs.AuthenticateRequest{
+				Command:      "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						Code: "anythingworks",
+						State: "anything",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name: "No State",
+			req : &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Command:      "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						Code: "anythingworks",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+	}
+	for _, tc := range directErrorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.req)
+			require.Error(t, err)
+		})
+	}
+
+
+	redirectUrlErrorCases := []struct {
+		name    string
+		attrs   *pb.OidcAuthMethodAuthenticateCallbackRequest
+		errorSubStr string
+	}{
+		{
+			name: "Cant decrypt state",
+			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Code: "anythingworkshere",
+				State: "cant decrypt this!",
+			},
+			errorSubStr: url.QueryEscape("unable to decode message"),
+		},
+		{
+			name: "OIDC Error",
+			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				State: "foo",
+				Error: "some_error",
+				ErrorDescription: "error description",
+			},
+			errorSubStr: url.QueryEscape("error description"),
+		},
+	}
+	for _, tc := range redirectUrlErrorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()),
+				&pbs.AuthenticateRequest{
+					AuthMethodId: s.authMethod.GetPublicId(),
+					Command:      "callback",
+					Attributes: func() *structpb.Struct {
+						st, err := handlers.ProtoToStruct(tc.attrs)
+						require.NoError(t, err)
+						return st
+					}(),
+				})
+
+			require.NoError(t, err)
+			respAttrs := &pb.OidcAuthMethodAuthenticateCallbackResponse{}
+			require.NoError(t, handlers.StructToProto(got.GetAttributes(), respAttrs))
+			assert.Contains(t, respAttrs.FinalRedirectUrl, fmt.Sprintf("%s/authentication-error?", s.authMethod.GetApiUrl()))
+			u, err := url.Parse(respAttrs.GetFinalRedirectUrl())
+			require.NoError(t, err)
+			assert.Contains(t, u.RawQuery, tc.errorSubStr)
 		})
 	}
 }

@@ -232,11 +232,13 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		}
 		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
-		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"final_redirect_url": structpb.NewStringValue(errRedirect),
-			},
-		}}, nil
+		respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
+			FinalRedirectUrl: errRedirect,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("failed creating error redirect response"))
+		}
+		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: respAttrs}, nil
 	}
 
 	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
@@ -247,7 +249,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
-		err := errors.New(errors.OidcProviderCallbackError, op, "failed authenticating", errors.WithWrap(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription())))
+		err := errors.Wrap(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription()), op, errors.WithCode(errors.OidcProviderCallbackError))
 		return errResponse(err)
 	}
 	finalRedirectUrl, err = oidc.Callback(
