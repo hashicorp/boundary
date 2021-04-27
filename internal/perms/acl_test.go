@@ -377,6 +377,41 @@ func Test_ACLOutputFields(t *testing.T) {
 			action: action.Read,
 			fields: []string{"*"},
 		},
+		{
+			name:     "subaction exact",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read:self,update;output_fields=version",
+			},
+			action: action.ReadSelf,
+			fields: []string{"version"},
+		},
+		{
+			// If the action is a subaction, parent output fields will apply, in
+			// addition to subaction. This matches authorization.
+			name:     "subaction parent action",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read,update;output_fields=version",
+				"id=bar;actions=read:self;output_fields=id",
+			},
+			action: action.ReadSelf,
+			fields: []string{"id", "version"},
+		},
+		{
+			// The inverse isn't true. Similarly to authorization, if you have
+			// specific output fields on a self action, they don't apply to
+			// non-self actions. This is useful to allow more visibility to self
+			// actions and less in the general case.
+			name:     "subaction child action",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read:self,update;output_fields=version",
+				"id=bar;actions=read;output_fields=id",
+			},
+			action: action.Read,
+			fields: []string{"id"},
+		},
 	}
 
 	for _, test := range tests {
