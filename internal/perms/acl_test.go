@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,8 +17,9 @@ func Test_ACLAllowed(t *testing.T) {
 		grants []string
 	}
 	type actionAuthorized struct {
-		action     action.Type
-		authorized bool
+		action       action.Type
+		authorized   bool
+		outputFields []string
 	}
 	type input struct {
 		name              string
@@ -46,8 +46,9 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"id=mypin;type=host;actions=*",
+				"id=mypin;type=host;actions=*;output_fields=name,description",
 				"id=*;type=*;actions=authenticate",
+				"id=*;type=*;output_fields=id",
 			},
 		},
 		{
@@ -62,6 +63,7 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"id=*;type=*;actions=create,update",
 				"id=*;type=session;actions=*",
+				"id=*;type=account;actions=update;output_fields=id,version",
 			},
 		},
 	}
@@ -119,9 +121,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Pin: "mypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read, authorized: true},
-				{action: action.Update, authorized: true},
-				{action: action.Delete, authorized: true},
+				{action: action.Read, authorized: true, outputFields: []string{"description", "id", "name"}},
+				{action: action.Update, authorized: true, outputFields: []string{"description", "id", "name"}},
+				{action: action.Delete, authorized: true, outputFields: []string{"description", "id", "name"}},
 			},
 		},
 		{
@@ -129,9 +131,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -139,9 +141,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Id: "myhost", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.List, authorized: true},
-				{action: action.Create, authorized: true},
-				{action: action.AddHosts},
+				{action: action.List, authorized: true, outputFields: []string{"id"}},
+				{action: action.Create, authorized: true, outputFields: []string{"id"}},
+				{action: action.AddHosts, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -149,9 +151,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Id: "id_g"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -198,9 +200,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.List},
-				{action: action.Authenticate, authorized: true},
-				{action: action.Delete},
+				{action: action.List, outputFields: []string{"id"}},
+				{action: action.Authenticate, authorized: true, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -236,7 +238,7 @@ func Test_ACLAllowed(t *testing.T) {
 			accountId: "apw_1234567890",
 		},
 		{
-			name:        "good templated user id",
+			name:        "good templated account id",
 			resource:    Resource{ScopeId: "o_c", Id: "apw_1234567890"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
@@ -251,7 +253,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Create, authorized: true},
-				{action: action.Update, authorized: true},
+				{action: action.Update, authorized: true, outputFields: []string{"id", "version"}},
 			},
 			userId: "u_abcd1234",
 		},
@@ -303,7 +305,9 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			for _, aa := range test.actionsAuthorized {
-				assert.True(t, acl.Allowed(test.resource, aa.action).Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
+				result := acl.Allowed(test.resource, aa.action)
+				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
+				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
 		})
 	}
@@ -323,13 +327,55 @@ func Test_ACLOutputFields(t *testing.T) {
 		{
 			name:     "default",
 			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			action:   action.Read,
 			grants:   []string{"id=bar;actions=read,update"},
 		},
 		{
 			name:     "single value",
 			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
 			grants:   []string{"id=bar;actions=read,update;output_fields=id"},
+			action:   action.Read,
 			fields:   []string{"id"},
+		},
+		{
+			name:     "compound no overlap",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read,update;output_fields=id",
+				"id=*;type=host-catalog;actions=read,update;output_fields=id",
+			},
+			action: action.Read,
+			fields: []string{"id"},
+		},
+		{
+			name:     "compound",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read,update;output_fields=id",
+				"id=*;type=role;output_fields=version",
+			},
+			action: action.Read,
+			fields: []string{"id", "version"},
+		},
+		{
+			name:     "wildcard with type",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read,update;output_fields=read",
+				"id=*;type=role;output_fields=*",
+			},
+			action: action.Read,
+			fields: []string{"*"},
+		},
+		{
+			name:     "wildcard with wildcard type",
+			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			grants: []string{
+				"id=bar;actions=read,update;output_fields=read",
+				"id=*;type=*;output_fields=*",
+			},
+			action: action.Read,
+			fields: []string{"*"},
 		},
 	}
 
@@ -344,8 +390,6 @@ func Test_ACLOutputFields(t *testing.T) {
 			acl := NewACL(grants...)
 			results := acl.Allowed(test.resource, test.action)
 			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
-			t.Logf(pretty.Sprint(grants))
-			t.Logf(pretty.Sprint(results.OutputFields.Fields()))
 		})
 	}
 }

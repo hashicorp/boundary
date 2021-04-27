@@ -136,7 +136,17 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 	}
 	// Now, go through and check the cases indicated above
 	for _, grant := range grants {
+		var outputFieldsOnly bool
 		switch {
+		case len(grant.actions) == 0:
+			// Continue with the next grant, unless we have output fields
+			// specified in which case we continue to be able to apply the
+			// output fields depending on ID and type.
+			if len(grant.OutputFields) > 0 {
+				outputFieldsOnly = true
+			} else {
+				continue
+			}
 		case grant.actions[aType]:
 			// We have this action
 		case grant.actions[parentAction]:
@@ -152,9 +162,16 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		}
 
 		// We step through all grants, to fetch the full list of output fields.
-		// However, we shortcut if we find *
+		// However, we shortcut if we find *.
+		//
+		// If the action was not found above but we did find output fields in
+		// patterns that match, we do not authorize the request, but we do build
+		// up the output fields patterns.
+		var starField bool
 		switch {
-		// id=<resource.id>;actions=<action> where ID cannot be a wildcard
+		// id=<resource.id>;actions=<action> where ID cannot be a wildcard; or
+		// id=<resource.id>;output_fields=<fields> where fields cannot be a
+		// wildcard.
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
@@ -162,15 +179,17 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			aType != action.List &&
 			aType != action.Create:
 
-			results.Authorized = true
-			var starField bool
+			if !outputFieldsOnly {
+				results.Authorized = true
+			}
 			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
 				return
 			}
 
-		// type=<resource.type>;actions=<action> when action is list(:self) or
-		// create. Must be a top level collection, otherwise must be one of the
-		// two formats specified below.
+		// type=<resource.type>;actions=<action> when action is list or create.
+		// Must be a top level collection, otherwise must be one of the two
+		// formats specified below. Or,
+		// type=resource.type;output_fields=<fields> and no action.
 		case grant.id == "" &&
 			r.Id == "" &&
 			grant.typ == r.Type &&
@@ -179,35 +198,40 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(aType == action.List ||
 				aType == action.Create):
 
-			results.Authorized = true
-			var starField bool
+			if !outputFieldsOnly {
+				results.Authorized = true
+			}
 			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
 				return
 			}
 
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
-		// unknown but can be a wildcard to allow any resource at all
+		// unknown but can be a wildcard to allow any resource at all; or
+		// id=*;type=<resource.type>;output_fields=<fields> with no action.
 		case grant.id == "*" &&
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type ||
 				grant.typ == resource.All):
 
-			results.Authorized = true
-			var starField bool
+			if !outputFieldsOnly {
+				results.Authorized = true
+			}
 			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
 				return
 			}
 
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
-		// wildcard and this this is operating on a non-top-level type
+		// wildcard and this this is operating on a non-top-level type. Same for
+		// output fields only.
 		case grant.id != "" &&
 			grant.id == r.Pin &&
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type || grant.typ == resource.All) &&
 			!topLevelType(r.Type):
 
-			results.Authorized = true
-			var starField bool
+			if !outputFieldsOnly {
+				results.Authorized = true
+			}
 			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields); starField {
 				return
 			}
