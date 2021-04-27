@@ -163,3 +163,21 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 
 	return returnedCredentialLibrary, rowsUpdated, nil
 }
+
+// LookupCredentialLibrary returns the CredentialLibrary for publicId.
+// Returns nil, nil if no CredentialLibrary is found for publicId.
+func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId string, _ ...Option) (*CredentialLibrary, error) {
+	const op = "vault.(Repository).LookupCredentialLibrary"
+	if publicId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+	}
+	l := allocCredentialLibrary()
+	l.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, l); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+	}
+	return l, nil
+}
