@@ -36,6 +36,7 @@ import (
 
 var (
 	pwAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
@@ -43,6 +44,7 @@ var (
 		action.ChangePassword.String(),
 	}
 	oidcAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
@@ -515,14 +517,12 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAccountRequest{
 				Id: ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{},
 		},
 		{
 			name: "Delete an existing oidc account",
 			req: &pbs.DeleteAccountRequest{
 				Id: oidcA.GetPublicId(),
 			},
-			res: &pbs.DeleteAccountResponse{},
 		},
 		{
 			name: "Delete bad pw account id",

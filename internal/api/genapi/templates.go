@@ -569,6 +569,11 @@ type {{ .Name }}DeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for {{ .Name }}DeleteResult
+func (n {{ .Name }}DeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n {{ .Name }}DeleteResult) GetResponse() *api.Response {
 	return n.response
 }

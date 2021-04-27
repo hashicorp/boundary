@@ -28,6 +28,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -190,7 +191,7 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteGroupResponse{}, nil
+	return nil, nil
 }
 
 // AddGroupMembers implements the interface pbs.GroupServiceServer.

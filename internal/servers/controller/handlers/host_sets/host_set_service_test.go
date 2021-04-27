@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -29,7 +28,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"}
 
 func TestGet(t *testing.T) {
 	t.Parallel()
@@ -65,7 +67,7 @@ func TestGet(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:              "static",
 		HostIds:           hIds,
-		AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -150,7 +152,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:       h.GetUpdateTime().GetTimestamp(),
 			Version:           h.GetVersion(),
 			Type:              host.StaticSubtype.String(),
-			AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -240,7 +242,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
-			res: &pbs.DeleteHostSetResponse{},
 		},
 		{
 			name:    "Delete bad id Host Set",
@@ -333,8 +334,7 @@ func TestCreate(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	defaultHcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	require.NoError(t, err)
+	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
 		name string
@@ -358,7 +358,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrappers.StringValue{Value: "name"},
 					Description:       &wrappers.StringValue{Value: "desc"},
 					Type:              "static",
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -387,7 +387,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
 					Type:              "static",
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -404,7 +404,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
 				HostCatalogId: hc.GetPublicId(),
-				CreatedTime:   ptypes.TimestampNow(),
+				CreatedTime:   timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -413,7 +413,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostSetRequest{Item: &pb.HostSet{
 				HostCatalogId: hc.GetPublicId(),
-				UpdatedTime:   ptypes.TimestampNow(),
+				UpdatedTime:   timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -434,9 +434,9 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix), got.GetItem().GetId())
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a set created after the test setup's default set
 				assert.True(gotCreateTime.After(defaultHcCreated), "New set should have been created after default set. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
@@ -496,8 +496,7 @@ func TestUpdate(t *testing.T) {
 		version++
 	}
 
-	hCreated, err := ptypes.Timestamp(hs.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Failed to convert proto to timestamp")
+	hCreated := hs.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateHostSetRequest{
 		Id: hs.GetPublicId(),
 	}
@@ -533,7 +532,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -559,7 +558,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -628,7 +627,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -651,7 +650,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -676,7 +675,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -701,7 +700,7 @@ func TestUpdate(t *testing.T) {
 					CreatedTime:       hs.GetCreateTime().GetTimestamp(),
 					Type:              "static",
 					HostIds:           hIds,
-					AuthorizedActions: []string{"read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -744,7 +743,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.HostSet{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -757,7 +756,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.HostSet{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -806,8 +805,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Failed to convert proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set updated after it was created
 				// TODO: This is currently failing.
 				assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
