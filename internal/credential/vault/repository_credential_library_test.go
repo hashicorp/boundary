@@ -108,7 +108,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.GetPublicId(),
 					HttpMethod:  "GET",
-					Description: ("test-description-repo"),
+					Description: "test-description-repo",
 					VaultPath:   "/some/path",
 				},
 			},
@@ -116,7 +116,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.GetPublicId(),
 					HttpMethod:  "GET",
-					Description: ("test-description-repo"),
+					Description: "test-description-repo",
 					VaultPath:   "/some/path",
 				},
 			},
