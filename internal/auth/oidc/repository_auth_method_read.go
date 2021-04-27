@@ -158,6 +158,9 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		if agg.Certs != "" {
 			am.Certificates = strings.Split(agg.Certs, aggregateDelimiter)
 		}
+		if agg.ClaimsScopes != "" {
+			am.ClaimsScopes = strings.Split(agg.ClaimsScopes, aggregateDelimiter)
+		}
 		authMethods = append(authMethods, &am)
 	}
 	return authMethods, nil
@@ -187,6 +190,7 @@ type authMethodAgg struct {
 	ApiUrl                            string
 	Auds                              string
 	Certs                             string
+	ClaimsScopes                      string
 }
 
 // TableName returns the table name for gorm

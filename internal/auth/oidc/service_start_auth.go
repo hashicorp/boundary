@@ -111,6 +111,10 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	default:
 	}
 
+	if len(am.ClaimsScopes) > 0 {
+		oidcOpts = append(oidcOpts, oidc.WithScopes(am.ClaimsScopes...))
+	}
+
 	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated
 	// things like Audiences, because this oidc.Request isn't cached and not intended for use in future legs
 	// of the authen flow.

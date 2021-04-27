@@ -147,6 +147,30 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithOidcAuthMethodClaimsScopes(inClaimsScopes []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["claims_scopes"] = inClaimsScopes
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodClaimsScopes() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["claims_scopes"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodClientId(inClientId string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

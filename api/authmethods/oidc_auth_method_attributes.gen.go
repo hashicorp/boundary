@@ -13,6 +13,7 @@ type OidcAuthMethodAttributes struct {
 	CallbackUrl                       string   `json:"callback_url,omitempty"`
 	IdpCaCerts                        []string `json:"idp_ca_certs,omitempty"`
 	AllowedAudiences                  []string `json:"allowed_audiences,omitempty"`
+	ClaimsScopes                      []string `json:"claims_scopes,omitempty"`
 	DisableDiscoveredConfigValidation bool     `json:"disable_discovered_config_validation,omitempty"`
 	DryRun                            bool     `json:"dry_run,omitempty"`
 }
