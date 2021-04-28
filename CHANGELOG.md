@@ -6,6 +6,24 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* API `delete` actions now result in a `204` status code and no body when
+  successful. This was not the case previously due to a technical limitation
+  which has now been solved.
+* When using a `delete` command we now either show success or treat the `404`
+  error the same as any other `404` error, that is, it results in a non-zero
+  status code and an error message. This makes `delete` actions behave the same
+  as other commands, all of which pass through errors to the CLI. Given `-format
+  json` capability, it's relatively easy to perform a check to see whether an
+  error was `404` or something else from within scripts, in conjunction with
+  checking that the returned status code matches the API error status code
+  (`1`).
+* When outputting from the CLI in JSON format, the resource information under
+  `item` or `items` (depending on the action) now exactly matches the JSON sent
+  across the wire by the controller, as opposed to matching the Go SDK
+  representation which could result in some extra fields being shown or fields
+  having Go-specific types. This includes `delete` actions which previously
+  would show an object indicating existence, but now show no `item` on success
+  or the API's `404` error.
 * Permissions in new scope default roles have been updated to include support
   for `list`, `read:self`, and `delete:self` on `auth-token` resources. This
   allows a user to list and manage their own authentication tokens. (As is the
@@ -16,6 +34,32 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli/api/sdk: Add support to request additional OIDC claims scope values from
+  the OIDC provider when making an authentication request.
+  ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
+  
+  By default, Boundary only requests the "openid" claims scope value. Many
+  providers, like Okta and Auth0 for example, will not return the standard claims
+  of email and name when you request the default claims scope (openid). 
+  
+  Boundary uses the standard email and name claims to populated an OIDC
+  account's `Email` and `FullName` attributes. If you'd like these account
+  attributes populated, you'll need reference your OIDC provider's documentation
+  to learn which claims scopes are required to have these claims returned during
+  the authentication process.    
+
+  Boundary now provides a new OIDC auth method parameter `claims_scopes` which
+  allows you to add multiple additional claims scope values to an OIDC auth
+  method configuration. 
+
+  For information on claims scope values see: [Scope Claims in the OIDC
+  specification](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)
+  
+  
+* cli: Match JSON format output with the across-the-wire API JSON format
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
+* api: Return `204` instead of an empty object on successful `delete` operations
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
 * actions: The new `no-op` action allows a grant to be given to a principals
   without conveying any actionable result. Since resources do not appear in list
   results if the principal has no actions granted on that resource, this can be
@@ -28,6 +72,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * Login Name
   * Full Name
   * Email
+  
   These new user attributes correspond to attributes from the user's primary
   auth method account. These attributes will be empty when the user has no
   account in the primary auth method for their scope, or there is no designated
