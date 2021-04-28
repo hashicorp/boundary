@@ -149,6 +149,10 @@ func (s *Scheduler) Start(ctx context.Context) error {
 		return nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return errors.Wrap(err, op)
