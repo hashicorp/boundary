@@ -27,6 +27,7 @@ type options struct {
 	withCertificates        []*x509.Certificate
 	withAudClaims           []string
 	withSigningAlgs         []Alg
+	withClaimsScopes        []string
 	withEmail               string
 	withFullName            string
 	withOrderByCreateTime   bool
@@ -109,6 +110,13 @@ func WithAudClaims(aud ...string) Option {
 func WithSigningAlgs(alg ...Alg) Option {
 	return func(o *options) {
 		o.withSigningAlgs = alg
+	}
+}
+
+// WithClaimsScopes provides optional claims scopes
+func WithClaimsScopes(claimsScope ...string) Option {
+	return func(o *options) {
+		o.withClaimsScopes = claimsScope
 	}
 }
 

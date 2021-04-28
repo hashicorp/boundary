@@ -391,7 +391,7 @@ func TestAccount_ImmutableFields(t *testing.T) {
 				cp.Issuer = "bob.com"
 				return cp
 			}(),
-			fieldMask: []string{"Issuer"},
+			fieldMask: []string{IssuerField},
 		},
 		{
 			name: "subject",
