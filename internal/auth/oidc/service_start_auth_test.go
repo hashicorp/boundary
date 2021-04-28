@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +52,7 @@ func Test_StartAuth(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCertificates(tpCert...),
+		WithClaimsScopes("email", "profile"),
 	)
 
 	testAuthMethodInactive := TestAuthMethod(
@@ -172,12 +175,18 @@ func Test_StartAuth(t *testing.T) {
 			authParams, err := url.ParseQuery(authUrl.RawQuery)
 			require.NoError(err)
 			assert.Equal(authParams["response_type"], []string{"code"})
-			assert.Equal(authParams["scope"], []string{"openid"})
 			assert.Equal(authParams["response_type"], []string{"code"})
 			assert.Equal(authParams["redirect_uri"], []string{allowedRedirect})
 			assert.Equal(authParams["client_id"], []string{tt.authMethod.ClientId})
 			require.Equal(1, len(authParams["nonce"]))
 			require.Equal(1, len(authParams["state"]))
+
+			require.Len(authParams["scope"], 1)
+			wantClaimsScopes := append(tt.authMethod.ClaimsScopes, DefaultClaimsScope)
+			gotScopes := strings.Split(authParams["scope"][0], " ")
+			sort.Strings(gotScopes)
+			sort.Strings(wantClaimsScopes)
+			assert.Equal(wantClaimsScopes, gotScopes)
 
 			if tt.authMethod.MaxAge != 0 {
 				var expected int

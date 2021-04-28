@@ -98,7 +98,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			updatedAm = am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			updatedAm.DisableDiscoveredConfigValidation = opts.withForce
-			dbMask := []string{"OperationalState", "DisableDiscoveredConfigValidation"}
+			dbMask := []string{OperationalStateField, DisableDiscoveredConfigValidationField}
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			switch {
 			case err != nil:
