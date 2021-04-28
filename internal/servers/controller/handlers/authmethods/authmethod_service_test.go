@@ -423,14 +423,12 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: pwam.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete an Existing OIDC AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: oidcam.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete bad auth_method id",
@@ -570,6 +568,10 @@ func TestCreate(t *testing.T) {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 						return structpb.NewListValue(lv)
 					}(),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+						return structpb.NewListValue(lv)
+					}(),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -592,6 +594,10 @@ func TestCreate(t *testing.T) {
 						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+							return structpb.NewListValue(lv)
+						}(),
+						"claims_scopes": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -913,6 +919,24 @@ func TestCreate(t *testing.T) {
 					"client_secret":  structpb.NewStringValue("secret"),
 					"idp_ca_certs": func() *structpb.Value {
 						lv, _ := structpb.NewList([]interface{}{"unparseable"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "OIDC AuthMethod cant specify default claims scopes of openid",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"openid"})
 						return structpb.NewListValue(lv)
 					}(),
 				}},

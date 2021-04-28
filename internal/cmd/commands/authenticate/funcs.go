@@ -35,7 +35,7 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		if ok := c.PrintJsonItem(&dummyGenericResponse{
 			item:     token,
 			response: result.GetResponse(),
-		}, token); !ok {
+		}); !ok {
 			return base.CommandCliError
 		}
 		return base.CommandSuccess

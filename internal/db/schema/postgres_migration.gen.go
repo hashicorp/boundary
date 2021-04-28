@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 5005,
+		binarySchemaVersion: 10010,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4987,6 +4987,136 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
+			10005: []byte(`
+create function wt_add_seconds(sec integer, ts timestamp with time zone)
+        returns timestamp with time zone
+    as $$
+    select ts + sec * '1 second'::interval;
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds is
+        'wt_add_seconds returns ts + sec.';
+
+    create function wt_add_seconds_to_now(sec integer)
+        returns timestamp with time zone
+    as $$
+    select wt_add_seconds(sec, current_timestamp);
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds_to_now is
+        'wt_add_seconds_to_now returns current_timestamp + sec.';
+`),
+			10010: []byte(`
+create table job (
+         private_id wt_private_id primary key,
+         name wt_name not null,
+         description wt_description not null,
+         code text not null
+             constraint code_too_short
+                 check (length(trim(code)) > 0)
+             constraint code_too_long
+                 check (length(trim(code)) < 128),
+         next_scheduled_run timestamp with time zone not null,
+
+         constraint job_name_code_uq
+             unique(name, code)
+    );
+
+    comment on table job is
+        'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+    create trigger immutable_columns before update on job
+        for each row execute procedure immutable_columns('private_id', 'name', 'code');
+
+    create table job_run_status_enm (
+        name text not null primary key
+            constraint only_predefined_job_status_allowed
+                check(name in ('running', 'completed', 'failed', 'interrupted'))
+    );
+
+    comment on table job_run_status_enm is
+        'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
+
+    insert into job_run_status_enm (name)
+        values
+        ('running'),
+        ('completed'),
+        ('failed'),
+        ('interrupted');
+
+    create table job_run (
+         private_id wh_dim_id primary key
+             default wh_dim_id(),
+         job_id wt_private_id not null
+             constraint job_fkey
+                 references job(private_id)
+                 on delete cascade
+                 on update cascade,
+         server_id wt_private_id
+             constraint server_fkey
+                 references server(private_id)
+                 on delete set null
+                 on update cascade,
+         create_time wt_timestamp,
+         update_time wt_timestamp,
+         end_time timestamp with time zone,
+         completed_count int not null
+             default 0
+             constraint completed_count_can_not_be_negative
+                 check(completed_count >= 0),
+         total_count int not null
+             default 0
+             constraint total_count_can_not_be_negative
+                 check(total_count >= 0),
+         status text not null
+             default 'running'
+             constraint job_run_status_enm_fkey
+                 references job_run_status_enm (name)
+                 on delete restrict
+                 on update cascade,
+
+         constraint job_run_completed_count_less_than_equal_to_total_count
+             check(completed_count <= total_count)
+    );
+
+    comment on table job_run is
+        'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
+
+    create unique index job_run_status_constraint
+        on job_run (job_id)
+        where status = 'running';
+
+    create trigger update_time_column before update on job_run
+        for each row execute procedure update_time_column();
+
+    create trigger default_create_time_column before insert on job_run
+        for each row execute procedure default_create_time();
+
+    create trigger immutable_columns before update on job_run
+        for each row execute procedure immutable_columns('private_id', 'job_id', 'create_time');
+
+    insert into oplog_ticket (name, version)
+    values
+        ('job', 1),
+        ('job_run', 1);
+
+	create view job_jobs_to_run as
+	  with
+	  running_jobs (job_id) as (
+		select job_id
+		  from job_run
+		 where status = 'running'
+	  ),
+	  final (job_id, next_scheduled_run) as (
+		select private_id, next_scheduled_run
+		  from job
+		 where next_scheduled_run <= current_timestamp
+		   and private_id not in (select job_id from running_jobs)
+	  )
+	  select job_id, next_scheduled_run from final;
+`),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
 create table log_migration(
@@ -6007,134 +6137,86 @@ from
 left outer join iam_acct_info i on u.public_id = i.iam_user_id;
 `),
 			5001: []byte(`
-create table job (
-         private_id wt_private_id primary key,
-         name wt_name not null,
-         description wt_description not null,
-         code text not null
-             constraint code_too_short
-                 check (length(trim(code)) > 0)
-             constraint code_too_long
-                 check (length(trim(code)) < 128),
-         next_scheduled_run timestamp with time zone not null,
+-- auth_oidc_scope entries are the optional scopes for a specific oidc auth
+-- method.  There can be 0 or more for each parent oidc auth method.  If an auth
+-- method has any scopes, they will be added to provider requests along with the
+-- default of "openid". 
+create table auth_oidc_scope (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  scope text not null
+    constraint scope_must_not_be_empty
+       check(length(trim(scope)) > 0) 
+    constraint scope_must_be_less_than_1024_chars
+      check(length(trim(scope)) < 1024)
+    constraint scope_must_not_be_openid -- the default scope is not allowed, since it's redundant
+      check(lower(trim(scope)) != 'openid'),
+  primary key(oidc_method_id, scope)
+);
+comment on table auth_oidc_scope is
+'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
-         constraint job_name_code_uq
-             unique(name, code)
-    );
 
-    comment on table job is
-        'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_scope
+  for each row execute procedure default_create_time();
 
-    create trigger immutable_columns before update on job
-        for each row execute procedure immutable_columns('private_id', 'name', 'code');
 
-    create table job_run_status_enm (
-        name text not null primary key
-            constraint only_predefined_job_status_allowed
-                check(name in ('running', 'completed', 'failed', 'interrupted'))
-    );
+-- we will drop the oidc_auth_method_with_value_obj view, so we can recreate it
+-- and add the oidc claim's scopes to the returned set.
+drop view oidc_auth_method_with_value_obj;
 
-    comment on table job_run_status_enm is
-        'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
-
-    insert into job_run_status_enm (name)
-        values
-        ('running'),
-        ('completed'),
-        ('failed'),
-        ('interrupted');
-
-    create table job_run (
-         private_id wh_dim_id primary key
-             default wh_dim_id(),
-         job_id wt_private_id not null
-             constraint job_fkey
-                 references job(private_id)
-                 on delete cascade
-                 on update cascade,
-         server_id wt_private_id
-             constraint server_fkey
-                 references server(private_id)
-                 on delete set null
-                 on update cascade,
-         create_time wt_timestamp,
-         update_time wt_timestamp,
-         end_time timestamp with time zone,
-         completed_count int not null
-             default 0
-             constraint completed_count_can_not_be_negative
-                 check(completed_count >= 0),
-         total_count int not null
-             default 0
-             constraint total_count_can_not_be_negative
-                 check(total_count >= 0),
-         status text not null
-             default 'running'
-             constraint job_run_status_enm_fkey
-                 references job_run_status_enm (name)
-                 on delete restrict
-                 on update cascade,
-
-         constraint job_run_completed_count_less_than_equal_to_total_count
-             check(completed_count <= total_count)
-    );
-
-    comment on table job_run is
-        'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
-
-    create unique index job_run_status_constraint
-        on job_run (job_id)
-        where status = 'running';
-
-    create trigger update_time_column before update on job_run
-        for each row execute procedure update_time_column();
-
-    create trigger default_create_time_column before insert on job_run
-        for each row execute procedure default_create_time();
-
-    create trigger immutable_columns before update on job_run
-        for each row execute procedure immutable_columns('private_id', 'job_id', 'create_time');
-
-    insert into oplog_ticket (name, version)
-    values
-        ('job', 1),
-        ('job_run', 1);
-
-	create view job_jobs_to_run as
-	  with
-	  running_jobs (job_id) as (
-		select job_id
-		  from job_run
-		 where status = 'running'
-	  ),
-	  final (job_id, next_scheduled_run) as (
-		select private_id, next_scheduled_run
-		  from job
-		 where next_scheduled_run <= current_timestamp
-		   and private_id not in (select job_id from running_jobs)
-	  )
-	  select job_id, next_scheduled_run from final;
-`),
-			5005: []byte(`
-create function wt_add_seconds(sec integer, ts timestamp with time zone)
-        returns timestamp with time zone
-    as $$
-    select ts + sec * '1 second'::interval;
-    $$ language sql
-        stable
-        returns null on null input;
-    comment on function wt_add_seconds is
-        'wt_add_seconds returns ts + sec.';
-
-    create function wt_add_seconds_to_now(sec integer)
-        returns timestamp with time zone
-    as $$
-    select wt_add_seconds(sec, current_timestamp);
-    $$ language sql
-        stable
-        returns null on null input;
-    comment on function wt_add_seconds_to_now is
-        'wt_add_seconds_to_now returns current_timestamp + sec.';
+-- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
+-- with its associated value objects (algs, auds, certs) as columns
+-- with | delimited values.  The use of the postgres string_agg(...) to
+-- aggregate the value objects into a column works because we are only pulling
+-- in one column from the associated tables and that value is part of the
+-- primary key and unique.  This view will make things like recursive listing of
+-- oidc auth methods fairly straightforward to implement for the oidc repo. 
+-- The view also includes an is_primary_auth_method bool
+create view oidc_auth_method_with_value_obj as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,
+  am.public_id,
+  am.scope_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.state,
+  am.api_url,
+  am.disable_discovered_config_validation,
+  am.issuer,
+  am.client_id,
+  am.client_secret,
+  am.client_secret_hmac,
+  am.key_id,
+  am.max_age,
+  -- the string_agg(..) column will be null if there are no associated value objects
+  string_agg(distinct alg.signing_alg_name, '|') as algs,
+  string_agg(distinct aud.aud_claim, '|') as auds,
+  string_agg(distinct cert.certificate, '|') as certs,
+  string_agg(distinct cs.scope, '|') as claims_scopes
+from 	
+  auth_oidc_method am 
+  left outer join iam_scope               s     on am.public_id = s.primary_auth_method_id 
+  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id
+  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id
+  left outer join auth_oidc_scope         cs    on am.public_id = cs.oidc_method_id
+group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
+comment on view oidc_auth_method_with_value_obj is
+'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 `),
 		},
 	}

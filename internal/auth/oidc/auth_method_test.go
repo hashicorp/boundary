@@ -565,12 +565,21 @@ func Test_convertValueObjects(t *testing.T) {
 	require.NoError(t, err)
 	testCertificates := []interface{}{c}
 
+	testScopes := []string{"profile", "email"}
+	testClaimsScopes := make([]interface{}, 0, len(testScopes))
+	for _, s := range testScopes {
+		obj, err := NewClaimsScope(testPublicId, s)
+		require.NoError(t, err)
+		testClaimsScopes = append(testClaimsScopes, obj)
+	}
+
 	tests := []struct {
 		name            string
 		authMethodId    string
 		algs            []string
 		auds            []string
 		certs           []string
+		scopes          []string
 		wantValues      *convertedValues
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -581,10 +590,12 @@ func Test_convertValueObjects(t *testing.T) {
 			algs:         testAlgs,
 			auds:         testAuds,
 			certs:        testCerts,
+			scopes:       testScopes,
 			wantValues: &convertedValues{
-				Algs:  testSigningAlgs,
-				Auds:  testAudiences,
-				Certs: testCertificates,
+				Algs:         testSigningAlgs,
+				Auds:         testAudiences,
+				Certs:        testCertificates,
+				ClaimsScopes: testClaimsScopes,
 			},
 		},
 		{
@@ -602,6 +613,7 @@ func Test_convertValueObjects(t *testing.T) {
 					SigningAlgs:  tt.algs,
 					AudClaims:    tt.auds,
 					Certificates: tt.certs,
+					ClaimsScopes: tt.scopes,
 				},
 			}
 
@@ -627,6 +639,14 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
 			} else {
 				assert.Equal(tt.wantValues.Certs, convertedCerts)
+			}
+
+			convertedScopes, err := am.convertClaimsScopes()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.ClaimsScopes, convertedScopes)
 			}
 
 			values, err := am.convertValueObjects()

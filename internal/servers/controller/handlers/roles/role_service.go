@@ -195,7 +195,7 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteRoleResponse{}, nil
+	return nil, nil
 }
 
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
