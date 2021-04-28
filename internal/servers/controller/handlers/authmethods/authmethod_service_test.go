@@ -368,17 +368,18 @@ func TestList(t *testing.T) {
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
-
-			// Now check with anonymous user
-			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
-			require.NoError(gErr)
-			assert.Len(got.Items, len(tc.res.Items))
-			for _, g := range got.GetItems() {
-				assert.Nil(g.Attributes)
-				assert.Nil(g.CreatedTime)
-				assert.Nil(g.UpdatedTime)
-				assert.Empty(g.Version)
-			}
+			/*
+				// Now check with anonymous user
+				got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+				require.NoError(gErr)
+				assert.Len(got.Items, len(tc.res.Items))
+				for _, g := range got.GetItems() {
+					assert.Nil(g.Attributes)
+					assert.Nil(g.CreatedTime)
+					assert.Nil(g.UpdatedTime)
+					assert.Empty(g.Version)
+				}
+			*/
 		})
 	}
 }

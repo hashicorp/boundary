@@ -1,6 +1,9 @@
 package handlers
 
-import "github.com/hashicorp/go-hclog"
+import (
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/go-hclog"
+)
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) options {
@@ -21,6 +24,7 @@ type options struct {
 	withDiscardUnknownFields bool
 	WithLogger               hclog.Logger
 	WithUserIsAnonymous      bool
+	WithOutputFieldsOverride *perms.OutputFieldsMap
 }
 
 func getDefaultOptions() options {
@@ -48,5 +52,13 @@ func WithLogger(logger hclog.Logger) Option {
 func WithUserIsAnonymous(anonListing bool) Option {
 	return func(o *options) {
 		o.WithUserIsAnonymous = anonListing
+	}
+}
+
+// WithUserIsAnonymous provides an option when creating responses to only include those
+// desired for listing to anonymous users.
+func WithOutputFieldsOverride(fields *perms.OutputFieldsMap) Option {
+	return func(o *options) {
+		o.WithOutputFieldsOverride = fields
 	}
 }

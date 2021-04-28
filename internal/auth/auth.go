@@ -528,16 +528,16 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 // FetchActionSetForId returns the allowed actions for a given ID using the
 // current set of ACLs and all other parameters the same (user, etc.)
 func (r *VerifyResults) FetchActionSetForId(ctx context.Context, id string, availableActions action.ActionSet, opt ...Option) action.ActionSet {
-	return r.fetchActions(ctx, id, resource.Unknown, availableActions, opt...)
+	return r.fetchActions(id, resource.Unknown, availableActions, opt...)
 }
 
 // FetchActionSetForType returns the allowed actions for a given collection type
 // using the current set of ACLs and all other parameters the same (user, etc.)
 func (r *VerifyResults) FetchActionSetForType(ctx context.Context, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
-	return r.fetchActions(ctx, "", typ, availableActions, opt...)
+	return r.fetchActions("", typ, availableActions, opt...)
 }
 
-func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
+func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
 	switch {
 	case r.v.requestInfo.DisableAuthEntirely,
 		r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
@@ -573,6 +573,17 @@ func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resourc
 		return nil
 	}
 	return ret
+}
+
+func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) perms.OutputFieldsMap {
+	switch {
+	case r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
+		return perms.OutputFieldsMap{"*": true}
+	case r.v.requestInfo.DisableAuthEntirely:
+		return nil
+	}
+
+	return r.v.acl.Allowed(res, act).OutputFields
 }
 
 // GetTokenFromRequest pulls the token from either the Authorization header or

@@ -3,8 +3,10 @@ package handlers
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -36,7 +38,6 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithLogger(hclog.New(nil)))
 		assert.NotNil(opts.WithLogger)
 	})
-
 	t.Run("WithUserIsAnonymous", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -45,5 +46,18 @@ func Test_GetOpts(t *testing.T) {
 
 		opts = GetOpts(WithUserIsAnonymous(true))
 		assert.True(opts.WithUserIsAnonymous)
+	})
+	t.Run("WithOutputFieldsOverride", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithOutputFieldsOverride)
+
+		var out perms.OutputFieldsMap
+
+		opts = GetOpts(WithOutputFieldsOverride(&out))
+		require.NotNil(opts.WithOutputFieldsOverride)
+		assert.Nil(*opts.WithOutputFieldsOverride)
 	})
 }

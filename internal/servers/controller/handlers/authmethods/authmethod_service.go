@@ -160,7 +160,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	}
 
 	// TODO: figure out how to adjust output fields for recursive listing
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
+	ul, err := s.listFromRepo(ctx, scopeIds, authResults)
 	if err != nil {
 		return nil, err
 	}
@@ -389,21 +389,28 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toAuthMethodProto(ctx, am)
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth.VerifyResults) ([]*pb.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
+	reqCtx := requests.RequestContextFromCtx(ctx)
+
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(anonUser))
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth.AnonymousUserId))
 	if err != nil {
 		return nil, err
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ol {
-		ou, err := toAuthMethodProto(ctx, u)
+		fields := authResults.FetchOutputFields(perms.Resource{
+			Id:      u.GetPublicId(),
+			ScopeId: u.GetScopeId(),
+			Type:    resource.AuthMethod,
+		}, action.List)
+		ou, err := toAuthMethodProto(ctx, u, handlers.WithOutputFieldsOverride(&fields))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		outUl = append(outUl, ou)
 	}
@@ -417,7 +424,12 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 		return nil, errors.Wrap(err, op)
 	}
 	for _, u := range pl {
-		ou, err := toAuthMethodProto(ctx, u)
+		fields := authResults.FetchOutputFields(perms.Resource{
+			Id:      u.GetPublicId(),
+			ScopeId: u.GetScopeId(),
+			Type:    resource.AuthMethod,
+		}, action.List)
+		ou, err := toAuthMethodProto(ctx, u, handlers.WithOutputFieldsOverride(&fields))
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -475,8 +487,8 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
 		if dryRun {
-			storageToWire = func(ctx context.Context, in auth.AuthMethod) (*pb.AuthMethod, error) {
-				am, err := toAuthMethodProto(ctx, in)
+			storageToWire = func(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
+				am, err := toAuthMethodProto(ctx, in, opt...)
 				if err != nil {
 					return nil, errors.Wrap(err, op)
 				}
@@ -636,9 +648,14 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toAuthMethodProto(ctx context.Context, in auth.AuthMethod) (*pb.AuthMethod, error) {
+func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
 	reqCtx := requests.RequestContextFromCtx(ctx)
-	outputFields := reqCtx.OutputFields.SelfOrDefaults(reqCtx.UserId)
+	outputFields := reqCtx.OutputFields
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFieldsOverride != nil {
+		outputFields = *opts.WithOutputFieldsOverride
+	}
+	outputFields = outputFields.SelfOrDefaults(reqCtx.UserId)
 
 	out := pb.AuthMethod{}
 	if outputFields.Has(globals.IdField) {
