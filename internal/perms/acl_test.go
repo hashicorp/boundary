@@ -131,9 +131,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read, outputFields: []string{"id"}},
-				{action: action.Update, outputFields: []string{"id"}},
-				{action: action.Delete, outputFields: []string{"id"}},
+				{action: action.Read},
+				{action: action.Update},
+				{action: action.Delete},
 			},
 		},
 		{
@@ -143,7 +143,7 @@ func Test_ACLAllowed(t *testing.T) {
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true, outputFields: []string{"id"}},
 				{action: action.Create, authorized: true, outputFields: []string{"id"}},
-				{action: action.AddHosts, outputFields: []string{"id"}},
+				{action: action.AddHosts},
 			},
 		},
 		{
@@ -151,9 +151,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Id: "id_g"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read, outputFields: []string{"id"}},
-				{action: action.Update, outputFields: []string{"id"}},
-				{action: action.Delete, outputFields: []string{"id"}},
+				{action: action.Read},
+				{action: action.Update},
+				{action: action.Delete},
 			},
 		},
 		{
@@ -200,9 +200,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.List, outputFields: []string{"id"}},
+				{action: action.List},
 				{action: action.Authenticate, authorized: true, outputFields: []string{"id"}},
-				{action: action.Delete, outputFields: []string{"id"}},
+				{action: action.Delete},
 			},
 		},
 		{
@@ -309,122 +309,6 @@ func Test_ACLAllowed(t *testing.T) {
 				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
 				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
-		})
-	}
-}
-
-func Test_ACLOutputFields(t *testing.T) {
-	t.Parallel()
-
-	type input struct {
-		name     string
-		grants   []string
-		resource Resource
-		action   action.Type
-		fields   []string
-	}
-	tests := []input{
-		{
-			name:     "default",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			action:   action.Read,
-			grants:   []string{"id=bar;actions=read,update"},
-		},
-		{
-			name:     "single value",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants:   []string{"id=bar;actions=read,update;output_fields=id"},
-			action:   action.Read,
-			fields:   []string{"id"},
-		},
-		{
-			name:     "compound no overlap",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
-				"id=*;type=host-catalog;actions=read,update;output_fields=id",
-			},
-			action: action.Read,
-			fields: []string{"id"},
-		},
-		{
-			name:     "compound",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
-				"id=*;type=role;output_fields=version",
-			},
-			action: action.Read,
-			fields: []string{"id", "version"},
-		},
-		{
-			name:     "wildcard with type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
-				"id=*;type=role;output_fields=*",
-			},
-			action: action.Read,
-			fields: []string{"*"},
-		},
-		{
-			name:     "wildcard with wildcard type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
-				"id=*;type=*;output_fields=*",
-			},
-			action: action.Read,
-			fields: []string{"*"},
-		},
-		{
-			name:     "subaction exact",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
-			},
-			action: action.ReadSelf,
-			fields: []string{"version"},
-		},
-		{
-			// If the action is a subaction, parent output fields will apply, in
-			// addition to subaction. This matches authorization.
-			name:     "subaction parent action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read,update;output_fields=version",
-				"id=bar;actions=read:self;output_fields=id",
-			},
-			action: action.ReadSelf,
-			fields: []string{"id", "version"},
-		},
-		{
-			// The inverse isn't true. Similarly to authorization, if you have
-			// specific output fields on a self action, they don't apply to
-			// non-self actions. This is useful to allow more visibility to self
-			// actions and less in the general case.
-			name:     "subaction child action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
-				"id=bar;actions=read;output_fields=id",
-			},
-			action: action.Read,
-			fields: []string{"id"},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			var grants []Grant
-			for _, g := range test.grants {
-				grant, err := Parse("o_myorg", g)
-				require.NoError(t, err)
-				grants = append(grants, grant)
-			}
-			acl := NewACL(grants...)
-			results := acl.Allowed(test.resource, test.action)
-			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
 		})
 	}
 }

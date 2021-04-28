@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -679,43 +680,37 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 }
 
 func toProto(ctx context.Context, in auth.Account) (*pb.Account, error) {
-	var outputFields perms.OutputFieldsMap
-	userId := auth.AnonymousUserId
-	if reqInfoRaw := ctx.Value(requests.ContextRequestInformationKey); reqInfoRaw != nil {
-		reqInfo := reqInfoRaw.(*requests.RequestInfo)
-		outputFields = reqInfo.OutputFields
-		userId = reqInfo.UserId
-	}
-	outputFields = outputFields.SelfOrDefaults(userId)
+	reqCtx := requests.RequestContextFromCtx(ctx)
+	outputFields := reqCtx.OutputFields.SelfOrDefaults(reqCtx.UserId)
 
 	out := pb.Account{}
-	if outputFields.Has("id") {
+	if outputFields.Has(globals.IdField) {
 		out.Id = in.GetPublicId()
 	}
-	if outputFields.Has("auth_method_id") {
+	if outputFields.Has(globals.AuthMethodIdField) {
 		out.AuthMethodId = in.GetAuthMethodId()
 	}
-	if outputFields.Has("description") && in.GetDescription() != "" {
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
-	if outputFields.Has("name") && in.GetName() != "" {
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if outputFields.Has("created_time") {
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
 	}
-	if outputFields.Has("updated_time") {
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
 	}
-	if outputFields.Has("version") {
+	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
 	}
 	switch i := in.(type) {
 	case *password.Account:
-		if outputFields.Has("type") {
+		if outputFields.Has(globals.TypeField) {
 			out.Type = auth.PasswordSubtype.String()
 		}
-		if !outputFields.Has("attributes") {
+		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
 		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
@@ -724,10 +719,10 @@ func toProto(ctx context.Context, in auth.Account) (*pb.Account, error) {
 		}
 		out.Attributes = st
 	case *oidc.Account:
-		if outputFields.Has("type") {
+		if outputFields.Has(globals.TypeField) {
 			out.Type = auth.OidcSubtype.String()
 		}
-		if !outputFields.Has("attributes") {
+		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
 		attrs := &pb.OidcAccountAttributes{

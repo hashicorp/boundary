@@ -1,6 +1,10 @@
 package requests
 
-import "github.com/hashicorp/boundary/internal/perms"
+import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/perms"
+)
 
 // ContextRequestInforation is a type used solely for context keys -- see the
 // variable below
@@ -10,14 +14,40 @@ type ContextRequestInformation struct{}
 // about clashing identifiers
 var ContextRequestInformationKey ContextRequestInformation
 
-// RequestInfo is used to propoagate request information. It can be updated at
-// various points, e.g. UserIsAnonymous would be updated via the result of
+// RequestContext is used to propoagate request information. It can be updated
+// at various points, e.g. UserId would be updated via the result of
 // auth.Verify.
-type RequestInfo struct {
+//
+// It serves as a struct to gather information we learn about the request as it
+// goes along. This is distinct from options handling; none of the fields here
+// are "optional" and should all eventually be populated as the request moves
+// through the system.
+type RequestContext struct {
+	// Method is the method of the request
+	Method string
+
+	// Path is the path of the request
+	Path string
+
 	// UserId contains the final discovered user ID
 	UserId string
 
 	// OutputFields is the set of fields authorized for output for the
 	// authorized action, if not the default
 	OutputFields perms.OutputFieldsMap
+}
+
+// RequestContextFromCtx pulls out RequestContext and returns it. It will always
+// return a valid object; however, if the input is empty, the output will be
+// empty as well. Callers should be prepared to sanity-check.
+func RequestContextFromCtx(ctx context.Context) *RequestContext {
+	reqCtxRaw := ctx.Value(ContextRequestInformationKey)
+	if reqCtxRaw == nil {
+		return &RequestContext{}
+	}
+	reqCtx, ok := reqCtxRaw.(*RequestContext)
+	if !ok {
+		return &RequestContext{}
+	}
+	return reqCtx
 }

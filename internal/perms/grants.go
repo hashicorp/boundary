@@ -262,7 +262,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 			}
 
 		case "output_fields":
-			g.OutputFields, _ = g.OutputFields.AddStrings(strings.Split(kv[1], ","))
+			g.OutputFields, _ = g.OutputFields.AddFields(strings.Split(kv[1], ","))
 		}
 	}
 

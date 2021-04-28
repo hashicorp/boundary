@@ -136,6 +136,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	authzdActions := authResults.FetchActionSetForId(ctx, u.Id, IdActions)
 	// Check to see if we need to verify Read vs. just ReadSelf
 	if u.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -163,6 +164,7 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	authzdActions := authResults.FetchActionSetForId(ctx, at.Id, IdActions)
 	// Check to see if we need to verify Delete vs. just DeleteSelf
 	if at.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Delete) {
 			return nil, handlers.ForbiddenError()
 		}

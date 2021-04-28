@@ -77,6 +77,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
 	// Check to see if we need to verify Read vs. just ReadSelf
 	if ses.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -168,6 +169,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
 	// Check to see if we need to verify Cancel vs. just CancelSelf
 	if ses.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()
 		}
