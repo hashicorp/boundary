@@ -29,7 +29,6 @@ type Scheduler struct {
 	registeredJobs *sync.Map
 	runningJobs    *sync.Map
 	started        ua.Bool
-	baseContext    context.Context
 
 	runJobsLimit       uint
 	runJobsInterval    time.Duration
@@ -45,7 +44,8 @@ type Scheduler struct {
 //
 // • logger must be provided and is used to log errors that occur during scheduling and running of jobs
 //
-// WithRunJobsLimit and WithRunJobsInterval are the only valid options.
+// WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
+// the only valid options.
 func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
@@ -160,43 +160,41 @@ func (s *Scheduler) Start(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 
-	s.baseContext = ctx
-	go s.start()
-	go s.monitorJobs()
+	go s.start(ctx)
+	go s.monitorJobs(ctx)
 
 	return nil
 }
 
-func (s *Scheduler) start() {
+func (s *Scheduler) start(ctx context.Context) {
 	s.logger.Debug("starting scheduling loop")
 	timer := time.NewTimer(0)
 	for {
 		select {
-		case <-s.baseContext.Done():
+		case <-ctx.Done():
 			s.logger.Debug("scheduling loop shutting down")
 			return
-
 		case <-timer.C:
 			s.logger.Debug("waking up to run jobs")
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				s.logger.Debug("error creating job repo", "error", err)
+				s.logger.Error("error creating job repo", "error", err)
 				break
 			}
 
-			runs, err := repo.RunJobs(s.baseContext, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
+			runs, err := repo.RunJobs(ctx, s.serverId, job.WithRunJobsLimit(s.runJobsLimit))
 			if err != nil {
-				s.logger.Debug("error getting jobs to run from repo", "error", err)
+				s.logger.Error("error getting jobs to run from repo", "error", err)
 				break
 			}
 
 			for _, r := range runs {
-				err := s.runJob(r)
+				err := s.runJob(ctx, r)
 				if err != nil {
-					s.logger.Debug("error starting job", "error", err)
-					if _, inner := repo.FailRun(s.baseContext, r.PrivateId); inner != nil {
-						s.logger.Debug("error updating failed job run", "error", inner)
+					s.logger.Error("error starting job", "error", err)
+					if _, inner := repo.FailRun(ctx, r.PrivateId); inner != nil {
+						s.logger.Error("error updating failed job run", "error", inner)
 					}
 				}
 			}
@@ -207,23 +205,24 @@ func (s *Scheduler) start() {
 	}
 }
 
-func (s *Scheduler) runJob(r *job.Run) error {
+func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	jobId := JobId(r.JobId)
 	regJob, ok := s.registeredJobs.Load(jobId)
+	if !ok {
+		return fmt.Errorf("job %q not registered on scheduler", jobId)
+	}
 	j := regJob.(Job)
 	s.logger.Debug("starting job run", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
-	if !ok {
-		return fmt.Errorf("job (%v: %v) not registered on scheduler", jobId, j.Name())
-	}
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return fmt.Errorf("failed to create job repository: %w", err)
 	}
 
-	jobContext, jobCancel := context.WithCancel(s.baseContext)
+	jobContext, jobCancel := context.WithCancel(ctx)
 	_, loaded := s.runningJobs.LoadOrStore(jobId, runningJob{runId: r.PrivateId, cancelCtx: jobCancel, status: j.Status})
 	if loaded {
+		jobCancel()
 		return fmt.Errorf("job (%v: %v) is already running", jobId, j.Name())
 	}
 
@@ -234,12 +233,12 @@ func (s *Scheduler) runJob(r *job.Run) error {
 		case nil:
 			s.logger.Debug("job run complete", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
 			if _, inner := repo.CompleteRun(jobContext, r.PrivateId, j.NextRunIn()); inner != nil {
-				s.logger.Debug("error updating completed job run", "error", inner)
+				s.logger.Error("error updating completed job run", "error", inner)
 			}
 		default:
 			s.logger.Debug("job run failed", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
 			if _, inner := repo.FailRun(jobContext, r.PrivateId); inner != nil {
-				s.logger.Debug("error updating failed job run", "error", inner)
+				s.logger.Error("error updating failed job run", "error", inner)
 			}
 		}
 
@@ -249,21 +248,21 @@ func (s *Scheduler) runJob(r *job.Run) error {
 	return nil
 }
 
-func (s *Scheduler) monitorJobs() {
+func (s *Scheduler) monitorJobs(ctx context.Context) {
 	s.logger.Debug("starting job monitor loop")
 	timer := time.NewTimer(0)
 	for {
 		select {
-		case <-s.baseContext.Done():
+		case <-ctx.Done():
 			s.logger.Debug("job monitor loop shutting down")
 			return
 
 		case <-timer.C:
 			// Update progress of all running jobs
 			s.runningJobs.Range(func(_, v interface{}) bool {
-				err := s.updateRunningJobProgress(v.(runningJob))
+				err := s.updateRunningJobProgress(ctx, v.(runningJob))
 				if err != nil {
-					s.logger.Debug("error updating job progress", "error", err)
+					s.logger.Error("error updating job progress", "error", err)
 				}
 				return true
 			})
@@ -271,26 +270,26 @@ func (s *Scheduler) monitorJobs() {
 			// Check for defunct runs to interrupt
 			repo, err := s.jobRepoFn()
 			if err != nil {
-				s.logger.Debug("error creating job repo", "error", err)
+				s.logger.Error("error creating job repo", "error", err)
 				break
 			}
 
-			_, err = repo.InterruptRuns(s.baseContext, s.interruptThreshold)
+			_, err = repo.InterruptRuns(ctx, s.interruptThreshold)
 			if err != nil {
-				s.logger.Debug("error interrupting job runs", "error", err)
+				s.logger.Error("error interrupting job runs", "error", err)
 			}
 		}
 		timer.Reset(s.monitorInterval)
 	}
 }
 
-func (s *Scheduler) updateRunningJobProgress(j runningJob) error {
+func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j runningJob) error {
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return fmt.Errorf("error creating job repo %w", err)
 	}
 	status := j.status()
-	_, err = repo.UpdateProgress(s.baseContext, j.runId, status.Completed, status.Total)
+	_, err = repo.UpdateProgress(ctx, j.runId, status.Completed, status.Total)
 	if errors.Match(errors.T(errors.InvalidJobRunState), err) {
 		// Job has been persisted with a final run status, cancel job context to trigger early exit.
 		j.cancelCtx()
