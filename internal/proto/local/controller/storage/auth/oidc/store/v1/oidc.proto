@@ -111,6 +111,12 @@ message AuthMethod {
   // as a complete set.
   // @inject_tag: `gorm:"-"`
   repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.idp_ca_certs" }];
+
+  // claims_scopes are the optional claims scopes a specific oidc auth method.
+  // These are Value Objects that will be stored as ClaimsScope messages, and
+  // are operatated on as a complete set.
+  // @inject_tag: `gorm:"-"`
+  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScopes" that: "attributes.claims_scopes" }];
 }
 
 // Account represents an OIDC account
@@ -197,6 +203,23 @@ message Certificate {
   // certificate is a PEM encoded x509
   // @inject_tag: `gorm:"column:certificate;primary_key"`
   string cert = 20;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
+// ClaimsScope entries are optional OIDC scope values that are used to request
+// claims, in addition to the default scope of "openid".
+//
+// see: https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+message ClaimsScope {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // scope is an OIDC scope
+  // @inject_tag: `gorm:"column:scope;primary_key"`
+  string scope = 20;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`

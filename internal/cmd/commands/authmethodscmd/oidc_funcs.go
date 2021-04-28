@@ -26,6 +26,7 @@ type extraOidcCmdVars struct {
 	flagSigningAlgorithms                 []string
 	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
+	flagClaimsScopes                      []string
 	flagDisableDiscoveredConfigValidation bool
 	flagDryRun                            bool
 }
@@ -40,6 +41,7 @@ const (
 	apiUrlPrefixFlagName                      = "api-url-prefix"
 	caCertFlagName                            = "idp-ca-cert"
 	allowedAudienceFlagName                   = "allowed-audience"
+	claimsScopes                              = "claims-scopes"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
 	dryRunFlagName                            = "dry-run"
@@ -56,6 +58,7 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			apiUrlPrefixFlagName,
 			caCertFlagName,
 			allowedAudienceFlagName,
+			claimsScopes,
 		},
 		"change-state": {
 			idFlagName,
@@ -119,6 +122,12 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   allowedAudienceFlagName,
 				Target: &c.flagAllowedAudiences,
 				Usage:  `The acceptable audience ("aud") claim. May be specified multiple times.`,
+			})
+		case claimsScopes:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   claimsScopes,
+				Target: &c.flagClaimsScopes,
+				Usage:  `The optional claims scope requested. May be specified multiple times.`,
 			})
 		case stateFlagName:
 			f.StringVar(&base.StringVar{
@@ -241,6 +250,13 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAllowedAudiences())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAllowedAudiences(c.flagAllowedAudiences))
+	}
+	switch {
+	case len(c.flagClaimsScopes) == 0:
+	case len(c.flagClaimsScopes) == 1 && c.flagClaimsScopes[0] == "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodClaimsScopes())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodClaimsScopes(c.flagClaimsScopes))
 	}
 	if c.flagDisableDiscoveredConfigValidation {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))

@@ -59,7 +59,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		columns, values = append(columns, "full_name"), append(values, foundName)
 	default:
 		conflictClauses = append(conflictClauses, "full_name = NULL")
-		nullMasks = append(nullMasks, "Name")
+		nullMasks = append(nullMasks, NameField)
 	}
 	switch {
 	case AccessTokenClaims["email"] != nil:
@@ -76,7 +76,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if foundName != nil {
 		values = append(values, foundName)
 		conflictClauses = append(conflictClauses, fmt.Sprintf("full_name = $%d", len(values)))
-		fieldMasks = append(fieldMasks, "Name")
+		fieldMasks = append(fieldMasks, NameField)
 	}
 	if foundEmail != nil {
 		values = append(values, foundEmail)

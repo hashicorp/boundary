@@ -35,7 +35,9 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		conn, databaseWrapper, org.PublicId, ActivePublicState,
 		"alice_rp", "alices-dogs-name",
 		WithApiUrl(TestConvertToUrls(t, "https://alice-active-pub.com/callback")[0]),
-		WithSigningAlgs(RS256))
+		WithSigningAlgs(RS256),
+		WithClaimsScopes("email", "profile"),
+	)
 	amActivePub.IsPrimaryAuthMethod = true
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), org, amActivePub.PublicId)
 
@@ -128,12 +130,12 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				require.NoError(t, err)
 
 				am1a := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "alices-dogs-name",
-					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithClaimsScopes("email", "profile"))
 				iam.TestSetPrimaryAuthMethod(t, iamRepo, org, am1a.PublicId)
 				am1a.IsPrimaryAuthMethod = true
 
 				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp-2", "alices-cat-name",
-					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithClaimsScopes("email", "profile"))
 
 				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
 			},
@@ -229,6 +231,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 					WithApiUrl(TestConvertToUrls(t, "https://alice.com/callback")[0]),
 					WithSigningAlgs(RS256, ES256),
 					WithCertificates(cert1, cert2),
+					WithClaimsScopes("email", "profile"),
 				)
 				am1b := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp-2", "alices-cat-name",
 					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))

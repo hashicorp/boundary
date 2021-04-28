@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -18,6 +17,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Test_TokenRequest(t *testing.T) {
@@ -234,8 +234,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				exp, err := ptypes.TimestampProto(time.Now().Add(AttemptExpiration).Truncate(time.Second))
-				require.NoError(t, err)
+				exp := timestamppb.New(time.Now().Add(AttemptExpiration).Truncate(time.Second))
 				reqTk := request.Token{
 					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},
 				}
@@ -264,8 +263,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				exp, err := ptypes.TimestampProto(time.Now().Add(AttemptExpiration).Truncate(time.Second))
-				require.NoError(t, err)
+				exp := timestamppb.New(time.Now().Add(AttemptExpiration).Truncate(time.Second))
 				reqTk := request.Token{
 					RequestId:      "not-a-valid-id",
 					ExpirationTime: &timestamp.Timestamp{Timestamp: exp},

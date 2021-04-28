@@ -41,6 +41,7 @@ const (
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 	codeField                              = "attributes.code"
+	claimsScopesField                      = "attributes.claims_scopes"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -456,6 +457,10 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			return nil, false, false, err
 		}
 		opts = append(opts, oidc.WithCertificates(certs...))
+	}
+
+	if len(attrs.GetClaimsScopes()) > 0 {
+		opts = append(opts, oidc.WithClaimsScopes(attrs.GetClaimsScopes()...))
 	}
 
 	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)
