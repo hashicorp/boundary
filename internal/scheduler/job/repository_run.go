@@ -40,17 +40,16 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			for rows.Next() {
 				run := allocRun()
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
 			}
-			_ = rows.Close()
 
 			// Write Run create messages to oplog
 			for _, run := range runs {
@@ -92,21 +91,19 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					_ = rows.Close()
 					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
-			_ = rows.Close()
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
@@ -164,21 +161,19 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					_ = rows.Close()
 					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
-			_ = rows.Close()
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
@@ -199,21 +194,20 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 
 			job := allocJob()
 			job.PrivateId = run.JobId
-			rows, err = w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
 			}
-			defer rows.Close()
+			defer rows1.Close()
 
 			rowCnt = 0
-			for rows.Next() {
+			for rows1.Next() {
 				if rowCnt > 0 {
 					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, job)
+				err = r.ScanRows(rows1, job)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
 				}
 			}
@@ -260,21 +254,19 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					_ = rows.Close()
 					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
-			_ = rows.Close()
 			if rowCnt == 0 {
 				// Failed to update run, either it does not exist or was in an invalid state
 				if err = r.LookupById(ctx, run); err != nil {
@@ -342,7 +334,6 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 				run := allocRun()
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
