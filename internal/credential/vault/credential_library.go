@@ -13,7 +13,7 @@ type Method string
 // HTTP methods use for communicating with Vault.
 const (
 	MethodGet  Method = "GET"
-	MethodPost        = "POST"
+	MethodPost Method = "POST"
 )
 
 // A CredentialLibrary contains a Vault path and is owned by a credential
