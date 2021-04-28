@@ -37,6 +37,10 @@ type RequestContext struct {
 	OutputFields perms.OutputFieldsMap
 }
 
+func NewRequestContext(parent context.Context) context.Context {
+	return context.WithValue(parent, ContextRequestInformationKey, &RequestContext{})
+}
+
 // RequestContextFromCtx pulls out RequestContext and returns it. It will always
 // return a valid object; however, if the input is empty, the output will be
 // empty as well. Callers should be prepared to sanity-check.

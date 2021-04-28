@@ -67,6 +67,7 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 			"scope_id":    true,
 			"name":        true,
 			"description": true,
+			"type":        true,
 		}
 	default:
 		return OutputFieldsMap{

@@ -244,6 +244,9 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// the auth verifier context is pretty specifically curated to
 		// authentication/authorization verification so this is more
 		// general-purpose.
+		//
+		// We could use requests.NewRequestContext but this saves an immediate
+		// lookup.
 		ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{
 			Path:   r.URL.Path,
 			Method: r.Method,

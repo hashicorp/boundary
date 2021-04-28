@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -17,6 +18,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -384,7 +386,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
 
-	return toAuthMethodProto(am)
+	return toAuthMethodProto(ctx, am)
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.AuthMethod, error) {
@@ -399,7 +401,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ol {
-		ou, err := toAuthMethodProto(u, handlers.WithUserIsAnonymous(anonUser))
+		ou, err := toAuthMethodProto(ctx, u)
 		if err != nil {
 			return nil, err
 		}
@@ -415,7 +417,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 		return nil, errors.Wrap(err, op)
 	}
 	for _, u := range pl {
-		ou, err := toAuthMethodProto(u, handlers.WithUserIsAnonymous(anonUser))
+		ou, err := toAuthMethodProto(ctx, u)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -447,7 +449,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 		}
 		out = am
 	}
-	return toAuthMethodProto(out)
+	return toAuthMethodProto(ctx, out)
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*pb.AuthMethod, error) {
@@ -473,8 +475,8 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
 		if dryRun {
-			storageToWire = func(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
-				am, err := toAuthMethodProto(in)
+			storageToWire = func(ctx context.Context, in auth.AuthMethod) (*pb.AuthMethod, error) {
+				am, err := toAuthMethodProto(ctx, in)
 				if err != nil {
 					return nil, errors.Wrap(err, op)
 				}
@@ -491,7 +493,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 		}
 		out = am
 	}
-	return storageToWire(out)
+	return storageToWire(ctx, out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -559,7 +561,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 			return nil, err
 		}
 
-		return toAuthMethodProto(am)
+		return toAuthMethodProto(ctx, am)
 	}
 
 	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
@@ -634,28 +636,42 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := &pb.AuthMethod{
-		Id:        in.GetPublicId(),
-		ScopeId:   in.GetScopeId(),
-		IsPrimary: in.GetIsPrimaryAuthMethod(),
+func toAuthMethodProto(ctx context.Context, in auth.AuthMethod) (*pb.AuthMethod, error) {
+	reqCtx := requests.RequestContextFromCtx(ctx)
+	outputFields := reqCtx.OutputFields.SelfOrDefaults(reqCtx.UserId)
+
+	out := pb.AuthMethod{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetDescription() != "" {
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has("is_primary") {
+		out.IsPrimary = in.GetIsPrimaryAuthMethod()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
 	}
-	if in.GetName() != "" {
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	if !anonListing {
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
 	}
 	switch i := in.(type) {
 	case *password.AuthMethod:
+		if outputFields.Has(globals.TypeField) {
+			out.Type = auth.PasswordSubtype.String()
+		}
 		out.Type = auth.PasswordSubtype.String()
-		if anonListing {
+		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
 		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
@@ -667,8 +683,10 @@ func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMeth
 		}
 		out.Attributes = st
 	case *oidc.AuthMethod:
-		out.Type = auth.OidcSubtype.String()
-		if anonListing {
+		if outputFields.Has(globals.TypeField) {
+			out.Type = auth.OidcSubtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
 		attrs := &pb.OidcAuthMethodAttributes{
@@ -703,7 +721,7 @@ func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMeth
 		}
 		out.Attributes = st
 	}
-	return out, nil
+	return &out, nil
 }
 
 func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
