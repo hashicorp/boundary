@@ -36,12 +36,12 @@ func Test_ActionParsingValidation(t *testing.T) {
 			name: "empty action with output fields",
 			input: Grant{
 				OutputFields: OutputFieldsMap{
-					"id": struct{}{},
+					"id": true,
 				},
 			},
 			result: Grant{
 				OutputFields: OutputFieldsMap{
-					"id": struct{}{},
+					"id": true,
 				},
 			},
 		},
@@ -179,9 +179,9 @@ func Test_MarshalingAndCloning(t *testing.T) {
 				},
 				typ: resource.Group,
 				OutputFields: OutputFieldsMap{
-					"name":    struct{}{},
-					"version": struct{}{},
-					"id":      struct{}{},
+					"name":    true,
+					"version": true,
+					"id":      true,
 				},
 			},
 			jsonOutput:      `{"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -201,9 +201,9 @@ func Test_MarshalingAndCloning(t *testing.T) {
 				},
 				actionsBeingParsed: []string{"create", "read"},
 				OutputFields: OutputFieldsMap{
-					"name":    struct{}{},
-					"version": struct{}{},
-					"id":      struct{}{},
+					"name":    true,
+					"version": true,
+					"id":      true,
 				},
 			},
 			jsonOutput:      `{"actions":["create","read"],"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -288,9 +288,9 @@ func Test_Unmarshaling(t *testing.T) {
 			name: "good output fields",
 			expected: Grant{
 				OutputFields: OutputFieldsMap{
-					"name":    struct{}{},
-					"version": struct{}{},
-					"id":      struct{}{},
+					"name":    true,
+					"version": true,
+					"id":      true,
 				},
 			},
 			jsonInput: `{"output_fields":["id","name","version"]}`,
@@ -509,9 +509,9 @@ func Test_Parse(t *testing.T) {
 					action.Read: true,
 				},
 				OutputFields: OutputFieldsMap{
-					"version": struct{}{},
-					"id":      struct{}{},
-					"name":    struct{}{},
+					"version": true,
+					"id":      true,
+					"name":    true,
 				},
 			},
 		},
@@ -526,9 +526,9 @@ func Test_Parse(t *testing.T) {
 				id:  "foobar",
 				typ: resource.Unknown,
 				OutputFields: OutputFieldsMap{
-					"version": struct{}{},
-					"id":      struct{}{},
-					"name":    struct{}{},
+					"version": true,
+					"id":      true,
+					"name":    true,
 				},
 			},
 		},
@@ -575,9 +575,9 @@ func Test_Parse(t *testing.T) {
 					action.Read: true,
 				},
 				OutputFields: OutputFieldsMap{
-					"version": struct{}{},
-					"id":      struct{}{},
-					"name":    struct{}{},
+					"version": true,
+					"id":      true,
+					"name":    true,
 				},
 			},
 		},

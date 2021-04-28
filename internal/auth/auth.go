@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -158,6 +159,12 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 
+	var reqInfo *requests.RequestInfo
+	reqInfoRaw := ctx.Value(requests.ContextRequestInformationKey)
+	if reqInfoRaw != nil {
+		reqInfo = reqInfoRaw.(*requests.RequestInfo)
+	}
+
 	// In tests we often simply disable auth so we can test the service handlers
 	// without fuss
 	if v.requestInfo.DisableAuthEntirely {
@@ -203,6 +210,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 		}
 		ret.UserId = v.requestInfo.userIdOverride
+		if reqInfo != nil {
+			reqInfo.UserId = ret.UserId
+		}
 		ret.Error = nil
 		return
 	}
@@ -247,6 +257,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 			return
 		}
+	}
+
+	if reqInfo != nil {
+		reqInfo.UserId = ret.UserId
+		reqInfo.OutputFields = authResults.OutputFields
 	}
 
 	ret.Error = nil

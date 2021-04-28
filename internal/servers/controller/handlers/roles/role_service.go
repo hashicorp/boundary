@@ -419,7 +419,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	var outRl []*pb.Role
 	for _, g := range rl {
 		// TODO: Attach principals and grants to ListRoles response.
-		outRl = append(outRl, toProto(g, nil, nil, handlers.WithAnonymousListing(anonUser)))
+		outRl = append(outRl, toProto(g, nil, nil, handlers.WithUserIsAnonymous(anonUser)))
 	}
 	return outRl, nil
 }
@@ -594,7 +594,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant, opt ...handlers.Option) *pb.Role {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Role{
 		Id:      in.GetPublicId(),
 		ScopeId: in.GetScopeId(),

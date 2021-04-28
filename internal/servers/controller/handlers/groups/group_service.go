@@ -352,7 +352,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	}
 	var outGl []*pb.Group
 	for _, g := range gl {
-		outGl = append(outGl, toProto(g, nil, handlers.WithAnonymousListing(anonUser)))
+		outGl = append(outGl, toProto(g, nil, handlers.WithUserIsAnonymous(anonUser)))
 	}
 	return outGl, nil
 }
@@ -460,7 +460,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func toProto(in *iam.Group, members []*iam.GroupMember, opt ...handlers.Option) *pb.Group {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Group{
 		Id:      in.GetPublicId(),
 		ScopeId: in.GetScopeId(),

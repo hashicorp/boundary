@@ -214,7 +214,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				case !ok:
 					return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
-					g.OutputFields[field] = struct{}{}
+					g.OutputFields[field] = true
 				}
 			}
 		}

@@ -37,13 +37,13 @@ func Test_GetOpts(t *testing.T) {
 		assert.NotNil(opts.WithLogger)
 	})
 
-	t.Run("WithAnonymousListing", func(t *testing.T) {
+	t.Run("WithUserIsAnonymous", func(t *testing.T) {
 		assert := assert.New(t)
 
 		opts := GetOpts()
-		assert.False(opts.WithAnonymousListing)
+		assert.False(opts.WithUserIsAnonymous)
 
-		opts = GetOpts(WithAnonymousListing(true))
-		assert.True(opts.WithAnonymousListing)
+		opts = GetOpts(WithUserIsAnonymous(true))
+		assert.True(opts.WithUserIsAnonymous)
 	})
 }

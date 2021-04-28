@@ -15,6 +15,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -116,7 +117,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId(), authResults.UserId == auth.AnonymousUserId)
+	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +282,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	default:
 		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	return toProto(acct)
+	return toProto(ctx, acct)
 }
 
 func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
@@ -393,7 +394,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		}
 		out = am
 	}
-	return toProto(out)
+	return toProto(ctx, out)
 }
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
@@ -486,7 +487,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 		}
 		out = a
 	}
-	return toProto(out)
+	return toProto(ctx, out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -516,7 +517,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, authMethodId string, anonUser bool) ([]*pb.Account, error) {
+func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
 	var outUl []*pb.Account
 	switch auth.SubtypeFromId(authMethodId) {
 	case auth.PasswordSubtype:
@@ -529,7 +530,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string, anonUser
 			return nil, err
 		}
 		for _, u := range pwl {
-			ou, err := toProto(u, handlers.WithAnonymousListing(anonUser))
+			ou, err := toProto(ctx, u)
 			if err != nil {
 				return nil, err
 			}
@@ -545,7 +546,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string, anonUser
 			return nil, err
 		}
 		for _, u := range oidcl {
-			ou, err := toProto(u, handlers.WithAnonymousListing(anonUser))
+			ou, err := toProto(ctx, u)
 			if err != nil {
 				return nil, err
 			}
@@ -578,7 +579,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
 	}
-	return toProto(out)
+	return toProto(ctx, out)
 }
 
 func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
@@ -599,7 +600,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 		}
 		return nil, errors.Wrap(err, op)
 	}
-	return toProto(out)
+	return toProto(ctx, out)
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
@@ -677,39 +678,58 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return authMeth, auth.Verify(ctx, opts...)
 }
 
-func toProto(in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
-	out := pb.Account{
-		Id:           in.GetPublicId(),
-		AuthMethodId: in.GetAuthMethodId(),
+func toProto(ctx context.Context, in auth.Account) (*pb.Account, error) {
+	var outputFields perms.OutputFieldsMap
+	userId := auth.AnonymousUserId
+	if reqInfoRaw := ctx.Value(requests.ContextRequestInformationKey); reqInfoRaw != nil {
+		reqInfo := reqInfoRaw.(*requests.RequestInfo)
+		outputFields = reqInfo.OutputFields
+		userId = reqInfo.UserId
 	}
-	if in.GetDescription() != "" {
+	outputFields = outputFields.SelfOrDefaults(userId)
+
+	out := pb.Account{}
+	if outputFields.Has("id") {
+		out.Id = in.GetPublicId()
+	}
+	if outputFields.Has("auth_method_id") {
+		out.AuthMethodId = in.GetAuthMethodId()
+	}
+	if outputFields.Has("description") && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
-	if in.GetName() != "" {
+	if outputFields.Has("name") && in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if !anonListing {
+	if outputFields.Has("created_time") {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has("updated_time") {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has("version") {
 		out.Version = in.GetVersion()
 	}
 	switch i := in.(type) {
 	case *password.Account:
-		if anonListing {
+		if outputFields.Has("type") {
+			out.Type = auth.PasswordSubtype.String()
+		}
+		if !outputFields.Has("attributes") {
 			break
 		}
-		out.Type = auth.PasswordSubtype.String()
 		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 		}
 		out.Attributes = st
 	case *oidc.Account:
-		if anonListing {
+		if outputFields.Has("type") {
+			out.Type = auth.OidcSubtype.String()
+		}
+		if !outputFields.Has("attributes") {
 			break
 		}
-		out.Type = auth.OidcSubtype.String()
 		attrs := &pb.OidcAccountAttributes{
 			Issuer:   i.GetIssuer(),
 			Subject:  i.GetSubject(),

@@ -708,7 +708,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	}
 	var outUl []*pb.Target
 	for _, u := range ul {
-		o, err := toProto(u, nil, handlers.WithAnonymousListing(anonUser))
+		o, err := toProto(u, nil, handlers.WithUserIsAnonymous(anonUser))
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert value to proto: %v.", err)
 		}
@@ -830,7 +830,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 }
 
 func toProto(in target.Target, m []*target.TargetSet, opt ...handlers.Option) (*pb.Target, error) {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Target{
 		Id:      in.GetPublicId(),
 		ScopeId: in.GetScopeId(),

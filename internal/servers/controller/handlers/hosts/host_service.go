@@ -288,7 +288,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bo
 	}
 	var outHl []*pb.Host
 	for _, h := range hl {
-		p, err := toProto(h, nil, handlers.WithAnonymousListing(anonUser))
+		p, err := toProto(h, nil, handlers.WithUserIsAnonymous(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +338,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 }
 
 func toProto(in *static.Host, members []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),

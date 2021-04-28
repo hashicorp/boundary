@@ -398,7 +398,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ol {
-		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
+		ou, err := toAuthMethodProto(u, handlers.WithUserIsAnonymous(anonUser))
 		if err != nil {
 			return nil, err
 		}
@@ -414,7 +414,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 		return nil, errors.Wrap(err, op)
 	}
 	for _, u := range pl {
-		ou, err := toAuthMethodProto(u, handlers.WithAnonymousListing(anonUser))
+		ou, err := toAuthMethodProto(u, handlers.WithUserIsAnonymous(anonUser))
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -634,7 +634,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := &pb.AuthMethod{
 		Id:        in.GetPublicId(),
 		ScopeId:   in.GetScopeId(),
