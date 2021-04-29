@@ -469,8 +469,17 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	var c func() error
 
 	opts := getOpts(opt...)
+
 	// opts.WithContainerImage could have repo:tag, so split it and only
 	// assign the repo to dialect
+	switch opts.withContainerImage {
+	case "postgres":
+		dialect = "postgres"
+	default:
+		separated := strings.Split(opts.withContainerImage, ":")
+		dialect = separated[0]
+	}
+
 	if opts.withContainerImage == "" {
 		dialect = "postgres"
 	} else {
@@ -480,7 +489,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = docker.StartDbInDocker(docker.WithContainerImage(dialect))
+		c, url, container, err = docker.StartDbInDocker(docker.WithContainerImage(opts.withContainerImage))
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {

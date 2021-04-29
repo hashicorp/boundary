@@ -67,7 +67,7 @@ type Command struct {
 	flagPassthroughDirectory         string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
-	flagDatabaseImage                string
+	flagContainerImage               string
 	flagDisableDatabaseDestruction   bool
 }
 
@@ -248,8 +248,8 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  `If set, specifies the URL used to connect to the database for initialization (otherwise a Docker container will be started). This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
 	f.StringVar(&base.StringVar{
-		Name:   "database-image",
-		Target: &c.flagDatabaseImage,
+		Name:   "container-image",
+		Target: &c.flagContainerImage,
 		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
 	})
 
@@ -442,13 +442,14 @@ func (c *Command) Run(args []string) int {
 		if c.flagDisableDatabaseDestruction {
 			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
-		if c.flagDatabaseImage != "" {
-			opts = append(opts, base.WithContainerImage(c.flagDatabaseImage))
-			if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
-				c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
-				return base.CommandCliError
-			}
+		if c.flagContainerImage != "" {
+			opts = append(opts, base.WithContainerImage(c.flagContainerImage))
 		}
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
+			c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
+			return base.CommandCliError
+		}
+
 		if !c.flagDisableDatabaseDestruction {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
