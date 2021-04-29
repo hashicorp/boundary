@@ -85,6 +85,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: New `logout` command deletes the current token in Boundary and forgets it
   from the local system credential store
   ([PR](https://github.com/hashicorp/boundary/pull/1134))
+* data warehouse: New fields related to password and oidc auth methods and
+  auth accounts are now added to the data warehouse.
+  ([PR](https://github.com/hashicorp/boundary/pull/1178))
 
 ### Bug Fixes
 
