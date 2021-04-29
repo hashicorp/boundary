@@ -180,7 +180,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
 	defer clean()
 	if errCode != 0 {
 		return errCode
