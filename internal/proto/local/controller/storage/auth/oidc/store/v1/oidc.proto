@@ -225,3 +225,23 @@ message ClaimsScope {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 30;
 }
+
+// AccountClaimMap entries are optional from/to account claim maps.
+message AccountClaimMap {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // from_claim is the claim from the id_token that you need to map to a
+  // standard account claim.
+  // @inject_tag: `gorm:"column:from_claim;primary_key"`
+  string from_claim = 20;
+
+  // to_claim is the standard account claim to map the from_claim to.  Valid
+  // values are: sub, name, email
+  // @inject_tag: `gorm:"not_null"`
+  string to_claim = 30;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
+}
