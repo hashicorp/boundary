@@ -50,8 +50,8 @@ begin;
              oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
              auth_method_id,             auth_method_type,                 auth_method_name,
              auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
+             oidc_auth_method_client_id, user_organization_id,             user_organization_name,
+             user_organization_description,
              current_row_indicator,      row_effective_time,               row_expiration_time
       )
       select user_id,                    user_name,                        user_description,
@@ -60,8 +60,8 @@ begin;
              oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
              auth_method_id,             auth_method_type,                 auth_method_name,
              auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
+             oidc_auth_method_client_id, user_organization_id,             user_organization_name,
+             user_organization_description,
              'Current',                  current_timestamp,                'infinity'::timestamptz
         from whx_user_dimension_source
        where user_id               = p_user_id

@@ -6092,34 +6092,30 @@ comment on view oidc_auth_method_with_value_obj is
 -- These additional columns track details around the different types of
 -- auth accounts and auth methods.
 alter table wh_user_dimension
-    add column password_auth_account_login_name                      wh_dim_text default 'None',
-    add column oidc_auth_account_subject                             wh_dim_text default 'None',
-    add column oidc_auth_account_issuer                              wh_dim_text default 'None',
-    add column oidc_auth_account_full_name                           wh_dim_text default 'None',
-    add column oidc_auth_account_email                               wh_dim_text default 'None',
-    add column oidc_auth_method_state                                wh_dim_text default 'None',
-    add column oidc_auth_method_issuer                               wh_dim_text default 'None',
-    add column oidc_auth_method_client_id                            wh_dim_text default 'None',
-    add column oidc_auth_method_api_url                              wh_dim_text default 'None',
-    add column oidc_auth_method_disable_discovered_config_validation wh_dim_text default 'None'
+    add column password_auth_account_login_name wh_dim_text default 'None',
+    add column oidc_auth_account_subject        wh_dim_text default 'None',
+    add column oidc_auth_account_issuer         wh_dim_text default 'None',
+    add column oidc_auth_account_full_name      wh_dim_text default 'None',
+    add column oidc_auth_account_email          wh_dim_text default 'None',
+    add column oidc_auth_method_state           wh_dim_text default 'None',
+    add column oidc_auth_method_issuer          wh_dim_text default 'None',
+    add column oidc_auth_method_client_id       wh_dim_text default 'None',
 ;
 
 -- Now that we have created the new columns with the 'None' values we want
 -- all further inserts to have to be explicit about the value so remove
 -- the defaults.
 alter table wh_user_dimension
-    alter column password_auth_account_login_name                      drop default,
+    alter column password_auth_account_login_name drop default,
 
-    alter column oidc_auth_account_subject                             drop default,
-    alter column oidc_auth_account_issuer                              drop default,
-    alter column oidc_auth_account_full_name                           drop default,
-    alter column oidc_auth_account_email                               drop default,
+    alter column oidc_auth_account_subject        drop default,
+    alter column oidc_auth_account_issuer         drop default,
+    alter column oidc_auth_account_full_name      drop default,
+    alter column oidc_auth_account_email          drop default,
 
-    alter column oidc_auth_method_state                                drop default,
-    alter column oidc_auth_method_issuer                               drop default,
-    alter column oidc_auth_method_client_id                            drop default,
-    alter column oidc_auth_method_api_url                              drop default,
-    alter column oidc_auth_method_disable_discovered_config_validation drop default
+    alter column oidc_auth_method_state           drop default,
+    alter column oidc_auth_method_issuer          drop default,
+    alter column oidc_auth_method_client_id       drop default,
 ;
 
 -- Updating these views to be oidc aware and add additional
@@ -6168,10 +6164,6 @@ create view whx_user_dimension_source as
           coalesce(aom.state, 'None')       as oidc_auth_method_state,
           coalesce(aom.issuer, 'None')      as oidc_auth_method_issuer,
           coalesce(aom.client_id, 'None')   as oidc_auth_method_client_id,
-          coalesce(aom.api_url, 'None')     as oidc_auth_method_api_url,
-          case when aom.disable_discovered_config_validation then 'True'
-              else 'False'
-          end                               as oidc_auth_method_disable_discovered_config_validation,
           org.public_id                     as user_organization_id,
           coalesce(org.name, 'None')        as user_organization_name,
           coalesce(org.description, 'None') as user_organization_description
@@ -6207,8 +6199,6 @@ select id,
        oidc_auth_method_state,
        oidc_auth_method_issuer,
        oidc_auth_method_client_id,
-       oidc_auth_method_api_url,
-       oidc_auth_method_disable_discovered_config_validation,
        user_organization_id,
        user_organization_name,
        user_organization_description
@@ -6267,8 +6257,8 @@ where current_row_indicator = 'Current'
              oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
              auth_method_id,             auth_method_type,                 auth_method_name,
              auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
+             oidc_auth_method_client_id, user_organization_id,             user_organization_name,
+             user_organization_description,
              current_row_indicator,      row_effective_time,               row_expiration_time
       )
       select user_id,                    user_name,                        user_description,
@@ -6277,8 +6267,8 @@ where current_row_indicator = 'Current'
              oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
              auth_method_id,             auth_method_type,                 auth_method_name,
              auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
+             oidc_auth_method_client_id, user_organization_id,             user_organization_name,
+             user_organization_description,
              'Current',                  current_timestamp,                'infinity'::timestamptz
         from whx_user_dimension_source
        where user_id               = p_user_id
