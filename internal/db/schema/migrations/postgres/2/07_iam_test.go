@@ -31,10 +31,9 @@ func Test_PrimaryAuthMethodChanges(t *testing.T) {
 		// 4) asserting some bits about the state of the db.
 		assert, require := assert.New(t), require.New(t)
 		dialect := "postgres"
-		opts := docker.WithContainerImage(dialect)
 		ctx := context.Background()
 
-		c, u, _, err := docker.StartDbInDocker(opts)
+		c, u, _, err := docker.StartDbInDocker(dialect)
 		require.NoError(err)
 		t.Cleanup(func() {
 			require.NoError(c())

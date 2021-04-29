@@ -13,9 +13,8 @@ import (
 func TestMigrateStore(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
-	opts := docker.WithContainerImage(dialect)
 
-	c, u, _, err := docker.StartDbInDocker(opts)
+	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -48,8 +47,8 @@ func Test_MigrateStore_WithMigrationStates(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	dialect := "postgres"
 	ctx := context.Background()
-	opts := docker.WithContainerImage(dialect)
-	c, u, _, err := docker.StartDbInDocker(opts)
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(c())

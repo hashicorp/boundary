@@ -15,7 +15,7 @@ func init() {
 	StartDbInDocker = startDbInDockerSupported
 }
 
-func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, container string, err error) {
+func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() error, retURL, container string, err error) {
 	// TODO: Debug what part of this method is actually causing race condition issues with our test and fix.
 	mx.Lock()
 	defer mx.Unlock()
@@ -25,10 +25,14 @@ func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, cont
 	}
 
 	var resource *dockertest.Resource
-	var url, dialect, tag string
-	dialect, tag, err = splitImage(opt...)
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+	var url, tag string
+
+	opts := GetOpts(opt...)
+	if opts.withContainerImage != "" {
+		dialect, tag, err = splitImage(opt...)
+		if err != nil {
+			return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+		}
 	}
 
 	switch dialect {

@@ -2,14 +2,10 @@ package db
 
 import (
 	"testing"
-
-	"github.com/hashicorp/boundary/internal/docker"
 )
 
 func TestOpen(t *testing.T) {
-	opts := docker.WithContainerImage("postgres")
-
-	cleanup, url, _, err := StartDbInDocker(opts)
+	cleanup, url, _, err := StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
 	}

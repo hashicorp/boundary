@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,8 +28,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "basic",
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -43,8 +41,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "old_version_table_used",
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -69,8 +66,7 @@ func TestMigrateDatabase(t *testing.T) {
 		{
 			name: "cant_get_lock",
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -93,8 +89,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "basic_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -108,8 +103,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "old_version_table_used_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -136,8 +130,7 @@ func TestMigrateDatabase(t *testing.T) {
 			name:         "cant_get_lock_require_fresh",
 			requireFresh: true,
 			urlProvider: func() string {
-				opts := docker.WithContainerImage(dialect)
-				c, u, _, err := db.StartDbInDocker(opts)
+				c, u, _, err := db.StartDbInDocker(dialect)
 				require.NoError(t, err)
 				t.Cleanup(func() {
 					require.NoError(t, c())
@@ -175,8 +168,7 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 	dialect := "postgres"
 	ctx := context.Background()
 
-	opts := docker.WithContainerImage(dialect)
-	c, u, _, err := db.StartDbInDocker(opts)
+	c, u, _, err := db.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

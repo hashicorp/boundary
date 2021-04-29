@@ -11,7 +11,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -31,8 +30,7 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*gorm.DB, strin
 
 	switch opts.withTestDatabaseUrl {
 	case "":
-		opts := docker.WithContainerImage(dialect)
-		cleanup, url, _, err = StartDbInDocker(opts)
+		cleanup, url, _, err = StartDbInDocker(dialect)
 		if err != nil {
 			t.Fatal(err)
 		}
