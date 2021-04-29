@@ -1,6 +1,10 @@
 package perms
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/hashicorp/boundary/globals"
+)
 
 // OutputFieldsMap is used to store information about allowed output fields in
 // grants
@@ -62,13 +66,15 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 		return OutputFieldsMap{}
 	case userId == AnonymousUserId:
 		return OutputFieldsMap{
-			"id":          true,
-			"scope":       true,
-			"scope_id":    true,
-			"name":        true,
-			"description": true,
-			"type":        true,
-			"is_primary":  true,
+			globals.IdField:                          true,
+			globals.ScopeField:                       true,
+			globals.ScopeIdField:                     true,
+			globals.NameField:                        true,
+			globals.DescriptionField:                 true,
+			globals.TypeField:                        true,
+			globals.IsPrimaryField:                   true,
+			globals.AuthorizedActionsField:           true,
+			globals.AuthorizedCollectionActionsField: true,
 		}
 	default:
 		return OutputFieldsMap{

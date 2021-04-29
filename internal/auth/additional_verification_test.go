@@ -130,14 +130,30 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	orgAm2 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam2"), password.WithDescription("orgam2"))
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
+	// The first and second will actually not take effect because it's a list
+	// and output fields are scoped by action. So we expect only name for the
+	// auth methods in the scope.
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
-	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
 
 	amClient := authmethods.NewClient(tc.Client())
 	resp, err := amClient.List(tc.Context(), scope.Global.String(), authmethods.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 2)
+	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 3)
+	items := resp.GetResponse().Map["items"].([]interface{})
+	require.NotNil(items)
+	for _, item := range items {
+		m := item.(map[string]interface{})
+		require.NotNil(m)
+		switch {
+		case m["scope_id"] == "global":
+			continue
+		default:
+			assert.Len(m, 1)
+			assert.Contains(m, "name")
+		}
+	}
 }

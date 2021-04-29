@@ -173,7 +173,6 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		Type: resource.AuthMethod,
 	}
 	for _, item := range ul {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.GetScopeId()
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) == 0 {
@@ -185,6 +184,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 				return nil, err
 			}
 		}
+		item.Scope = scopeInfoMap[item.GetScopeId()]
 	}
 	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
 }
@@ -664,7 +664,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
 	}
-	if outputFields.Has("is_primary") {
+	if outputFields.Has(globals.IsPrimaryField) {
 		out.IsPrimary = in.GetIsPrimaryAuthMethod()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -687,7 +687,6 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		if outputFields.Has(globals.TypeField) {
 			out.Type = auth.PasswordSubtype.String()
 		}
-		out.Type = auth.PasswordSubtype.String()
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
