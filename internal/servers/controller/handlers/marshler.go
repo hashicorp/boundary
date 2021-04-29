@@ -7,7 +7,7 @@ import (
 
 // JSONMarshaler provides marshaler used for marshalling all proto as JSON
 // in a format expected by the user facing controller API.
-func JSONMarshaler() *runtime.JSONPb{
+func JSONMarshaler() *runtime.JSONPb {
 	return &runtime.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
 			// Ensures the json marshaler uses the snake casing as defined in the proto field names.
