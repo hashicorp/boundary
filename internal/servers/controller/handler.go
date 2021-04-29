@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"google.golang.org/grpc/codes"
 
+	"github.com/hashicorp/boundary/internal/observability/logger"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
@@ -238,6 +239,18 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
+
+		e := logger.NewEventer(logger.EventSink{
+			Type:   "test",
+			Format: "json",
+			Path:   "stdout",
+		})
+
+		payload := logger.EventReq(r)
+		err := e.EventReq("test", payload, ctx)
+		if err != nil {
+			fmt.Errorf("uhoh!")
+		}
 
 		// Set the context back on the request
 		r = r.WithContext(ctx)

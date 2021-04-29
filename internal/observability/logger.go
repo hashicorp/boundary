@@ -143,6 +143,16 @@ func (e *Eventer) Nodes() []Node {
 		id: fileSinkID,
 		v:  &fileSinkNode,
 	})
+
+	jsonfmtID, err := nodeUUID()
+	if err != nil {
+		fmt.Errorf("unable to generate uuid error %w", err)
+	}
+	jsonfmtNode := eventlogger.JSONFormatter{}
+	nodes = append(nodes, Node{
+		id: jsonfmtID,
+		v:  &jsonfmtNode,
+	})
 	return nodes
 }
 
