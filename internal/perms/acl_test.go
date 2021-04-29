@@ -131,9 +131,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Pin: "notmypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -143,7 +143,7 @@ func Test_ACLAllowed(t *testing.T) {
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List, authorized: true, outputFields: []string{"id"}},
 				{action: action.Create, authorized: true, outputFields: []string{"id"}},
-				{action: action.AddHosts},
+				{action: action.AddHosts, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -151,9 +151,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Id: "id_g"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.Read},
-				{action: action.Update},
-				{action: action.Delete},
+				{action: action.Read, outputFields: []string{"id"}},
+				{action: action.Update, outputFields: []string{"id"}},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{
@@ -200,9 +200,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "o_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
-				{action: action.List},
+				{action: action.List, outputFields: []string{"id"}},
 				{action: action.Authenticate, authorized: true, outputFields: []string{"id"}},
-				{action: action.Delete},
+				{action: action.Delete, outputFields: []string{"id"}},
 			},
 		},
 		{

@@ -184,10 +184,6 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			}
 		}
 	}
-	if !results.Authorized {
-		// No authorization? No output fields -- set not to nil, but to empty
-		results.OutputFields = make(OutputFieldsMap)
-	}
 	return
 }
 

@@ -174,7 +174,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	}
 	for _, item := range ul {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
+		res.ScopeId = item.GetScopeId()
 		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
 		if len(item.AuthorizedActions) == 0 {
 			continue

@@ -195,10 +195,10 @@ func Test_ACLOutputFields(t *testing.T) {
 			name:     "unauthorized",
 			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;output_fields=*",
+				"id=bar;output_fields=name",
 			},
 			action: action.Delete,
-			fields: nil,
+			fields: []string{"name"},
 		},
 	}
 
@@ -214,10 +214,6 @@ func Test_ACLOutputFields(t *testing.T) {
 			results := acl.Allowed(test.resource, test.action)
 			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
 			assert.True(t, test.authorized == results.Authorized)
-			if !test.authorized {
-				assert.NotNil(t, results.OutputFields)
-				assert.Empty(t, results.OutputFields)
-			}
 		})
 	}
 }

@@ -139,5 +139,5 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().(*authmethods.AuthMethod), 2)
+	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 2)
 }
