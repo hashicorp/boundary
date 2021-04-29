@@ -65,29 +65,30 @@ var (
 
 func populateCollectionAuthorizedActions(ctx context.Context,
 	authResults auth.VerifyResults,
-	item *pb.AuthMethod) error {
+	item auth.AuthMethod) (map[string]*structpb.ListValue, error) {
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,
-		Pin:     item.Id,
+		Pin:     item.GetPublicId(),
 	}
 	// Range over the defined collections and check permissions against those
 	// collections. We use the ID of this scope being returned, not its parent,
 	// hence passing in a resource here.
+	var ret map[string]*structpb.ListValue
 	for k, v := range collectionTypeMap {
 		res.Type = k
 		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
 		if len(acts) > 0 {
-			if item.AuthorizedCollectionActions == nil {
-				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
+			if ret == nil {
+				ret = make(map[string]*structpb.ListValue)
 			}
 			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
 			if err != nil {
-				return err
+				return nil, err
 			}
-			item.AuthorizedCollectionActions[k.String()+"s"] = lv
+			ret[k.String()+"s"] = lv
 		}
 	}
-	return nil
+	return ret, nil
 }
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
@@ -159,11 +160,14 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	// TODO: figure out how to adjust output fields for recursive listing
 	ul, err := s.listFromRepo(ctx, scopeIds, authResults)
 	if err != nil {
 		return nil, err
 	}
+	if len(ul) == 0 {
+		return &pbs.ListAuthMethodsResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
@@ -172,19 +176,37 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	res := &perms.Resource{
 		Type: resource.AuthMethod,
 	}
-	for _, item := range ul {
-		res.ScopeId = item.GetScopeId()
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
-			continue
+	for _, am := range ul {
+		outputFields := authResults.FetchOutputFields(perms.Resource{
+			Id:      am.GetPublicId(),
+			ScopeId: am.GetScopeId(),
+			Type:    resource.AuthMethod,
+		}, action.List).SelfOrDefaults(authResults.UserId)
+		item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
+		if err != nil {
+			return nil, err
 		}
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
-			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
+
+		if outputFields.Has(globals.ScopeField) {
+			item.Scope = scopeInfoMap[am.GetScopeId()]
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			res.ScopeId = am.GetScopeId()
+			item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], auth.WithResource(res)).Strings()
+		}
+		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+			collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+			if err != nil {
 				return nil, err
 			}
+			item.AuthorizedCollectionActions = collectionActions
 		}
-		item.Scope = scopeInfoMap[item.GetScopeId()]
+
+		// This comes last so that we can use item fields in the filter after
+		// the allowed fields are populated above
+		if filter.Match(item) {
+			finalItems = append(finalItems, item)
+		}
 	}
 	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
 }
@@ -198,16 +220,29 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	am, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+	outputFields := requests.OutputFields(ctx)
+	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetAuthMethodResponse{Item: u}, nil
+	if outputFields.Has(globals.ScopeField) {
+		item.Scope = authResults.Scope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		if err != nil {
+			return nil, err
+		}
+		item.AuthorizedCollectionActions = collectionActions
+	}
+	return &pbs.GetAuthMethodResponse{Item: item}, nil
 }
 
 // CreateAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -219,16 +254,32 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	am, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+
+	outputFields := requests.OutputFields(ctx)
+	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("auth-methods/%s", u.GetId())}, nil
+
+	if outputFields.Has(globals.ScopeField) {
+		item.Scope = authResults.Scope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		if err != nil {
+			return nil, err
+		}
+		item.AuthorizedCollectionActions = collectionActions
+	}
+
+	return &pbs.CreateAuthMethodResponse{Item: item, Uri: fmt.Sprintf("auth-methods/%s", am.GetPublicId())}, nil
 }
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -240,7 +291,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
+	am, dryRun, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req)
 	if err != nil {
 		switch {
 		case errors.Match(errors.T(errors.InvalidParameter), err):
@@ -249,12 +300,32 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 			return nil, err
 		}
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, u); err != nil {
+
+	outputFields := requests.OutputFields(ctx)
+	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
+
+	if outputFields.Has(globals.ScopeField) {
+		item.Scope = authResults.Scope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		if err != nil {
+			return nil, err
+		}
+		item.AuthorizedCollectionActions = collectionActions
+	}
+
+	if item.GetAttributes() != nil && dryRun {
+		item.GetAttributes().Fields["dry_run"] = structpb.NewBoolValue(true)
+	}
+
+	return &pbs.UpdateAuthMethodResponse{Item: item}, nil
 }
 
 // ChangeState implements the interface pbs.AuthMethodServiceServer.
@@ -275,12 +346,28 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 			return nil, err
 		}
 	}
-	am.Scope = authResults.Scope
-	am.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.Id, IdActions[auth.OidcSubtype]).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, am); err != nil {
+
+	outputFields := requests.OutputFields(ctx)
+	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.ChangeStateResponse{Item: am}, nil
+
+	if outputFields.Has(globals.ScopeField) {
+		item.Scope = authResults.Scope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		if err != nil {
+			return nil, err
+		}
+		item.AuthorizedCollectionActions = collectionActions
+	}
+
+	return &pbs.ChangeStateResponse{Item: item}, nil
 }
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -354,7 +441,7 @@ func (s Service) AuthenticateLogin(ctx context.Context, req *pbs.AuthenticateLog
 	return &pbs.AuthenticateLoginResponse{Item: tok, TokenType: req.GetTokenType()}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, error) {
 	var lookupErr error
 	var am auth.AuthMethod
 	switch auth.SubtypeFromId(id) {
@@ -386,12 +473,14 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
 
-	return toAuthMethodProto(ctx, am)
+	return am, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth.VerifyResults) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth.VerifyResults) ([]auth.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
 	reqCtx := requests.RequestContextFromCtx(ctx)
+
+	var outUl []auth.AuthMethod
 
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
@@ -401,18 +490,8 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.AuthMethod
-	for _, u := range ol {
-		fields := authResults.FetchOutputFields(perms.Resource{
-			Id:      u.GetPublicId(),
-			ScopeId: u.GetScopeId(),
-			Type:    resource.AuthMethod,
-		}, action.List)
-		ou, err := toAuthMethodProto(ctx, u, handlers.WithOutputFieldsOverride(&fields))
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		outUl = append(outUl, ou)
+	for _, item := range ol {
+		outUl = append(outUl, item)
 	}
 
 	repo, err := s.pwRepoFn()
@@ -423,22 +502,13 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	for _, u := range pl {
-		fields := authResults.FetchOutputFields(perms.Resource{
-			Id:      u.GetPublicId(),
-			ScopeId: u.GetScopeId(),
-			Type:    resource.AuthMethod,
-		}, action.List)
-		ou, err := toAuthMethodProto(ctx, u, handlers.WithOutputFieldsOverride(&fields))
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		outUl = append(outUl, ou)
+	for _, item := range pl {
+		outUl = append(outUl, item)
 	}
 	return outUl, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
 	const op = "authmethods.(Service).createInRepo"
 	var out auth.AuthMethod
 	switch auth.SubtypeFromType(item.GetType()) {
@@ -461,51 +531,53 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 		}
 		out = am
 	}
-	return toAuthMethodProto(ctx, out)
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.UpdateAuthMethodRequest) (auth.AuthMethod, bool, error) {
 	const op = "authmethods.(Service).updateInRepo"
-	storageToWire := toAuthMethodProto
-	var out auth.AuthMethod
+
+	var am auth.AuthMethod
+	var dryRun bool
+
 	switch auth.SubtypeFromId(req.GetId()) {
 	case auth.PasswordSubtype:
-		am, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, false, errors.Wrap(err, op)
 		}
-		if am == nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
+		if pam == nil {
+			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
-		out = am
+		am = pam
+
 	case auth.OidcSubtype:
-		am, dryRun, err := s.updateOidcInRepo(ctx, scopeId, req)
+		oam, dr, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, false, errors.Wrap(err, op)
 		}
-		if am == nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
+		if oam == nil {
+			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
-		if dryRun {
-			storageToWire = func(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
-				am, err := toAuthMethodProto(ctx, in, opt...)
-				if err != nil {
-					return nil, errors.Wrap(err, op)
-				}
-				attrs := &pb.OidcAuthMethodAttributes{}
-				if err := handlers.StructToProto(am.GetAttributes(), attrs); err != nil {
-					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute struct to proto"))
-				}
-				attrs.DryRun = true
-				if am.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
-					return nil, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute proto to struct"))
-				}
-				return am, nil
+		if dr {
+			item, err := toAuthMethodProto(ctx, oam, handlers.WithOutputFields(&perms.OutputFieldsMap{"attributes": true}))
+			if err != nil {
+				return nil, false, errors.Wrap(err, op)
 			}
+			attrs := &pb.OidcAuthMethodAttributes{}
+			if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+				return nil, false, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute struct to proto"))
+			}
+			attrs.DryRun = true
+			if item.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
+				return nil, false, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute proto to struct"))
+			}
+			dryRun = true
 		}
-		out = am
+		am = oam
 	}
-	return storageToWire(ctx, out)
+
+	return am, dryRun, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -538,7 +610,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (*pb.AuthMethod, error) {
+func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (auth.AuthMethod, error) {
 	const op = "authmethod_service.(Service).changeStateInRepo"
 
 	switch auth.SubtypeFromId(req.GetId()) {
@@ -573,7 +645,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 			return nil, err
 		}
 
-		return toAuthMethodProto(ctx, am)
+		return am, nil
 	}
 
 	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
@@ -649,13 +721,11 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMethod, error) {
-	reqCtx := requests.RequestContextFromCtx(ctx)
-	outputFields := reqCtx.OutputFields
 	opts := handlers.GetOpts(opt...)
-	if opts.WithOutputFieldsOverride != nil {
-		outputFields = *opts.WithOutputFieldsOverride
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building auth method proto")
 	}
-	outputFields = outputFields.SelfOrDefaults(reqCtx.UserId)
+	outputFields := *opts.WithOutputFields
 
 	out := pb.AuthMethod{}
 	if outputFields.Has(globals.IdField) {

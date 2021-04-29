@@ -47,17 +47,17 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithUserIsAnonymous(true))
 		assert.True(opts.WithUserIsAnonymous)
 	})
-	t.Run("WithOutputFieldsOverride", func(t *testing.T) {
+	t.Run("WithOutputFields", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
 		opts := GetOpts()
-		assert.Nil(opts.WithOutputFieldsOverride)
+		assert.Nil(opts.WithOutputFields)
 
 		var out perms.OutputFieldsMap
 
-		opts = GetOpts(WithOutputFieldsOverride(&out))
-		require.NotNil(opts.WithOutputFieldsOverride)
-		assert.Nil(*opts.WithOutputFieldsOverride)
+		opts = GetOpts(WithOutputFields(&out))
+		require.Nil(opts.WithOutputFields)
+		assert.Nil(opts.WithOutputFields)
 	})
 }

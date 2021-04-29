@@ -122,38 +122,47 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	client.SetToken(token.Token)
 	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
 
-	// globalAms := password.TestAuthMethods(t, conn, scope.Global.String(), 2)
-
-	// globalRole := iam.TestRole(t, conn, scope.Global.String())
+	password.TestAuthMethod(t, conn, scope.Global.String(), password.WithName("globalam1"), password.WithDescription("globalam1"))
+	password.TestAuthMethod(t, conn, scope.Global.String(), password.WithName("globalam2"), password.WithDescription("globalam2"))
+	globalRole := iam.TestRole(t, conn, scope.Global.String())
+	iam.TestUserRole(t, conn, globalRole.PublicId, token.UserId)
+	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;output_fields=version,description")
+	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list;output_fields=name")
 
 	orgAm1 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam1"), password.WithDescription("orgam1"))
 	orgAm2 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam2"), password.WithDescription("orgam2"))
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
 	// The first and second will actually not take effect because it's a list
-	// and output fields are scoped by action. So we expect only name for the
-	// auth methods in the scope.
+	// and output fields are scoped by action. So we expect only name and scope_id for the
+	// auth methods in the scope, using two patterns below.
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;actions=list;output_fields=scope_id")
 
 	amClient := authmethods.NewClient(tc.Client())
 	resp, err := amClient.List(tc.Context(), scope.Global.String(), authmethods.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 3)
+	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 5)
 	items := resp.GetResponse().Map["items"].([]interface{})
 	require.NotNil(items)
 	for _, item := range items {
 		m := item.(map[string]interface{})
 		require.NotNil(m)
 		switch {
-		case m["scope_id"] == "global":
+		case m["scope"] != nil:
 			continue
-		default:
-			assert.Len(m, 1)
+		case m["version"] != nil:
+			assert.Len(m, 3)
 			assert.Contains(m, "name")
+			assert.Contains(m, "description")
+		default:
+			assert.Len(m, 2)
+			assert.Contains(m, "name")
+			assert.Contains(m, "scope_id")
 		}
 	}
 }

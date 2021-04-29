@@ -55,3 +55,9 @@ func RequestContextFromCtx(ctx context.Context) *RequestContext {
 	}
 	return reqCtx
 }
+
+func OutputFields(ctx context.Context) perms.OutputFieldsMap {
+	reqCtx := RequestContextFromCtx(ctx)
+	outputFields := reqCtx.OutputFields
+	return outputFields.SelfOrDefaults(reqCtx.UserId)
+}

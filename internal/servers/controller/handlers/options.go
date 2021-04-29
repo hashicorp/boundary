@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/go-hclog"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // GetOpts - iterate the inbound Options and return a struct
@@ -21,10 +23,13 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withDiscardUnknownFields bool
-	WithLogger               hclog.Logger
-	WithUserIsAnonymous      bool
-	WithOutputFieldsOverride *perms.OutputFieldsMap
+	withDiscardUnknownFields        bool
+	WithLogger                      hclog.Logger
+	WithUserIsAnonymous             bool
+	WithOutputFields                *perms.OutputFieldsMap
+	WithScope                       *scopes.Scope
+	WithAuthorizedActions           []string
+	WithAuthorizedCollectionActions map[string]*structpb.ListValue
 }
 
 func getDefaultOptions() options {
@@ -55,10 +60,10 @@ func WithUserIsAnonymous(anonListing bool) Option {
 	}
 }
 
-// WithUserIsAnonymous provides an option when creating responses to only include those
-// desired for listing to anonymous users.
-func WithOutputFieldsOverride(fields *perms.OutputFieldsMap) Option {
+// WithOutputFields provides an option when creating responses to only include
+// specific fields
+func WithOutputFields(fields *perms.OutputFieldsMap) Option {
 	return func(o *options) {
-		o.WithOutputFieldsOverride = fields
+		o.WithOutputFields = fields
 	}
 }
