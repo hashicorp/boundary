@@ -197,11 +197,13 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if m.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", m.Id),
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
 		if m.Version > 0 {
@@ -209,7 +211,7 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 				fmt.Sprintf("    Version:             %d", m.Version),
 			)
 		}
-		if true {
+		if m.Type != "" {
 			output = append(output,
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)
@@ -236,15 +238,25 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 }
 
 func printItemTable(item *accounts.Account) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":             item.Id,
-		"Version":        item.Version,
-		"Type":           item.Type,
-		"Created Time":   item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":   item.UpdatedTime.Local().Format(time.RFC1123),
-		"Auth Method ID": item.AuthMethodId,
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.AuthMethodId != "" {
+		nonAttributeMap["Auth Method ID"] = item.AuthMethodId
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}

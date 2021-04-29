@@ -68,6 +68,7 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 			"name":        true,
 			"description": true,
 			"type":        true,
+			"is_primary":  true,
 		}
 	default:
 		return OutputFieldsMap{

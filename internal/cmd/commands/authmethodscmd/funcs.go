@@ -80,9 +80,13 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if m.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                     %s", m.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                     %s", "(not available)"),
 			)
 		}
 		if c.FlagRecursive {
@@ -95,7 +99,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("    Version:              %d", m.Version),
 			)
 		}
-		if true {
+		if m.Type != "" {
 			output = append(output,
 				fmt.Sprintf("    Type:                 %s", m.Type),
 			)
@@ -127,24 +131,33 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *authmethods.AuthMethod) string {
+func printItemTable(item *authmethods.AuthMethod) string {
 	nonAttributeMap := map[string]interface{}{
-		"ID":                   in.Id,
-		"Version":              in.Version,
-		"Type":                 in.Type,
-		"Created Time":         in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":         in.UpdatedTime.Local().Format(time.RFC1123),
-		"Is Primary For Scope": in.IsPrimary,
+		"Is Primary For Scope": item.IsPrimary,
+	}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
+	}
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
 	}
 
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
-	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
-	}
-
-	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
+	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	ret := []string{
 		"",
@@ -152,20 +165,20 @@ func printItemTable(in *authmethods.AuthMethod) string {
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 		"",
 		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
+		base.ScopeInfoForOutput(item.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 		)
 	}
 
-	if len(in.AuthorizedCollectionActions) > 0 {
-		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
-		for k := range in.AuthorizedCollectionActions {
+	if len(item.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(item.AuthorizedCollectionActions))
+		for k := range item.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -176,16 +189,16 @@ func printItemTable(in *authmethods.AuthMethod) string {
 		for _, key := range keys {
 			ret = append(ret,
 				fmt.Sprintf("    %s:", key),
-				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
+				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
 			)
 		}
 	}
 
-	if len(in.Attributes) > 0 {
+	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
 			"  Attributes:",
-			base.WrapMap(4, maxLength, in.Attributes),
+			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 
