@@ -173,15 +173,18 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return nil, err
 	}
 	finalItems := make([]*pb.AuthMethod, 0, len(ul))
-	res := &perms.Resource{
+	res := perms.Resource{
 		Type: resource.AuthMethod,
 	}
 	for _, am := range ul {
-		outputFields := authResults.FetchOutputFields(perms.Resource{
-			Id:      am.GetPublicId(),
-			ScopeId: am.GetScopeId(),
-			Type:    resource.AuthMethod,
-		}, action.List).SelfOrDefaults(authResults.UserId)
+		res.Id = am.GetPublicId()
+		res.ScopeId = am.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			continue
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 		if err != nil {
 			return nil, err
@@ -191,8 +194,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			item.Scope = scopeInfoMap[am.GetScopeId()]
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			res.ScopeId = am.GetScopeId()
-			item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], auth.WithResource(res)).Strings()
+			item.AuthorizedActions = authorizedActions
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 			collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
@@ -202,8 +204,6 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			item.AuthorizedCollectionActions = collectionActions
 		}
 
-		// This comes last so that we can use item fields in the filter after
-		// the allowed fields are populated above
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -242,6 +242,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		}
 		item.AuthorizedCollectionActions = collectionActions
 	}
+
 	return &pbs.GetAuthMethodResponse{Item: item}, nil
 }
 
@@ -484,11 +485,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth.AnonymousUserId))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	for _, item := range ol {
 		outUl = append(outUl, item)
