@@ -5,15 +5,19 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var JSONMarshaler = &runtime.JSONPb{
-	MarshalOptions: protojson.MarshalOptions{
-		// Ensures the json marshaler uses the snake casing as defined in the proto field names.
-		UseProtoNames: true,
-		// Do not add fields set to zero value to json.
-		EmitUnpopulated: false,
-	},
-	UnmarshalOptions: protojson.UnmarshalOptions{
-		// Allows requests to contain unknown fields.
-		DiscardUnknown: true,
-	},
+// JSONMarshaler provides marshaler used for marshalling all proto as JSON
+// in a format expected by the user facing controller API.
+func JSONMarshaler() *runtime.JSONPb{
+	return &runtime.JSONPb{
+		MarshalOptions: protojson.MarshalOptions{
+			// Ensures the json marshaler uses the snake casing as defined in the proto field names.
+			UseProtoNames: true,
+			// Do not add fields set to zero value to json.
+			EmitUnpopulated: false,
+		},
+		UnmarshalOptions: protojson.UnmarshalOptions{
+			// Allows requests to contain unknown fields.
+			DiscardUnknown: true,
+		},
+	}
 }

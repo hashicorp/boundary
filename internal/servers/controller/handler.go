@@ -69,7 +69,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	ctx := props.CancelCtx
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-			Marshaler: handlers.JSONMarshaler,
+			Marshaler: handlers.JSONMarshaler(),
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),

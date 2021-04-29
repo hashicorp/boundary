@@ -227,7 +227,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	errResponse := func(err error) (*pbs.AuthenticateResponse, error) {
 		u := make(url.Values)
 		pbErr := handlers.ToApiError(err)
-		out, err := handlers.JSONMarshaler.Marshal(pbErr)
+		out, err := handlers.JSONMarshaler().Marshal(pbErr)
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to marshal the error for callback"))
 		}

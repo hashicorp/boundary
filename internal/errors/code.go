@@ -87,5 +87,5 @@ const (
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 
 	// OIDC authentication provided errors
-	OidcProviderCallbackError Code = 4000
+	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
 )
