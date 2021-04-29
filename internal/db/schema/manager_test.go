@@ -233,14 +233,14 @@ func TestManager_SharedLock(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, c())
 	})
-	d1, err := sql.Open(dialect, u)
+	d1, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m1, err := NewManager(ctx, dialect, d1)
+	m1, err := NewManager(ctx, "postgres", d1)
 	require.NoError(t, err)
 
-	d2, err := sql.Open(dialect, u)
+	d2, err := sql.Open("postgres", u)
 	require.NoError(t, err)
-	m2, err := NewManager(ctx, dialect, d2)
+	m2, err := NewManager(ctx, "postgres", d2)
 	require.NoError(t, err)
 
 	assert.NoError(t, m1.SharedLock(ctx))

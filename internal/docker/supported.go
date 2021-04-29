@@ -26,7 +26,10 @@ func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, cont
 
 	var resource *dockertest.Resource
 	var url, dialect, tag string
-	dialect, tag = splitImage(opt...)
+	dialect, tag, err = splitImage(opt...)
+	if err != nil {
+		return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+	}
 
 	switch dialect {
 	case "postgres":
@@ -44,7 +47,7 @@ func startDbInDockerSupported(opt ...Option) (cleanup func() error, retURL, cont
 		}
 
 	default:
-		fmt.Errorf("unknown dialect %q", dialect)
+		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
@@ -84,21 +87,26 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 	if strings.Contains(err.Error(), "No such container") {
 		return nil
 	}
-	return fmt.Errorf("Failed to cleanup local container: %s", err)
+	return fmt.Errorf("failed to cleanup local container: %s", err)
 }
 
 // splitImage takes the WithDatabaseImage option and separates
 // it into repo + tag. If a tag is not found, it sets the tag to latest
-func splitImage(opt ...Option) (string, string) {
+func splitImage(opt ...Option) (string, string, error) {
 	opts := GetOpts(opt...)
-	if opts.withContainerImage == "" {
-		return "postgres", "latest"
-	}
+
 	separated := strings.Split(opts.withContainerImage, ":")
-	if len(separated) > 1 {
-		return separated[0], separated[1]
+	separatedlen := len(separated)
+
+	switch separatedlen {
+	case 1:
+		return separated[0], "11", nil
+	case 2:
+		return separated[0], separated[1], nil
+
+	default:
+		return "", "", fmt.Errorf("valid reference format is repo:tag, got: %s", opts.withContainerImage)
 
 	}
-	return separated[0], "latest"
 
 }

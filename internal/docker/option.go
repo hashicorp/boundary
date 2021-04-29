@@ -21,7 +21,6 @@ func getDefaultOptions() Options {
 	return Options{}
 }
 
-
 func WithContainerImage(image string) Option {
 	return func(o *Options) {
 		o.withContainerImage = image
