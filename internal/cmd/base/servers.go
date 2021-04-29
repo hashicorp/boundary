@@ -480,13 +480,6 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		dialect = separated[0]
 	}
 
-	if opts.withContainerImage == "" {
-		dialect = "postgres"
-	} else {
-		separated := strings.Split(opts.withContainerImage, ":")
-		dialect = separated[0]
-	}
-
 	switch b.DatabaseUrl {
 	case "":
 		c, url, container, err = docker.StartDbInDocker(dialect, docker.WithContainerImage(opts.withContainerImage))

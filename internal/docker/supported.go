@@ -104,7 +104,12 @@ func splitImage(opt ...Option) (string, string, error) {
 
 	switch separatedlen {
 	case 1:
-		return separated[0], "11", nil
+		if separated[0] == "postgres" {
+			return separated[0], "11", nil
+		} else {
+			return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
+				"no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
+		}
 	case 2:
 		return separated[0], separated[1], nil
 

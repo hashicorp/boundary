@@ -25,7 +25,9 @@ type Options struct {
 }
 
 func getDefaultOptions() Options {
-	return Options{}
+	return Options{
+		withContainerImage: "postgres",
+	}
 }
 
 // WithNoTokenScope tells the client not to set a scope for the client from a
@@ -85,6 +87,8 @@ func WithSkipTargetCreation() Option {
 	}
 }
 
+// WithContainerImage tells the command which container image
+// to start a dev database with
 func WithContainerImage(name string) Option {
 	return func(o *Options) {
 		o.withContainerImage = name

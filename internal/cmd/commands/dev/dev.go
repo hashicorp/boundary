@@ -459,7 +459,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-		opts = append(opts, base.WithContainerImage("postgres"))
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
