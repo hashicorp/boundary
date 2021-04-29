@@ -27,12 +27,9 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 	var resource *dockertest.Resource
 	var url, tag string
 
-	opts := GetOpts(opt...)
-	if opts.withContainerImage != "" {
-		dialect, tag, err = splitImage(opt...)
-		if err != nil {
-			return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
-		}
+	dialect, tag, err = splitImage(opt...)
+	if err != nil {
+		return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
 	}
 
 	switch dialect {
@@ -106,10 +103,10 @@ func splitImage(opt ...Option) (string, string, error) {
 	case 1:
 		if separated[0] == "postgres" {
 			return separated[0], "11", nil
-		} else {
-			return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
-				"no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
 		}
+		return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
+			"no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
+
 	case 2:
 		return separated[0], separated[1], nil
 
