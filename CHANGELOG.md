@@ -41,6 +41,28 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli/api/sdk: Add support to request additional OIDC claims scope values from
+  the OIDC provider when making an authentication request.
+  ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
+  
+  By default, Boundary only requests the "openid" claims scope value. Many
+  providers, like Okta and Auth0 for example, will not return the standard claims
+  of email and name when you request the default claims scope (openid). 
+  
+  Boundary uses the standard email and name claims to populated an OIDC
+  account's `Email` and `FullName` attributes. If you'd like these account
+  attributes populated, you'll need reference your OIDC provider's documentation
+  to learn which claims scopes are required to have these claims returned during
+  the authentication process.    
+
+  Boundary now provides a new OIDC auth method parameter `claims_scopes` which
+  allows you to add multiple additional claims scope values to an OIDC auth
+  method configuration. 
+
+  For information on claims scope values see: [Scope Claims in the OIDC
+  specification](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)
+  
+  
 * cli: Match JSON format output with the across-the-wire API JSON format
   ([PR](https://github.com/hashicorp/boundary/pull/1155))
 * api: Return `204` instead of an empty object on successful `delete` operations
@@ -61,6 +83,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   * Login Name
   * Full Name
   * Email
+  
   These new user attributes correspond to attributes from the user's primary
   auth method account. These attributes will be empty when the user has no
   account in the primary auth method for their scope, or there is no designated
