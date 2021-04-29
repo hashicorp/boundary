@@ -70,7 +70,15 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 		if true {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		}
+		if item.Version > 0 {
+			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
+			)
+		}
+		if true {
+			output = append(output,
 				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}

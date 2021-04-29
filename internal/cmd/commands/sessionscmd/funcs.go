@@ -86,13 +86,33 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 				fmt.Sprintf("    Scope ID:            %s", item.Scope.Id),
 			)
 		}
-		if true {
+		if item.Status != "" {
 			output = append(output,
 				fmt.Sprintf("    Status:              %s", item.Status),
+			)
+		}
+		if !item.CreatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Created Time:        %s", item.CreatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.ExpirationTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Expiration Time:     %s", item.ExpirationTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.UpdatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Updated Time:        %s", item.UpdatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if item.UserId != "" {
+			output = append(output,
 				fmt.Sprintf("    User ID:             %s", item.UserId),
+			)
+		}
+		if item.TargetId != "" {
+			output = append(output,
 				fmt.Sprintf("    Target ID:           %s", item.TargetId),
 			)
 		}

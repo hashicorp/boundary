@@ -77,6 +77,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
 	// Check to see if we need to verify Read vs. just ReadSelf
 	if ses.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -116,7 +117,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return &pbs.ListSessionsResponse{}, nil
 	}
 
-	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
+	seslist, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +169,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
 	// Check to see if we need to verify Cancel vs. just CancelSelf
 	if ses.GetUserId() != authResults.UserId {
+		// FIXME: also re-derive output fields
 		if !authzdActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -200,18 +202,18 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Session, error
 	return toProto(sess), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*pb.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	seslist, err := repo.ListSessions(ctx, opts...)
+	seslist, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
 	if err != nil {
 		return nil, err
 	}
 	var outSl []*pb.Session
 	for _, ses := range seslist {
-		outSl = append(outSl, toProto(ses))
+		outSl = append(outSl, toProto(ses, handlers.WithUserIsAnonymous(anonUser)))
 	}
 	return outSl, nil
 }
@@ -276,25 +278,28 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *session.Session) *pb.Session {
+func toProto(in *session.Session, opt ...handlers.Option) *pb.Session {
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Session{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.ScopeId,
-		TargetId:    in.TargetId,
-		Version:     in.Version,
-		UserId:      in.UserId,
-		HostId:      in.HostId,
-		HostSetId:   in.HostSetId,
-		AuthTokenId: in.AuthTokenId,
-		Endpoint:    in.Endpoint,
-		Type:        target.SubtypeFromId(in.TargetId).String(),
+		Id:       in.GetPublicId(),
+		ScopeId:  in.ScopeId,
+		TargetId: in.TargetId,
+		Type:     target.SubtypeFromId(in.TargetId).String(),
+	}
+	if !anonListing {
+		out.Version = in.Version
+		out.UserId = in.UserId
+		out.HostId = in.HostId
+		out.HostSetId = in.HostSetId
+		out.AuthTokenId = in.AuthTokenId
+		out.Endpoint = in.Endpoint
 		// TODO: Provide the ServerType and the ServerId when that information becomes relevant in the API.
 
-		CreatedTime:       in.CreateTime.GetTimestamp(),
-		UpdatedTime:       in.UpdateTime.GetTimestamp(),
-		ExpirationTime:    in.ExpirationTime.GetTimestamp(),
-		Certificate:       in.Certificate,
-		TerminationReason: in.TerminationReason,
+		out.CreatedTime = in.CreateTime.GetTimestamp()
+		out.UpdatedTime = in.UpdateTime.GetTimestamp()
+		out.ExpirationTime = in.ExpirationTime.GetTimestamp()
+		out.Certificate = in.Certificate
+		out.TerminationReason = in.TerminationReason
 	}
 	if len(in.States) > 0 {
 		out.Status = in.States[0].Status.String()

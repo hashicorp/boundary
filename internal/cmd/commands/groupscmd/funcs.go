@@ -163,7 +163,7 @@ func (c *Command) printListTable(items []*groups.Group) string {
 				fmt.Sprintf("    Scope ID:            %s", g.Scope.Id),
 			)
 		}
-		if true {
+		if g.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", g.Version),
 			)

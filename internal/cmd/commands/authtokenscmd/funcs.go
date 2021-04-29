@@ -79,13 +79,33 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 				fmt.Sprintf("    Scope ID:                    %s", t.Scope.Id),
 			)
 		}
-		if true {
+		if !t.ApproximateLastUsedTime.IsZero() {
 			output = append(output,
 				fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if true {
+			output = append(output,
 				fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
+			)
+		}
+		if !t.CreatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Created Time:                %s", t.CreatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !t.ExpirationTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Expiration Time:             %s", t.ExpirationTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !t.UpdatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if true {
+			output = append(output,
 				fmt.Sprintf("    User ID:                     %s", t.UserId),
 			)
 		}

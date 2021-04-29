@@ -98,7 +98,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		return &pbs.ListGroupsResponse{}, nil
 	}
 
-	gl, err := s.listFromRepo(ctx, scopeIds)
+	gl, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Group, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Group, error) {
 	const op = "groups.(Service).listFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -352,7 +352,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Gro
 	}
 	var outGl []*pb.Group
 	for _, g := range gl {
-		outGl = append(outGl, toProto(g, nil))
+		outGl = append(outGl, toProto(g, nil, handlers.WithUserIsAnonymous(anonUser)))
 	}
 	return outGl, nil
 }
@@ -459,13 +459,11 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
+func toProto(in *iam.Group, members []*iam.GroupMember, opt ...handlers.Option) *pb.Group {
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Group{
-		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.Version,
+		Id:      in.GetPublicId(),
+		ScopeId: in.GetScopeId(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -473,12 +471,17 @@ func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	for _, m := range members {
-		out.MemberIds = append(out.MemberIds, m.GetMemberId())
-		out.Members = append(out.Members, &pb.Member{
-			Id:      m.GetMemberId(),
-			ScopeId: m.GetMemberScopeId(),
-		})
+	if !anonListing {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+		out.Version = in.Version
+		for _, m := range members {
+			out.MemberIds = append(out.MemberIds, m.GetMemberId())
+			out.Members = append(out.Members, &pb.Member{
+				Id:      m.GetMemberId(),
+				ScopeId: m.GetMemberScopeId(),
+			})
+		}
 	}
 	return &out
 }

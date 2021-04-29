@@ -420,7 +420,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 
 	var outPl []*pb.Scope
 	for _, scp := range scps {
-		outPl = append(outPl, ToProto(scp, handlers.WithAnonymousListing(anonUser)))
+		outPl = append(outPl, ToProto(scp, handlers.WithUserIsAnonymous(anonUser)))
 	}
 	SortScopes(outPl)
 	return outPl, nil
@@ -466,7 +466,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func ToProto(in *iam.Scope, opt ...handlers.Option) *pb.Scope {
-	anonListing := handlers.GetOpts(opt...).WithAnonymousListing
+	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
 	out := pb.Scope{
 		Id:      in.GetPublicId(),
 		ScopeId: in.GetParentId(),

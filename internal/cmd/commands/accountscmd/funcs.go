@@ -204,6 +204,16 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 				fmt.Sprintf("    Type:                %s", m.Type),
 			)
 		}
+		if m.Version > 0 {
+			output = append(output,
+				fmt.Sprintf("    Version:             %d", m.Version),
+			)
+		}
+		if true {
+			output = append(output,
+				fmt.Sprintf("    Type:                %s", m.Type),
+			)
+		}
 		if m.Name != "" {
 			output = append(output,
 				fmt.Sprintf("    Name:                %s", m.Name),
