@@ -27,7 +27,7 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 	var resource *dockertest.Resource
 	var url, tag string
 
-	dialect, tag, err = splitImage(opt...)
+	repository, tag, err := splitImage(opt...)
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
 	}
@@ -40,7 +40,7 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 			return func() error { return nil }, url, "", nil
 
 		default:
-			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			resource, err = pool.Run(repository, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
