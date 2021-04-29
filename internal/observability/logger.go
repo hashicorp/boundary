@@ -57,7 +57,6 @@ func EventReq(req *http.Request) interface{} {
 
 func (e *Eventer) WriteEvent(eventType string, payload interface{}, ctx context.Context) error {
 	et := eventlogger.EventType(eventType)
-	fmt.Println("Hello from Write Event")
 	_, err := e.broker.Send(ctx, et, payload)
 	if err != nil {
 		return fmt.Errorf("failed in write, %w", err)
@@ -87,7 +86,6 @@ func NewEventer(config EventSink) (*Eventer, error) {
 			fmt.Println("unable to register node")
 			break
 		}
-		fmt.Printf("node is of %v", node.Type())
 	}
 
 	//associate node(s) with pipeline
@@ -130,6 +128,17 @@ func NewPipeline(nodes []Node) eventlogger.Pipeline {
 
 func (e *Eventer) Nodes() []Node {
 	nodes := make([]Node, 0)
+
+	var jsonFmtNode eventlogger.JSONFormatter
+	jsonfmtID, err := nodeUUID()
+	if err != nil {
+		fmt.Errorf("unable to generate uuid error %w", err)
+	}
+	nodes = append(nodes, Node{
+		id: jsonfmtID,
+		v:  &jsonFmtNode,
+	})
+
 	var fileSinkNode eventlogger.FileSink
 	fileSinkID, err := nodeUUID()
 	if err != nil {
@@ -142,16 +151,6 @@ func (e *Eventer) Nodes() []Node {
 	nodes = append(nodes, Node{
 		id: fileSinkID,
 		v:  &fileSinkNode,
-	})
-
-	jsonfmtID, err := nodeUUID()
-	if err != nil {
-		fmt.Errorf("unable to generate uuid error %w", err)
-	}
-	jsonfmtNode := eventlogger.JSONFormatter{}
-	nodes = append(nodes, Node{
-		id: jsonfmtID,
-		v:  &jsonfmtNode,
 	})
 	return nodes
 }
