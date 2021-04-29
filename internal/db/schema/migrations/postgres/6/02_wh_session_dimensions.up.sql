@@ -1,6 +1,7 @@
 begin;
 
-  -- Add additional auth method and auth account related stuff
+  -- Recreated the function here to add additional auth method and
+  -- auth account related data.
 
   -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
   -- p_auth_token_id. wh_upsert_user compares the current values in the

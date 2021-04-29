@@ -10,7 +10,7 @@ alter table wh_user_dimension
     add column oidc_auth_account_email          wh_dim_text default 'None',
     add column oidc_auth_method_state           wh_dim_text default 'None',
     add column oidc_auth_method_issuer          wh_dim_text default 'None',
-    add column oidc_auth_method_client_id       wh_dim_text default 'None',
+    add column oidc_auth_method_client_id       wh_dim_text default 'None'
 ;
 
 -- Now that we have created the new columns with the 'None' values we want
@@ -26,7 +26,7 @@ alter table wh_user_dimension
 
     alter column oidc_auth_method_state           drop default,
     alter column oidc_auth_method_issuer          drop default,
-    alter column oidc_auth_method_client_id       drop default,
+    alter column oidc_auth_method_client_id       drop default
 ;
 
 -- Updating these views to be oidc aware and add additional

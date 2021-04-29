@@ -6099,7 +6099,7 @@ alter table wh_user_dimension
     add column oidc_auth_account_email          wh_dim_text default 'None',
     add column oidc_auth_method_state           wh_dim_text default 'None',
     add column oidc_auth_method_issuer          wh_dim_text default 'None',
-    add column oidc_auth_method_client_id       wh_dim_text default 'None',
+    add column oidc_auth_method_client_id       wh_dim_text default 'None'
 ;
 
 -- Now that we have created the new columns with the 'None' values we want
@@ -6115,7 +6115,7 @@ alter table wh_user_dimension
 
     alter column oidc_auth_method_state           drop default,
     alter column oidc_auth_method_issuer          drop default,
-    alter column oidc_auth_method_client_id       drop default,
+    alter column oidc_auth_method_client_id       drop default
 ;
 
 -- Updating these views to be oidc aware and add additional
@@ -6207,7 +6207,8 @@ where current_row_indicator = 'Current'
 ;
 `),
 			6002: []byte(`
--- Add additional auth method and auth account related stuff
+-- Recreated the function here to add additional auth method and
+  -- auth account related data.
 
   -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
   -- p_auth_token_id. wh_upsert_user compares the current values in the
