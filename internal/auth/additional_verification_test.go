@@ -2,16 +2,20 @@ package auth_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,4 +109,35 @@ func TestFetchActionSetForId(t *testing.T) {
 			assert.Equal(t, tt.allowed, res.FetchActionSetForId(ctx, tt.id, tt.avail))
 		})
 	}
+}
+
+func TestRecursiveListingDifferentOutputFields(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	conn := tc.DbConn()
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+
+	// globalAms := password.TestAuthMethods(t, conn, scope.Global.String(), 2)
+
+	// globalRole := iam.TestRole(t, conn, scope.Global.String())
+
+	orgAm1 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam1"), password.WithDescription("orgam1"))
+	orgAm2 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam2"), password.WithDescription("orgam2"))
+	orgRole := iam.TestRole(t, conn, org.GetPublicId())
+	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
+
+	amClient := authmethods.NewClient(tc.Client())
+	resp, err := amClient.List(tc.Context(), scope.Global.String(), authmethods.WithRecursive(true))
+	require.NoError(err)
+	require.NotNil(resp)
+	require.NotNil(resp.GetItems())
+	assert.Len(resp.GetItems().(*authmethods.AuthMethod), 2)
 }
