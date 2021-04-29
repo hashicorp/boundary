@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 5002,
+		binarySchemaVersion: 5001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6007,208 +6007,86 @@ from
 left outer join iam_acct_info i on u.public_id = i.iam_user_id;
 `),
 			5001: []byte(`
--- These additional columns track details around the different types of
--- auth accounts and auth methods.
-alter table wh_user_dimension
-    add column password_auth_account_login_name                      wh_dim_text default 'None',
-    add column oidc_auth_account_subject                             wh_dim_text default 'None',
-    add column oidc_auth_account_issuer                              wh_dim_text default 'None',
-    add column oidc_auth_account_full_name                           wh_dim_text default 'None',
-    add column oidc_auth_account_email                               wh_dim_text default 'None',
-    add column oidc_auth_method_state                                wh_dim_text default 'None',
-    add column oidc_auth_method_issuer                               wh_dim_text default 'None',
-    add column oidc_auth_method_client_id                            wh_dim_text default 'None',
-    add column oidc_auth_method_api_url                              wh_dim_text default 'None',
-    add column oidc_auth_method_disable_discovered_config_validation wh_dim_text default 'None'
-;
-
--- Now that we have created the new columns with the 'None' values we want
--- all further inserts to have to be explicit about the value so remove
--- the defaults.
-alter table wh_user_dimension
-    alter column password_auth_account_login_name                      drop default,
-
-    alter column oidc_auth_account_subject                             drop default,
-    alter column oidc_auth_account_issuer                              drop default,
-    alter column oidc_auth_account_full_name                           drop default,
-    alter column oidc_auth_account_email                               drop default,
-
-    alter column oidc_auth_method_state                                drop default,
-    alter column oidc_auth_method_issuer                               drop default,
-    alter column oidc_auth_method_client_id                            drop default,
-    alter column oidc_auth_method_api_url                              drop default,
-    alter column oidc_auth_method_disable_discovered_config_validation drop default
-;
-
--- Updating these views to be oidc aware and add additional
--- auth account and auth method details
-drop view whx_user_dimension_source;
-drop view whx_user_dimension_target;
-
-create view whx_user_dimension_source as
-   select -- id is the first column in the target view
-          u.public_id                       as user_id,
-          coalesce(u.name, 'None')          as user_name,
-          coalesce(u.description, 'None')   as user_description,
-          coalesce(aa.public_id, 'None')    as auth_account_id,
-          case when aa.public_id is null then 'None'
-               when aoa.public_id is not null then 'oidc auth account'
-               else 'password auth account'
-               end                          as auth_account_type,
-          case when aoa.public_id is not null then coalesce(aoa.name, 'None')
-               else coalesce(apa.name, 'None')
-               end                          as auth_account_name,
-          case when aoa.public_id is not null then coalesce(aoa.description, 'None')
-               else coalesce(apa.description, 'None')
-               end                          as auth_account_description,
-
-          -- TODO: decide what to do when the representation of None colides with a valid value.
-          coalesce(apa.login_name, 'None')  as password_auth_account_login_name,
-
-          coalesce(aoa.subject, 'None')     as oidc_auth_account_subject,
-          coalesce(aoa.issuer, 'None')      as oidc_auth_account_issuer,
-          coalesce(aoa.full_name, 'None')   as oidc_auth_account_full_name,
-          coalesce(aoa.email, 'None')       as oidc_auth_account_email,
-
-          coalesce(am.public_id, 'None')    as auth_method_id,
-          case when am.public_id is null then 'None'
-               when aom.public_id is not null then 'oidc auth method'
-               else 'password auth method'
-               end                          as auth_method_type,
-          case when am.public_id is null then 'None'
-               when aom.public_id is not null then coalesce(aom.name, 'None')
-               else coalesce(apm.name, 'None')
-              end                           as auth_method_name,
-          case when am.public_id is null then 'None'
-               when aom.public_id is not null then coalesce(aom.description, 'None')
-               else coalesce(apm.description, 'None')
-              end                           as auth_method_description,
-          coalesce(aom.state, 'None')       as oidc_auth_method_state,
-          coalesce(aom.issuer, 'None')      as oidc_auth_method_issuer,
-          coalesce(aom.client_id, 'None')   as oidc_auth_method_client_id,
-          coalesce(aom.api_url, 'None')     as oidc_auth_method_api_url,
-          case when aom.disable_discovered_config_validation then 'True'
-              else 'False'
-          end                               as oidc_auth_method_disable_discovered_config_validation,
-          org.public_id                     as user_organization_id,
-          coalesce(org.name, 'None')        as user_organization_name,
-          coalesce(org.description, 'None') as user_organization_description
-     from iam_user as u
-left join auth_account as aa on           u.public_id = aa.iam_user_id
-left join auth_method as am on            aa.auth_method_id = am.public_id
-left join auth_password_account as apa on aa.public_id = apa.public_id
-left join auth_password_method as apm on  am.public_id = apm.public_id
-left join auth_oidc_account as aoa on     aa.public_id = aoa.public_id
-left join auth_oidc_method as aom on      am.public_id = aom.public_id
-     join iam_scope as org on             u.scope_id = org.public_id
-;
+-- auth_oidc_scope entries are the optional scopes for a specific oidc auth
+-- method.  There can be 0 or more for each parent oidc auth method.  If an auth
+-- method has any scopes, they will be added to provider requests along with the
+-- default of "openid". 
+create table auth_oidc_scope (
+  create_time wt_timestamp,
+  oidc_method_id wt_public_id 
+    constraint auth_oidc_method_fkey
+    references auth_oidc_method(public_id)
+    on delete cascade
+    on update cascade,
+  scope text not null
+    constraint scope_must_not_be_empty
+       check(length(trim(scope)) > 0) 
+    constraint scope_must_be_less_than_1024_chars
+      check(length(trim(scope)) < 1024)
+    constraint scope_must_not_be_openid -- the default scope is not allowed, since it's redundant
+      check(lower(trim(scope)) != 'openid'),
+  primary key(oidc_method_id, scope)
+);
+comment on table auth_oidc_scope is
+'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
 
-create view whx_user_dimension_target as
-select id,
-       user_id,
-       user_name,
-       user_description,
-       auth_account_id,
-       auth_account_type,
-       auth_account_name,
-       auth_account_description,
-       password_auth_account_login_name,
-       oidc_auth_account_subject,
-       oidc_auth_account_issuer,
-       oidc_auth_account_full_name,
-       oidc_auth_account_email,
-       auth_method_id,
-       auth_method_type,
-       auth_method_name,
-       auth_method_description,
-       oidc_auth_method_state,
-       oidc_auth_method_issuer,
-       oidc_auth_method_client_id,
-       oidc_auth_method_api_url,
-       oidc_auth_method_disable_discovered_config_validation,
-       user_organization_id,
-       user_organization_name,
-       user_organization_description
-from wh_user_dimension
-where current_row_indicator = 'Current'
-;
-`),
-			5002: []byte(`
--- Add additional auth method and auth account related stuff
+create trigger
+  default_create_time_column
+before
+insert on auth_oidc_scope
+  for each row execute procedure default_create_time();
 
-  -- wh_upsert_user returns the wh_user_dimension id for p_user_id and
-  -- p_auth_token_id. wh_upsert_user compares the current values in the
-  -- wh_user_dimension with the current values in the operational tables for the
-  -- provide parameters. If the values between the operational tables and the
-  -- wh_user_dimension differ, a new row is inserted in the wh_user_dimension to
-  -- match the current values in the operational tables and the new id is
-  -- returned. If the values do not differ, the current id is returned.
-  create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
-    returns wh_dim_id
-  as $$
-  declare
-    src     whx_user_dimension_target%rowtype;
-    target  whx_user_dimension_target%rowtype;
-    new_row wh_user_dimension%rowtype;
-    acct_id wt_public_id;
-  begin
-    select auth_account_id into strict acct_id
-      from auth_token
-     where public_id = p_auth_token_id;
 
-    select * into target
-      from whx_user_dimension_target as t
-     where t.user_id               = p_user_id
-       and t.auth_account_id       = acct_id;
+-- we will drop the oidc_auth_method_with_value_obj view, so we can recreate it
+-- and add the oidc claim's scopes to the returned set.
+drop view oidc_auth_method_with_value_obj;
 
-    select target.id, t.* into src
-      from whx_user_dimension_source as t
-     where t.user_id               = p_user_id
-       and t.auth_account_id       = acct_id;
-
-    if src is distinct from target then
-
-      -- expire the current row
-      update wh_user_dimension
-         set current_row_indicator = 'Expired',
-             row_expiration_time   = current_timestamp
-       where user_id               = p_user_id
-         and auth_account_id       = acct_id
-         and current_row_indicator = 'Current';
-
-      -- insert a new row
-      insert into wh_user_dimension (
-             user_id,                    user_name,                        user_description,
-             auth_account_id,            auth_account_type,                auth_account_name,
-             auth_account_description,   password_auth_account_login_name, oidc_auth_account_subject,
-             oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
-             auth_method_id,             auth_method_type,                 auth_method_name,
-             auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
-             current_row_indicator,      row_effective_time,               row_expiration_time
-      )
-      select user_id,                    user_name,                        user_description,
-             auth_account_id,            auth_account_type,                auth_account_name,
-             auth_account_description,   password_auth_account_login_name, oidc_auth_account_subject,
-             oidc_auth_account_issuer,   oidc_auth_account_full_name,      oidc_auth_account_email,
-             auth_method_id,             auth_method_type,                 auth_method_name,
-             auth_method_description,    oidc_auth_method_state,           oidc_auth_method_issuer,
-             oidc_auth_method_client_id, oidc_auth_method_api_url,         oidc_auth_method_disable_discovered_config_validation,
-             user_organization_id,       user_organization_name,           user_organization_description,
-             'Current',                  current_timestamp,                'infinity'::timestamptz
-        from whx_user_dimension_source
-       where user_id               = p_user_id
-         and auth_account_id       = acct_id
-      returning * into new_row;
-
-      return new_row.id;
-    end if;
-    return target.id;
-
-  end;
-  $$ language plpgsql;
+-- oidc_auth_method_with_value_obj is useful for reading an oidc auth method
+-- with its associated value objects (algs, auds, certs) as columns
+-- with | delimited values.  The use of the postgres string_agg(...) to
+-- aggregate the value objects into a column works because we are only pulling
+-- in one column from the associated tables and that value is part of the
+-- primary key and unique.  This view will make things like recursive listing of
+-- oidc auth methods fairly straightforward to implement for the oidc repo. 
+-- The view also includes an is_primary_auth_method bool
+create view oidc_auth_method_with_value_obj as 
+select 
+  case when s.primary_auth_method_id is not null then
+    true
+  else false end
+  as is_primary_auth_method,
+  am.public_id,
+  am.scope_id,
+  am.name,
+  am.description,
+  am.create_time,
+  am.update_time,
+  am.version,
+  am.state,
+  am.api_url,
+  am.disable_discovered_config_validation,
+  am.issuer,
+  am.client_id,
+  am.client_secret,
+  am.client_secret_hmac,
+  am.key_id,
+  am.max_age,
+  -- the string_agg(..) column will be null if there are no associated value objects
+  string_agg(distinct alg.signing_alg_name, '|') as algs,
+  string_agg(distinct aud.aud_claim, '|') as auds,
+  string_agg(distinct cert.certificate, '|') as certs,
+  string_agg(distinct cs.scope, '|') as claims_scopes
+from 	
+  auth_oidc_method am 
+  left outer join iam_scope               s     on am.public_id = s.primary_auth_method_id 
+  left outer join auth_oidc_signing_alg   alg   on am.public_id = alg.oidc_method_id
+  left outer join auth_oidc_aud_claim     aud   on am.public_id = aud.oidc_method_id
+  left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id
+  left outer join auth_oidc_scope         cs    on am.public_id = cs.oidc_method_id
+group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
+comment on view oidc_auth_method_with_value_obj is
+'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 `),
 		},
 	}
