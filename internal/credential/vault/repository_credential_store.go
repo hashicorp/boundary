@@ -106,7 +106,12 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
 	}
 
-	token, err := newToken(id, cs.inputToken, tokenExpires)
+	accessor, err := renewedToken.TokenAccessor()
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
+	}
+
+	token, err := newToken(id, cs.inputToken, []byte(accessor), tokenExpires)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +267,7 @@ type credentialStoreAggPublic struct {
 	CaCert               []byte
 	TlsServerName        string
 	TlsSkipVerify        bool
-	TokenSha256          []byte
+	TokenHmac            []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
 	TokenLastRenewalTime *timestamp.Timestamp
@@ -289,9 +294,9 @@ func (agg *credentialStoreAggPublic) toCredentialStore() *CredentialStore {
 	cs.TlsServerName = agg.TlsServerName
 	cs.TlsSkipVerify = agg.TlsSkipVerify
 
-	if agg.TokenSha256 != nil {
+	if agg.TokenHmac != nil {
 		tk := allocToken()
-		tk.TokenSha256 = agg.TokenSha256
+		tk.TokenHmac = agg.TokenHmac
 		tk.LastRenewalTime = agg.TokenLastRenewalTime
 		tk.ExpirationTime = agg.TokenExpirationTime
 		tk.CreateTime = agg.TokenCreateTime
@@ -353,7 +358,7 @@ type privateCredentialStore struct {
 	TlsServerName        string
 	TlsSkipVerify        bool
 	StoreId              string
-	TokenSha256          []byte
+	TokenHmac            []byte
 	Token                []byte
 	CtToken              []byte
 	TokenCreateTime      *timestamp.Timestamp
@@ -386,10 +391,10 @@ func (pcs *privateCredentialStore) toCredentialStore() *CredentialStore {
 	cs.CaCert = pcs.CaCert
 	cs.TlsServerName = pcs.TlsServerName
 	cs.TlsSkipVerify = pcs.TlsSkipVerify
-	if pcs.TokenSha256 != nil {
+	if pcs.TokenHmac != nil {
 		tk := allocToken()
 		tk.StoreId = pcs.StoreId
-		tk.TokenSha256 = pcs.TokenSha256
+		tk.TokenHmac = pcs.TokenHmac
 		tk.LastRenewalTime = pcs.TokenLastRenewalTime
 		tk.ExpirationTime = pcs.TokenExpirationTime
 		tk.CreateTime = pcs.TokenCreateTime
@@ -617,7 +622,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
 		}
 
-		token, err = newToken(cs.GetPublicId(), cs.inputToken, tokenExpires)
+		accessor, err := renewedToken.TokenAccessor()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
+		}
+
+		token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires)
 		if err != nil {
 			return nil, db.NoRowsAffected, err
 		}

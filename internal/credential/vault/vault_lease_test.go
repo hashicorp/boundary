@@ -27,11 +27,11 @@ func TestLease_New(t *testing.T) {
 	session := temp.TestDefaultSession(t, conn, wrapper, iamRepo)
 
 	type args struct {
-		libraryId   string
-		sessionId   string
-		leaseId     string
-		tokenSha256 []byte
-		expiration  time.Duration
+		libraryId  string
+		sessionId  string
+		leaseId    string
+		tokenHmac  []byte
+		expiration time.Duration
 	}
 
 	tests := []struct {
@@ -43,10 +43,10 @@ func TestLease_New(t *testing.T) {
 		{
 			name: "missing-library-id",
 			args: args{
-				sessionId:   session.GetPublicId(),
-				leaseId:     "some/vault/lease",
-				tokenSha256: token.GetTokenSha256(),
-				expiration:  5 * time.Minute,
+				sessionId:  session.GetPublicId(),
+				leaseId:    "some/vault/lease",
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 5 * time.Minute,
 			},
 			want:    nil,
 			wantErr: true,
@@ -54,10 +54,10 @@ func TestLease_New(t *testing.T) {
 		{
 			name: "missing-session-id",
 			args: args{
-				libraryId:   lib.GetPublicId(),
-				leaseId:     "some/vault/lease",
-				tokenSha256: token.GetTokenSha256(),
-				expiration:  5 * time.Minute,
+				libraryId:  lib.GetPublicId(),
+				leaseId:    "some/vault/lease",
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 5 * time.Minute,
 			},
 			want:    nil,
 			wantErr: true,
@@ -65,22 +65,22 @@ func TestLease_New(t *testing.T) {
 		{
 			name: "missing-lease-id",
 			args: args{
-				libraryId:   lib.GetPublicId(),
-				sessionId:   session.GetPublicId(),
-				tokenSha256: token.GetTokenSha256(),
-				expiration:  5 * time.Minute,
+				libraryId:  lib.GetPublicId(),
+				sessionId:  session.GetPublicId(),
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 5 * time.Minute,
 			},
 			want:    nil,
 			wantErr: true,
 		},
 		{
-			name: "missing-tokenSha256",
+			name: "missing-tokenHmac",
 			args: args{
-				libraryId:   lib.GetPublicId(),
-				sessionId:   session.GetPublicId(),
-				leaseId:     "some/vault/lease",
-				tokenSha256: []byte{},
-				expiration:  5 * time.Minute,
+				libraryId:  lib.GetPublicId(),
+				sessionId:  session.GetPublicId(),
+				leaseId:    "some/vault/lease",
+				tokenHmac:  []byte{},
+				expiration: 5 * time.Minute,
 			},
 			want:    nil,
 			wantErr: true,
@@ -88,10 +88,10 @@ func TestLease_New(t *testing.T) {
 		{
 			name: "missing-expiration",
 			args: args{
-				libraryId:   lib.GetPublicId(),
-				sessionId:   session.GetPublicId(),
-				leaseId:     "some/vault/lease",
-				tokenSha256: token.GetTokenSha256(),
+				libraryId: lib.GetPublicId(),
+				sessionId: session.GetPublicId(),
+				leaseId:   "some/vault/lease",
+				tokenHmac: token.GetTokenHmac(),
 			},
 			want:    nil,
 			wantErr: true,
@@ -99,18 +99,18 @@ func TestLease_New(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				libraryId:   lib.GetPublicId(),
-				sessionId:   session.GetPublicId(),
-				leaseId:     "some/vault/lease",
-				tokenSha256: token.GetTokenSha256(),
-				expiration:  5 * time.Minute,
+				libraryId:  lib.GetPublicId(),
+				sessionId:  session.GetPublicId(),
+				leaseId:    "some/vault/lease",
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 5 * time.Minute,
 			},
 			want: &Lease{
 				Lease: &store.Lease{
-					LibraryId:   lib.GetPublicId(),
-					SessionId:   session.GetPublicId(),
-					LeaseId:     "some/vault/lease",
-					TokenSha256: token.GetTokenSha256(),
+					LibraryId: lib.GetPublicId(),
+					SessionId: session.GetPublicId(),
+					LeaseId:   "some/vault/lease",
+					TokenHmac: token.GetTokenHmac(),
 				},
 			},
 		},
@@ -122,7 +122,7 @@ func TestLease_New(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			got, err := newLease(tt.args.libraryId, tt.args.sessionId,
-				tt.args.leaseId, tt.args.tokenSha256, tt.args.expiration)
+				tt.args.leaseId, tt.args.tokenHmac, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

@@ -131,7 +131,7 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%s-%d", storeId, i)), 5*time.Minute)
+		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%s-%d", storeId, i)), []byte(fmt.Sprintf("accessor-%s-%d", storeId, i)), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(inToken)
 
@@ -143,7 +143,7 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 		require.NoError(err2)
 
 		outToken := allocToken()
-		require.NoError(w.LookupWhere(ctx, &outToken, "token_sha256 = ?", inToken.TokenSha256))
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
 
 		tokens = append(tokens, outToken)

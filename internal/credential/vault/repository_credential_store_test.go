@@ -1111,7 +1111,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(1, gotCount)
 			assert.NotNil(got)
 
@@ -1124,7 +1124,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(lookup)
 			require.NotNil(orig.outputToken)
 			require.NotNil(got.outputToken)
-			assert.NotEqual(orig.outputToken.TokenSha256, got.outputToken.TokenSha256)
+			assert.NotEqual(orig.outputToken.TokenHmac, got.outputToken.TokenHmac)
 		})
 	}
 }
