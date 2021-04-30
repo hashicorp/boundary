@@ -104,7 +104,7 @@ func Test_ACLOutputFields(t *testing.T) {
 			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
 			grants: []string{
 				"id=bar;actions=read,update;output_fields=id",
-				"id=*;type=host-catalog;actions=read,update;output_fields=id",
+				"id=*;type=host-catalog;actions=read,update;output_fields=version",
 			},
 			action:     action.Read,
 			fields:     []string{"id"},
