@@ -213,6 +213,8 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 
 // GetAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodRequest) (*pbs.GetAuthMethodResponse, error) {
+	const op = "authmethods.(Service).GetAuthMethod"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -225,7 +227,11 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -249,6 +255,8 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 // CreateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
+	const op = "authmethods.(Service).CreateAuthMethod"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -261,7 +269,11 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -286,6 +298,8 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
+	const op = "authmethods.(Service).UpdateAuthMethod"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -303,7 +317,11 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		}
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -332,6 +350,8 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 // ChangeState implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (*pbs.ChangeStateResponse, error) {
+	const op = "authmethods.(Service).ChangeState"
+
 	if err := validateChangeStateRequest(req); err != nil {
 		return nil, err
 	}
@@ -349,7 +369,11 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		}
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -480,7 +504,10 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults auth.VerifyResults) ([]auth.AuthMethod, error) {
 	const op = "authmethods.(Service).listFromRepo"
-	reqCtx := requests.RequestContextFromCtx(ctx)
+	reqCtx, ok := requests.RequestContextFromCtx(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
 
 	var outUl []auth.AuthMethod
 

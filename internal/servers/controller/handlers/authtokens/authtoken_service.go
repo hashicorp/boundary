@@ -140,6 +140,8 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest) (*pbs.GetAuthTokenResponse, error) {
+	const op = "authtokens.(Service).GetAuthToken"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -166,7 +168,11 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 			Type:    resource.AuthToken,
 		}, action.Read).SelfOrDefaults(authResults.UserId)
 	} else {
-		outputFields = requests.OutputFields(ctx)
+		var ok bool
+		outputFields, ok = requests.OutputFields(ctx)
+		if !ok {
+			return nil, errors.New(errors.Internal, op, "no request context found")
+		}
 	}
 
 	item, err := toProto(ctx, at, handlers.WithOutputFields(&outputFields))

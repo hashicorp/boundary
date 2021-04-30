@@ -42,28 +42,28 @@ func NewRequestContext(parent context.Context) context.Context {
 	return context.WithValue(parent, ContextRequestInformationKey, &RequestContext{})
 }
 
-// RequestContextFromCtx pulls out RequestContext and returns it. It will always
-// return a valid object; however, if the input is empty, the output will be
-// empty as well. Callers should be prepared to sanity-check.
-func RequestContextFromCtx(ctx context.Context) *RequestContext {
+// RequestContextFromCtx pulls out RequestContext and returns it and an
+// indication it was found. If it's not found, nil will be returned and the bool
+// will be false.
+func RequestContextFromCtx(ctx context.Context) (*RequestContext, bool) {
 	reqCtxRaw := ctx.Value(ContextRequestInformationKey)
 	if reqCtxRaw == nil {
-		return &RequestContext{}
+		return nil, false
 	}
 	reqCtx, ok := reqCtxRaw.(*RequestContext)
 	if !ok {
-		return &RequestContext{}
+		return nil, false
 	}
-	return reqCtx
+	return reqCtx, true
 }
 
 // OutputFields returns output fields from the given context and calls
 // SelfOrDefaults on it. If the context does not contain a RequestContext,
-// RequestContextFromCtx will return a non-nil empty RequestContext, thus the
-// OutputFieldsMap will be nil and return defaults when SelfOrDefaults is
-// called.
-func OutputFields(ctx context.Context) perms.OutputFieldsMap {
-	reqCtx := RequestContextFromCtx(ctx)
-	outputFields := reqCtx.OutputFields
-	return outputFields.SelfOrDefaults(reqCtx.UserId)
+// this will return nil, false.
+func OutputFields(ctx context.Context) (perms.OutputFieldsMap, bool) {
+	reqCtx, ok := RequestContextFromCtx(ctx)
+	if !ok {
+		return nil, false
+	}
+	return reqCtx.OutputFields.SelfOrDefaults(reqCtx.UserId), true
 }

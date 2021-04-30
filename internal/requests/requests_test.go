@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_RequestContextFromCtx(t *testing.T) {
@@ -17,9 +18,8 @@ func Test_RequestContextFromCtx(t *testing.T) {
 	}
 	tests := []input{
 		{
-			name:   "not added",
-			input:  context.Background(),
-			output: &RequestContext{},
+			name:  "not added",
+			input: context.Background(),
 		},
 		{
 			name:   "added but empty",
@@ -39,7 +39,9 @@ func Test_RequestContextFromCtx(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.output, RequestContextFromCtx(test.input))
+			reqCtx, ok := RequestContextFromCtx(test.input)
+			require.Equal(t, test.output == nil, !ok)
+			assert.Equal(t, test.output, reqCtx)
 		})
 	}
 }

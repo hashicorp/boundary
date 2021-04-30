@@ -168,9 +168,12 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 
 // GetAccount implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
+	const op = "accounts.(Service).GetAccount"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -180,7 +183,11 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -197,9 +204,12 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 
 // CreateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
+	const op = "accounts.(Service).CreateAccount"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
+
 	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -209,7 +219,11 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -226,9 +240,12 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
+	const op = "accounts.(Service).UpdateAccount"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
+
 	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -238,7 +255,11 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -271,9 +292,12 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 
 // ChangePassword implements the interface pbs.AccountServiceServer.
 func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequest) (*pbs.ChangePasswordResponse, error) {
+	const op = "accounts.(Service).ChangePassword"
+
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -283,7 +307,11 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
@@ -300,9 +328,12 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 
 // SetPassword implements the interface pbs.AccountServiceServer.
 func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (*pbs.SetPasswordResponse, error) {
+	const op = "accounts.(Service).SetPassword"
+
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -312,7 +343,11 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 
-	outputFields := requests.OutputFields(ctx)
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
 	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
 	if err != nil {
 		return nil, err
