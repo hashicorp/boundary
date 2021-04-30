@@ -117,6 +117,13 @@ message AuthMethod {
   // are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
   repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScopes" that: "attributes.claims_scopes" }];
+
+  // account_claim_maps are optional claim maps from custom claims to the
+  // standard claims of sub, name and email.  These maps are represented as
+  // key=value where the key equals the from_claim and the value equals the
+  // to_claim.  For example "oid=sub".
+  // @inject_tag: `gorm:"-"`
+  repeated string account_claim_maps = 210;
 }
 
 // Account represents an OIDC account
