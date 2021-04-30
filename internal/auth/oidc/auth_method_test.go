@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -674,7 +675,21 @@ func Test_convertValueObjects(t *testing.T) {
 				require.Error(err)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
 			} else {
-				assert.Equal(tt.wantValues.AccountClaimMaps, convertedMaps)
+				want := make([]*AccountClaimMap, 0, len(tt.wantValues.AccountClaimMaps))
+				for _, v := range tt.wantValues.AccountClaimMaps {
+					want = append(want, v.(*AccountClaimMap))
+				}
+				got := make([]*AccountClaimMap, 0, len(convertedMaps))
+				for _, v := range convertedMaps {
+					got = append(got, v.(*AccountClaimMap))
+				}
+				sort.Slice(want, func(a, b int) bool {
+					return want[a].ToClaim < want[b].ToClaim
+				})
+				sort.Slice(got, func(a, b int) bool {
+					return got[a].ToClaim < got[b].ToClaim
+				})
+				assert.Equal(want, got)
 			}
 
 			values, err := am.convertValueObjects()

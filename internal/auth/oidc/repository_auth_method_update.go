@@ -32,6 +32,7 @@ const (
 	AudClaimsField                         = "AudClaims"
 	CertificatesField                      = "Certificates"
 	ClaimsScopesField                      = "ClaimsScopes"
+	AccountClaimMapsField                  = "AccountClaimMaps"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
@@ -89,17 +90,18 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			NameField:         am.Name,
-			DescriptionField:  am.Description,
-			IssuerField:       am.Issuer,
-			ClientIdField:     am.ClientId,
-			ClientSecretField: am.ClientSecret,
-			MaxAgeField:       am.MaxAge,
-			SigningAlgsField:  am.SigningAlgs,
-			ApiUrlField:       am.ApiUrl,
-			AudClaimsField:    am.AudClaims,
-			CertificatesField: am.Certificates,
-			ClaimsScopesField: am.ClaimsScopes,
+			NameField:             am.Name,
+			DescriptionField:      am.Description,
+			IssuerField:           am.Issuer,
+			ClientIdField:         am.ClientId,
+			ClientSecretField:     am.ClientSecret,
+			MaxAgeField:           am.MaxAge,
+			SigningAlgsField:      am.SigningAlgs,
+			ApiUrlField:           am.ApiUrl,
+			AudClaimsField:        am.AudClaims,
+			CertificatesField:     am.Certificates,
+			ClaimsScopesField:     am.ClaimsScopes,
+			AccountClaimMapsField: am.AccountClaimMaps,
 		},
 		fieldMaskPaths,
 		nil,
@@ -164,6 +166,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 
+	addMaps, deleteMaps, err := valueObjectChanges(origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+	}
+
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch f {
@@ -192,7 +199,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		len(addAuds) == 0 &&
 		len(deleteAuds) == 0 &&
 		len(addScopes) == 0 &&
-		len(deleteScopes) == 0 {
+		len(deleteScopes) == 0 &&
+		len(addMaps) == 0 &&
+		len(deleteMaps) == 0 {
 		return origAm, db.NoRowsAffected, nil
 	}
 
@@ -336,6 +345,25 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				msgs = append(msgs, addScopesOplogMsgs...)
 			}
 
+			if len(deleteMaps) > 0 {
+				deleteMapsOplogMsgs := make([]*oplog.Message, 0, len(deleteMaps))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteMapsOplogMsgs))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete account claim maps"))
+				}
+				if rowsDeleted != len(deleteMaps) {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("account claim maps deleted %d did not match request for %d", rowsDeleted, len(deleteMaps)))
+				}
+				msgs = append(msgs, deleteMapsOplogMsgs...)
+			}
+			if len(addMaps) > 0 {
+				addMapsOplogMsgs := make([]*oplog.Message, 0, len(addMaps))
+				if err := w.CreateItems(ctx, addMaps, db.NewOplogMsgs(&addMapsOplogMsgs)); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to add account claim maps"))
+				}
+				msgs = append(msgs, addMapsOplogMsgs...)
+			}
+
 			metadata := updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
@@ -371,16 +399,17 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 type voName string
 
 const (
-	SigningAlgVO   voName = "SigningAlgs"
-	CertificateVO  voName = "Certificates"
-	AudClaimVO     voName = "AudClaims"
-	ClaimsScopesVO voName = "ClaimsScopes"
+	SigningAlgVO       voName = "SigningAlgs"
+	CertificateVO      voName = "Certificates"
+	AudClaimVO         voName = "AudClaims"
+	ClaimsScopesVO     voName = "ClaimsScopes"
+	AccountClaimMapsVO voName = "AccountClaimMaps"
 )
 
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO:
+	case SigningAlgVO, CertificateVO, AudClaimVO, ClaimsScopesVO, AccountClaimMapsVO:
 		return true
 	default:
 		return false
@@ -407,6 +436,25 @@ var supportedFactories = map[voName]factoryFunc{
 	ClaimsScopesVO: func(publicId string, i interface{}) (interface{}, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewClaimsScope(publicId, str)
+	},
+	AccountClaimMapsVO: func(publicId string, i interface{}) (interface{}, error) {
+		const op = "oidc.AccountClaimMapsFactory"
+		str := fmt.Sprintf("%s", i)
+		acm, err := ParseAccountClaimMaps(str)
+		if err != nil {
+			return nil, err
+		}
+		if len(acm) > 1 {
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", str))
+		}
+		var from, rawTo string
+		for from, rawTo = range acm {
+		}
+		to, err := convertToAccountToClaim(rawTo)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		return NewAccountClaimMap(publicId, from, to)
 	},
 }
 
@@ -508,6 +556,7 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		case strings.EqualFold(AudClaimsField, f):
 		case strings.EqualFold(CertificatesField, f):
 		case strings.EqualFold(ClaimsScopesField, f):
+		case strings.EqualFold(AccountClaimMapsField, f):
 		default:
 			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -565,6 +614,14 @@ func applyUpdate(new, orig *AuthMethod, fieldMaskPaths []string) *AuthMethod {
 			default:
 				cp.ClaimsScopes = make([]string, 0, len(new.ClaimsScopes))
 				cp.ClaimsScopes = append(cp.ClaimsScopes, new.ClaimsScopes...)
+			}
+		case AccountClaimMapsField:
+			switch {
+			case len(new.AccountClaimMaps) == 0:
+				cp.AccountClaimMaps = nil
+			default:
+				cp.AccountClaimMaps = make([]string, 0, len(new.AccountClaimMaps))
+				cp.AccountClaimMaps = append(cp.AccountClaimMaps, new.AccountClaimMaps...)
 			}
 		}
 	}
