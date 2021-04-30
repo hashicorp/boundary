@@ -80,7 +80,7 @@ func NotFoundError() error {
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
-func NotFoundErrorf(msg string, a ...interface{}) error {
+func NotFoundErrorf(msg string, a ...interface{}) *apiError {
 	return &apiError{
 		status: http.StatusNotFound,
 		inner: &pb.Error{
@@ -114,7 +114,7 @@ func UnauthenticatedError() error {
 	return unauthenticatedError
 }
 
-func InvalidArgumentErrorf(msg string, fields map[string]string) error {
+func InvalidArgumentErrorf(msg string, fields map[string]string) *apiError {
 	err := ApiErrorWithCodeAndMessage(codes.InvalidArgument, msg)
 	var apiErr *apiError
 	if !errors.As(err, &apiErr) {
@@ -134,7 +134,7 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 }
 
 // Converts a known errors into an error that can presented to an end user over the API.
-func backendErrorToApiError(inErr error) error {
+func backendErrorToApiError(inErr error) *apiError {
 	stErr := status.Convert(inErr)
 
 	switch {
@@ -215,4 +215,8 @@ func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 			return
 		}
 	}
+}
+
+func ToApiError(e error) *pb.Error {
+	return backendErrorToApiError(e).inner
 }

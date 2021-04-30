@@ -192,4 +192,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "external system unavailable",
 		Kind:    External,
 	},
+	OidcProviderCallbackError: {
+		Message: "oidc provider callback error",
+		Kind:    External,
+	},
 }
