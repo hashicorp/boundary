@@ -25,11 +25,14 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 	}
 
 	var resource *dockertest.Resource
-	var url, tag string
+	var url, tag, repository string
 
-	repository, tag, err := splitImage(opt...)
-	if err != nil {
-		return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+	opts := GetOpts(opt...)
+	if opts.withContainerImage != "" {
+		repository, tag, err = splitImage(opts)
+		if err != nil {
+			return func() error { return nil }, "", "", fmt.Errorf("error parsing reference: %w", err)
+		}
 	}
 
 	switch dialect {
@@ -38,9 +41,14 @@ func startDbInDockerSupported(dialect string, opt ...Option) (cleanup func() err
 		case os.Getenv("BOUNDARY_TESTING_PG_URL") != "":
 			url = os.Getenv("BOUNDARY_TESTING_PG_URL")
 			return func() error { return nil }, url, "", nil
-
-		default:
+		case repository != "":
 			resource, err = pool.Run(repository, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
+			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
+			if err == nil {
+				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
+			}
+		default:
+			resource, err = pool.Run(dialect, tag, []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundary"})
 			url = "postgres://postgres:password@localhost:%s?sslmode=disable"
 			if err == nil {
 				url = fmt.Sprintf("postgres://postgres:password@%s/boundary?sslmode=disable", resource.GetHostPort("5432/tcp"))
@@ -93,8 +101,7 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 
 // splitImage takes the WithDatabaseImage option and separates
 // it into repo + tag. If a tag is not found, it sets the tag to latest
-func splitImage(opt ...Option) (string, string, error) {
-	opts := GetOpts(opt...)
+func splitImage(opts Options) (string, string, error) {
 
 	separated := strings.Split(opts.withContainerImage, ":")
 	separatedlen := len(separated)
@@ -105,7 +112,7 @@ func splitImage(opt ...Option) (string, string, error) {
 			return separated[0], "11", nil
 		}
 		return "", "", fmt.Errorf("valid reference format is repo:tag, if"+
-			"no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
+			" no tag provided then repo must be postgres, got: %s", opts.withContainerImage)
 
 	case 2:
 		return separated[0], separated[1], nil
