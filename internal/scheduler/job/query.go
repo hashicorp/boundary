@@ -2,10 +2,10 @@ package job
 
 const runJobsQuery = `
 	insert into job_run (
-	  job_id, server_id
+	  job_plugin_id, job_name, server_id
 	)
 	select 
-	  job_id, ?
+	  job_plugin_id, job_name, ?
 	from job_jobs_to_run 
 	order by next_scheduled_run asc
 	limit ?
@@ -14,17 +14,15 @@ const runJobsQuery = `
 
 const createJobQuery = `
 	insert into job (
-	  private_id, -- $1
+	  plugin_id, -- $1
 	  name, -- $2
-	  code, -- $3
-	  description, -- $4
-	  next_scheduled_run -- $5
+	  description, -- $3
+	  next_scheduled_run -- $4
 	) values (
-	  $1, -- private_id
+	  $1, -- plugin_id
 	  $2, -- name
-	  $3, -- code
-	  $4, -- description
-	  wt_add_seconds_to_now($5) -- next_scheduled_run
+	  $3, -- description
+	  wt_add_seconds_to_now($4) -- next_scheduled_run
 	)
 	returning *;
 `
@@ -35,7 +33,8 @@ const setNextScheduledRunQuery = `
 	set
 	  next_scheduled_run = wt_add_seconds_to_now(?)
 	where
-	  private_id = ?
+	  plugin_id = ?
+	  and name = ?
 	returning *;
 `
 

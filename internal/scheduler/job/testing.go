@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
+func testJob(t *testing.T, conn *gorm.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -24,25 +24,25 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrappe
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), name, code, description, opt...)
+	job, err := repo.CreateJob(context.Background(), name, description, opt...)
 	require.NoError(err)
 	require.NotNil(job)
 
 	return job
 }
 
-func testRun(conn *gorm.DB, jId, cId string) (*Run, error) {
+func testRun(conn *gorm.DB, pluginId, name, cId string) (*Run, error) {
 	query := `
 		insert into job_run (
-		  job_id, server_id
+			job_plugin_id, job_name, server_id
 		)
-		values (?,?)
+		values (?,?,?)
 		returning *;
 	`
 	rw := db.New(conn)
 	run := allocRun()
 
-	rows, err := rw.Query(context.Background(), query, []interface{}{jId, cId})
+	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId})
 	if err != nil {
 		return nil, err
 	}
@@ -59,18 +59,18 @@ func testRun(conn *gorm.DB, jId, cId string) (*Run, error) {
 	return run, nil
 }
 
-func testRunWithUpdateTime(conn *gorm.DB, jId, cId string, updateTime time.Time) (*Run, error) {
+func testRunWithUpdateTime(conn *gorm.DB, pluginId, name, cId string, updateTime time.Time) (*Run, error) {
 	query := `
 		insert into job_run (
-		  job_id, server_id, update_time
+		  job_plugin_id, job_name, server_id, update_time
 		)
-		values (?,?, ?)
+		values (?,?,?,?)
 		returning *;
 	`
 	rw := db.New(conn)
 	run := allocRun()
 
-	rows, err := rw.Query(context.Background(), query, []interface{}{jId, cId, updateTime})
+	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId, updateTime})
 	if err != nil {
 		return nil, err
 	}

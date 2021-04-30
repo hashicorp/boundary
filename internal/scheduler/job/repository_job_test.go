@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +28,7 @@ func TestRepository_CreateJob(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	type args struct {
-		name, code, description string
+		name, description string
 	}
 	tests := []struct {
 		name        string
@@ -43,7 +42,6 @@ func TestRepository_CreateJob(t *testing.T) {
 			name:    "missing-name",
 			wantErr: true,
 			in: args{
-				code:        "code",
 				description: "description",
 			},
 			wantErrCode: errors.InvalidParameter,
@@ -53,33 +51,20 @@ func TestRepository_CreateJob(t *testing.T) {
 			name: "missing-description",
 			in: args{
 				name: "name",
-				code: "code",
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 			wantErrMsg:  "job.(Repository).CreateJob: missing description: parameter violation: error #100",
 		},
 		{
-			name: "missing-code",
-			in: args{
-				name:        "name",
-				description: "description",
-			},
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).CreateJob: missing code: parameter violation: error #100",
-		},
-		{
 			name: "valid",
 			in: args{
 				name:        "name",
-				code:        "code",
 				description: "description",
 			},
 			want: &Job{
 				Job: &store.Job{
 					Name:        "name",
-					Code:        "code",
 					Description: "description",
 				},
 			},
@@ -93,7 +78,7 @@ func TestRepository_CreateJob(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateJob(context.Background(), tt.in.name, tt.in.code, tt.in.description)
+			got, err := repo.CreateJob(context.Background(), tt.in.name, tt.in.description)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -102,15 +87,15 @@ func TestRepository_CreateJob(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			assert.True(strings.HasPrefix(got.PrivateId, jobPrefix+"_"))
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(tt.want.Code, got.Code)
+			assert.Equal(defaultPluginId, got.PluginId)
 			assert.NotEmpty(got.NextScheduledRun)
 
 			// Verify job has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, got.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
+			jobId := fmt.Sprintf("%v:%v", got.PluginId, got.Name)
+			assert.NoError(db.TestVerifyOplog(t, rw, jobId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 
@@ -120,49 +105,16 @@ func TestRepository_CreateJob(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CreateJob(context.Background(), "test-dup-name", "code", "description")
+		got, err := repo.CreateJob(context.Background(), "test-dup-name", "description")
 		require.NoError(err)
 		require.NotNil(got)
-		assert.True(strings.HasPrefix(got.PrivateId, jobPrefix+"_"))
 		assert.Equal("test-dup-name", got.Name)
-		assert.Equal("code", got.Code)
 		assert.Equal("description", got.Description)
 
-		got2, err := repo.CreateJob(context.Background(), "test-dup-name", "code", "description")
+		got2, err := repo.CreateJob(context.Background(), "test-dup-name", "description")
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
-
-		got2, err = repo.CreateJob(context.Background(), "test-dup-name-new", "code", "description")
-		require.NoError(err)
-		require.NotNil(got2)
-		assert.NotSame(got, got2)
-	})
-
-	t.Run("duplicate-names-with-code", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
-		require.NoError(err)
-		require.NotNil(repo)
-
-		got, err := repo.CreateJob(context.Background(), "test-dup-name-with-code", "code", "description")
-		require.NoError(err)
-		require.NotNil(got)
-		assert.True(strings.HasPrefix(got.PrivateId, jobPrefix+"_"))
-		assert.Equal("test-dup-name-with-code", got.Name)
-		assert.Equal("code", got.Code)
-		assert.Equal("description", got.Description)
-
-		got2, err := repo.CreateJob(context.Background(), "test-dup-name-with-code", "code", "description")
-		require.Error(err)
-		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
-		assert.Nil(got2)
-
-		got2, err = repo.CreateJob(context.Background(), "test-dup-name-with-code", "new-code", "description")
-		require.NoError(err)
-		require.NotNil(got2)
-		assert.Equal(got.Name, got2.Name)
-		assert.NotEqual(got.Code, got2.Code)
 	})
 }
 
@@ -174,8 +126,7 @@ func TestRepository_LookupJob(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	job := testJob(t, conn, "name", "code", "description", wrapper)
-	fakeJobId := "job_1234567890"
+	job := testJob(t, conn, "name", "description", wrapper)
 
 	tests := []struct {
 		name        string
@@ -186,18 +137,18 @@ func TestRepository_LookupJob(t *testing.T) {
 		wantErrMsg  string
 	}{
 		{
-			name:        "with-no-private-id",
+			name:        "with-no-name",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).LookupJob: missing private id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).LookupJob: missing name: parameter violation: error #100",
 		},
 		{
-			name: "with-non-existing-job-id",
-			in:   fakeJobId,
+			name: "with-non-existing-name",
+			in:   "fake-name",
 		},
 		{
-			name: "with-existing-job-id",
-			in:   job.PrivateId,
+			name: "with-existing-name",
+			in:   job.Name,
 			want: job,
 		},
 	}
@@ -224,10 +175,8 @@ func TestRepository_LookupJob(t *testing.T) {
 			}
 
 			assert.NotEmpty(got.NextScheduledRun)
-			assert.NotEmpty(got.PrivateId)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(tt.want.Code, got.Code)
 		})
 	}
 }
@@ -240,8 +189,7 @@ func TestRepository_deleteJob(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	job := testJob(t, conn, "name", "code", "description", wrapper)
-	fakeJobId := "job_1234567890"
+	job := testJob(t, conn, "name", "description", wrapper)
 
 	tests := []struct {
 		name        string
@@ -252,19 +200,19 @@ func TestRepository_deleteJob(t *testing.T) {
 		wantErrMsg  string
 	}{
 		{
-			name:        "With no private id",
+			name:        "With no name",
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).deleteJob: missing private id: parameter violation: error #100",
+			wantErrMsg:  "job.(Repository).deleteJob: missing name: parameter violation: error #100",
 		},
 		{
-			name: "With non existing job id",
-			in:   fakeJobId,
+			name: "With non existing name",
+			in:   "fake-name",
 			want: 0,
 		},
 		{
-			name: "With existing job id",
-			in:   job.PrivateId,
+			name: "With existing name",
+			in:   job.Name,
 			want: 1,
 		},
 	}
@@ -298,9 +246,8 @@ func TestRepository_ListJobs(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	job1 := testJob(t, conn, "sameName", "sameCode", "description", wrapper)
-	job2 := testJob(t, conn, "sameName", "differentCode", "description", wrapper)
-	job3 := testJob(t, conn, "differentName", "sameCode", "description", wrapper)
+	job1 := testJob(t, conn, "sameName", "description", wrapper)
+	job2 := testJob(t, conn, "differentName", "description", wrapper)
 
 	tests := []struct {
 		name string
@@ -309,55 +256,26 @@ func TestRepository_ListJobs(t *testing.T) {
 	}{
 		{
 			name: "no-options",
-			want: []*Job{job1, job2, job3},
+			want: []*Job{job1, job2},
 		},
 		{
 			name: "with-same-name",
 			opts: []Option{
 				WithName("sameName"),
 			},
-			want: []*Job{job1, job2},
+			want: []*Job{job1},
 		},
 		{
 			name: "with-different-name",
 			opts: []Option{
 				WithName("differentName"),
 			},
-			want: []*Job{job3},
-		},
-		{
-			name: "with-same-code",
-			opts: []Option{
-				WithCode("sameCode"),
-			},
-			want: []*Job{job1, job3},
-		},
-		{
-			name: "with-different-code",
-			opts: []Option{
-				WithCode("differentCode"),
-			},
 			want: []*Job{job2},
-		},
-		{
-			name: "with-name-and-code",
-			opts: []Option{
-				WithName("sameName"),
-				WithCode("sameCode"),
-			},
-			want: []*Job{job1},
 		},
 		{
 			name: "with-fake-name",
 			opts: []Option{
 				WithName("fake-name"),
-			},
-			want: []*Job{},
-		},
-		{
-			name: "with-fake-code",
-			opts: []Option{
-				WithName("fake-code"),
 			},
 			want: []*Job{},
 		},
@@ -373,7 +291,7 @@ func TestRepository_ListJobs(t *testing.T) {
 			got, err := repo.ListJobs(context.Background(), tt.opts...)
 			require.NoError(err)
 			opts := []cmp.Option{
-				cmpopts.SortSlices(func(x, y *Job) bool { return x.PrivateId < y.PrivateId }),
+				cmpopts.SortSlices(func(x, y *Job) bool { return x.Name < y.Name }),
 				protocmp.Transform(),
 			}
 			assert.Empty(cmp.Diff(tt.want, got, opts...))
@@ -392,7 +310,7 @@ func TestRepository_ListJobs_Limits(t *testing.T) {
 	count := 10
 	jobs := make([]*Job, count)
 	for i := range jobs {
-		jobs[i] = testJob(t, conn, "name", fmt.Sprintf("code-%d", i), "description", wrapper)
+		jobs[i] = testJob(t, conn, fmt.Sprintf("name-%d", i), "description", wrapper)
 	}
 
 	tests := []struct {
@@ -467,10 +385,10 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		job, err := repo.CreateJob(context.Background(), "name", "code", "description")
+		job, err := repo.CreateJob(context.Background(), "name", "description")
 		require.NoError(err)
 
-		got, err := repo.UpdateJobNextRun(context.Background(), job.PrivateId, time.Hour)
+		got, err := repo.UpdateJobNextRun(context.Background(), job.Name, time.Hour)
 		require.NoError(err)
 		require.NotNil(got)
 
@@ -484,7 +402,7 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		assert.Equal(job, got)
 	})
 
-	t.Run("no-private-id", func(t *testing.T) {
+	t.Run("no-name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
@@ -494,7 +412,7 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateJobNextRun: missing private id: parameter violation: error #100", err.Error())
+		assert.Equal("job.(Repository).UpdateJobNextRun: missing name: parameter violation: error #100", err.Error())
 	})
 
 	t.Run("job-not-found", func(t *testing.T) {
@@ -503,10 +421,10 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpdateJobNextRun(context.Background(), "fake-private-id", time.Hour)
+		got, err := repo.UpdateJobNextRun(context.Background(), "fake-name", time.Hour)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateJobNextRun: db.DoTx: job.(Repository).UpdateJobNextRun: job \"fake-private-id\" does not exist: search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).UpdateJobNextRun: db.DoTx: job.(Repository).UpdateJobNextRun: job \"fake-name\" does not exist: search issue: error #1100", err.Error())
 	})
 }

@@ -31,8 +31,8 @@ func TestSchedulerWorkflow(t *testing.T) {
 		job1Ready <- struct{}{}
 		return <-job1Ch
 	}
-	tj1 := testJob{name: "name", description: "desc", fn: fn1, nextRunIn: time.Hour}
-	_, err := sched.RegisterJob(context.Background(), tj1, "code1")
+	tj1 := testJob{name: "name1", description: "desc", fn: fn1, nextRunIn: time.Hour}
+	err := sched.RegisterJob(context.Background(), tj1)
 	require.NoError(err)
 
 	job2Ch := make(chan error)
@@ -41,8 +41,8 @@ func TestSchedulerWorkflow(t *testing.T) {
 		job2Ready <- struct{}{}
 		return <-job2Ch
 	}
-	tj2 := testJob{name: "name", description: "desc", fn: fn2, nextRunIn: time.Hour}
-	job2Id, err := sched.RegisterJob(context.Background(), tj2, "code2")
+	tj2 := testJob{name: "name2", description: "desc", fn: fn2, nextRunIn: time.Hour}
+	err = sched.RegisterJob(context.Background(), tj2)
 	require.NoError(err)
 
 	err = sched.Start(context.Background())
@@ -67,7 +67,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	job1Ch <- nil
 
 	// Update job2 to run again
-	err = sched.UpdateJobNextRun(context.Background(), job2Id, 0)
+	err = sched.UpdateJobNextRun(context.Background(), tj2.name, 0)
 	require.NoError(err)
 	<-job2Ready
 
@@ -89,7 +89,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 
 	fn, jobReady, jobDone := testJobFn()
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	_, err := sched.RegisterJob(context.Background(), tj, "code")
+	err := sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -129,13 +129,13 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	fn, job1Ready, job1Done := testJobFn()
-	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	job1Id, err := sched.RegisterJob(context.Background(), tj, "code")
+	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
+	err := sched.RegisterJob(context.Background(), tj1)
 	require.NoError(err)
 
 	fn, job2Ready, job2Done := testJobFn()
-	tj = testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	job2Id, err := sched.RegisterJob(context.Background(), tj, "code2")
+	tj2 := testJob{name: "name2", description: "desc", fn: fn, nextRunIn: time.Hour}
+	err = sched.RegisterJob(context.Background(), tj2)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -148,10 +148,10 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	<-job2Ready
 
 	require.Equal(mapLen(sched.runningJobs), 2)
-	runJob, ok := sched.runningJobs.Load(job1Id)
+	runJob, ok := sched.runningJobs.Load(tj1.name)
 	require.True(ok)
 	run1Id := runJob.(runningJob).runId
-	runJob, ok = sched.runningJobs.Load(job2Id)
+	runJob, ok = sched.runningJobs.Load(tj2.name)
 	require.True(ok)
 	run2Id := runJob.(runningJob).runId
 
@@ -235,7 +235,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 		return <-jobStatus
 	}
 	tj := testJob{name: "name", description: "desc", fn: fn, statusFn: status, nextRunIn: time.Hour}
-	id, err := sched.RegisterJob(context.Background(), tj, "code")
+	err := sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -246,7 +246,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	<-jobReady
 
 	require.Equal(mapLen(sched.runningJobs), 1)
-	runJob, ok := sched.runningJobs.Load(id)
+	runJob, ok := sched.runningJobs.Load(tj.name)
 	require.True(ok)
 	runId := runJob.(runningJob).runId
 
@@ -318,7 +318,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 		return nil
 	}
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
-	id, err := sched.RegisterJob(context.Background(), tj, "code")
+	err := sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -330,7 +330,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	<-jobReady
 
 	require.Equal(mapLen(sched.runningJobs), 1)
-	runJob, ok := sched.runningJobs.Load(id)
+	runJob, ok := sched.runningJobs.Load(tj.name)
 	require.True(ok)
 	runId := runJob.(runningJob).runId
 

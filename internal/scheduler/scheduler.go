@@ -76,61 +76,48 @@ func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...
 //
 // • job must be provided and is an implementer of the Job interface.
 //
-// • code must be provided and is used to uniquely distinguish between the same job implementation.
-//
-// The returned JobId is unique to the provide job and code.
 // All options are ignored.
-func (s *Scheduler) RegisterJob(ctx context.Context, j Job, code string, _ ...Option) (JobId, error) {
+func (s *Scheduler) RegisterJob(ctx context.Context, j Job, _ ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
 	if err := validateJob(j); err != nil {
-		return "", errors.Wrap(err, op)
-	}
-	if code == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing code")
+		return errors.Wrap(err, op)
 	}
 
-	jobId, err := job.NewJobId(j.Name(), code)
-	if err != nil {
-		return "", errors.Wrap(err, op)
-	}
-
-	if _, ok := s.registeredJobs.Load(jobId); ok {
+	if _, ok := s.registeredJobs.Load(j.Name()); ok {
 		// Job already registered
-		return JobId(jobId), nil
+		return nil
 	}
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return errors.Wrap(err, op)
 	}
 
-	_, err = repo.CreateJob(ctx, j.Name(), code, j.Description())
+	_, err = repo.CreateJob(ctx, j.Name(), j.Description())
 	if err != nil && !errors.IsUniqueError(err) {
-		return "", errors.Wrap(err, op)
+		return errors.Wrap(err, op)
 	}
-	s.registeredJobs.Store(JobId(jobId), j)
+	s.registeredJobs.Store(j.Name(), j)
 
-	return JobId(jobId), nil
+	return nil
 }
 
-// UpdateJobNextRun sets the next scheduled run time for the provided jobId
+// UpdateJobNextRun sets the next scheduled run time for the provided name
 // to the current database time incremented by the nextRunIn parameter.  If
 // nextRunIn == 0 the job will be available to run immediately.
 //
-// • jobId must be provided and is the id of the job returned by RegisterJob
-//
 // All options are ignored.
-func (s *Scheduler) UpdateJobNextRun(ctx context.Context, jobId JobId, nextRunIn time.Duration, _ ...Option) error {
+func (s *Scheduler) UpdateJobNextRun(ctx context.Context, name string, nextRunIn time.Duration, _ ...Option) error {
 	const op = "scheduler.(Scheduler).UpdateJobNextRun"
-	if jobId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing job id")
+	if name == "" {
+		return errors.New(errors.InvalidParameter, op, "missing name")
 	}
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
 
-	_, err = repo.UpdateJobNextRun(ctx, string(jobId), nextRunIn)
+	_, err = repo.UpdateJobNextRun(ctx, name, nextRunIn)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -210,24 +197,23 @@ func (s *Scheduler) start(ctx context.Context) {
 }
 
 func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
-	jobId := JobId(r.JobId)
-	regJob, ok := s.registeredJobs.Load(jobId)
+	regJob, ok := s.registeredJobs.Load(r.JobName)
 	if !ok {
-		return fmt.Errorf("job %q not registered on scheduler", jobId)
+		return fmt.Errorf("job %q not registered on scheduler", r.JobName)
 	}
-	j := regJob.(Job)
-	s.logger.Debug("starting job run", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
+	s.logger.Debug("starting job run", "run id", r.PrivateId, "job name", r.JobName)
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return fmt.Errorf("failed to create job repository: %w", err)
 	}
 
+	j := regJob.(Job)
 	jobContext, jobCancel := context.WithCancel(ctx)
-	_, loaded := s.runningJobs.LoadOrStore(jobId, runningJob{runId: r.PrivateId, cancelCtx: jobCancel, status: j.Status})
+	_, loaded := s.runningJobs.LoadOrStore(r.JobName, runningJob{runId: r.PrivateId, cancelCtx: jobCancel, status: j.Status})
 	if loaded {
 		jobCancel()
-		return fmt.Errorf("job (%v: %v) is already running", jobId, j.Name())
+		return fmt.Errorf("job %q is already running", r.JobName)
 	}
 
 	go func() {
@@ -235,18 +221,18 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 		runErr := j.Run(jobContext)
 		switch runErr {
 		case nil:
-			s.logger.Debug("job run complete", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
+			s.logger.Debug("job run complete", "run id", r.PrivateId, "name", j.Name())
 			if _, inner := repo.CompleteRun(jobContext, r.PrivateId, j.NextRunIn()); inner != nil {
 				s.logger.Error("error updating completed job run", "error", inner)
 			}
 		default:
-			s.logger.Debug("job run failed", "run id", r.PrivateId, "job id", jobId, "name", j.Name())
+			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name())
 			if _, inner := repo.FailRun(jobContext, r.PrivateId); inner != nil {
 				s.logger.Error("error updating failed job run", "error", inner)
 			}
 		}
 
-		s.runningJobs.Delete(jobId)
+		s.runningJobs.Delete(j.Name())
 	}()
 
 	return nil

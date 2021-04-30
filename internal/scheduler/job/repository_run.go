@@ -192,14 +192,13 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 				return errors.Wrap(err, op)
 			}
 
-			job := allocJob()
-			job.PrivateId = run.JobId
-			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
 			}
 			defer rows1.Close()
 
+			job := allocJob()
 			rowCnt = 0
 			for rows1.Next() {
 				if rowCnt > 0 {

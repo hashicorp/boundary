@@ -7,11 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
-// JobId is the unique id assigned to the job after registration, it is generated and
-// returned by RegisterJob.  The id is predictable and uses the job code and name as a seed.
-// This id is prefixed with "job_".
-type JobId string
-
 // Job defines an interface for jobs that can be invoked by the scheduler.
 type Job interface {
 	// Status reports the job’s current status.  The status is periodically persisted by
