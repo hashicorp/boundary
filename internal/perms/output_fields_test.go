@@ -3,6 +3,7 @@ package perms
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -214,6 +215,53 @@ func Test_ACLOutputFields(t *testing.T) {
 			results := acl.Allowed(test.resource, test.action)
 			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
 			assert.True(t, test.authorized == results.Authorized)
+		})
+	}
+}
+
+func Test_ACLSelfOrDefault(t *testing.T) {
+	t.Parallel()
+
+	type input struct {
+		name   string
+		input  OutputFieldsMap
+		output OutputFieldsMap
+		userId string
+	}
+	tests := []input{
+		{
+			name:   "nil, no user ID",
+			output: OutputFieldsMap{},
+		},
+		{
+			name:   "nil, non anon id",
+			output: OutputFieldsMap{"*": true},
+			userId: "u_abc123",
+		},
+		{
+			name: "nil, anon id",
+			output: OutputFieldsMap{
+				globals.IdField:                          true,
+				globals.ScopeField:                       true,
+				globals.ScopeIdField:                     true,
+				globals.NameField:                        true,
+				globals.DescriptionField:                 true,
+				globals.TypeField:                        true,
+				globals.IsPrimaryField:                   true,
+				globals.AuthorizedActionsField:           true,
+				globals.AuthorizedCollectionActionsField: true,
+			},
+			userId: AnonymousUserId,
+		},
+		{
+			name:   "not nil",
+			input:  OutputFieldsMap{"foo": true},
+			output: OutputFieldsMap{"foo": true},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.output, test.input.SelfOrDefaults(test.userId))
 		})
 	}
 }

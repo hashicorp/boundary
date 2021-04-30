@@ -14,9 +14,8 @@ type ContextRequestInformation struct{}
 // about clashing identifiers
 var ContextRequestInformationKey ContextRequestInformation
 
-// RequestContext is used to propoagate request information. It can be updated
-// at various points, e.g. UserId would be updated via the result of
-// auth.Verify.
+// RequestContext is used to propagate request information. It can be updated at
+// various points, e.g. UserId would be updated via the result of auth.Verify.
 //
 // It serves as a struct to gather information we learn about the request as it
 // goes along. This is distinct from options handling; none of the fields here

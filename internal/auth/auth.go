@@ -159,6 +159,13 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 
+	// Note: we don't call RequestContextFromCtx here because that performs a
+	// SelfOrDefault. That's useful in the handlers, but here we don't want to
+	// do anything if it's nil. That's mainly useful in tests where
+	// DisableAuthEntirely is set. Later, if we don't have the value set at all,
+	// we have some safeguards to ensure we fail safe (e.g. no output fields at
+	// all). So it provides a good indication as well whether we have set this
+	// where and when needed.
 	var reqInfo *requests.RequestContext
 	reqInfoRaw := ctx.Value(requests.ContextRequestInformationKey)
 	if reqInfoRaw != nil {
