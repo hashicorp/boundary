@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -580,12 +579,12 @@ func Test_convertValueObjects(t *testing.T) {
 		from = 0
 		to   = 1
 	)
-	for _, acm := range testClaimMaps {
-		segments := strings.Split(acm, "=")
-		require.Len(t, segments, 2)
-		toClaim, err := convertToAccountToClaim(segments[to])
+	acms, err := ParseAccountClaimMaps(testClaimMaps...)
+	require.NoError(t, err)
+	for from, to := range acms {
+		toClaim, err := convertToAccountToClaim(to)
 		require.NoError(t, err)
-		obj, err := NewAccountClaimMap(testPublicId, segments[from], toClaim)
+		obj, err := NewAccountClaimMap(testPublicId, from, toClaim)
 		require.NoError(t, err)
 		testAccountClaimMaps = append(testAccountClaimMaps, obj)
 	}

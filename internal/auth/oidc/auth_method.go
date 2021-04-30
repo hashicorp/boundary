@@ -17,6 +17,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/go-multierror"
+	kvbuilder "github.com/hashicorp/shared-secure-libs/kv-builder"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -406,20 +407,36 @@ func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 		from = 0
 		to   = 1
 	)
-	for _, acm := range am.AccountClaimMaps {
-		segments := strings.Split(acm, "=")
-		if len(segments) != 2 {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map %s when split on = has %d segments and expected 2", acm, len(segments)))
-		}
-		toClaim, err := convertToAccountToClaim(segments[to])
+	acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	for from, to := range acms {
+		toClaim, err := convertToAccountToClaim(to)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		obj, err := NewAccountClaimMap(am.PublicId, segments[from], toClaim)
+		obj, err := NewAccountClaimMap(am.PublicId, from, toClaim)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}
 	return newInterfaces, nil
+}
+
+func ParseAccountClaimMaps(m ...string) (map[string]string, error) {
+	const op = "oidc.parseAccountClaimMaps"
+	var b kvbuilder.Builder
+	if err := b.Add(m...); err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "error parsing map", errors.WithWrap(err))
+	}
+	claimMap := map[string]string{}
+	for k, v := range b.Map() {
+		var ok bool
+		if claimMap[k], ok = v.(string); !ok {
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map key %s value %q is not a string", k, v))
+		}
+	}
+	return claimMap, nil
 }
