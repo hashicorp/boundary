@@ -35,7 +35,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type HandlerProperties struct {
@@ -70,18 +69,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	ctx := props.CancelCtx
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-			Marshaler: &runtime.JSONPb{
-				MarshalOptions: protojson.MarshalOptions{
-					// Ensures the json marshaler uses the snake casing as defined in the proto field names.
-					UseProtoNames: true,
-					// Do not add fields set to zero value to json.
-					EmitUnpopulated: false,
-				},
-				UnmarshalOptions: protojson.UnmarshalOptions{
-					// Allows requests to contain unknown fields.
-					DiscardUnknown: true,
-				},
-			},
+			Marshaler: handlers.JSONMarshaler(),
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
