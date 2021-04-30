@@ -678,6 +678,7 @@ func toAuthMethodProto(in auth.AuthMethod, opt ...handlers.Option) (*pb.AuthMeth
 			SigningAlgorithms: i.GetSigningAlgs(),
 			AllowedAudiences:  i.GetAudClaims(),
 			ClaimsScopes:      i.GetClaimsScopes(),
+			AccountClaimMaps:  i.GetAccountClaimMaps(),
 		}
 		if i.DisableDiscoveredConfigValidation {
 			attrs.DisableDiscoveredConfigValidation = true
@@ -814,6 +815,12 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						}
 					}
 				}
+				if len(attrs.GetAccountClaimMaps()) > 0 {
+					_, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+					if err != nil {
+						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
+					}
+				}
 			}
 		default:
 			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", auth.PasswordSubtype.String())
@@ -920,6 +927,12 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 						badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
 						break
 					}
+				}
+			}
+			if len(attrs.GetAccountClaimMaps()) > 0 {
+				_, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+				if err != nil {
+					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 				}
 			}
 		default:

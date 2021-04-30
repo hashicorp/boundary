@@ -42,6 +42,7 @@ const (
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 	codeField                              = "attributes.code"
 	claimsScopesField                      = "attributes.claims_scopes"
+	accountClaimMapsField                  = "attributes.account_claim_maps"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -460,6 +461,10 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 	}
 
 	if len(attrs.GetClaimsScopes()) > 0 {
+		opts = append(opts, oidc.WithClaimsScopes(attrs.GetClaimsScopes()...))
+	}
+
+	if len(attrs.GetAccountClaimMaps()) > 0 {
 		opts = append(opts, oidc.WithClaimsScopes(attrs.GetClaimsScopes()...))
 	}
 
