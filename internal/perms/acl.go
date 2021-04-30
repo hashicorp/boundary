@@ -114,7 +114,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		// If the action was not found above but we did find output fields in
 		// patterns that match, we do not authorize the request, but we do build
 		// up the output fields patterns.
-		var starField bool
+		var starOuputField bool
 		switch {
 		// id=<resource.id>;actions=<action> where ID cannot be a wildcard; or
 		// id=<resource.id>;output_fields=<fields> where fields cannot be a
@@ -129,7 +129,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starField && results.Authorized {
+			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
 				return
 			}
 
@@ -148,7 +148,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starField && results.Authorized {
+			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
 				return
 			}
 
@@ -163,7 +163,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starField && results.Authorized {
+			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
 				return
 			}
 
@@ -179,7 +179,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields, starField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starField && results.Authorized {
+			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
 				return
 			}
 		}
