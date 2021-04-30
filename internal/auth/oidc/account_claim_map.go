@@ -11,6 +11,14 @@ const (
 	defaultAcctClaimMapTableName = "auth_oidc_account_claim_map"
 )
 
+type AccountToClaim string
+
+const (
+	ToSubClaim   AccountToClaim = "sub"
+	ToEmailClaim AccountToClaim = "email"
+	ToNameClaim  AccountToClaim = "name"
+)
+
 // AccountClaimMap defines optional OIDC scope values that are used to request
 // claims, in addition to the default scope of "openid" (see: DefaultClaimsScope).
 type AccountClaimMap struct {
@@ -18,13 +26,13 @@ type AccountClaimMap struct {
 	tableName string
 }
 
-func NewAccountClaimMap(authMethodId, fromClaim, toClaim string) (*AccountClaimMap, error) {
+func NewAccountClaimMap(authMethodId, fromClaim string, toClaim AccountToClaim) (*AccountClaimMap, error) {
 	const op = "oidc.NewAccountClaimMap"
 	cs := &AccountClaimMap{
 		AccountClaimMap: &store.AccountClaimMap{
 			OidcMethodId: authMethodId,
 			FromClaim:    fromClaim,
-			ToClaim:      toClaim,
+			ToClaim:      string(toClaim),
 		},
 	}
 	if err := cs.validate(op); err != nil {
@@ -41,8 +49,11 @@ func (cs *AccountClaimMap) validate(caller errors.Op) error {
 	if cs.FromClaim == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing from claim")
 	}
-	if cs.ToClaim == "" {
+	switch cs.ToClaim {
+	case "":
 		return errors.New(errors.InvalidParameter, caller, "missing to claim")
+	case "sub", "email", "profile":
+	default:
 	}
 	return nil
 }
