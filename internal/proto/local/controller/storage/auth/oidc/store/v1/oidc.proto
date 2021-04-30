@@ -123,7 +123,7 @@ message AuthMethod {
   // key=value where the key equals the from_claim and the value equals the
   // to_claim.  For example "oid=sub".
   // @inject_tag: `gorm:"-"`
-  repeated string account_claim_maps = 210;
+  repeated string account_claim_maps = 210 [(custom_options.v1.mask_mapping) = { this: "AccountClaimMaps" that: "attributes.account_claim_maps" }];
 }
 
 // Account represents an OIDC account
