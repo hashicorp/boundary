@@ -745,12 +745,12 @@ type AccountClaimMap struct {
 	OidcMethodId string `protobuf:"bytes,10,opt,name=oidc_method_id,json=oidcMethodId,proto3" json:"oidc_method_id,omitempty" gorm:"primary_key"`
 	// from_claim is the claim from the id_token that you need to map to a
 	// standard account claim.
-	// @inject_tag: `gorm:"column:from_claim;primary_key"`
-	FromClaim string `protobuf:"bytes,20,opt,name=from_claim,json=fromClaim,proto3" json:"from_claim,omitempty" gorm:"column:from_claim;primary_key"`
+	// @inject_tag: `gorm:"not_null"`
+	FromClaim string `protobuf:"bytes,20,opt,name=from_claim,json=fromClaim,proto3" json:"from_claim,omitempty" gorm:"not_null"`
 	// to_claim is the standard account claim to map the from_claim to.  Valid
 	// values are: sub, name, email
-	// @inject_tag: `gorm:"not_null"`
-	ToClaim string `protobuf:"bytes,30,opt,name=to_claim,json=toClaim,proto3" json:"to_claim,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"column:to_claim;primary_key"`
+	ToClaim string `protobuf:"bytes,30,opt,name=to_claim,json=toClaim,proto3" json:"to_claim,omitempty" gorm:"column:to_claim;primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,40,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
