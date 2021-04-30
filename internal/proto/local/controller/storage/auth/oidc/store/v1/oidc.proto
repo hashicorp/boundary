@@ -233,12 +233,12 @@ message AccountClaimMap {
 
   // from_claim is the claim from the id_token that you need to map to a
   // standard account claim.
-  // @inject_tag: `gorm:"column:from_claim;primary_key"`
+  // @inject_tag: `gorm:"not_null"`
   string from_claim = 20;
 
   // to_claim is the standard account claim to map the from_claim to.  Valid
   // values are: sub, name, email
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"column:to_claim;primary_key"`
   string to_claim = 30;
 
   // The create_time is set by the database.
