@@ -314,7 +314,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		}, nil
 	}
 
-	responseToken, err := s.convertInternalAuthTokenToApiAuthToken(
+	responseToken, err := s.ConvertInternalAuthTokenToApiAuthToken(
 		ctx,
 		token,
 	)

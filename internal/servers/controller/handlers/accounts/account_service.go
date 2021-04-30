@@ -752,7 +752,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building auth method proto")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building account proto")
 	}
 	outputFields := *opts.WithOutputFields
 

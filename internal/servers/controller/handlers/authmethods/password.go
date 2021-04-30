@@ -127,7 +127,7 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, err
 	}
 
-	return s.convertInternalAuthTokenToApiAuthToken(
+	return s.ConvertInternalAuthTokenToApiAuthToken(
 		ctx,
 		tok,
 	)

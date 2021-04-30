@@ -224,6 +224,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 	if err != nil {
 		return nil, err
 	}
+
 	outputFields := requests.OutputFields(ctx)
 	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
 	if err != nil {
@@ -1148,8 +1149,8 @@ func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	return nil
 }
 
-func (s Service) convertInternalAuthTokenToApiAuthToken(ctx context.Context, tok *authtoken.AuthToken) (*pba.AuthToken, error) {
-	const op = "authmethod.convertInternalAuthTokenToApiAuthToken"
+func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok *authtoken.AuthToken) (*pba.AuthToken, error) {
+	const op = "authmethod.ConvertInternalAuthTokenToApiAuthToken"
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		return nil, err

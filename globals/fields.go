@@ -12,8 +12,12 @@ const (
 	ScopeIdField                     = "scope_id"
 	ScopeField                       = "scope"
 	AuthMethodIdField                = "auth_method_id"
+	AccountIdField                   = "account_id"
+	UserIdField                      = "user_id"
 	HostCatalogField                 = "host_catalog_id"
 	IsPrimaryField                   = "is_primary"
 	AuthorizedActionsField           = "authorized_actions"
 	AuthorizedCollectionActionsField = "authorized_collection_actions"
+	ExpirationTimeField              = "expiration_time"
+	ApproximateLastUsedTimeField     = "approximate_last_used_time"
 )

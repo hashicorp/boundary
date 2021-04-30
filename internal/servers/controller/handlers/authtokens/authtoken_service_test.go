@@ -16,6 +16,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
@@ -97,6 +98,7 @@ func TestGetSelf(t *testing.T) {
 			}
 
 			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
 			got, err := a.GetAuthToken(ctx, &pbs.GetAuthTokenRequest{Id: tc.readId})
 			if tc.err != nil {
 				require.EqualError(err, tc.err.Error())
@@ -105,9 +107,9 @@ func TestGetSelf(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			assert.Equal(got.GetItem().GetId(), tc.token.GetPublicId())
+			assert.Equal(tc.token.GetPublicId(), got.GetItem().GetId())
 			// Ensure we didn't simply have e.g. read on all tokens
-			assert.Equal(got.Item.GetAuthorizedActions(), []string{"read:self", "delete:self"})
+			assert.Equal([]string{"read:self", "delete:self"}, got.Item.GetAuthorizedActions())
 		})
 	}
 }
@@ -399,7 +401,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check anon listing
-			got, gErr = s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr = s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {

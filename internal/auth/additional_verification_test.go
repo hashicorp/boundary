@@ -3,16 +3,19 @@ package auth_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	authmethodsservice "github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -164,5 +167,96 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 			assert.Contains(m, "name")
 			assert.Contains(m, "scope_id")
 		}
+	}
+}
+
+func TestSelfReadingDifferentOutputFields(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	conn := tc.DbConn()
+
+	s, err := authmethodsservice.NewService(tc.Kms(),
+		tc.Controller().PasswordAuthRepoFn,
+		tc.Controller().OidcRepoFn,
+		tc.Controller().IamRepoFn,
+		tc.Controller().AuthTokenRepoFn)
+	require.NoError(t, err)
+
+	// Create two auth tokens belonging to different users in the org. Each will
+	// have grants below and should be able to read the other token but see more
+	// fields for its own.
+	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
+	am := password.TestAuthMethod(t, conn, org.GetPublicId())
+	acct1 := password.TestAccount(t, conn, am.GetPublicId(), "acct1")
+	acct2 := password.TestAccount(t, conn, am.GetPublicId(), "acct2")
+	user1 := iam.TestUser(t, tc.IamRepo(), org.GetPublicId(), iam.WithAccountIds(acct1.GetPublicId()))
+	user2 := iam.TestUser(t, tc.IamRepo(), org.GetPublicId(), iam.WithAccountIds(acct2.GetPublicId()))
+	at1, err := tc.AuthTokenRepo().CreateAuthToken(tc.Context(), user1, acct1.GetPublicId())
+	require.NoError(t, err)
+	token1, err := s.ConvertInternalAuthTokenToApiAuthToken(tc.Context(), at1)
+	require.NoError(t, err)
+	at2, err := tc.AuthTokenRepo().CreateAuthToken(tc.Context(), user2, acct2.GetPublicId())
+	require.NoError(t, err)
+	token2, err := s.ConvertInternalAuthTokenToApiAuthToken(tc.Context(), at2)
+	require.NoError(t, err)
+
+	orgRole := iam.TestRole(t, conn, org.GetPublicId())
+	iam.TestUserRole(t, conn, orgRole.PublicId, user1.GetPublicId())
+	iam.TestUserRole(t, conn, orgRole.PublicId, user2.GetPublicId())
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-token;actions=read:self;output_fields=account_id")
+	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-token;actions=read;output_fields=id,scope_id")
+
+	cases := []struct {
+		name     string
+		token    string
+		lookupId string
+		keys     []string
+	}{
+		{
+			name:     "at1 self",
+			token:    token1.GetToken(),
+			lookupId: token1.GetId(),
+			keys:     []string{"id", "scope_id", "account_id"},
+		},
+		{
+			name:     "at2 self",
+			token:    token2.GetToken(),
+			lookupId: token2.GetId(),
+			keys:     []string{"id", "scope_id", "account_id"},
+		},
+		{
+			name:     "at1 other",
+			token:    token1.GetToken(),
+			lookupId: token2.GetId(),
+			keys:     []string{"id", "scope_id"},
+		},
+		{
+			name:     "at2 other",
+			token:    token2.GetToken(),
+			lookupId: token1.GetId(),
+			keys:     []string{"id", "scope_id"},
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			client := tc.Client().Clone()
+			client.SetToken(test.token)
+			atClient := authtokens.NewClient(client)
+			resp, err := atClient.Read(tc.Context(), test.lookupId)
+			require.NoError(err)
+			require.NotNil(resp)
+			require.NotNil(resp.GetItem())
+			item := resp.GetResponse().Map
+			require.NotNil(item)
+			keys := make([]string, 0, len(item))
+			for k := range item {
+				keys = append(keys, k)
+			}
+			sort.Strings(test.keys)
+			sort.Strings(keys)
+			assert.Equal(test.keys, keys)
+		})
 	}
 }
