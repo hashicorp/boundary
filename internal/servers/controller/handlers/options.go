@@ -52,8 +52,8 @@ func WithLogger(logger hclog.Logger) Option {
 	}
 }
 
-// WithUserIsAnonymous provides an option when creating responses to only include those
-// desired for listing to anonymous users.
+// DEPRECATED: Superceded by WithOutputFields. Will be removed once all handlers
+// have been migrated to that.
 func WithUserIsAnonymous(anonListing bool) Option {
 	return func(o *options) {
 		o.WithUserIsAnonymous = anonListing
