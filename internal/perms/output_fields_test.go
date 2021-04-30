@@ -65,8 +65,8 @@ func Test_OutputFields(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
-			out, starField := test.startMap.AddFields(test.fields)
-			assert.True(starField == test.resStar)
+			out := test.startMap.AddFields(test.fields)
+			assert.True(out.HasAll() == test.resStar)
 			assert.Equal(test.resMap, out)
 		})
 	}

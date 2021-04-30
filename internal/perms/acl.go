@@ -168,8 +168,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			var starOutputField bool
-			if results.OutputFields, starOutputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOutputField && results.Authorized {
+			if results.OutputFields = results.OutputFields.AddFields(grant.OutputFields.Fields()); results.OutputFields.HasAll() && results.Authorized {
 				return
 			}
 		}

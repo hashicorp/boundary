@@ -10,31 +10,33 @@ import (
 // grants
 type OutputFieldsMap map[string]bool
 
-// AddStrings adds the given fields and returns the map and whether or not the
-// input included "*", which is used to shortcut some logic when checking ACL.
-func (o OutputFieldsMap) AddFields(input []string) (ret OutputFieldsMap, starField bool) {
+// AddStrings adds the given fields and returns the map.
+func (o OutputFieldsMap) AddFields(input []string) (ret OutputFieldsMap) {
 	switch {
 	case len(input) == 0:
 		if o == nil {
-			return o, false
+			return o
 		}
-		return o, o["*"]
+		return o
 	case o == nil:
 		ret = make(OutputFieldsMap, len(input))
 	case len(o) == 1 && o["*"]:
-		return o, true
+		return o
 	default:
 		ret = o
 	}
 	for _, k := range input {
 		if k == "*" {
-			starField = true
 			ret = OutputFieldsMap{k: true}
 			return
 		}
 		ret[k] = true
 	}
 	return
+}
+
+func (o OutputFieldsMap) HasAll() bool {
+	return o["*"]
 }
 
 // Fields returns an alphabetical string slice of the fields in the map
@@ -90,5 +92,5 @@ func (o OutputFieldsMap) Has(in string) bool {
 	if len(o) == 0 {
 		return false
 	}
-	return o["*"] || o[in]
+	return o.HasAll() || o[in]
 }
