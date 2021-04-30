@@ -114,7 +114,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		// If the action was not found above but we did find output fields in
 		// patterns that match, we do not authorize the request, but we do build
 		// up the output fields patterns.
-		var starOuputField bool
+		var found bool
 		switch {
 		// id=<resource.id>;actions=<action> where ID cannot be a wildcard; or
 		// id=<resource.id>;output_fields=<fields> where fields cannot be a
@@ -126,12 +126,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			aType != action.List &&
 			aType != action.Create:
 
-			if !outputFieldsOnly {
-				results.Authorized = true
-			}
-			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
-				return
-			}
+			found = true
 
 		// type=<resource.type>;actions=<action> when action is list or create.
 		// Must be a top level collection, otherwise must be one of the two
@@ -145,12 +140,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(aType == action.List ||
 				aType == action.Create):
 
-			if !outputFieldsOnly {
-				results.Authorized = true
-			}
-			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
-				return
-			}
+			found = true
 
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
 		// unknown but can be a wildcard to allow any resource at all; or
@@ -160,12 +150,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(grant.typ == r.Type ||
 				grant.typ == resource.All):
 
-			if !outputFieldsOnly {
-				results.Authorized = true
-			}
-			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
-				return
-			}
+			found = true
 
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
 		// wildcard and this this is operating on a non-top-level type. Same for
@@ -176,10 +161,15 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(grant.typ == r.Type || grant.typ == resource.All) &&
 			!topLevelType(r.Type):
 
+			found = true
+		}
+
+		if found {
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields, starOuputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOuputField && results.Authorized {
+			var starOutputField bool
+			if results.OutputFields, starOutputField = results.OutputFields.AddFields(grant.OutputFields.Fields()); starOutputField && results.Authorized {
 				return
 			}
 		}
