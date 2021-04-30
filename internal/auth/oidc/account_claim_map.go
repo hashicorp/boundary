@@ -21,7 +21,7 @@ const (
 	ToNameClaim  AccountToClaim = "name"
 )
 
-func convertToAccountToClaim(s string) (AccountToClaim, error) {
+func ConvertToAccountToClaim(s string) (AccountToClaim, error) {
 	const op = "oidc.(AccountToClaim).convertToAccountToClaim"
 	switch s {
 	case string(ToSubClaim):

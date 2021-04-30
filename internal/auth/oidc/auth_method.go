@@ -412,7 +412,7 @@ func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 		return nil, errors.Wrap(err, op)
 	}
 	for from, to := range acms {
-		toClaim, err := convertToAccountToClaim(to)
+		toClaim, err := ConvertToAccountToClaim(to)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}

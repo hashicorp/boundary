@@ -174,7 +174,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
 			continue
 		default:
 			filteredDbMask = append(filteredDbMask, f)
@@ -182,7 +182,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	for _, f := range nullFields {
 		switch f {
-		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField:
+		case SigningAlgsField, AudClaimsField, CertificatesField, ClaimsScopesField, AccountClaimMapsField:
 			continue
 		default:
 			filteredNullFields = append(filteredNullFields, f)
@@ -450,7 +450,7 @@ var supportedFactories = map[voName]factoryFunc{
 		var from, rawTo string
 		for from, rawTo = range acm {
 		}
-		to, err := convertToAccountToClaim(rawTo)
+		to, err := ConvertToAccountToClaim(rawTo)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
