@@ -36,6 +36,8 @@ type RequestContext struct {
 	OutputFields perms.OutputFieldsMap
 }
 
+// NewRequestContext returns a derived context with a new RequestContext value
+// added in.
 func NewRequestContext(parent context.Context) context.Context {
 	return context.WithValue(parent, ContextRequestInformationKey, &RequestContext{})
 }
@@ -55,6 +57,11 @@ func RequestContextFromCtx(ctx context.Context) *RequestContext {
 	return reqCtx
 }
 
+// OutputFields returns output fields from the given context and calls
+// SelfOrDefaults on it. If the context does not contain a RequestContext,
+// RequestContextFromCtx will return a non-nil empty RequestContext, thus the
+// OutputFieldsMap will be nil and return defaults when SelfOrDefaults is
+// called.
 func OutputFields(ctx context.Context) perms.OutputFieldsMap {
 	reqCtx := RequestContextFromCtx(ctx)
 	outputFields := reqCtx.OutputFields
