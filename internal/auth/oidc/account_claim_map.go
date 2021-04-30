@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
@@ -18,6 +20,20 @@ const (
 	ToEmailClaim AccountToClaim = "email"
 	ToNameClaim  AccountToClaim = "name"
 )
+
+func convertToAccountToClaim(s string) (AccountToClaim, error) {
+	const op = "oidc.(AccountToClaim).convertToAccountToClaim"
+	switch s {
+	case string(ToSubClaim):
+		return ToSubClaim, nil
+	case string(ToEmailClaim):
+		return ToEmailClaim, nil
+	case string(ToNameClaim):
+		return ToNameClaim, nil
+	default:
+		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid ToAccountClaim value", s))
+	}
+}
 
 // AccountClaimMap defines optional OIDC scope values that are used to request
 // claims, in addition to the default scope of "openid" (see: DefaultClaimsScope).

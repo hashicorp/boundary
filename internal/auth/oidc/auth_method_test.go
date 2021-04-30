@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -573,6 +574,22 @@ func Test_convertValueObjects(t *testing.T) {
 		testClaimsScopes = append(testClaimsScopes, obj)
 	}
 
+	testClaimMaps := []string{"oid=sub", "display_name=name"}
+	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
+	const (
+		from = 0
+		to   = 1
+	)
+	for _, acm := range testClaimMaps {
+		segments := strings.Split(acm, "=")
+		require.Len(t, segments, 2)
+		toClaim, err := convertToAccountToClaim(segments[to])
+		require.NoError(t, err)
+		obj, err := NewAccountClaimMap(testPublicId, segments[from], toClaim)
+		require.NoError(t, err)
+		testAccountClaimMaps = append(testAccountClaimMaps, obj)
+	}
+
 	tests := []struct {
 		name            string
 		authMethodId    string
@@ -580,6 +597,7 @@ func Test_convertValueObjects(t *testing.T) {
 		auds            []string
 		certs           []string
 		scopes          []string
+		maps            []string
 		wantValues      *convertedValues
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -591,11 +609,13 @@ func Test_convertValueObjects(t *testing.T) {
 			auds:         testAuds,
 			certs:        testCerts,
 			scopes:       testScopes,
+			maps:         testClaimMaps,
 			wantValues: &convertedValues{
-				Algs:         testSigningAlgs,
-				Auds:         testAudiences,
-				Certs:        testCertificates,
-				ClaimsScopes: testClaimsScopes,
+				Algs:             testSigningAlgs,
+				Auds:             testAudiences,
+				Certs:            testCertificates,
+				ClaimsScopes:     testClaimsScopes,
+				AccountClaimMaps: testAccountClaimMaps,
 			},
 		},
 		{
@@ -609,11 +629,12 @@ func Test_convertValueObjects(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			am := &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					PublicId:     tt.authMethodId,
-					SigningAlgs:  tt.algs,
-					AudClaims:    tt.auds,
-					Certificates: tt.certs,
-					ClaimsScopes: tt.scopes,
+					PublicId:         tt.authMethodId,
+					SigningAlgs:      tt.algs,
+					AudClaims:        tt.auds,
+					Certificates:     tt.certs,
+					ClaimsScopes:     tt.scopes,
+					AccountClaimMaps: tt.maps,
 				},
 			}
 
@@ -647,6 +668,14 @@ func Test_convertValueObjects(t *testing.T) {
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
 			} else {
 				assert.Equal(tt.wantValues.ClaimsScopes, convertedScopes)
+			}
+
+			convertedMaps, err := am.convertAccountClaimMaps()
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted err %q and got: %+v", tt.wantErrMatch.Code, err)
+			} else {
+				assert.Equal(tt.wantValues.AccountClaimMaps, convertedMaps)
 			}
 
 			values, err := am.convertValueObjects()

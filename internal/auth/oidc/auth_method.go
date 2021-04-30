@@ -276,10 +276,11 @@ func (am *AuthMethod) isComplete() error {
 }
 
 type convertedValues struct {
-	Algs         []interface{}
-	Auds         []interface{}
-	Certs        []interface{}
-	ClaimsScopes []interface{}
+	Algs             []interface{}
+	Auds             []interface{}
+	Certs            []interface{}
+	ClaimsScopes     []interface{}
+	AccountClaimMaps []interface{}
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -290,7 +291,7 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addAuds, addCerts, addScopes []interface{}
+	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []interface{}
 	if addAlgs, err = am.convertSigningAlgs(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -303,11 +304,15 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 	if addScopes, err = am.convertClaimsScopes(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	if addAccountClaimMaps, err = am.convertAccountClaimMaps(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
 	return &convertedValues{
-		Algs:         addAlgs,
-		Auds:         addAuds,
-		Certs:        addCerts,
-		ClaimsScopes: addScopes,
+		Algs:             addAlgs,
+		Auds:             addAuds,
+		Certs:            addCerts,
+		ClaimsScopes:     addScopes,
+		AccountClaimMaps: addAccountClaimMaps,
 	}, nil
 }
 
@@ -379,6 +384,38 @@ func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
 	newInterfaces := make([]interface{}, 0, len(am.ClaimsScopes))
 	for _, cs := range am.ClaimsScopes {
 		obj, err := NewClaimsScope(am.PublicId, cs)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+// convertAccountClaimMaps converts the embedded account claim maps from
+// []string to []interface{} where each slice element is a *AccountClaimMap. It
+// will return an error if the AuthMethod's public id is not set or it can
+// convert the account claim maps.
+func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertAccountClaimMaps"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.AccountClaimMaps))
+	const (
+		from = 0
+		to   = 1
+	)
+	for _, acm := range am.AccountClaimMaps {
+		segments := strings.Split(acm, "=")
+		if len(segments) != 2 {
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map %s when split on = has %d segments and expected 2", acm, len(segments)))
+		}
+		toClaim, err := convertToAccountToClaim(segments[to])
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		obj, err := NewAccountClaimMap(am.PublicId, segments[from], toClaim)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}

@@ -59,6 +59,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant"),
 					WithDescription("it's a good place to eat"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -92,6 +93,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant with a twist"),
 					WithDescription("it's an okay but kinda weird place to eat"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -126,6 +128,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant is bad"),
 					WithDescription("their food is awful"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
