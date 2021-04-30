@@ -347,7 +347,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 			if len(deleteMaps) > 0 {
 				deleteMapsOplogMsgs := make([]*oplog.Message, 0, len(deleteMaps))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteMapsOplogMsgs))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteMaps, db.NewOplogMsgs(&deleteMapsOplogMsgs))
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete account claim maps"))
 				}
