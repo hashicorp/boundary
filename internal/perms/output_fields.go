@@ -10,7 +10,7 @@ import (
 // grants
 type OutputFieldsMap map[string]bool
 
-// AddStrings adds the given fields and returns the map.
+// AddFields adds the given fields and returns the map.
 func (o OutputFieldsMap) AddFields(input []string) (ret OutputFieldsMap) {
 	switch {
 	case len(input) == 0:
