@@ -124,23 +124,26 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	token := tc.Token()
 	client.SetToken(token.Token)
 
-	// Create some users at the global level, and some role grants for them
-	password.TestAuthMethod(t, conn, scope.Global.String(), password.WithName("globalam1"), password.WithDescription("globalam1"))
-	password.TestAuthMethod(t, conn, scope.Global.String(), password.WithName("globalam2"), password.WithDescription("globalam2"))
+	// Set some global permissions so we can read the auth method there. Here we
+	// will expect the defaults.
 	globalRole := iam.TestRole(t, conn, scope.Global.String())
 	iam.TestUserRole(t, conn, globalRole.PublicId, token.UserId)
-	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;output_fields=version,description")
-	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list;output_fields=name")
+	iam.TestUserRole(t, conn, globalRole.PublicId, auth.AnonymousUserId)
+	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list,no-op")
 
-	// Do the same at the org level
+	// Create some users at the org level, and some role grants for them
 	org, _ := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId), iam.WithSkipAdminRoleCreation(true), iam.WithSkipDefaultRoleCreation(true))
 	orgAm1 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam1"), password.WithDescription("orgam1"))
 	orgAm2 := password.TestAuthMethod(t, conn, org.GetPublicId(), password.WithName("orgam2"), password.WithDescription("orgam2"))
 	orgRole := iam.TestRole(t, conn, org.GetPublicId())
 	iam.TestUserRole(t, conn, orgRole.PublicId, token.UserId)
-	// The first and second will actually not take effect because it's a list
-	// and output fields are scoped by action. So we expect only name and
-	// scope_id for the auth methods in the scope, using two patterns below.
+	// The first and second will actually not take effect for output
+	// grantsbecause it's a list and output fields are scoped by action. So we
+	// expect only name and scope_id for the auth methods in the scope, using
+	// two patterns below. However, since you need an action on the resource for
+	// list to return anything, those grants allow us to list the items, while
+	// also verifying that those output fields don't take effect for the wrong
+	// action.
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=id,version", orgAm1.GetPublicId()))
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, fmt.Sprintf("id=%s;actions=read;output_fields=description", orgAm2.GetPublicId()))
 	iam.TestRoleGrant(t, conn, orgRole.PublicId, "id=*;type=auth-method;output_fields=name")
@@ -152,7 +155,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 5)
+	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 3)
 	items := resp.GetResponse().Map["items"].([]interface{})
 	require.NotNil(items)
 
@@ -167,12 +170,14 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	for _, item := range items {
 		m := item.(map[string]interface{})
 		require.NotNil(m)
-		switch {
-		case m["version"] != nil:
-			assert.Len(m, 3)
-			assert.Contains(m, "name")
-			assert.Contains(m, "description")
+		switch m["scope_id"].(string) {
+		case scope.Global.String():
+			// Validate that it contains fields anon shouldn't; we'll check anon
+			// later
+			assert.Contains(m, "created_time")
+			assert.Contains(m, "attributes")
 			globalAms++
+
 		default:
 			assert.Len(m, 2)
 			assert.Contains(m, "name")
@@ -180,8 +185,21 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 			orgAms++
 		}
 	}
-	assert.Equal(3, globalAms)
+	assert.Equal(1, globalAms)
 	assert.Equal(2, orgAms)
+
+	// Now act as the anonymous user and ensure that the fields we checked for
+	// before are not available
+	tc.Client().SetToken("")
+	amClient = authmethods.NewClient(tc.Client())
+	resp, err = amClient.List(tc.Context(), scope.Global.String(), authmethods.WithRecursive(true))
+	require.NoError(err)
+	require.NotNil(resp)
+	require.NotNil(resp.GetItems())
+	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 1)
+	item := resp.GetResponse().Map["items"].([]interface{})[0].(map[string]interface{})
+	assert.NotContains(item, "created_time")
+	assert.NotContains(item, "attributes")
 }
 
 func TestSelfReadingDifferentOutputFields(t *testing.T) {

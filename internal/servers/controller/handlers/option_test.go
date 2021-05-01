@@ -57,7 +57,7 @@ func Test_GetOpts(t *testing.T) {
 		var out perms.OutputFieldsMap
 
 		opts = GetOpts(WithOutputFields(&out))
-		require.Nil(opts.WithOutputFields)
-		assert.Nil(opts.WithOutputFields)
+		require.NotNil(opts.WithOutputFields)
+		assert.Nil(*opts.WithOutputFields)
 	})
 }

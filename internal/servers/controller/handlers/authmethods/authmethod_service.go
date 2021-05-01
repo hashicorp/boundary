@@ -588,22 +588,8 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 		if oam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
 		}
-		if dr {
-			item, err := toAuthMethodProto(ctx, oam, handlers.WithOutputFields(&perms.OutputFieldsMap{"attributes": true}))
-			if err != nil {
-				return nil, false, errors.Wrap(err, op)
-			}
-			attrs := &pb.OidcAuthMethodAttributes{}
-			if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-				return nil, false, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute struct to proto"))
-			}
-			attrs.DryRun = true
-			if item.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
-				return nil, false, errors.Wrap(err, op, errors.WithMsg("can't convert from attribute proto to struct"))
-			}
-			dryRun = true
-		}
 		am = oam
+		dryRun = dr
 	}
 
 	return am, dryRun, nil
