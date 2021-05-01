@@ -272,7 +272,6 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	case len(c.flagAccountClaimMaps) == 1 && c.flagAccountClaimMaps[0] == "null":
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAccountClaimMaps())
 	default:
-		fmt.Println(c.flagAccountClaimMaps)
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAccountClaimMaps(c.flagAccountClaimMaps))
 	}
 	if c.flagDisableDiscoveredConfigValidation {
