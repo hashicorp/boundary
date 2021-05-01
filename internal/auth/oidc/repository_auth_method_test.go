@@ -130,7 +130,7 @@ func Test_upsertAccount(t *testing.T) {
 			idClaims:        map[string]interface{}{"iss": "https://alice.com"},
 			atClaims:        map[string]interface{}{},
 			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "subject is not present",
+			wantErrContains: "to account subject and it is not present in ID Token",
 		},
 		{
 			name:            "missing-id-token-claims",

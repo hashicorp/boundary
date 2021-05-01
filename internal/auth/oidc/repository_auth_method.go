@@ -64,7 +64,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		return nil, errors.New(errors.Unknown, op, "issuer is not present in ID Token, which should not be possible")
 	}
 	if sub, ok = IdTokenClaims[fromSub].(string); !ok {
-		return nil, errors.New(errors.Unknown, op, fmt.Sprintf("mapping claim %s to account subject and it is not present in ID Token", fromSub))
+		return nil, errors.New(errors.Unknown, op, fmt.Sprintf("mapping 'claim' %s to account subject and it is not present in ID Token", fromSub))
 	}
 	pubId, err := newAccountId(am.GetPublicId(), iss, sub)
 	if err != nil {
