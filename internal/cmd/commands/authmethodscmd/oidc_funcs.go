@@ -27,6 +27,7 @@ type extraOidcCmdVars struct {
 	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
 	flagClaimsScopes                      []string
+	flagAccountClaimMaps                  []string
 	flagDisableDiscoveredConfigValidation bool
 	flagDryRun                            bool
 }
@@ -42,6 +43,7 @@ const (
 	caCertFlagName                            = "idp-ca-cert"
 	allowedAudienceFlagName                   = "allowed-audience"
 	claimsScopes                              = "claims-scopes"
+	accountClaimMaps                          = "account-claim-maps"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
 	dryRunFlagName                            = "dry-run"
@@ -59,6 +61,7 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			caCertFlagName,
 			allowedAudienceFlagName,
 			claimsScopes,
+			accountClaimMaps,
 		},
 		"change-state": {
 			idFlagName,
@@ -128,6 +131,12 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   claimsScopes,
 				Target: &c.flagClaimsScopes,
 				Usage:  `The optional claims scope requested. May be specified multiple times.`,
+			})
+		case accountClaimMaps:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   accountClaimMaps,
+				Target: &c.flagAccountClaimMaps,
+				Usage:  `The optional account claim maps from custom claims to the standard claims of sub, name and email.  These maps are represented as key=value where the key equals the from-claim and the value equals the to-claim.  For example "oid=sub". May be specified multiple times.`,
 			})
 		case stateFlagName:
 			f.StringVar(&base.StringVar{
@@ -257,6 +266,15 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodClaimsScopes())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodClaimsScopes(c.flagClaimsScopes))
+	}
+	switch {
+	case len(c.flagAccountClaimMaps) == 0:
+	case len(c.flagAccountClaimMaps) == 1 && c.flagAccountClaimMaps[0] == "null":
+		fmt.Println("null: ", authmethods.DefaultOidcAuthMethodAccountClaimMaps())
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAccountClaimMaps())
+	default:
+		fmt.Println(c.flagAccountClaimMaps)
+		*opts = append(*opts, authmethods.WithOidcAuthMethodAccountClaimMaps(c.flagAccountClaimMaps))
 	}
 	if c.flagDisableDiscoveredConfigValidation {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))
