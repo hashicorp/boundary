@@ -270,7 +270,6 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	switch {
 	case len(c.flagAccountClaimMaps) == 0:
 	case len(c.flagAccountClaimMaps) == 1 && c.flagAccountClaimMaps[0] == "null":
-		fmt.Println("null: ", authmethods.DefaultOidcAuthMethodAccountClaimMaps())
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAccountClaimMaps())
 	default:
 		fmt.Println(c.flagAccountClaimMaps)
