@@ -20,6 +20,7 @@ import (
 )
 
 func TestRepository_CreateCredentialLibrary(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -230,6 +231,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 }
 
 func TestRepository_UpdateCredentialLibrary(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -872,6 +874,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 }
 
 func TestRepository_LookupCredentialLibrary(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -936,6 +939,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 }
 
 func TestRepository_DeleteCredentialLibrary(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -992,6 +996,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 }
 
 func TestRepository_ListCredentialLibraries(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1051,6 +1056,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 }
 
 func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
