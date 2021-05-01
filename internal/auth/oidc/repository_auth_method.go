@@ -32,13 +32,39 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if AccessTokenClaims == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing Access Token claims")
 	}
+
+	fromSub, fromName, fromEmail := "sub", "name", "email"
+	if len(am.AccountClaimMaps) > 0 {
+		acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		for from, to := range acms {
+			toClaim, err := ConvertToAccountToClaim(to)
+			if err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+			switch toClaim {
+			case ToSubClaim:
+				fromSub = from
+			case ToEmailClaim:
+				fromEmail = from
+			case ToNameClaim:
+				fromName = from
+			default:
+				// should never happen, but including it just in case.
+				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s=%s is not a valid account claim map", from, to))
+			}
+		}
+	}
+
 	var iss, sub string
 	var ok bool
 	if iss, ok = IdTokenClaims["iss"].(string); !ok {
 		return nil, errors.New(errors.Unknown, op, "issuer is not present in ID Token, which should not be possible")
 	}
-	if sub, ok = IdTokenClaims["sub"].(string); !ok {
-		return nil, errors.New(errors.Unknown, op, "subject is not present in ID Token, which should not be possible")
+	if sub, ok = IdTokenClaims[fromSub].(string); !ok {
+		return nil, errors.New(errors.Unknown, op, fmt.Sprintf("mapping claim %s to account subject and it is not present in ID Token", fromSub))
 	}
 	pubId, err := newAccountId(am.GetPublicId(), iss, sub)
 	if err != nil {
@@ -51,22 +77,22 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 
 	var foundEmail, foundName interface{}
 	switch {
-	case AccessTokenClaims["name"] != nil:
-		foundName = AccessTokenClaims["name"]
+	case AccessTokenClaims[fromName] != nil:
+		foundName = AccessTokenClaims[fromName]
 		columns, values = append(columns, "full_name"), append(values, foundName)
-	case IdTokenClaims["name"] != nil:
-		foundName = IdTokenClaims["name"]
+	case IdTokenClaims[fromName] != nil:
+		foundName = IdTokenClaims[fromName]
 		columns, values = append(columns, "full_name"), append(values, foundName)
 	default:
 		conflictClauses = append(conflictClauses, "full_name = NULL")
 		nullMasks = append(nullMasks, NameField)
 	}
 	switch {
-	case AccessTokenClaims["email"] != nil:
-		foundEmail = AccessTokenClaims["email"]
+	case AccessTokenClaims[fromEmail] != nil:
+		foundEmail = AccessTokenClaims[fromEmail]
 		columns, values = append(columns, "email"), append(values, foundEmail)
-	case IdTokenClaims["email"] != nil:
-		foundEmail = IdTokenClaims["email"]
+	case IdTokenClaims[fromEmail] != nil:
+		foundEmail = IdTokenClaims[fromEmail]
 		columns, values = append(columns, "email"), append(values, foundEmail)
 	default:
 		conflictClauses = append(conflictClauses, "email = NULL")
