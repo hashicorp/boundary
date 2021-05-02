@@ -58,7 +58,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	if err != nil {
 		return nil, "", errors.Wrap(err, op)
 	}
-	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl(), authMethodId)
+	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl())
 
 	opts := getOpts(opt...)
 	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, am.GetApiUrl())
