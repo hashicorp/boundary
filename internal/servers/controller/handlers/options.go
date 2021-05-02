@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -27,7 +27,7 @@ type options struct {
 	WithLogger                      hclog.Logger
 	WithUserIsAnonymous             bool
 	WithOutputFields                *perms.OutputFieldsMap
-	WithScope                       *scopes.Scope
+	WithScope                       *scopes.ScopeInfo
 	WithAuthorizedActions           []string
 	WithAuthorizedCollectionActions map[string]*structpb.ListValue
 }
@@ -65,5 +65,29 @@ func WithUserIsAnonymous(anonListing bool) Option {
 func WithOutputFields(fields *perms.OutputFieldsMap) Option {
 	return func(o *options) {
 		o.WithOutputFields = fields
+	}
+}
+
+// WithScope provides an option when creating responses to include the given
+// scope if allowed
+func WithScope(scp *scopes.ScopeInfo) Option {
+	return func(o *options) {
+		o.WithScope = scp
+	}
+}
+
+// WithAuthorizedActions provides an option when creating responses to include the given
+// authorized actions if allowed
+func WithAuthorizedActions(acts []string) Option {
+	return func(o *options) {
+		o.WithAuthorizedActions = acts
+	}
+}
+
+// WithAuthorizedCollectionActions provides an option when creating responses to include the given
+// authorized collection actions if allowed
+func WithAuthorizedCollectionActions(colActs map[string]*structpb.ListValue) Option {
+	return func(o *options) {
+		o.WithAuthorizedCollectionActions = colActs
 	}
 }

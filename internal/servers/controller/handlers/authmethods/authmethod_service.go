@@ -63,34 +63,6 @@ var (
 	}
 )
 
-func populateCollectionAuthorizedActions(ctx context.Context,
-	authResults auth.VerifyResults,
-	item auth.AuthMethod) (map[string]*structpb.ListValue, error) {
-	res := &perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Pin:     item.GetPublicId(),
-	}
-	// Range over the defined collections and check permissions against those
-	// collections. We use the ID of this scope being returned, not its parent,
-	// hence passing in a resource here.
-	var ret map[string]*structpb.ListValue
-	for k, v := range collectionTypeMap {
-		res.Type = k
-		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
-		if len(acts) > 0 {
-			if ret == nil {
-				ret = make(map[string]*structpb.ListValue)
-			}
-			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-			if err != nil {
-				return nil, err
-			}
-			ret[k.String()+"s"] = lv
-		}
-	}
-	return ret, nil
-}
-
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
 	pbs.UnimplementedAuthMethodServiceServer
@@ -185,23 +157,25 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
-		if err != nil {
-			return nil, err
-		}
-
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			item.Scope = scopeInfoMap[am.GetScopeId()]
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[am.GetScopeId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			item.AuthorizedActions = authorizedActions
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
-			item.AuthorizedCollectionActions = collectionActions
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
+
+		item, err := toAuthMethodProto(ctx, am, outputOpts...)
+		if err != nil {
+			return nil, err
 		}
 
 		if filter.Match(item) {
@@ -232,22 +206,25 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
-		item.AuthorizedCollectionActions = collectionActions
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toAuthMethodProto(ctx, am, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.GetAuthMethodResponse{Item: item}, nil
@@ -274,23 +251,25 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
-
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
-		item.AuthorizedCollectionActions = collectionActions
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toAuthMethodProto(ctx, am, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.CreateAuthMethodResponse{Item: item, Uri: fmt.Sprintf("auth-methods/%s", am.GetPublicId())}, nil
@@ -322,23 +301,25 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
-
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
-		item.AuthorizedCollectionActions = collectionActions
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toAuthMethodProto(ctx, am, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	if item.GetAttributes() != nil && dryRun {
@@ -374,23 +355,25 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toAuthMethodProto(ctx, am, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
-
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := populateCollectionAuthorizedActions(ctx, authResults, am)
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
-		item.AuthorizedCollectionActions = collectionActions
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toAuthMethodProto(ctx, am, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.ChangeStateResponse{Item: item}, nil
@@ -766,6 +749,15 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 	}
 	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	switch i := in.(type) {
 	case *password.AuthMethod:

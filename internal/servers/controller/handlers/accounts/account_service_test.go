@@ -1898,7 +1898,7 @@ func TestSetPassword(t *testing.T) {
 			password:  "anewpassword",
 		},
 		{
-			name:      "password to short",
+			name:      "password too short",
 			accountId: defaultAcct.GetId(),
 			version:   defaultAcct.GetVersion(),
 			password:  "123",

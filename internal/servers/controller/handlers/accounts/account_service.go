@@ -145,16 +145,18 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-		if err != nil {
-			return nil, err
-		}
-
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			item.Scope = authResults.Scope
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			item.AuthorizedActions = authorizedActions
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, acct, outputOpts...)
+		if err != nil {
+			return nil, err
 		}
 
 		// This comes last so that we can use item fields in the filter after
@@ -188,15 +190,18 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.GetAccountResponse{Item: item}, nil
@@ -224,15 +229,18 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.CreateAccountResponse{Item: item, Uri: fmt.Sprintf("accounts/%s", acct.GetPublicId())}, nil
@@ -260,15 +268,18 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.UpdateAccountResponse{Item: item}, nil
@@ -312,15 +323,18 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.ChangePasswordResponse{Item: item}, nil
@@ -348,15 +362,18 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, errors.New(errors.Internal, op, "no request context found")
 	}
 
-	item, err := toProto(ctx, acct, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.SetPasswordResponse{Item: item}, nil
@@ -812,6 +829,12 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 	}
 	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 	switch i := in.(type) {
 	case *password.Account:

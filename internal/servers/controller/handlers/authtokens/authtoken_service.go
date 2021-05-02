@@ -118,16 +118,18 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		item, err := toProto(ctx, at, handlers.WithOutputFields(&outputFields))
-		if err != nil {
-			return nil, err
-		}
-
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			item.Scope = scopeInfoMap[at.GetScopeId()]
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[at.GetScopeId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			item.AuthorizedActions = authorizedActions.Strings()
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+		}
+
+		item, err := toProto(ctx, at, outputOpts...)
+		if err != nil {
+			return nil, err
 		}
 
 		if filter.Match(item) {
@@ -175,15 +177,18 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		}
 	}
 
-	item, err := toProto(ctx, at, handlers.WithOutputFields(&outputFields))
-	if err != nil {
-		return nil, err
-	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 	if outputFields.Has(globals.ScopeField) {
-		item.Scope = authResults.Scope
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, at, outputOpts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pbs.GetAuthTokenResponse{Item: item}, nil
@@ -343,6 +348,12 @@ func toProto(ctx context.Context, in *authtoken.AuthToken, opt ...handlers.Optio
 	}
 	if outputFields.Has(globals.ExpirationTimeField) {
 		out.ExpirationTime = in.GetExpirationTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 
 	return &out, nil
