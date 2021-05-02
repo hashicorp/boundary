@@ -118,7 +118,7 @@ func getSetup(t *testing.T) setup {
 		oidc.WithCertificates(ret.testProviderCaCert...),
 	)
 
-	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL, ret.authMethod.PublicId)
+	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL)
 	ret.testProvider.SetAllowedRedirectURIs([]string{ret.testProviderAllowedRedirect})
 
 	r, err := ret.oidcRepoFn()
@@ -288,7 +288,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
+			"callback_url":       structpb.NewStringValue("http://example.com/v1/auth-methods/oidc:authenticate:callback"),
 			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
@@ -817,7 +817,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
 							f["api_url_prefix"] = structpb.NewStringValue("https://callback.prefix:9281/path")
-							f["callback_url"] = structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix))
+							f["callback_url"] = structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback")
 							return f
 						}(),
 					},
@@ -1102,7 +1102,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"api_url_prefix":     structpb.NewStringValue(am.GetApiUrl()),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", am.GetApiUrl(), am.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", am.GetApiUrl())),
 			"client_id":          structpb.NewStringValue(am.GetClientId()),
 			"client_secret_hmac": structpb.NewStringValue(am.GetClientSecretHmac()),
 			"issuer":             structpb.NewStringValue(am.GetIssuer()),
@@ -1284,7 +1284,7 @@ func TestChangeState_OIDC(t *testing.T) {
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
-			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
+			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/oidc:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
 			"idp_ca_certs":       certs,
