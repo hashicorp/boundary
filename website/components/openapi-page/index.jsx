@@ -38,6 +38,7 @@ function OpenApiPage({
         siteName={`${productName} by HashiCorp`}
       />
       <DocsSidenav
+        product={productSlug}
         Link={Link}
         currentPath={currentPath}
         baseRoute={'api-docs'}
