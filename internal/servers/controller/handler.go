@@ -15,6 +15,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -373,6 +374,28 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 				// We can address that if needed, which seems unlikely.
 				for k := range req.Form {
 					values[k] = req.Form.Get(k)
+				}
+
+				if strings.HasSuffix(req.URL.Path, "oidc:authenticate") {
+					if s, ok := values["state"].(string); ok {
+						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
+						if err != nil {
+							c.logger.Trace("callback error marshaling state", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						if stateWrapper.AuthMethodId == "" {
+							c.logger.Trace("callback error: missing auth method id", "method", req.Method, "url", req.URL.RequestURI())
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						stripped := strings.TrimSuffix(req.URL.Path, "oidc:authenticate")
+						req.URL.Path = fmt.Sprintf("%s%s:authenticate", stripped, stateWrapper.AuthMethodId)
+					} else {
+						c.logger.Trace("callback error: missing state parameter", "method", req.Method, "url", req.URL.RequestURI())
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
 				}
 				attrs.Attributes = values
 			}

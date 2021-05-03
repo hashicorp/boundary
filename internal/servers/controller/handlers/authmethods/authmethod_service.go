@@ -799,7 +799,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		}
 		if len(i.GetApiUrl()) > 0 {
 			attrs.ApiUrlPrefix = wrapperspb.String(i.GetApiUrl())
-			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", i.GetApiUrl(), i.GetPublicId())
+			attrs.CallbackUrl = fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", i.GetApiUrl())
 		}
 		switch i.GetMaxAge() {
 		case 0:
