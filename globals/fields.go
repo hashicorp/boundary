@@ -27,5 +27,5 @@ const (
 	MemberIdsField                   = "member_ids"
 	HostCatalogIdField               = "host_catalog_id"
 	HostSetIdsField                  = "host_set_ids"
-	HostSetsField                    = "host_sets"
+	HostIdsField                     = "host_ids"
 )

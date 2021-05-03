@@ -149,43 +149,43 @@ func (c *Command) printListTable(items []*groups.Group) string {
 		"",
 		"Group information:",
 	}
-	for i, g := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if g.Id != "" {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", g.Id),
+				fmt.Sprintf("  ID:                    %s", item.Id),
 			)
 		} else {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive && g.ScopeId != "" {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", g.ScopeId),
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
 			)
 		}
-		if g.Version > 0 {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", g.Version),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if g.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", g.Name),
+				fmt.Sprintf("    Name:                %s", item.Name),
 			)
 		}
-		if g.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", g.Description),
+				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
-		if len(g.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, g.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
