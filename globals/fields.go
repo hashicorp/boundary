@@ -24,4 +24,6 @@ const (
 	AuthorizedCollectionActionsField = "authorized_collection_actions"
 	ExpirationTimeField              = "expiration_time"
 	ApproximateLastUsedTimeField     = "approximate_last_used_time"
+	MembersField                     = "members"
+	MemberIdsField                   = "member_ids"
 )

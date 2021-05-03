@@ -153,12 +153,16 @@ func (c *Command) printListTable(items []*groups.Group) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if g.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", g.Id),
 			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
+			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && g.Scope != nil {
 			output = append(output,
 				fmt.Sprintf("    Scope ID:            %s", g.Scope.Id),
 			)
@@ -190,13 +194,19 @@ func (c *Command) printListTable(items []*groups.Group) string {
 }
 
 func printItemTable(item *groups.Group) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           item.Id,
-		"Version":      item.Version,
-		"Created Time": item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": item.UpdatedTime.Local().Format(time.RFC1123),
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}
@@ -224,9 +234,14 @@ func printItemTable(item *groups.Group) string {
 		"",
 		"Group information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

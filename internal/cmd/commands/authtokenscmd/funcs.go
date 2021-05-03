@@ -69,12 +69,12 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if t.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                            %s", t.Id),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && t.Scope != nil {
 			output = append(output,
 				fmt.Sprintf("    Scope ID:                    %s", t.Scope.Id),
 			)
@@ -84,7 +84,7 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 				fmt.Sprintf("    Approximate Last Used Time:  %s", t.ApproximateLastUsedTime.Local().Format(time.RFC1123)),
 			)
 		}
-		if true {
+		if t.AuthMethodId != "" {
 			output = append(output,
 				fmt.Sprintf("    Auth Method ID:              %s", t.AuthMethodId),
 			)
@@ -104,7 +104,7 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 				fmt.Sprintf("    Updated Time:                %s", t.UpdatedTime.Local().Format(time.RFC1123)),
 			)
 		}
-		if true {
+		if t.UserId != "" {
 			output = append(output,
 				fmt.Sprintf("    User ID:                     %s", t.UserId),
 			)

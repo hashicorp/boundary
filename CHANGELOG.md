@@ -53,11 +53,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   account's `Email` and `FullName` attributes. If you'd like these account
   attributes populated, you'll need reference your OIDC provider's documentation
   to learn which claims scopes are required to have these claims returned during
-  the authentication process.    
+  the authentication process.
 
   Boundary now provides a new OIDC auth method parameter `claims_scopes` which
   allows you to add multiple additional claims scope values to an OIDC auth
-  method configuration. 
+  method configuration.
 
   For information on claims scope values see: [Scope Claims in the OIDC
   specification](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)

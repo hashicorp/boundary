@@ -89,7 +89,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("  ID:                     %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && m.Scope != nil {
 			output = append(output,
 				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
 			)
@@ -132,8 +132,9 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 }
 
 func printItemTable(item *authmethods.AuthMethod) string {
-	nonAttributeMap := map[string]interface{}{
-		"Is Primary For Scope": item.IsPrimary,
+	nonAttributeMap := map[string]interface{}{}
+	if item.IsPrimary {
+		nonAttributeMap["Is Primary For Scope"] = item.IsPrimary
 	}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -163,9 +164,14 @@ func printItemTable(item *authmethods.AuthMethod) string {
 		"",
 		"Auth Method information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {
