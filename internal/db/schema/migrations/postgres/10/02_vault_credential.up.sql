@@ -79,7 +79,7 @@ begin;
     ('expired');
 
   create table credential_vault_token (
-    token_sha256 bytea primary key, -- sha256 hash
+    token_hmac bytea primary key, -- hmac-sha256(token, key(blake2b-256(token_accessor))
     token bytea not null, -- encrypted value
     store_id wt_public_id not null
       constraint credential_vault_store_fkey
@@ -106,6 +106,9 @@ begin;
   comment on table credential_vault_token is
     'credential_vault_token is a table where each row contains a Vault token for one Vault credential store. '
     'A credential store can have only one vault token with the status of current';
+  comment on column credential_vault_token.token_hmac is
+    'token_hmac contains the hmac-sha256 value of the token. '
+    'The hmac key is the blake2b-256 value of the token accessor.';
 
   -- https://www.postgresql.org/docs/current/indexes-partial.html
   create unique index credential_vault_token_current_status_constraint
@@ -119,7 +122,7 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on credential_vault_token
-    for each row execute procedure immutable_columns('token_sha256', 'token', 'store_id','create_time');
+    for each row execute procedure immutable_columns('token_hmac', 'token', 'store_id','create_time');
 
   -- insert_credential_vault_token() is a before insert trigger
   -- function for credential_vault_token that changes the status of the current
@@ -258,9 +261,9 @@ begin;
         references session (public_id)
         on delete cascade
         on update cascade,
-    token_sha256 bytea not null
+    token_hmac bytea not null
       constraint credential_vault_token_fkey
-        references credential_vault_token (token_sha256)
+        references credential_vault_token (token_hmac)
         on delete cascade
         on update cascade,
     create_time wt_timestamp,
@@ -314,7 +317,7 @@ begin;
      create view credential_vault_store_client_private as
      with
      current_tokens as (
-        select token_sha256,
+        select token_hmac,
                token, -- encrypted
                store_id,
                create_time,
@@ -339,7 +342,7 @@ begin;
             store.tls_server_name   as tls_server_name,
             store.tls_skip_verify   as tls_skip_verify,
             store.public_id         as store_id,
-            token.token_sha256      as token_sha256,
+            token.token_hmac        as token_hmac,
             token.token             as ct_token, -- encrypted
             token.create_time       as token_create_time,
             token.update_time       as token_update_time,
@@ -372,7 +375,7 @@ begin;
             ca_cert,
             tls_server_name,
             tls_skip_verify,
-            token_sha256,
+            token_hmac,
             token_create_time,
             token_update_time,
             token_last_renewal_time,

@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	"golang.org/x/crypto/blake2b"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -48,7 +50,7 @@ type Token struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newToken(storeId string, token []byte, expiration time.Duration) (*Token, error) {
+func newToken(storeId string, token, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no store id")
@@ -56,21 +58,30 @@ func newToken(storeId string, token []byte, expiration time.Duration) (*Token, e
 	if len(token) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
+	if len(accessor) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "no vault token accessor")
+	}
 	if expiration == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
 	}
 
 	tokenCopy := make([]byte, len(token))
 	copy(tokenCopy, token)
-	sum := sha256.Sum256(tokenCopy)
+	accessorCopy := make([]byte, len(accessor))
+	copy(accessorCopy, accessor)
+
+	key := blake2b.Sum256(accessorCopy)
+	mac := hmac.New(sha256.New, key[:])
+	_, _ = mac.Write(tokenCopy)
+	hmac := mac.Sum(nil)
 
 	t := &Token{
 		expiration: expiration.Round(time.Second),
 		Token: &store.Token{
-			StoreId:     storeId,
-			TokenSha256: sum[:],
-			Token:       tokenCopy,
-			Status:      string(StatusCurrent),
+			StoreId:   storeId,
+			TokenHmac: hmac,
+			Token:     tokenCopy,
+			Status:    string(StatusCurrent),
 		},
 	}
 	return t, nil
@@ -125,7 +136,7 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
 	queryValues = []interface{}{
-		t.TokenSha256,
+		t.TokenHmac,
 		t.CtToken,
 		t.StoreId,
 		t.KeyId,

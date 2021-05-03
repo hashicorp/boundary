@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/blake2b"
 )
 
 func TestToken_New(t *testing.T) {
@@ -25,14 +27,16 @@ func TestToken_New(t *testing.T) {
 	cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
 
 	type args struct {
-		storeId    string
-		token      []byte
-		expiration time.Duration
+		storeId         string
+		token, accessor []byte
+		expiration      time.Duration
 	}
 
-	sum := func(t []byte) []byte {
-		sm := sha256.Sum256(t)
-		return sm[:]
+	hmac := func(t, a []byte) []byte {
+		key := blake2b.Sum256(a)
+		mac := hmac.New(sha256.New, key[:])
+		_, _ = mac.Write(t)
+		return mac.Sum(nil)
 	}
 
 	tests := []struct {
@@ -46,6 +50,7 @@ func TestToken_New(t *testing.T) {
 			args: args{
 				storeId:    "",
 				token:      []byte("token"),
+				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -55,6 +60,17 @@ func TestToken_New(t *testing.T) {
 			name: "missing-token",
 			args: args{
 				storeId:    cs.PublicId,
+				accessor:   []byte("accessor"),
+				expiration: 5 * time.Minute,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "missing-accessor",
+			args: args{
+				storeId:    cs.PublicId,
+				token:      []byte("token"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -63,8 +79,9 @@ func TestToken_New(t *testing.T) {
 		{
 			name: "missing-expiration",
 			args: args{
-				storeId: cs.PublicId,
-				token:   []byte("token"),
+				storeId:  cs.PublicId,
+				token:    []byte("token"),
+				accessor: []byte("accessor"),
 			},
 			want:    nil,
 			wantErr: true,
@@ -74,14 +91,15 @@ func TestToken_New(t *testing.T) {
 			args: args{
 				storeId:    cs.PublicId,
 				token:      []byte("token"),
+				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
 			want: &Token{
 				Token: &store.Token{
-					StoreId:     cs.PublicId,
-					Token:       []byte("token"),
-					TokenSha256: sum([]byte("token")),
-					Status:      string(StatusCurrent),
+					StoreId:   cs.PublicId,
+					Token:     []byte("token"),
+					TokenHmac: hmac([]byte("token"), []byte("accessor")),
+					Status:    string(StatusCurrent),
 				},
 				expiration: 5 * time.Minute,
 			},
@@ -98,7 +116,7 @@ func TestToken_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(databaseWrapper)
 
-			got, err := newToken(tt.args.storeId, tt.args.token, tt.args.expiration)
+			got, err := newToken(tt.args.storeId, tt.args.token, tt.args.accessor, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
