@@ -121,7 +121,7 @@ func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
 	}
 	any, err := q.Catalog.Get(msg.TypeName)
 	if err != nil {
-		return nil, 0, nil, nil, errors.Wrap(err, op, errors.WithMsg("error getting the TypeName"))
+		return nil, 0, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error getting the TypeName: %s", msg.TypeName)))
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {

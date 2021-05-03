@@ -69,7 +69,8 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevAuthMethodId                 string
+	DevPasswordAuthMethodId         string
+	DevOidcAuthMethodId             string
 	DevLoginName                    string
 	DevPassword                     string
 	DevUserId                       string
@@ -466,16 +467,25 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...Option) error {
-	opts := getOpts(opt...)
+func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 
-	var container, url string
+	var container, url, dialect string
 	var err error
 	var c func() error
 
+	opts := getOpts(opt...)
+
+	//We should only get back postgres for now, but laying the foundation for non-postgres
+	switch opts.withDialect {
+	case "":
+		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
+	default:
+		dialect = opts.withDialect
+	}
+
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = docker.StartDbInDocker(dialect)
+		c, url, container, err = docker.StartDbInDocker(dialect, docker.WithContainerImage(opts.withContainerImage))
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {
@@ -506,7 +516,6 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 
 		b.DevDatabaseCleanupFunc = c
 		b.DatabaseUrl = url
-
 	default:
 		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
 		if _, err := schema.MigrateStore(ctx, dialect, b.DatabaseUrl); err != nil {
@@ -555,7 +564,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 		return nil
 	}
 
-	if _, _, err := b.CreateInitialAuthMethod(ctx); err != nil {
+	if _, _, err := b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 		return err
 	}
 

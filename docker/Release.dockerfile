@@ -1,6 +1,6 @@
 FROM docker.mirror.hashicorp.services/alpine:3.10
 
-ARG VERSION=0.1.8
+ARG VERSION=0.2.0
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
@@ -19,7 +19,7 @@ ADD https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_SHA25
 
 RUN apk add --no-cache ca-certificates gnupg openssl libcap su-exec dumb-init tzdata 
 RUN cd /tmp/ && \
-    BUILD_GPGKEY=91A6E7F85D05C65630BEF18951852D87348FFC4C; \
+    BUILD_GPGKEY=C874011F0AB405110D02105534365D9472D7468F; \
     found=''; \
     for server in \
         hkp://p80.pool.sks-keyservers.net:80 \

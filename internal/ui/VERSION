@@ -1,4 +1,4 @@
-2f5ea0fcbadedc626f43acfa8f9c2503a03da4dc Merge pull request #492 from hashicorp/remove-unused-apple-entitlement
+4a5e72d77b777403777d3f2dc57c767800cc93bf Merge pull request #533 from hashicorp/fix-authenticate-read
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

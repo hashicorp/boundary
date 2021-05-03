@@ -1,14 +1,13 @@
 ---
 layout: docs
 page_title: API
-sidebar_title: API
 description: |-
   Boundary's HTTP API standards
 ---
 
 # API
 
-Boundary's API is a a JSON-based HTTP API that adheres to a set of standards that are rigidly followed. At its core, it is a standards-compliant JSON API for both input and output.
+Boundary's API is a JSON-based HTTP API that adheres to a set of standards that are rigidly followed. At its core, it is a standards-compliant JSON API for both input and output.
 
 Before reading this page, it is useful to understand Boundary's [domain model](/docs/concepts/domain-model) to be aware of the terminology used here.
 
@@ -18,7 +17,7 @@ Boundary's current API version is 1; all API paths begin with `/v1/`.
 
 ## Status Codes
 
-- `2XX`: Boundary returns a code between `200` and `299` on success. Generally this is `200`, but implementations should be prepared to accept any `2XX` status code as indicating success. If a call returns a `2XX` code that is not `200`, it will follow well-understood semantics for those status codes.
+- `2XX`: Boundary returns a code between `200` and `299` on success. Generally this is `200`, but implementations should be prepared to accept any `2XX` status code as indicating success. If a call returns a `2XX` code that is not `200`, it will follow well-understood semantics for those status codes. (Starting with Boundary 0.2.1, `delete` actions return `204` on success.)
 - `400`: Boundary returns `400` when a command cannot be completed due to invalid user input, except for a properly-formatted identifier that does not map to an existing resource, which will return a `404` as discussed below.
 - `401`: Boundary returns `401` if no authentication token is provided or if the provided token is invalid. A valid token that simply does not have permission for a resource will return a `403` instead. A token that is invalid or missing, but where the anonymous user (`u_anon`) is able to successfully perform the action, will not return a `401` but instead will return the result of the action.
 - `403`: Boundary returns `403` if a provided token was valid but does not have the grants required to perform the requested action.
@@ -65,7 +64,7 @@ The following method conventions are used within Boundary's API:
 
 ### POST
 
-`POST` is used for creating a resource or performing custom actions against a resoruce. When creating a resource, `POST` is used against a collection (`/roles`). When performing a custom action, `POST` is used against a particular resource (`/roles/r_1234567890:set-principals`).
+`POST` is used for creating a resource or performing custom actions against a resource. When creating a resource, `POST` is used against a collection (`/roles`). When performing a custom action, `POST` is used against a particular resource (`/roles/r_1234567890:set-principals`).
 
 ### PATCH
 

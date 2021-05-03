@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -33,8 +32,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-host-sets", "set-host-sets", "remove-host-sets", "authorize-session"}
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
@@ -62,7 +64,12 @@ func TestGet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	o, proj := iam.TestScopes(t, iamRepo)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -75,13 +82,13 @@ func TestGet(t *testing.T) {
 		Name:                   wrapperspb.String("test"),
 		CreatedTime:            tar.CreateTime.GetTimestamp(),
 		UpdatedTime:            tar.UpdateTime.GetTimestamp(),
-		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Type:                   target.TcpTargetType.String(),
 		HostSetIds:             []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		Attributes:             new(structpb.Struct),
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(1),
-		AuthorizedActions:      targets.IdActions.Strings(),
+		AuthorizedActions:      testAuthorizedActions,
 	}
 	for _, ihs := range hs {
 		pTar.HostSets = append(pTar.HostSets, &pb.HostSet{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
@@ -124,7 +131,7 @@ func TestGet(t *testing.T) {
 			s, err := testService(t, conn, kms, wrapper)
 			require.NoError(err, "Couldn't create a new host set service.")
 
-			got, gErr := s.GetTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.GetTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -144,9 +151,13 @@ func TestList(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
 	_, projNoTar := iam.TestScopes(t, iamRepo)
-	_, proj := iam.TestScopes(t, iamRepo)
-	_, otherProj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	otherOrg, otherProj := iam.TestScopes(t, iamRepo)
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -161,7 +172,7 @@ func TestList(t *testing.T) {
 			Id:                     tar.GetPublicId(),
 			ScopeId:                proj.GetPublicId(),
 			Name:                   wrapperspb.String(name),
-			Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+			Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
@@ -169,7 +180,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
-			AuthorizedActions:      targets.IdActions.Strings(),
+			AuthorizedActions:      testAuthorizedActions,
 		})
 		totalTars = append(totalTars, wantTars[i])
 		tar = target.TestTcpTarget(t, conn, otherProj.GetPublicId(), name, target.WithHostSets([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
@@ -177,7 +188,7 @@ func TestList(t *testing.T) {
 			Id:                     tar.GetPublicId(),
 			ScopeId:                otherProj.GetPublicId(),
 			Name:                   wrapperspb.String(name),
-			Scope:                  &scopes.ScopeInfo{Id: otherProj.GetPublicId(), Type: scope.Project.String()},
+			Scope:                  &scopes.ScopeInfo{Id: otherProj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: otherOrg.GetPublicId()},
 			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
 			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
 			Version:                tar.GetVersion(),
@@ -185,7 +196,7 @@ func TestList(t *testing.T) {
 			Attributes:             new(structpb.Struct),
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(1),
-			AuthorizedActions:      targets.IdActions.Strings(),
+			AuthorizedActions:      testAuthorizedActions,
 		})
 	}
 
@@ -232,7 +243,7 @@ func TestList(t *testing.T) {
 			s, err := testService(t, conn, kms, wrapper)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -250,7 +261,12 @@ func TestDelete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
 
 	s, err := testService(t, conn, kms, wrapper)
@@ -269,7 +285,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteTargetRequest{
 				Id: tar.GetPublicId(),
 			},
-			res: &pbs.DeleteTargetResponse{},
 		},
 		{
 			name:    "Delete Not Existing Target",
@@ -291,7 +306,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteTarget(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteTarget(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -308,7 +323,12 @@ func TestDelete_twice(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
 
@@ -317,7 +337,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteTargetRequest{
 		Id: tar.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteTarget(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteTarget(ctx, req)
@@ -331,7 +351,12 @@ func TestCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	cases := []struct {
 		name string
@@ -355,7 +380,7 @@ func TestCreate(t *testing.T) {
 				Uri: fmt.Sprintf("targets/%s_", target.TcpTargetPrefix),
 				Item: &pb.Target{
 					ScopeId:     proj.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
@@ -364,7 +389,7 @@ func TestCreate(t *testing.T) {
 					}},
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(1),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 					WorkerFilter:           wrapperspb.String(`type == "bar"`),
 				},
 			},
@@ -409,7 +434,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -417,7 +442,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -438,7 +463,7 @@ func TestCreate(t *testing.T) {
 			s, err := testService(t, conn, kms, wrapper)
 			require.NoError(err, "Failed to create a new host set service.")
 
-			got, gErr := s.CreateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			got, gErr := s.CreateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -469,7 +494,12 @@ func TestUpdate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*target.Repository, error) {
@@ -502,8 +532,7 @@ func TestUpdate(t *testing.T) {
 		version++
 	}
 
-	hCreated, err := ptypes.Timestamp(tar.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Failed to convert proto to timestamp")
+	hCreated := tar.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateTargetRequest{
 		Id: tar.GetPublicId(),
 	}
@@ -535,7 +564,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					ScopeId:     tar.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					Type:        target.TcpTargetType.String(),
@@ -547,7 +576,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -567,7 +596,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					ScopeId:     tar.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
@@ -579,7 +608,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -653,7 +682,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					ScopeId:     tar.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
 					Type:        target.TcpTargetType.String(),
@@ -664,7 +693,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -683,7 +712,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					ScopeId:     tar.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("updated"),
 					Description: wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
@@ -695,7 +724,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -714,7 +743,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
 					ScopeId:     tar.GetScopeId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					Description: wrapperspb.String("notignored"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
@@ -726,7 +755,7 @@ func TestUpdate(t *testing.T) {
 					HostSets:               hostSets,
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					AuthorizedActions:      targets.IdActions.Strings(),
+					AuthorizedActions:      testAuthorizedActions,
 				},
 			},
 		},
@@ -739,7 +768,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Target{
 					Name:        wrapperspb.String("new"),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Description: wrapperspb.String("desc"),
 				},
 			},
@@ -754,7 +783,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Target{
 					Id:          "p_somethinge",
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("new"),
 					Description: wrapperspb.String("new desc"),
 				},
@@ -769,7 +798,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Target{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -782,7 +811,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Target{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -797,7 +826,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateTargetRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -809,8 +838,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Failed to convert proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set updated after it was created
 				// TODO: This is currently failing.
 				assert.True(gotUpdateTime.After(hCreated), "Updated target should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
@@ -832,7 +860,12 @@ func TestUpdate_BadVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
 	repoFn := func() (*target.Repository, error) {
@@ -850,7 +883,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	tested, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), &pbs.UpdateTargetRequest{
+	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateTargetRequest{
 		Id: gtar.GetPublicId(),
 		Item: &pb.Target{
 			Description: wrapperspb.String("updated"),
@@ -868,7 +901,12 @@ func TestAddTargetHostSets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -910,7 +948,7 @@ func TestAddTargetHostSets(t *testing.T) {
 				HostSetIds: tc.addHostSets,
 			}
 
-			got, err := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.AddTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			s, ok := status.FromError(err)
 			require.True(t, ok)
 			require.NoError(t, err, "Got error: %v", s)
@@ -965,7 +1003,7 @@ func TestAddTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -979,7 +1017,12 @@ func TestSetTargetHostSets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1026,7 +1069,7 @@ func TestSetTargetHostSets(t *testing.T) {
 				HostSetIds: tc.setHostSets,
 			}
 
-			got, err := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.SetTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultHostSets, got.GetItem().GetHostSetIds())
 		})
@@ -1070,7 +1113,7 @@ func TestSetTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1084,7 +1127,12 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
 
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1133,7 +1181,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 				HostSetIds: tc.removeHosts,
 			}
 
-			got, err := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			got, err := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -1193,7 +1241,7 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), tc.req)
+			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

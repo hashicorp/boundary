@@ -97,7 +97,8 @@ const (
 	tokenLength             = 24
 )
 
-func newAuthTokenId() (string, error) {
+// NewAuthTokenId creates a new id for an auth token.
+func NewAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
 	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
@@ -106,18 +107,20 @@ func newAuthTokenId() (string, error) {
 	return id, nil
 }
 
-// newAuthToken generates a new in-memory token.  No options are currently
-// supported.
-func newAuthToken(_ ...Option) (*AuthToken, error) {
+// newAuthToken generates a new in-memory token.  The WithStatus option is
+// support and all other options are ignored.
+func newAuthToken(opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Io))
 	}
+	opts := getOpts(opt...)
 
 	return &AuthToken{
 		AuthToken: &store.AuthToken{
-			Token: fmt.Sprintf("%s%s", TokenValueVersionPrefix, token),
+			Token:  fmt.Sprintf("%s%s", TokenValueVersionPrefix, token),
+			Status: string(opts.withStatus),
 		},
 	}, nil
 }

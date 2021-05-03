@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -184,6 +185,17 @@ func TestApiErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "Domain error account already associated",
+			err:  errors.E(errors.WithCode(errors.AccountAlreadyAssociated)),
+			expected: apiError{
+				status: http.StatusBadRequest,
+				inner: &pb.Error{
+					Kind:    "InvalidArgument",
+					Message: "account already associated with another user, parameter violation: error #114",
+				},
+			},
+		},
+		{
 			name: "Wrapped domain error",
 			err:  errors.E(errors.WithCode(errors.InvalidAddress), errors.WithMsg("test msg"), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull), errors.WithMsg("inner msg")))),
 			expected: apiError{
@@ -191,6 +203,28 @@ func TestApiErrorHandler(t *testing.T) {
 				inner: &pb.Error{
 					Kind:    "Internal",
 					Message: "test msg: parameter violation: error #101: inner msg: integrity violation: error #1001",
+				},
+			},
+		},
+		{
+			name: "Forbidden domain error",
+			err:  errors.E(errors.WithCode(errors.Forbidden), errors.WithMsg("test msg")),
+			expected: apiError{
+				status: http.StatusForbidden,
+				inner: &pb.Error{
+					Kind:    "Internal",
+					Message: "test msg: unknown: error #403",
+				},
+			},
+		},
+		{
+			name: "Wrapped forbidden domain error",
+			err:  fmt.Errorf("got error: %w", errors.E(errors.WithCode(errors.Forbidden), errors.WithMsg("test msg"))),
+			expected: apiError{
+				status: http.StatusForbidden,
+				inner: &pb.Error{
+					Kind:    "Internal",
+					Message: "got error: test msg: unknown: error #403",
 				},
 			},
 		},

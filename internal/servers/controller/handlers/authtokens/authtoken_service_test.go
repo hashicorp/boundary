@@ -1,8 +1,10 @@
 package authtokens_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,15 +16,101 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
+
+func TestGetSelf(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	logger := hclog.New(nil)
+	kms := kms.TestKms(t, conn, wrap)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
+	require.NoError(t, err, "Couldn't create new auth token service.")
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	at1 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	at2 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+
+	cases := []struct {
+		name   string
+		token  *authtoken.AuthToken
+		readId string
+		err    error
+	}{
+		{
+			name:   "at1 read self",
+			token:  at1,
+			readId: at1.GetPublicId(),
+		},
+		{
+			name:   "at1 read at2",
+			token:  at1,
+			readId: at2.GetPublicId(),
+			err:    handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Forbidden."),
+		},
+		{
+			name:   "at2 read self",
+			token:  at2,
+			readId: at2.GetPublicId(),
+		},
+		{
+			name:   "at2 read at1",
+			token:  at2,
+			readId: at1.GetPublicId(),
+			err:    handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Forbidden."),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+			// Setup the auth request information
+			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens/%s", tc.readId), nil)
+			requestInfo := auth.RequestInfo{
+				Path:        req.URL.Path,
+				Method:      req.Method,
+				TokenFormat: auth.AuthTokenTypeBearer,
+				PublicId:    tc.token.GetPublicId(),
+				Token:       tc.token.GetToken(),
+			}
+
+			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			got, err := a.GetAuthToken(ctx, &pbs.GetAuthTokenRequest{Id: tc.readId})
+			if tc.err != nil {
+				require.EqualError(err, tc.err.Error())
+				require.Nil(got)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Equal(got.GetItem().GetId(), tc.token.GetPublicId())
+			// Ensure we didn't simply have e.g. read on all tokens
+			assert.Equal(got.Item.GetAuthorizedActions(), []string{"read:self", "delete:self"})
+		})
+	}
+}
 
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -52,8 +140,8 @@ func TestGet(t *testing.T) {
 		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
-		AuthorizedActions:       []string{"read", "delete"},
+		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		AuthorizedActions:       testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -89,12 +177,81 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
+			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthToken(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestList_Self(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	logger := hclog.New(nil)
+	kms := kms.TestKms(t, conn, wrap)
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+
+	// This will result in the scope having default permissions, which now
+	// includes list on auth tokens
+	o, _ := iam.TestScopes(t, iamRepo)
+
+	// Each of these should only end up being able to list themselves
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	otherAt := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+
+	cases := []struct {
+		name      string
+		requester *authtoken.AuthToken
+		count     int
+	}{
+		{
+			name:      "First token sees only self",
+			requester: at,
+		},
+		{
+			name:      "Second token sees only self",
+			requester: otherAt,
+		},
+	}
+
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+			// Setup the auth request information
+			req := httptest.NewRequest("GET", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens?scope_id=%s", o.GetPublicId()), nil)
+			requestInfo := auth.RequestInfo{
+				Path:        req.URL.Path,
+				Method:      req.Method,
+				TokenFormat: auth.AuthTokenTypeBearer,
+				PublicId:    tc.requester.GetPublicId(),
+				Token:       tc.requester.GetToken(),
+			}
+
+			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			got, err := a.ListAuthTokens(ctx, &pbs.ListAuthTokensRequest{ScopeId: o.GetPublicId()})
+			require.NoError(err)
+			require.Len(got.Items, 1)
+			assert.Equal(got.Items[0].GetId(), tc.requester.GetPublicId())
+			// Ensure we didn't simply have e.g. read on all tokens
+			assert.Equal(got.Items[0].GetAuthorizedActions(), []string{"read:self", "delete:self"})
 		})
 	}
 }
@@ -127,8 +284,8 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
-			AuthorizedActions:       []string{"read", "delete"},
+			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 
@@ -146,8 +303,8 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
-			AuthorizedActions:       []string{"read", "delete"},
+			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 
@@ -165,8 +322,8 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
-			AuthorizedActions:       []string{"read", "delete"},
+			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			AuthorizedActions:       testAuthorizedActions,
 		})
 	}
 
@@ -229,7 +386,7 @@ func TestList(t *testing.T) {
 			s, err := authtokens.NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -237,6 +394,98 @@ func TestList(t *testing.T) {
 				require.NoError(t, gErr)
 			}
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+		})
+	}
+}
+
+func TestDeleteSelf(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	logger := hclog.New(nil)
+	kms := kms.TestKms(t, conn, wrap)
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
+	require.NoError(t, err, "Couldn't create new auth token service.")
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	at1 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	at2 := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+
+	cases := []struct {
+		name     string
+		token    *authtoken.AuthToken
+		deleteId string
+		err      error
+	}{
+		{
+			name:     "at1 delete at2",
+			token:    at1,
+			deleteId: at2.GetPublicId(),
+			err:      handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Forbidden."),
+		},
+		{
+			name:     "at2 delete at1",
+			token:    at2,
+			deleteId: at1.GetPublicId(),
+			err:      handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Forbidden."),
+		},
+		{
+			name:     "at1 delete self",
+			token:    at1,
+			deleteId: at1.GetPublicId(),
+		},
+		{
+			name:     "at2 delete self",
+			token:    at2,
+			deleteId: at2.GetPublicId(),
+		},
+		{
+			name:     "at1 not found",
+			token:    at1,
+			deleteId: at1.GetPublicId(),
+			err:      handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "Resource not found."),
+		},
+		{
+			name:     "at2 not found",
+			token:    at2,
+			deleteId: at2.GetPublicId(),
+			err:      handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "Resource not found."),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			// Setup the auth request information
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("http://127.0.0.1/v1/auth-tokens/%s", tc.deleteId), nil)
+			requestInfo := auth.RequestInfo{
+				Path:        req.URL.Path,
+				Method:      req.Method,
+				TokenFormat: auth.AuthTokenTypeBearer,
+				PublicId:    tc.token.GetPublicId(),
+				Token:       tc.token.GetToken(),
+			}
+
+			ctx := auth.NewVerifierContext(context.Background(), logger, iamRepoFn, tokenRepoFn, serversRepoFn, kms, requestInfo)
+			got, err := a.DeleteAuthToken(ctx, &pbs.DeleteAuthTokenRequest{Id: tc.deleteId})
+			if tc.err != nil {
+				require.EqualError(err, tc.err.Error())
+				require.Nil(got)
+				return
+			}
+			require.NoError(err)
 		})
 	}
 }
@@ -273,7 +522,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthTokenRequest{
 				Id: at.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthTokenResponse{},
 		},
 		{
 			name:  "Delete bad token id",
@@ -295,7 +543,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), tc.req)
+			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, tc.scope), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -327,9 +575,9 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),
 	}
-	_, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, at.GetScopeId()), req)
 	assert.NoError(gErr, "First attempt")
-	_, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	_, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(iamRepoFn, at.GetScopeId()), req)
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
 }

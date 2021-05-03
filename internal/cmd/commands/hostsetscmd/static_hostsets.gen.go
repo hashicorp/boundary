@@ -173,7 +173,7 @@ func (c *StaticCommand) Run(args []string) int {
 		}
 	}
 
-	if ok := extraStaticFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraStaticFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -212,13 +212,13 @@ func (c *StaticCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*hostsets.HostSet)
 	switch base.Format(c.UI) {
 	case "table":
+		item := result.GetItem().(*hostsets.HostSet)
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -230,7 +230,7 @@ var (
 	extraStaticActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
-	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *[]hostsets.Option) bool { return true }
+	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *base.FlagSets, *[]hostsets.Option) bool { return true }
 	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

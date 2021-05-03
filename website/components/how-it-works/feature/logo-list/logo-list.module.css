@@ -2,15 +2,19 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  max-width: 440px;
+  max-width: 430px;
   flex-wrap: wrap;
 
   & > div {
     margin-right: 30px;
     margin-bottom: 20px;
   }
+
+  & img {
+    max-height: 48px;
+  }
 }
 
 .footerText {
-  color: var(--gray-5);
+  color: var(--gray-4);
 }

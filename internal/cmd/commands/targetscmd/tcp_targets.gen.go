@@ -180,7 +180,7 @@ func (c *TcpCommand) Run(args []string) int {
 		}
 	}
 
-	if ok := extraTcpFlagsHandlingFunc(c, &opts); !ok {
+	if ok := extraTcpFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -219,13 +219,13 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*targets.Target)
 	switch base.Format(c.UI) {
 	case "table":
+		item := result.GetItem().(*targets.Target)
 		c.UI.Output(printItemTable(item))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -237,7 +237,7 @@ var (
 	extraTcpActionsFlagsMapFunc = func() map[string][]string { return nil }
 	extraTcpSynopsisFunc        = func(*TcpCommand) string { return "" }
 	extraTcpFlagsFunc           = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
-	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *[]targets.Option) bool { return true }
+	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *base.FlagSets, *[]targets.Option) bool { return true }
 	executeExtraTcpActions      = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}

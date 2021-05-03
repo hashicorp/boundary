@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
@@ -29,6 +30,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -61,8 +63,9 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
+	const op = "users.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -76,13 +79,25 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.User, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListUsersResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)
@@ -254,6 +269,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) (*pb.User, error) {
+	const op = "users.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -271,7 +287,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	}
 	out, err := repo.CreateUser(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create user: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create user"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
@@ -280,6 +296,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 }
 
 func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
+	const op = "users.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -303,7 +320,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	}
 	out, accts, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update user: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update user"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
@@ -312,6 +329,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "users.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -321,7 +339,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete user: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
@@ -343,6 +361,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Use
 }
 
 func (s Service) addInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).addInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -353,7 +372,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after adding accounts: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after adding accounts"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
@@ -362,6 +381,7 @@ func (s Service) addInRepo(ctx context.Context, userId string, accountIds []stri
 }
 
 func (s Service) setInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -372,7 +392,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after setting accounts: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after setting accounts"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
@@ -381,6 +401,7 @@ func (s Service) setInRepo(ctx context.Context, userId string, accountIds []stri
 }
 
 func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+	const op = "users.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -391,7 +412,7 @@ func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []s
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up user after removing accounts: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after removing accounts"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")
@@ -453,6 +474,18 @@ func toProto(in *iam.User, accts []string) *pb.User {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
+	if in.GetPrimaryAccountId() != "" {
+		out.PrimaryAccountId = in.GetPrimaryAccountId()
+	}
+	if in.GetLoginName() != "" {
+		out.LoginName = in.GetLoginName()
+	}
+	if in.GetFullName() != "" {
+		out.FullName = in.GetFullName()
+	}
+	if in.GetEmail() != "" {
+		out.Email = in.GetEmail()
+	}
 	for _, a := range accts {
 		out.Accounts = append(out.Accounts, &pb.Account{
 			Id: a,
@@ -469,13 +502,13 @@ func toProto(in *iam.User, accts []string) *pb.User {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	return handlers.ValidateGetRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Org.Prefix(), req.GetItem().GetScopeId()) &&
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
 			scope.Global.String() != req.GetItem().GetScopeId() {
 			badFields["scope_id"] = "Must be 'global' or a valid org scope id."
 		}
@@ -484,16 +517,16 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	return handlers.ValidateUpdateRequest(iam.UserPrefix, req, req.GetItem(), handlers.NoopValidatorFn)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.UserPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	return handlers.ValidateDeleteRequest(iam.UserPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
@@ -508,7 +541,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -519,7 +552,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -532,7 +565,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -540,7 +573,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}
@@ -553,7 +586,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.UserPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -564,7 +597,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	}
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
-		if !handlers.ValidId(password.AccountPrefix, a) {
+		if !handlers.ValidId(handlers.Id(a), password.AccountPrefix, oidc.AccountPrefix) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
 		}

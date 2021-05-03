@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.1.8
+    PRODUCT_VERSION: 0.2.0
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -50,8 +50,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-# golang:1.15.8-buster
-base-image: "docker.mirror.hashicorp.services/golang@sha256:cbd6b4a560adbd00e3fe1eb1a6191a85e82839a69dcb757d57aa5be311f09cfe"
+# golang:1.16.3-buster
+base-image: "docker.mirror.hashicorp.services/golang@sha256:2ff1a0d92edf6c2d4a2dd0d6bfa43e512c8b2f3aac738ffbb6195caf7cb38164"
 
 layers:
   - name: base
@@ -68,28 +68,21 @@ layers:
            | tee /etc/apt/sources.list.d/yarn.list \
           && apt-get update \
           && apt-get install -yq yarn zip \
-          && rm -rf /var/lib/apt/lists/* \
-          && go get github.com/go-bindata/go-bindata/v3/go-bindata \
-          && go-bindata --version
+          && rm -rf /var/lib/apt/lists/*
 
   - name: ui
     source-include: internal/ui/VERSION
     dockerfile: |
       RUN \
           SHA="$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" \
-          && DIR=internal/ui/source/boundary-ui \
+          && DIR=internal/ui/.tmp/boundary-ui \
           && mkdir -p "$(dirname "$DIR")" \
           && git clone https://github.com/hashicorp/boundary-ui "$DIR" \
           && ( cd "$DIR" \
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
           && yarn install \
-          && yarn build:ui:admin; ) \
-          && TARGET=internal/ui/assets.go \
-          && UIDIR="$DIR/ui/admin/dist" \
-          && go-bindata -fs -o "$TARGET" -pkg ui \
-             -prefix "$UIDIR" "$UIDIR" "$UIDIR/assets" \
-          && rm -rf "$DIR"
+          && yarn build:ui:admin; )
 
   - name: go-modules
     source-include: "go.mod go.sum */go.mod */go.sum"

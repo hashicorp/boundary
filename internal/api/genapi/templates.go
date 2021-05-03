@@ -569,6 +569,11 @@ type {{ .Name }}DeleteResult struct {
 	response *api.Response
 }
 
+// GetItem will always be nil for {{ .Name }}DeleteResult
+func (n {{ .Name }}DeleteResult) GetItem() interface{} {
+	return nil
+}
+
 func (n {{ .Name }}DeleteResult) GetResponse() *api.Response {
 	return n.response
 }
@@ -645,7 +650,9 @@ func getDefaultOptions() options {
 func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	var apiOpts []api.Option
 	if opts.withSkipCurlOutput {

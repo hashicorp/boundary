@@ -1,23 +1,29 @@
 package dev
 
 import (
+	"context"
+	"crypto/ed25519"
 	"fmt"
 	"net"
+	"net/url"
 	"runtime"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/docker"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
+	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -39,6 +45,8 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
+	oidcSetup oidcSetup
+
 	flagLogLevel                     string
 	flagLogFormat                    string
 	flagCombineLogs                  bool
@@ -59,6 +67,7 @@ type Command struct {
 	flagPassthroughDirectory         string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
+	flagContainerImage               string
 	flagDisableDatabaseDestruction   bool
 }
 
@@ -238,6 +247,11 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagDatabaseUrl,
 		Usage:  `If set, specifies the URL used to connect to the database for initialization (otherwise a Docker container will be started). This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
+	f.StringVar(&base.StringVar{
+		Name:   "container-image",
+		Target: &c.flagContainerImage,
+		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
+	})
 
 	return set
 }
@@ -262,8 +276,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	// childShutdownCh := make(chan struct{})
-
 	c.Config, err = config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
@@ -274,11 +286,12 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
 			return base.CommandUserError
 		}
-		if !handlers.ValidId("abc", "abc_"+c.flagIdSuffix) {
+		if !handlers.ValidId(handlers.Id("abc_"+c.flagIdSuffix), "abc") {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", oidc.AuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
 		c.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(c.DevUserId, "u_"))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
@@ -423,20 +436,20 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
+	var opts []base.Option
 	switch c.flagDatabaseUrl {
 	case "":
-		var opts []base.Option
 		if c.flagDisableDatabaseDestruction {
 			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
-		if err := c.CreateDevDatabase(c.Context, "postgres", opts...); err != nil {
-			if err == docker.ErrDockerUnsupported {
-				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
-				return base.CommandCliError
-			}
-			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
+		if c.flagContainerImage != "" {
+			opts = append(opts, base.WithContainerImage(c.flagContainerImage))
+		}
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
+			c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
 			return base.CommandCliError
 		}
+
 		if !c.flagDisableDatabaseDestruction {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
@@ -446,10 +459,15 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
+	}
+
+	if err := c.startDevOidcAuthMethod(); err != nil {
+		c.UI.Error(fmt.Errorf("Error starting dev OIDC auth method: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	c.PrintInfo(c.UI)
@@ -531,4 +549,278 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+type oidcSetup struct {
+	clientId     string
+	clientSecret oidc.ClientSecret
+	oidcPort     int
+	callbackPort string
+	hostAddr     string
+	authMethod   *oidc.AuthMethod
+	pubKey       []byte
+	privKey      []byte
+	testProvider *capoidc.TestProvider
+	createUnpriv bool
+	callbackUrl  *url.URL
+}
+
+func (c *Command) startDevOidcAuthMethod() error {
+	var err error
+
+	if c.DevOidcAuthMethodId == "" {
+		c.DevOidcAuthMethodId, err = db.NewPublicId(oidc.AuthMethodPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial oidc auth method id: %w", err)
+		}
+	}
+	c.InfoKeys = append(c.InfoKeys, "generated oidc auth method id")
+	c.Info["generated oidc auth method id"] = c.DevOidcAuthMethodId
+
+	switch {
+	case c.DevUnprivilegedLoginName == "",
+		c.DevUnprivilegedPassword == "",
+		c.DevUnprivilegedUserId == "":
+
+	default:
+		c.oidcSetup.createUnpriv = true
+	}
+
+	// Trawl through the listeners and find the api listener so we can use the
+	// same host name/IP
+	{
+		for _, lnConfig := range c.Config.Listeners {
+			purpose := strings.ToLower(lnConfig.Purpose[0])
+			if purpose != "api" {
+				continue
+			}
+			c.oidcSetup.hostAddr, c.oidcSetup.callbackPort, err = net.SplitHostPort(lnConfig.Address)
+			if err != nil {
+				if strings.Contains(err.Error(), "missing port") {
+					c.oidcSetup.hostAddr = lnConfig.Address
+					// Use the default API port in the callback
+					c.oidcSetup.callbackPort = "9200"
+				} else {
+					return fmt.Errorf("error splitting host/port: %w", err)
+				}
+			}
+		}
+		if c.oidcSetup.hostAddr == "" {
+			return fmt.Errorf("could not determine address to use for built-in oidc dev listener")
+		}
+	}
+
+	// Find an available port -- allocate one, then close the listener, and
+	// re-use it. This is a sort of hacky way to get around the chicken and egg
+	// of the auth method needing to know the discovery URL and the test
+	// provider needing to know the callback URL.
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", c.oidcSetup.hostAddr))
+	if err != nil {
+		return fmt.Errorf("error finding port for oidc test provider: %w", err)
+	}
+	c.oidcSetup.oidcPort = l.(*net.TCPListener).Addr().(*net.TCPAddr).Port
+	if err := l.Close(); err != nil {
+		return fmt.Errorf("error closing initial test port: %w", err)
+	}
+	c.oidcSetup.callbackUrl, err = url.Parse(fmt.Sprintf("http://%s:%s", c.oidcSetup.hostAddr, c.oidcSetup.callbackPort))
+	if err != nil {
+		return fmt.Errorf("error parsing oidc test provider callback url: %w", err)
+	}
+
+	// Generate initial IDs/keys
+	{
+		c.oidcSetup.clientId, err = capoidc.NewID()
+		if err != nil {
+			return fmt.Errorf("unable to generate client id: %w", err)
+		}
+		clientSecret, err := capoidc.NewID()
+		if err != nil {
+			return fmt.Errorf("unable to generate client secret: %w", err)
+		}
+		c.oidcSetup.clientSecret = oidc.ClientSecret(clientSecret)
+		c.oidcSetup.pubKey, c.oidcSetup.privKey, err = ed25519.GenerateKey(nil)
+		if err != nil {
+			return fmt.Errorf("unable to generate signing key: %w", err)
+		}
+	}
+
+	// Create the subject information and testing provider
+	{
+		logger, err := capoidc.NewTestingLogger(c.Logger.Named("dev-oidc"))
+		if err != nil {
+			return fmt.Errorf("unable to create logger: %w", err)
+		}
+
+		subInfo := map[string]*capoidc.TestSubject{
+			c.DevLoginName: {
+				Password: c.DevPassword,
+				UserInfo: map[string]interface{}{
+					"email": "admin@localhost",
+					"name":  "Admin User",
+				},
+			},
+		}
+		if c.oidcSetup.createUnpriv {
+			subInfo[c.DevUnprivilegedLoginName] = &capoidc.TestSubject{
+				Password: c.DevUnprivilegedPassword,
+				UserInfo: map[string]interface{}{
+					"email": "user@localhost",
+					"name":  "Unprivileged User",
+				},
+			}
+		}
+
+		clientSecret := string(c.oidcSetup.clientSecret)
+
+		c.oidcSetup.testProvider = capoidc.StartTestProvider(
+			logger,
+			capoidc.WithNoTLS(),
+			capoidc.WithTestHost(c.oidcSetup.hostAddr),
+			capoidc.WithTestPort(c.oidcSetup.oidcPort),
+			capoidc.WithTestDefaults(&capoidc.TestProviderDefaults{
+				CustomClaims: map[string]interface{}{
+					"mode": "dev",
+				},
+				SubjectInfo: subInfo,
+				SigningKey: &capoidc.TestSigningKey{
+					PrivKey: ed25519.PrivateKey(c.oidcSetup.privKey),
+					PubKey:  ed25519.PublicKey(c.oidcSetup.pubKey),
+					Alg:     capoidc.EdDSA,
+				},
+				AllowedRedirectURIs: []string{fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", c.oidcSetup.callbackUrl.String())},
+				ClientID:            &c.oidcSetup.clientId,
+				ClientSecret:        &clientSecret,
+			}))
+
+		c.ShutdownFuncs = append(c.ShutdownFuncs, func() error {
+			c.oidcSetup.testProvider.Stop()
+			return nil
+		})
+	}
+
+	// Create auth method and link accounts
+	{
+		c.oidcSetup.authMethod, err = c.createInitialOidcAuthMethod()
+		if err != nil {
+			return fmt.Errorf("error creating initial oidc auth method: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Command) createInitialOidcAuthMethod() (*oidc.AuthMethod, error) {
+	rw := db.New(c.Database)
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(kmsRepo, kms.WithLogger(c.Logger.Named("kms")))
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		kms.WithRootWrapper(c.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	discoveryUrl, err := url.Parse(fmt.Sprintf("http://%s:%d", c.oidcSetup.hostAddr, c.oidcSetup.oidcPort))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oidc test provider address: %w", err)
+	}
+
+	// Create the auth method
+	oidcRepo, err := oidc.NewRepository(rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating oidc repo: %w", err)
+	}
+
+	authMethod, err := oidc.NewAuthMethod(
+		scope.Global.String(),
+		c.oidcSetup.clientId,
+		c.oidcSetup.clientSecret,
+		oidc.WithName("Generated global scope initial oidc auth method"),
+		oidc.WithDescription("Provides initial administrative and unprivileged authentication into Boundary"),
+		oidc.WithIssuer(discoveryUrl),
+		oidc.WithApiUrl(c.oidcSetup.callbackUrl),
+		oidc.WithSigningAlgs(oidc.EdDSA),
+		oidc.WithOperationalState(oidc.ActivePublicState))
+	if err != nil {
+		return nil, fmt.Errorf("error creating new in memory oidc auth method: %w", err)
+	}
+	if c.DevOidcAuthMethodId == "" {
+		c.DevOidcAuthMethodId, err = db.NewPublicId(oidc.AuthMethodPrefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating initial oidc auth method id: %w", err)
+		}
+	}
+
+	cancelCtx, cancel := context.WithCancel(c.Context)
+	defer cancel()
+	go func() {
+		select {
+		case <-c.ShutdownCh:
+			cancel()
+		case <-cancelCtx.Done():
+		}
+	}()
+
+	c.oidcSetup.authMethod, err = oidcRepo.CreateAuthMethod(
+		cancelCtx,
+		authMethod,
+		oidc.WithPublicId(c.DevOidcAuthMethodId))
+	if err != nil {
+		return nil, fmt.Errorf("error saving oidc auth method to the db: %w", err)
+	}
+
+	// Create accounts
+	{
+		createAndLinkAccount := func(loginName, userId, typ string) error {
+			acct, err := oidc.NewAccount(
+				c.oidcSetup.authMethod.GetPublicId(),
+				loginName,
+				oidc.WithDescription(fmt.Sprintf("Initial %s OIDC account", typ)),
+			)
+			if err != nil {
+				return fmt.Errorf("error generating %s oidc account: %w", typ, err)
+			}
+			acct, err = oidcRepo.CreateAccount(
+				cancelCtx,
+				c.oidcSetup.authMethod.GetScopeId(),
+				acct,
+			)
+			if err != nil {
+				return fmt.Errorf("error creating %s oidc account: %w", typ, err)
+			}
+
+			// Link accounts to existing user
+			iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+			if err != nil {
+				return fmt.Errorf("unable to create iam repo: %w", err)
+			}
+
+			u, _, err := iamRepo.LookupUser(cancelCtx, userId)
+			if err != nil {
+				return fmt.Errorf("error looking up %s user: %w", typ, err)
+			}
+			if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+				return fmt.Errorf("error associating initial %s user with account: %w", typ, err)
+			}
+
+			return nil
+		}
+
+		if err := createAndLinkAccount(c.DevLoginName, c.DevUserId, "admin"); err != nil {
+			return nil, err
+		}
+		if c.oidcSetup.createUnpriv {
+			if err := createAndLinkAccount(c.DevUnprivilegedLoginName, c.DevUnprivilegedUserId, "unprivileged"); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return nil, nil
 }

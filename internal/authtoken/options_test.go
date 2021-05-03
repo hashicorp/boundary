@@ -34,4 +34,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withTokenTimeToStaleDuration = 1 * time.Hour
 		assert.Equal(opts, testOpts)
 	})
+
+	t.Run("withStatus", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithStatus(IssuedStatus))
+		testOpts := getDefaultOptions()
+		testOpts.withStatus = IssuedStatus
+		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("WithPublicId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithPublicId("test-id"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "test-id"
+		assert.Equal(opts, testOpts)
+	})
 }

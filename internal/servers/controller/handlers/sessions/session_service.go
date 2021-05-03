@@ -24,6 +24,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.ReadSelf,
 		action.Cancel,
@@ -47,11 +48,12 @@ type Service struct {
 
 // NewService returns a session service which handles session related requests to boundary.
 func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "sessions.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil session repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -75,14 +77,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
 	// Check to see if we need to verify Read vs. just ReadSelf
 	if ses.GetUserId() != authResults.UserId {
-		var found bool
-		for _, v := range authzdActions {
-			if v == action.Read {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !authzdActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
 	}
@@ -100,11 +95,25 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(ctx,
+		s.iamRepoFn, authResults, req.GetScopeId(), resource.Session, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListSessionsResponse{}, nil
 	}
 
 	seslist, err := s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
@@ -127,14 +136,8 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		if len(authorizedActions) == 0 {
 			continue
 		}
-		onlySelf := true
-		for _, v := range authorizedActions {
-			if v != action.ReadSelf && v != action.CancelSelf {
-				onlySelf = false
-				break
-			}
-		}
-		if onlySelf && item.GetUserId() != authResults.UserId {
+
+		if authorizedActions.OnlySelf() && item.GetUserId() != authResults.UserId {
 			continue
 		}
 
@@ -163,16 +166,9 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, err
 	}
 	authzdActions := authResults.FetchActionSetForId(ctx, ses.Id, IdActions)
-	// Check to see if we need to verify Read vs. just ReadSelf
+	// Check to see if we need to verify Cancel vs. just CancelSelf
 	if ses.GetUserId() != authResults.UserId {
-		var found bool
-		for _, v := range authzdActions {
-			if v == action.Cancel {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !authzdActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()
 		}
 	}
@@ -221,13 +217,14 @@ func (s Service) listFromRepo(ctx context.Context, opts ...session.Option) ([]*p
 }
 
 func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*pb.Session, error) {
+	const op = "sessions.(Service).cancelInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update session: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update session"))
 	}
 	return toProto(out), nil
 }
@@ -323,12 +320,12 @@ func toProto(in *session.Session) *pb.Session {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetSessionRequest) error {
-	return handlers.ValidateGetRequest(session.SessionPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, session.SessionPrefix)
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
@@ -343,7 +340,7 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 
 func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(session.SessionPrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), session.SessionPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

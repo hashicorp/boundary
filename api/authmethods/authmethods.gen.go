@@ -23,6 +23,7 @@ type AuthMethod struct {
 	Version                     uint32                 `json:"version,omitempty"`
 	Type                        string                 `json:"type,omitempty"`
 	Attributes                  map[string]interface{} `json:"attributes,omitempty"`
+	IsPrimary                   bool                   `json:"is_primary,omitempty"`
 	AuthorizedActions           []string               `json:"authorized_actions,omitempty"`
 	AuthorizedCollectionActions map[string][]string    `json:"authorized_collection_actions,omitempty"`
 
@@ -49,6 +50,11 @@ type (
 
 type AuthMethodDeleteResult struct {
 	response *api.Response
+}
+
+// GetItem will always be nil for AuthMethodDeleteResult
+func (n AuthMethodDeleteResult) GetItem() interface{} {
+	return nil
 }
 
 func (n AuthMethodDeleteResult) GetResponse() *api.Response {

@@ -28,6 +28,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -63,8 +64,9 @@ type Service struct {
 
 // NewService returns a role service which handles role related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
+	const op = "roles.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -78,13 +80,25 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.Role, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListRolesResponse{}, nil
 	}
 
 	items, err := s.listFromRepo(ctx, scopeIds)
@@ -181,7 +195,7 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteRoleResponse{}, nil
+	return nil, nil
 }
 
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
@@ -311,6 +325,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*pb.Role, error) {
+	const op = "roles.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -331,7 +346,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	out, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create role: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
@@ -340,6 +355,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
+	const op = "roles.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -367,7 +383,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update role: %w", err)
+		return nil, errors.Wrap(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
@@ -376,6 +392,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "roles.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
@@ -385,7 +402,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete role: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete role"))
 	}
 	return rows > 0, nil
 }
@@ -408,6 +425,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Rol
 }
 
 func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).addPrincpleInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -419,7 +437,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after adding principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding principals to it.")
@@ -428,6 +446,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 }
 
 func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).setPrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -439,7 +458,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after setting principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting principals for it.")
@@ -448,6 +467,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 }
 
 func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).removePrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -459,7 +479,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after removing principals: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after removing principals"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing principals from it.")
@@ -468,6 +488,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 }
 
 func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "service.(Service).addGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -479,7 +500,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after adding grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding grants"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding grants to it.")
@@ -488,6 +509,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 }
 
 func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).setGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -503,7 +525,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after setting grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting grants"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting grants on it.")
@@ -512,6 +534,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 }
 
 func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	const op = "roles.(Service).removeGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -523,7 +546,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to look up role after removing grants: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("uable to look up role after removing grant"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing grants from it.")
@@ -629,19 +652,19 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
-	return handlers.ValidateGetRequest(iam.RolePrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.RolePrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		item := req.GetItem()
-		if !handlers.ValidId(scope.Org.Prefix(), item.GetScopeId()) &&
-			!handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) &&
+		if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Org.Prefix()) &&
+			!handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) &&
 			scope.Global.String() != item.GetScopeId() {
 			badFields["scope_id"] = "This field is missing or improperly formatted."
 		}
-		if item.GetGrantScopeId() != nil && handlers.ValidId(scope.Project.Prefix(), item.GetScopeId()) {
+		if item.GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Project.Prefix()) {
 			if item.GetGrantScopeId().GetValue() != item.GetScopeId() {
 				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID."
 			}
@@ -657,7 +680,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
-	return handlers.ValidateUpdateRequest(iam.RolePrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if req.GetItem().GetPrincipalIds() != nil {
 			badFields["principal_ids"] = "This is a read only field and cannot be specified in an update request."
@@ -671,25 +694,25 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		if req.GetItem().GetGrantStrings() != nil {
 			badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 		}
-		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+		if req.GetItem().GetGrantScopeId() != nil && handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			if req.GetItem().GetGrantScopeId().GetValue() != req.GetItem().GetScopeId() {
 				badFields["grant_scope_id"] = "When the role is in a project scope this value must be that project's scope ID"
 			}
 		}
 		return badFields
-	})
+	}, iam.RolePrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
-	return handlers.ValidateDeleteRequest(iam.RolePrefix, req, func() map[string]string {
+	return handlers.ValidateDeleteRequest(func() map[string]string {
 		return nil
-	})
+	}, req, iam.RolePrefix)
 }
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
-		!handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
+		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
@@ -704,7 +727,7 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 
 func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -714,7 +737,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -731,14 +754,14 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 
 func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -755,7 +778,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 
 func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -765,7 +788,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(iam.GroupPrefix, id) && !handlers.ValidId(iam.UserPrefix, id) {
+		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) && !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
 			badFields["principal_ids"] = "Must only have valid group and/or user ids."
 			break
 		}
@@ -778,7 +801,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 
 func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -805,7 +828,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 
 func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -829,7 +852,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 
 func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(iam.RolePrefix, req.GetId()) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

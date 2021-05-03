@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Unix Domain Socket - Listeners - Configuration
-sidebar_title: Unix
 description: |-
   The Unix listener configures Boundary to listen on the specified Unix domain socket.
 ---
@@ -61,6 +60,30 @@ allowed.
 - `max_request_duration` `(string: "90s")` – Specifies the maximum
   request duration allowed before Boundary cancels the request. This overrides
   `default_max_request_duration` for this listener.
+
+- `cors_enabled` `(boolean: true)` - Specifies if CORS should be enabled, which
+  allows Boundary to support external browser-based clients (not including admin
+  UI), such as Boundary Desktop. If not specified, CORS will be enabled with an
+  allowed origin that grants access to Boundary Desktop, unless overridden with
+  `cors_disable_default_allowed_origin_values`.
+
+- `cors_disable_default_allowed_origin_values` `(boolean: false)` - Specifies
+  that Boundary should not append default allowed origin values to any specified
+  in `cors_allowed_origins`, such as Boundary Desktop's origin. This also
+  disables the behavior of enabling CORS if `cors_enabled` is not specified.
+
+- `cors_allowed_origins` `(array(string): ["serve://boundary"])` - An array of
+  allowed CORS origins. Origins must include protocol, host, and port (if port
+  is different than the default for the specified protocol). To allow all
+  origins, set to `['*']`. By default, Boundary Desktop's origin
+  `serve://boundary` is appended to any values included here, unless
+  `cors_disable_default_allowed_origin_values` is specified.
+
+- `cors_allowed_headers` `(array(string): [])` – An array specifying headers
+  that are permitted to be on cross-origin requests. Headers set via this
+  parameter will be appended to the list of headers that Boundary allows by
+  default, such as `"Content-Type"`, `"X-Requested-With"`, and
+  `"Authorization"`.
 
 ### TLS
 

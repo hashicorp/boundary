@@ -24,6 +24,21 @@ const (
 	DefaultLimit = 10000
 )
 
+// OrderBy defines an enum type for declaring a column's order by criteria.
+type OrderBy int
+
+const (
+	// UnknownOrderBy would designate an unknown ordering of the column, which
+	// is the standard ordering for any select without an order by clause.
+	UnknownOrderBy = iota
+
+	// AscendingOrderBy would designate ordering the column in ascending order.
+	AscendingOrderBy
+
+	// DescendingOrderBy would designate ordering the column in decending order.
+	DescendingOrderBy
+)
+
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupById will lookup a resource by its primary key id, which must be
@@ -104,6 +119,13 @@ type Writer interface {
 	// is the number of rows affected by the sql. No options are currently
 	// supported.
 	Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error)
+
+	// Query will run the raw query and return the *sql.Rows results. Query will
+	// operate within the context of any ongoing transaction for the db.Writer.  The
+	// caller must close the returned *sql.Rows. Query can/should be used in
+	// combination with ScanRows.  Query is included in the Writer interface
+	// so callers can execute updates and inserts with returning values.
+	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
 
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.

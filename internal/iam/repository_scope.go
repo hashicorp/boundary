@@ -296,7 +296,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						grants = append(grants, roleGrant)
 
 					default:
-						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list,read")
+						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
 						if err != nil {
 							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -309,6 +309,12 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
+						if err != nil {
+							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+						}
+						grants = append(grants, roleGrant)
+
+						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
 						if err != nil {
 							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -386,8 +392,9 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"name":        scope.Name,
-			"description": scope.Description,
+			"name":                scope.Name,
+			"description":         scope.Description,
+			"primaryAuthMethodId": scope.PrimaryAuthMethodId,
 		},
 		fieldMaskPaths,
 		nil,
@@ -396,7 +403,6 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
-
 	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if errors.IsUniqueError(err) {
@@ -414,7 +420,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 	if withPublicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
-	scope := allocScope()
+	scope := AllocScope()
 	scope.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -434,7 +440,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 	if withPublicId == scope.Global.String() {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "invalid to delete global scope")
 	}
-	scope := allocScope()
+	scope := AllocScope()
 	scope.PublicId = withPublicId
 	rowsDeleted, err := r.delete(ctx, &scope)
 	if err != nil {
@@ -464,7 +470,7 @@ func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt
 // ID. It returns the root scope ID as a part of the set.
 func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId string, opt ...Option) ([]*Scope, error) {
 	const op = "iam.(Repository).ListRecursively"
-	var orgs []*Scope
+	var scopes []*Scope
 	var where string
 	var args []interface{}
 	switch {
@@ -483,9 +489,9 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 		// We have no idea what scope type this is so bail
 		return nil, errors.New(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
 	}
-	err := r.list(ctx, &orgs, where, args, opt...)
+	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {
 		return nil, errors.Wrap(err, op+":ListQuery")
 	}
-	return orgs, nil
+	return scopes, nil
 }

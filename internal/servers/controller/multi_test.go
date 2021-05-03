@@ -1,10 +1,12 @@
 package controller_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -30,16 +32,18 @@ func TestAuthenticationMulti(t *testing.T) {
 	defer c2.Shutdown()
 
 	auth := authmethods.NewClient(c1.Client())
-	token1Result, err := auth.Authenticate(c1.Context(), c1.Server().DevAuthMethodId, map[string]interface{}{"login_name": c1.Server().DevLoginName, "password": c1.Server().DevPassword})
+	token1Result, err := auth.Authenticate(c1.Context(), c1.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": c1.Server().DevLoginName, "password": c1.Server().DevPassword})
 	require.Nil(err)
-	token1 := token1Result.Item
+	token1 := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(token1Result.GetRawAttributes(), token1))
 	require.NotNil(token1)
 
 	time.Sleep(5 * time.Second)
 	auth = authmethods.NewClient(c2.Client())
-	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevAuthMethodId, map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
+	token2Result, err := auth.Authenticate(c2.Context(), c2.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": c2.Server().DevLoginName, "password": c2.Server().DevPassword})
 	require.Nil(err)
-	token2 := token2Result.Item
+	token2 := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(token2Result.GetRawAttributes(), token2))
 	require.NotNil(token2)
 
 	assert.NotEqual(token1.Token, token2.Token)

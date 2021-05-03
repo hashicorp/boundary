@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostcatalogscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -57,6 +58,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"authenticate password": func() (cli.Command, error) {
 			return &authenticate.PasswordCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate oidc": func() (cli.Command, error) {
+			return &authenticate.OidcCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
@@ -108,6 +114,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"accounts create oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"accounts update": func() (cli.Command, error) {
 			return &accountscmd.Command{
 				Command: base.NewCommand(ui),
@@ -116,6 +128,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"accounts update password": func() (cli.Command, error) {
 			return &accountscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"accounts update oidc": func() (cli.Command, error) {
+			return &accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
@@ -156,6 +174,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"auth-methods create oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"auth-methods update": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
@@ -166,6 +190,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}, nil
+		},
+		"auth-methods update oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods change-state oidc": func() (cli.Command, error) {
+			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "change-state",
 			}, nil
 		},
 
@@ -501,6 +537,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
+			}, nil
+		},
+
+		"logout": func() (cli.Command, error) {
+			return &logout.LogoutCommand{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 

@@ -512,7 +512,6 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	for _, v := range userIds {
 		params = append(params, v)
 	}
-	// fmt.Println(query, params)
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op)

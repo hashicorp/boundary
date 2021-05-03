@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -30,7 +31,7 @@ type Controller struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
-	started     ua.Bool
+	started     *ua.Bool
 
 	workerAuthCache *cache.Cache
 
@@ -40,6 +41,7 @@ type Controller struct {
 	// Repo factory methods
 	AuthTokenRepoFn    common.AuthTokenRepoFactory
 	IamRepoFn          common.IamRepoFactory
+	OidcRepoFn         common.OidcAuthRepoFactory
 	PasswordAuthRepoFn common.PasswordAuthRepoFactory
 	ServersRepoFn      common.ServersRepoFactory
 	SessionRepoFn      common.SessionRepoFactory
@@ -53,6 +55,7 @@ func New(conf *Config) (*Controller, error) {
 	c := &Controller{
 		conf:                    conf,
 		logger:                  conf.Logger.Named("controller"),
+		started:                 ua.NewBool(false),
 		workerStatusUpdateTimes: new(sync.Map),
 	}
 
@@ -119,6 +122,9 @@ func New(conf *Config) (*Controller, error) {
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
 	}
+	c.OidcRepoFn = func() (*oidc.Repository, error) {
+		return oidc.NewRepository(dbase, dbase, c.kms)
+	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
@@ -148,6 +154,7 @@ func (c *Controller) Start() error {
 	c.startStatusTicking(c.baseContext)
 	c.startRecoveryNonceCleanupTicking(c.baseContext)
 	c.startTerminateCompletedSessionsTicking(c.baseContext)
+	c.startCloseExpiredPendingTokens(c.baseContext)
 	c.started.Store(true)
 
 	return nil

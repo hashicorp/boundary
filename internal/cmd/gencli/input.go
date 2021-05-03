@@ -93,6 +93,20 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:      true,
 			VersionedActions:    []string{"update"},
 		},
+		{
+			ResourceType:        resource.Account.String(),
+			Pkg:                 "accounts",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "oidc",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
 	},
 	"authmethods": {
 		{
@@ -119,6 +133,21 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update"},
 			NeedsSubTypeInCreate: true,
 		},
+		{
+			ResourceType:         resource.AuthMethod.String(),
+			Pkg:                  "authmethods",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "oidc",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update", "change-state"},
+			NeedsSubTypeInCreate: true,
+		},
 	},
 	"authtokens": {
 		{
@@ -126,7 +155,6 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:          "authtokens",
 			StdActions:   []string{"read", "delete", "list"},
 			Container:    "Scope",
-			HasId:        true,
 		},
 	},
 	"groups": {

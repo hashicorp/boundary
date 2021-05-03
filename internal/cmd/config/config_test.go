@@ -82,6 +82,64 @@ func TestDevController(t *testing.T) {
 	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
 
 	assert.Equal(t, exp, actual)
+
+	// Do some CORS-specific testing
+	{
+		// CORS disabled
+		conf := `
+		listener "tcp" {
+			purpose = "api"
+			cors_enabled = false
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 := actual.Listeners[0]
+		assert.False(t, *l0.CorsEnabled)
+		assert.Empty(t, l0.CorsAllowedHeaders)
+
+		// Enabled with a wildcard
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+			cors_enabled = true
+			cors_allowed_origins = ["*"]
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.True(t, *l0.CorsEnabled)
+		assert.Equal(t, []string{"*"}, l0.CorsAllowedOrigins)
+		assert.Nil(t, l0.CorsDisableDefaultAllowedOriginValues)
+
+		// Disabled, default behavior
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.True(t, *l0.CorsEnabled)
+		assert.Equal(t, []string{desktopCorsOrigin}, l0.CorsAllowedOrigins)
+		assert.Nil(t, l0.CorsDisableDefaultAllowedOriginValues)
+
+		// Disabled, default behavior
+		conf = `
+		listener "tcp" {
+			purpose = "api"
+			cors_disable_default_allowed_origin_values = true
+		}
+		`
+		actual, err = Parse(conf)
+		assert.NoError(t, err)
+		l0 = actual.Listeners[0]
+		assert.Nil(t, l0.CorsEnabled)
+		assert.Empty(t, l0.CorsAllowedOrigins)
+		assert.True(t, *l0.CorsDisableDefaultAllowedOriginValues)
+	}
 }
 
 func TestDevWorker(t *testing.T) {
@@ -139,6 +197,31 @@ func TestDevWorker(t *testing.T) {
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
+
+	// Handle when there is a singular value not indicated as a slice
+	devWorkerKeyValueConfig = `
+	listener "tcp" {
+		purpose = "proxy"
+	}
+
+	worker {
+		name = "dev-worker"
+		description = "A default worker created in dev mode"
+		controllers = ["127.0.0.1"]
+		tags {
+			type = "local"
+		}
+	}
+	`
+
+	actual, err = Parse(devConfig + devWorkerKeyValueConfig)
+	assert.NoError(t, err)
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
+	prevTags := exp.Worker.Tags
+	exp.Worker.Tags = map[string][]string{"type": {"local"}}
+	assert.Equal(t, exp, actual)
+	exp.Worker.Tags = prevTags
 
 	// Redo it with non-lower-cased keys
 	devWorkerKeyValueConfig = `

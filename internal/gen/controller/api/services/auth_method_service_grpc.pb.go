@@ -44,10 +44,12 @@ type AuthMethodServiceClient interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(ctx context.Context, in *DeleteAuthMethodRequest, opts ...grpc.CallOption) (*DeleteAuthMethodResponse, error)
-	// Deprecated: Do not use.
+	// ChangeState changes the state of an Auth Method from Boundary.
+	ChangeState(ctx context.Context, in *ChangeStateRequest, opts ...grpc.CallOption) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
 	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
+	// Deprecated: Do not use.
 	// AuthenticateLogin validates credentials provided for a single-step login
 	// action and returns an auth token.
 	AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error)
@@ -106,7 +108,15 @@ func (c *authMethodServiceClient) DeleteAuthMethod(ctx context.Context, in *Dele
 	return out, nil
 }
 
-// Deprecated: Do not use.
+func (c *authMethodServiceClient) ChangeState(ctx context.Context, in *ChangeStateRequest, opts ...grpc.CallOption) (*ChangeStateResponse, error) {
+	out := new(ChangeStateResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/ChangeState", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error) {
 	out := new(AuthenticateResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/Authenticate", in, out, opts...)
@@ -116,6 +126,7 @@ func (c *authMethodServiceClient) Authenticate(ctx context.Context, in *Authenti
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *authMethodServiceClient) AuthenticateLogin(ctx context.Context, in *AuthenticateLoginRequest, opts ...grpc.CallOption) (*AuthenticateLoginResponse, error) {
 	out := new(AuthenticateLoginResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.AuthMethodService/AuthenticateLogin", in, out, opts...)
@@ -155,10 +166,12 @@ type AuthMethodServiceServer interface {
 	// DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
 	// is malformed or not provided an error is returned.
 	DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error)
-	// Deprecated: Do not use.
+	// ChangeState changes the state of an Auth Method from Boundary.
+	ChangeState(context.Context, *ChangeStateRequest) (*ChangeStateResponse, error)
 	// Authenticate validates credentials provided and returns an Auth Token.
 	// Deprecated: use AuthenticateLogin instead.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
+	// Deprecated: Do not use.
 	// AuthenticateLogin validates credentials provided for a single-step login
 	// action and returns an auth token.
 	AuthenticateLogin(context.Context, *AuthenticateLoginRequest) (*AuthenticateLoginResponse, error)
@@ -183,6 +196,9 @@ func (UnimplementedAuthMethodServiceServer) UpdateAuthMethod(context.Context, *U
 }
 func (UnimplementedAuthMethodServiceServer) DeleteAuthMethod(context.Context, *DeleteAuthMethodRequest) (*DeleteAuthMethodResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAuthMethod not implemented")
+}
+func (UnimplementedAuthMethodServiceServer) ChangeState(context.Context, *ChangeStateRequest) (*ChangeStateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeState not implemented")
 }
 func (UnimplementedAuthMethodServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
@@ -293,6 +309,24 @@ func _AuthMethodService_DeleteAuthMethod_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthMethodService_ChangeState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthMethodServiceServer).ChangeState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.AuthMethodService/ChangeState",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthMethodServiceServer).ChangeState(ctx, req.(*ChangeStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthMethodService_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthenticateRequest)
 	if err := dec(in); err != nil {
@@ -355,6 +389,10 @@ var AuthMethodService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAuthMethod",
 			Handler:    _AuthMethodService_DeleteAuthMethod_Handler,
+		},
+		{
+			MethodName: "ChangeState",
+			Handler:    _AuthMethodService_ChangeState_Handler,
 		},
 		{
 			MethodName: "Authenticate",

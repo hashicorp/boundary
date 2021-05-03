@@ -31,6 +31,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "cancel", "cancel:self"}
+
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -82,11 +84,11 @@ func TestGetSession(t *testing.T) {
 		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 		CreatedTime:       sess.CreateTime.GetTimestamp(),
 		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -128,7 +130,7 @@ func TestGetSession(t *testing.T) {
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new session service.")
 
-			got, gErr := s.GetSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.GetSession(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -294,12 +296,12 @@ func TestList(t *testing.T) {
 			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 			CreatedTime:       sess.CreateTime.GetTimestamp(),
 			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -329,12 +331,12 @@ func TestList(t *testing.T) {
 			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
 			CreatedTime:       sess.CreateTime.GetTimestamp(),
 			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithOtherSessions.GetPublicId(), Type: scope.Project.String()},
+			Scope:             &scopes.ScopeInfo{Id: pWithOtherSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oOther.GetPublicId()},
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -388,7 +390,7 @@ func TestList(t *testing.T) {
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new session service.")
 
-			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(auth.WithScopeId(tc.req.GetScopeId())), tc.req)
+			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(t, gErr)
 				assert.True(t, errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -473,11 +475,11 @@ func TestCancel(t *testing.T) {
 		Endpoint:          sess.Endpoint,
 		CreatedTime:       sess.CreateTime.GetTimestamp(),
 		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String()},
+		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	version := wireSess.GetVersion()
@@ -523,7 +525,7 @@ func TestCancel(t *testing.T) {
 
 			tc.req.Version = version
 
-			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

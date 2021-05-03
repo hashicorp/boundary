@@ -32,6 +32,7 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -96,11 +97,12 @@ func populateCollectionAuthorizedActions(ctx context.Context,
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "host_catalogs.NewService"
 	if repoFn == nil {
-		return Service{}, fmt.Errorf("nil static repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{staticRepoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -111,13 +113,25 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.HostCatalog, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)
@@ -229,7 +243,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostCatalogResponse{}, nil
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
@@ -264,6 +278,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Hos
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+	const op = "host_catalogs.(Servivce).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
@@ -273,23 +288,15 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build host catalog for creation: %v.", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for creation"))
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, fmt.Errorf("unable to create host catalog: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create host catalog"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
@@ -298,6 +305,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+	const op = "service.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -308,11 +316,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	version := item.GetVersion()
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, fmt.Errorf("unable to build host catalog for update: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build host catalog for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -321,15 +325,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return nil, e
-		}
-		return nil, fmt.Errorf("unable to update host catalog: %w", err)
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host catalog"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
@@ -338,17 +338,14 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "service.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
-		if e := errors.Convert(err); e != nil {
-			// This is a domain error, push this error through so the error interceptor can interpret it correctly.
-			return false, e
-		}
-		return false, fmt.Errorf("unable to delete host: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete host"))
 	}
 	return rows > 0, nil
 }
@@ -423,13 +420,13 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
-	return handlers.ValidateGetRequest(static.HostCatalogPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(scope.Project.Prefix(), req.GetItem().GetScopeId()) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch host.SubtypeFromType(req.GetItem().GetType()) {
@@ -442,7 +439,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
-	return handlers.ValidateUpdateRequest(static.HostCatalogPrefix, req, req.GetItem(), func() map[string]string {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch host.SubtypeFromId(req.GetId()) {
 		case host.StaticSubtype:
@@ -451,16 +448,16 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			}
 		}
 		return badFields
-	})
+	}, static.HostCatalogPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
-	return handlers.ValidateDeleteRequest(static.HostCatalogPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Project.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}

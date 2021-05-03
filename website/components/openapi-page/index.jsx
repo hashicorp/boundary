@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/router'
 import Link from 'next/link'
 import OperationObject from './partials/operation-object'
 import Head from 'next/head'
@@ -13,12 +12,11 @@ import useOnClickOutside from 'lib/hooks/use-on-click-outside'
 function OpenApiPage({
   info,
   operationCategory,
-  sidenavOrder,
+  navData,
   productName,
   productSlug,
-  pathFromRoot,
+  currentPath,
 }) {
-  const router = useRouter()
   const operationsRef = useRef(null)
   const [expandedOperations, setExpandedOperations] = useState([])
   useOnClickOutside(operationsRef, () => setExpandedOperations([]))
@@ -40,12 +38,12 @@ function OpenApiPage({
         siteName={`${productName} by HashiCorp`}
       />
       <DocsSidenav
+        product={productSlug}
         Link={Link}
-        currentPage={router.asPath}
-        category={pathFromRoot}
+        currentPath={currentPath}
+        baseRoute={'api-docs'}
         disableFilter={true}
-        order={sidenavOrder}
-        data={[]}
+        navData={navData}
       />
       <Content
         product={productSlug}

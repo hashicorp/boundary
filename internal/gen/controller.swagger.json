@@ -324,13 +324,13 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate": {
       "post": {
-        "summary": "Deprecated: Use AuthenticateLogin instead",
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
         "operationId": "AuthMethodService_Authenticate",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateResponse"
             }
           }
         },
@@ -358,7 +358,7 @@
     },
     "/v1/auth-methods/{auth_method_id}:authenticate:login": {
       "post": {
-        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "summary": "Deprecated: Use Authenticate instead",
         "operationId": "AuthMethodService_AuthenticateLogin",
         "responses": {
           "200": {
@@ -468,6 +468,39 @@
             "in": "query",
             "required": false,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/auth-methods/{id}:change-state": {
+      "post": {
+        "summary": "Changes the state of an OIDC AuthMethod",
+        "operationId": "AuthMethodService_ChangeState",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ChangeStateRequest"
+            }
           }
         ],
         "tags": [
@@ -2572,6 +2605,11 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific Auth Method type."
         },
+        "is_primary": {
+          "type": "boolean",
+          "description": "Output only. Whether this auth method is the primary auth method for it's scope.\nTo change this value update the primary_auth_method_id field on the scope.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -3158,6 +3196,10 @@
           "type": "string",
           "description": "The type of the resource."
         },
+        "primary_auth_method_id": {
+          "type": "string",
+          "title": "The ID of the primary auth method for this scope.  A primary auth method\nis allowed to vivify users when new accounts are created and is the source for the users account info"
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -3601,6 +3643,26 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
+        },
+        "login_name": {
+          "type": "string",
+          "title": "Output only. login_name is a string that maps to the user's account \"login\nname\" from the scope's primary auth method",
+          "readOnly": true
+        },
+        "full_name": {
+          "type": "string",
+          "title": "Output only. full_name is a string that maps to the user's account name\nfrom the scope's primary auth method",
+          "readOnly": true
+        },
+        "email": {
+          "type": "string",
+          "title": "Output only. email is a string that maps to the user's account email from\nthe scope's primary auth method",
+          "readOnly": true
+        },
+        "primary_account_id": {
+          "type": "string",
+          "title": "Output only. primary_account_id is a string that maps to the user's account\npublic_id from the scope's primary auth method",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"
@@ -3777,7 +3839,7 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",
@@ -3805,22 +3867,32 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order to keep it safe from rogue JS in the browser."
+          "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
         },
         "credentials": {
           "type": "object",
-          "description": "Credentials are passed to the Auth Method; the valid keys and values depend on the type of Auth Method."
+          "description": "Deprecated; use \"attributes\" instead."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command."
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to perform."
         }
       }
     },
     "controller.api.services.v1.AuthenticateResponse": {
       "type": "object",
       "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        "attributes": {
+          "type": "object",
+          "description": "Valid keys and values depend on the type of Auth Method as well as the command."
         },
-        "token_type": {
-          "type": "string"
+        "command": {
+          "type": "string",
+          "description": "The command that was performed."
         }
       }
     },
@@ -3901,6 +3973,31 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.ChangeStateRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes specific to this auth method's state."
+        }
+      }
+    },
+    "controller.api.services.v1.ChangeStateResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },

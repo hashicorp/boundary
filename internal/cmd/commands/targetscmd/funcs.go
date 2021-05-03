@@ -203,7 +203,7 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	}
 }
 
-func extraFlagsHandlingFuncImpl(c *Command, opts *[]targets.Option) bool {
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Option) bool {
 	// This is custom logic because of the authorized-session handling. If we
 	// support all resources to be looked up by name + scope info we can
 	// eventually graduate this out to the main template.
@@ -444,11 +444,9 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			b, err := base.JsonFormatter{}.Format(item)
-			if err != nil {
-				return false, fmt.Errorf("Error formatting as JSON: %w", err)
+			if ok := c.PrintJsonItem(c.sar); !ok {
+				return false, fmt.Errorf("Error formatting as JSON")
 			}
-			c.UI.Output(string(b))
 			return true, nil
 		}
 	}

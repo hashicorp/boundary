@@ -1,5 +1,7 @@
 package action
 
+import "strings"
+
 // Type defines a type for the Actions of Resources
 // actions are also stored as a lookup db table named iam_action
 type Type uint
@@ -39,6 +41,9 @@ const (
 	RemoveAccounts   Type = 30
 	ReadSelf         Type = 31
 	CancelSelf       Type = 32
+	ChangeState      Type = 33
+	DeleteSelf       Type = 34
+	NoOp             Type = 35
 )
 
 var Map = map[string]Type{
@@ -74,6 +79,9 @@ var Map = map[string]Type{
 	RemoveAccounts.String():   RemoveAccounts,
 	ReadSelf.String():         ReadSelf,
 	CancelSelf.String():       CancelSelf,
+	ChangeState.String():      ChangeState,
+	DeleteSelf.String():       DeleteSelf,
+	NoOp.String():             NoOp,
 }
 
 func (a Type) String() string {
@@ -111,6 +119,9 @@ func (a Type) String() string {
 		"remove-accounts",
 		"read:self",
 		"cancel:self",
+		"change-state",
+		"delete:self",
+		"no-op",
 	}[a]
 }
 
@@ -127,4 +138,29 @@ func (a ActionSet) Strings() []string {
 		ret[i] = act.String()
 	}
 	return ret
+}
+
+// HasAction returns whether the action set contains the given action.
+func (a ActionSet) HasAction(act Type) bool {
+	for _, v := range a {
+		if v == act {
+			return true
+		}
+	}
+	return false
+}
+
+// OnlySelf returns true if all actions in the action set are self types. An
+// empty set returns false. This may not be what you want so the caller should
+// validate length and act appropriately as well.
+func (a ActionSet) OnlySelf() bool {
+	if len(a) == 0 {
+		return false
+	}
+	for _, v := range a {
+		if !strings.HasSuffix(v.String(), ":self") {
+			return false
+		}
+	}
+	return true
 }

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -23,11 +22,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -40,8 +42,8 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 
 	oRes, pRes := iam.TestScopes(t, iamRepo)
 
-	oRes.Name = "defaultProj"
-	oRes.Description = "defaultProj"
+	oRes.Name = "defaultOrg"
+	oRes.Description = "defaultOrg"
 	repo, err := repoFn()
 	require.NoError(t, err)
 	oRes, _, err = repo.UpdateScope(context.Background(), oRes, 1, []string{"Name", "Description"})
@@ -54,6 +56,49 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	pRes, _, err = repo.UpdateScope(context.Background(), pRes, 1, []string{"Name", "Description"})
 	require.NoError(t, err)
 	return oRes, pRes, repoFn
+}
+
+var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	"auth-methods": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"auth-tokens": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"groups": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"roles": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"scopes": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
+	"sessions": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
+	"users": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("create"),
+			structpb.NewStringValue("list"),
+		},
+	},
 }
 
 var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
@@ -127,7 +172,7 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 func TestGet(t *testing.T) {
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 	toMerge := &pbs.GetScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -135,28 +180,28 @@ func TestGet(t *testing.T) {
 	oScope := &pb.Scope{
 		Id:                          org.GetPublicId(),
 		ScopeId:                     org.GetParentId(),
-		Scope:                       &pb.ScopeInfo{Id: "global", Type: scope.Global.String()},
+		Scope:                       &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 		Name:                        &wrapperspb.StringValue{Value: org.GetName()},
 		Description:                 &wrapperspb.StringValue{Value: org.GetDescription()},
 		CreatedTime:                 org.CreateTime.GetTimestamp(),
 		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Org.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
 	pScope := &pb.Scope{
 		Id:                          proj.GetPublicId(),
 		ScopeId:                     proj.GetParentId(),
-		Scope:                       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String()},
+		Scope:                       &pb.ScopeInfo{Id: oScope.Id, Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 		Name:                        &wrapperspb.StringValue{Value: proj.GetName()},
 		Description:                 &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime:                 proj.CreateTime.GetTimestamp(),
 		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
@@ -215,10 +260,10 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(repo)
+			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new project service.")
 
-			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
@@ -246,14 +291,14 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 
 	var initialOrgs []*pb.Scope
-	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String()}
+	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 	oNoProjectsProto := scopes.ToProto(oNoProjects)
 	oNoProjectsProto.Scope = globalScope
-	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	oWithProjectsProto := scopes.ToProto(oWithProjects)
 	oWithProjectsProto.Scope = globalScope
-	oWithProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 	scopes.SortScopes(initialOrgs)
@@ -296,12 +341,23 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			// Test with non-anonymous listing first
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+				return
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
+
+			// Now test with anonymous listing
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			require.NoError(gErr)
+			for _, item := range got.GetItems() {
+				assert.Nil(item.CreatedTime)
+				assert.Nil(item.UpdatedTime)
+				assert.Empty(item.Version)
+			}
 		})
 	}
 
@@ -319,7 +375,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Org.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
@@ -335,12 +391,12 @@ func TestList(t *testing.T) {
 		wantProjects = append(wantProjects, &pb.Scope{
 			Id:                          p.GetPublicId(),
 			ScopeId:                     oWithProjects.GetPublicId(),
-			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
+			Scope:                       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			CreatedTime:                 p.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
@@ -398,20 +454,32 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			// Test with non-anonymous listing first
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+
+			// Now test with anonymous listing
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			require.NoError(gErr)
+			for _, item := range got.GetItems() {
+				assert.Nil(item.CreatedTime)
+				assert.Nil(item.UpdatedTime)
+				assert.Empty(item.Version)
+			}
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 
-	s, err := scopes.NewService(repo)
+	s, err := scopes.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -427,7 +495,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad project id Project",
@@ -451,7 +518,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad org id Org",
@@ -473,7 +539,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -485,11 +551,11 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	org, proj, repo := createDefaultScopesAndRepo(t)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
 
-	s, err := scopes.NewService(repo)
+	s, err := scopes.NewService(repoFn)
 	require.NoError(err, "Error when getting new scopes service")
-	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -499,7 +565,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.Error(gErr, "Second attempt")
 	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 
-	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
+	ctx = auth.DisabledAuthTestContext(repoFn, scope.Global.String())
 	req = &pbs.DeleteScopeRequest{
 		Id: org.GetPublicId(),
 	}
@@ -513,8 +579,7 @@ func TestDelete_twice(t *testing.T) {
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
 	defaultOrg, defaultProj, repoFn := createDefaultScopesAndRepo(t)
-	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultProjCreated := defaultProj.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateScopeRequest{}
 
 	repo, err := repoFn()
@@ -549,12 +614,12 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
 					ScopeId:                     defaultOrg.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "name"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -573,12 +638,12 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:                        &wrapperspb.StringValue{Value: "name"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -597,11 +662,11 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
 					ScopeId:                     defaultOrg.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -620,11 +685,11 @@ func TestCreate(t *testing.T) {
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -666,7 +731,7 @@ func TestCreate(t *testing.T) {
 			name:    "Can't specify Created Time",
 			scopeId: defaultOrg.GetPublicId(),
 			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -675,7 +740,7 @@ func TestCreate(t *testing.T) {
 			name:    "Can't specify Update Time",
 			scopeId: defaultOrg.GetPublicId(),
 			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -712,7 +777,7 @@ func TestCreate(t *testing.T) {
 					}
 					assert.NotEmpty(userId)
 				}
-				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId), auth.WithUserId(userId)), req)
+				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(userId)), req)
 				if tc.err != nil {
 					require.Error(gErr)
 					assert.True(errors.Is(gErr, tc.err), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -725,10 +790,8 @@ func TestCreate(t *testing.T) {
 					default:
 						assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
 					}
-					gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-					require.NoError(err, "Error converting proto to timestamp.")
-					gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-					require.NoError(err, "Error converting proto to timestamp.")
+					gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+					gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 					// Verify it is a project created after the test setup's default project
 					assert.True(gotCreateTime.After(defaultProjCreated), "New scope should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
 					assert.True(gotUpdateTime.After(defaultProjCreated), "New scope should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
@@ -776,8 +839,14 @@ func TestUpdate(t *testing.T) {
 	tested, err := scopes.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new project service.")
 
+	iamRepo, err := repoFn()
+	require.NoError(t, err)
+	global, err := iamRepo.LookupScope(context.Background(), "global")
+	require.NoError(t, err)
+
 	var orgVersion uint32 = 2
 	var projVersion uint32 = 2
+	var globalVersion uint32 = global.Version
 
 	resetOrg := func() {
 		orgVersion++
@@ -797,14 +866,27 @@ func TestUpdate(t *testing.T) {
 		projVersion++
 	}
 
-	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	resetGlobal := func() {
+		repo, err := repoFn()
+		require.NoError(t, err, "Couldn't get a new repo")
+		globalScope := iam.AllocScope()
+		globalScope.PublicId = "global"
+		global, _, err = repo.UpdateScope(context.Background(), &globalScope, globalVersion, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset the global scope")
+		globalVersion = global.Version
+	}
+
+	projCreated := proj.GetCreateTime().GetTimestamp().AsTime()
 	projToMerge := &pbs.UpdateScopeRequest{
 		Id: proj.GetPublicId(),
 	}
 
 	orgToMerge := &pbs.UpdateScopeRequest{
 		Id: org.GetPublicId(),
+	}
+
+	globalToMerge := &pbs.UpdateScopeRequest{
+		Id: "global",
 	}
 
 	cases := []struct {
@@ -831,12 +913,12 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -858,13 +940,39 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          org.GetPublicId(),
 					ScopeId:                     scope.Global.String(),
-					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name:    "Update global",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Global.String(),
+				},
+			},
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
+					Id:                          scope.Global.String(),
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+					Name:                        &wrapperspb.StringValue{Value: "new"},
+					Description:                 &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
+					Type:                        scope.Global.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
 		},
@@ -884,12 +992,12 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "new"},
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -958,11 +1066,11 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -982,11 +1090,11 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1007,12 +1115,12 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "updated"},
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1033,12 +1141,12 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Id:                          proj.GetPublicId(),
 					ScopeId:                     org.GetPublicId(),
-					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:                       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:                        &wrapperspb.StringValue{Value: "defaultProj"},
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1068,7 +1176,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Scope{
 					Id:          "p_somethinge",
-					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String(), Name: "defaultOrg", Description: "defaultOrg"},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -1084,7 +1192,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Scope{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1098,7 +1206,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Scope{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -1115,8 +1223,15 @@ func TestUpdate(t *testing.T) {
 
 			assert, require := assert.New(t), require.New(t)
 			var req *pbs.UpdateScopeRequest
-			switch tc.scopeId {
-			case scope.Global.String():
+			switch {
+			case tc.scopeId == scope.Global.String() && tc.req.Item.GetType() == scope.Global.String():
+				tc.req.Item.Version = globalVersion
+				ver = globalVersion
+				req = proto.Clone(globalToMerge).(*pbs.UpdateScopeRequest)
+				if tc.err == nil {
+					defer resetGlobal()
+				}
+			case tc.scopeId == scope.Global.String():
 				req = proto.Clone(orgToMerge).(*pbs.UpdateScopeRequest)
 				if tc.err == nil {
 					defer resetOrg()
@@ -1131,7 +1246,7 @@ func TestUpdate(t *testing.T) {
 			}
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.err)
@@ -1139,8 +1254,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateScope response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a project updated after it was created
 				assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
 

@@ -15,6 +15,7 @@ module.exports = withHashicorp({
     return await redirects
   },
   svgo: { plugins: [{ removeViewBox: false }] },
+  tipBranch: 'main',
   env: {
     HASHI_ENV: process.env.HASHI_ENV || 'development',
     SEGMENT_WRITE_KEY: 'JkNZiSgwVRAAFrkqqdHLxf0xfcZuhYYc',

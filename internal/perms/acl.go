@@ -30,7 +30,8 @@ type ACL struct {
 // pass more detailed information along in the future if we want. It was useful
 // in Vault, may be useful here.
 type ACLResults struct {
-	Allowed bool
+	AuthenticationFinished bool
+	Authorized             bool
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
@@ -102,7 +103,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			aType != action.List &&
 			aType != action.Create:
 
-			results.Allowed = true
+			results.Authorized = true
 			return
 
 		// type=<resource.type>;actions=<action> when action is list(:self) or
@@ -116,7 +117,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(aType == action.List ||
 				aType == action.Create):
 
-			results.Allowed = true
+			results.Authorized = true
 			return
 
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
@@ -126,7 +127,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(grant.typ == r.Type ||
 				grant.typ == resource.All):
 
-			results.Allowed = true
+			results.Authorized = true
 			return
 
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
@@ -137,7 +138,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 			(grant.typ == r.Type || grant.typ == resource.All) &&
 			!topLevelType(r.Type):
 
-			results.Allowed = true
+			results.Authorized = true
 			return
 		}
 	}

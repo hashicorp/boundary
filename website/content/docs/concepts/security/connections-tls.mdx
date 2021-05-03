@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Connections/TLS
-sidebar_title: Connections/TLS
 description: |-
   How Boundary secures its connections
 ---
@@ -32,7 +31,7 @@ It is possible to require client certificates; see the configuration for
 
 ## Worker-to-Controller TLS
 
-The service exposed by the a Controller to handle Worker requests takes
+The service exposed by the Controller to handle Worker requests takes
 advantage of the [KMS](/docs/concepts/security/data-encryption) key designated
 for `worker-auth` within Boundary's configuration file, which must point to the
 same key on the KMS for both the Controller and the Worker. Security of the

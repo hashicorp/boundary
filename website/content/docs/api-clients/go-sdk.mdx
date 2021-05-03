@@ -1,14 +1,13 @@
 ---
 layout: docs
 page_title: Go SDK
-sidebar_title: Go SDK
 description: |-
   Boundary's Go SDK
 ---
 
 # Go SDK
 
-Boundary has a Go SDK that sports full coverage of Boundary's API. This SDK is mostly auto-generated so the patterns are predictable from package to package; for the most part, browsing [pkg.go.dev](https://pkg.go.dev/github.com/hashicorp/boundary/api) is a great way to get started.
+Boundary has a Go SDK that sports full coverage of Boundary's API. This SDK is mostly auto-generated, so the patterns are predictable from package to package. For the most part, browsing [pkg.go.dev](https://pkg.go.dev/github.com/hashicorp/boundary/api) is a great way to get started.
 
 Below, an example walks through using the SDK to authenticate against an auth method or perform recovery workflows. The patterns for creating a resource-typed client are the same across packages.
 
@@ -21,7 +20,7 @@ authenticating to Boundary:
 1. Via an auth method
 1. Via the recovery KMS workflow
 
-We'll cover how to authenticate to Boundary via both of these workflows. 
+We'll cover how to authenticate to Boundary via both of these workflows.
 
 ### Auth Method
 
@@ -29,17 +28,15 @@ This is the most common way for a client to authenticate to Boundary. To demonst
 use the [authmethods](https://github.com/hashicorp/boundary/tree/main/api/authmethods) library to generate
 a valid token for a client in Go.
 
-For this example, we're going to use the Password auth method. This example
+For this example, we're going to use the [password auth method](/docs/concepts/domain-model/auth-methods#password-auth-method-attributes). This example
 assumes there's already a valid user and an associated account in Boundary
 against which the client can authenticate. To simplify this example, we're
 assuming you're running a Boundary instance in dev mode, where the default auth
-method, login name, and password are pre-configured. 
+method, login name, and password are pre-configured.
 
 First, we need to create a client from the Boundary API and set the address to reach Boundary:
 
 ```go
-import "github.com/hashicorp/boundary/api"
-
 // The default address points to the default dev mode address
 client, err := api.NewClient(nil)
 if err != nil {
@@ -51,8 +48,8 @@ The [authenticate
 method](https://github.com/hashicorp/boundary/blob/main/api/authmethods/authenticate.go)
 uses a basic `map[string]interface{}` to pass credential information, in order
 to eventually support multiple auth method types. For this example, we assume
-you're using the password auth method and so we're going to tailor a credentials
-object to pass this data as:
+you're using the password auth method, and so we create an attributes
+map to pass this data:
 
 ```go
 credentials := map[string]interface{}{
@@ -64,14 +61,12 @@ credentials := map[string]interface{}{
 Now let's create an auth method client using the base client from above:
 
 ```go
-import "github.com/hashicorp/boundary/api/authmethods"
-
-am := authmethods.NewClient(client)
+amClient := authmethods.NewClient(client))
 ```
 
 ~> This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
 
-The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI 
+The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI
 with:
 
 ```bash
@@ -90,7 +85,7 @@ Note the ID in the output above, we're going to use that in the next step.
 We can use the credentials object we created to execute `Authenticate()` on this client:
 
 ```go
-at, err := am.Authenticate(context.Background(), "ampw_1234567890", credentials)
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
 if err != nil {
   return err
 }
@@ -100,13 +95,15 @@ Lastly, let's update the original client with the token we got from the `Authent
 
 ```go
 // pass this client to any other resource specific API resources
-client.SetToken(at.Item.Token)
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ```
 
 Putting this all together:
 
 ```go
 import (
+  "context"
+
   "github.com/hashicorp/boundary/api"
   "github.com/hashicorp/boundary/api/authmethods"
 )
@@ -122,14 +119,14 @@ if err != nil {
   return err
 }
 
-am := authmethods.NewClient(client)
-at, err := am.Authenticate(context.Background(), "ampw_1234567890", credentials)
+amClient := authmethods.NewClient(client)
+authenticationResult, err := amClient.Authenticate(context.Background(), "ampw_1234567890", "login", credentials)
 if err != nil {
   return err
 }
 
 // pass this client to any other resource specific API resources
-client.SetToken(at.Item.Token)
+client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ```
 
 ### Recovery KMS Workflow

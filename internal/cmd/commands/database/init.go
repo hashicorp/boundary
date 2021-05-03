@@ -239,9 +239,13 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
 	defer clean()
-	if errCode != 0 {
+	switch errCode {
+	case 0:
+	case -1:
+		return 0
+	default:
 		return errCode
 	}
 
@@ -314,14 +318,14 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 
 	// Use an easy name, at least
 	c.srv.DevLoginName = "admin"
-	am, user, err := c.srv.CreateInitialAuthMethod(c.Context)
+	am, user, err := c.srv.CreateInitialPasswordAuthMethod(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial auth method and user: %w", err).Error())
 		return base.CommandCliError
 	}
 
 	authMethodInfo := &AuthInfo{
-		AuthMethodId:   c.srv.DevAuthMethodId,
+		AuthMethodId:   c.srv.DevPasswordAuthMethodId,
 		AuthMethodName: am.Name,
 		LoginName:      c.srv.DevLoginName,
 		Password:       c.srv.DevPassword,

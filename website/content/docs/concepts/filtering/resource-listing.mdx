@@ -1,7 +1,6 @@
 ---
 layout: docs
 page_title: Filtering - Resource Listing
-sidebar_title: Resource Listing
 description: |-
   How to use filter list responses coming back from Boundary.
 ---
@@ -76,7 +75,7 @@ flag with the Boundary CLI:
 
 ```
 $ boundary targets list -scope-id p_1234567890 -format json -filter '"authorize-session" in "/item/authorized_actions"' -output-curl-string
-curl -H "Authorization: Bearer $(boundary config get-token -keyring-type pass -token-name default)"-H "Content-Type: application/json" 'http://127.0.0.1:9200/v1/targets?filter=%22authorize-session%22+in+%22%2Fitem%2Fauthorized_actions%22&scope_id=p_1234567890'
+curl -H "Authorization: Bearer $(boundary config get-token -keyring-type pass -token-name default)" -H "Content-Type: application/json" 'http://127.0.0.1:9200/v1/targets?filter=%22authorize-session%22+in+%22%2Fitem%2Fauthorized_actions%22&scope_id=p_1234567890'
 ```
 
 Following are some examples.

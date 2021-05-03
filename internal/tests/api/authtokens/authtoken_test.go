@@ -1,6 +1,7 @@
 package authtokens_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -33,6 +35,12 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(amResult)
 	amId := amResult.Item.Id
+
+	scopeClient := scopes.NewClient(client)
+	scopeResult, err := scopeClient.Update(tc.Context(), org.PublicId, org.Version, scopes.WithAutomaticVersioning(true), scopes.WithPrimaryAuthMethodId(amId))
+	require.NoError(err)
+	require.NotNil(scopeResult)
+	require.Equal(amId, scopeResult.Item.PrimaryAuthMethodId)
 
 	rolesClient := roles.NewClient(client)
 	role, err := rolesClient.Create(tc.Context(), org.GetPublicId())
@@ -59,18 +67,22 @@ func TestList(t *testing.T) {
 	var expected []*authtokens.AuthToken
 	methods := authmethods.NewClient(client)
 
-	at, err := methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
-	expected = append(expected, at.Item)
+	token = new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+	expected = append(expected, token)
 
 	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl.Items))
 
 	for i := 1; i < 10; i++ {
-		at, err = methods.Authenticate(tc.Context(), amId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+		result, err = methods.Authenticate(tc.Context(), amId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 		require.NoError(err)
-		expected = append(expected, at.Item)
+		token = new(authtokens.AuthToken)
+		require.NoError(json.Unmarshal(result.GetRawAttributes(), token))
+		expected = append(expected, token)
 	}
 	atl, err = tokens.List(tc.Context(), org.GetPublicId())
 	require.NoError(err)
@@ -118,12 +130,14 @@ func TestCrud(t *testing.T) {
 	tokens := authtokens.NewClient(client)
 	methods := authmethods.NewClient(client)
 
-	want, err := methods.Authenticate(tc.Context(), tc.Server().DevAuthMethodId, map[string]interface{}{"login_name": "user", "password": "passpass"})
+	result, err := methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "passpass"})
 	require.NoError(err)
+	wantToken := new(authtokens.AuthToken)
+	require.NoError(json.Unmarshal(result.GetRawAttributes(), wantToken))
 
-	at, err := tokens.Read(tc.Context(), want.Item.Id)
+	at, err := tokens.Read(tc.Context(), wantToken.Id)
 	require.NoError(err)
-	assert.EqualValues(comparableResource(want.Item), comparableResource(at.Item))
+	assert.EqualValues(comparableResource(wantToken), comparableResource(at.Item))
 
 	_, err = tokens.Delete(tc.Context(), at.Item.Id)
 	require.NoError(err)

@@ -22,8 +22,11 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
+		action.NoOp,
 		action.Read,
+		action.ReadSelf,
 		action.Delete,
+		action.DeleteSelf,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -43,11 +46,12 @@ type Service struct {
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, fmt.Errorf("nil iam repository provided")
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -61,13 +65,25 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes.
+		if authResults.Error == handlers.ForbiddenError() &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), req.GetRecursive())
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthToken, req.GetRecursive(), false)
 	if err != nil {
 		return nil, err
+	}
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
 	ul, err := s.listFromRepo(ctx, scopeIds)
@@ -85,10 +101,17 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	for _, item := range ul {
 		item.Scope = scopeInfoMap[item.GetScopeId()]
 		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res))
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		if authorizedActions.OnlySelf() && item.GetUserId() != authResults.UserId {
+			continue
+		}
+
+		item.AuthorizedActions = authorizedActions.Strings()
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -101,7 +124,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -109,6 +132,15 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	authzdActions := authResults.FetchActionSetForId(ctx, u.Id, IdActions)
+	// Check to see if we need to verify Read vs. just ReadSelf
+	if u.GetUserId() != authResults.UserId {
+		if !authzdActions.HasAction(action.Read) {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
 	u.Scope = authResults.Scope
 	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
@@ -119,46 +151,58 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.DeleteSelf)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	at, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthTokenResponse{}, nil
+	authzdActions := authResults.FetchActionSetForId(ctx, at.Id, IdActions)
+	// Check to see if we need to verify Delete vs. just DeleteSelf
+	if at.GetUserId() != authResults.UserId {
+		if !authzdActions.HasAction(action.Delete) {
+			return nil, handlers.ForbiddenError()
+		}
+	}
+
+	_, err = s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthToken, error) {
+	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, op)
 	}
 	u, err := repo.LookupAuthToken(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
-		}
-		return nil, fmt.Errorf("unable to lookup auth token: %w", err)
+	if err != nil && !errors.IsNotFoundError(err) {
+		return nil, errors.Wrap(err, op)
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("AuthToken %q doesn't exist.", id)
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
 	return toProto(u), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("unable to delete user: %w", err)
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }
@@ -245,16 +289,16 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	return handlers.ValidateGetRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	return handlers.ValidateDeleteRequest(authtoken.AuthTokenPrefix, req, handlers.NoopValidatorFn)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(scope.Org.Prefix(), req.GetScopeId()) &&
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
