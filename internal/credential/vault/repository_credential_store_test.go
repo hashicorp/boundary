@@ -18,6 +18,7 @@ import (
 )
 
 func TestRepository_CreateCredentialStoreResource(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -111,6 +112,7 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 }
 
 func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -208,6 +210,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 }
 
 func TestRepository_LookupCredentialStore(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -293,6 +296,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 }
 
 func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -369,6 +373,7 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 }
 
 func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1040,6 +1045,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 }
 
 func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1130,6 +1136,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 }
 
 func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1293,6 +1300,7 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 }
 
 func TestRepository_DeleteCredentialStore(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

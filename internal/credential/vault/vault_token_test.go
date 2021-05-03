@@ -18,6 +18,7 @@ import (
 )
 
 func TestToken_New(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
