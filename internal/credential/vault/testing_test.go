@@ -12,6 +12,7 @@ import (
 )
 
 func Test_TestCredentialStores(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -30,6 +31,7 @@ func Test_TestCredentialStores(t *testing.T) {
 }
 
 func Test_TestCredentialLibraries(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -58,6 +60,7 @@ func testLogVaultSecret(t *testing.T, v *vault.Secret) string {
 }
 
 func TestTestVaultServer_CreateToken(t *testing.T) {
+	t.Parallel()
 	assertIsRenewable := func() func(t *testing.T, s *vault.Secret) {
 		const op = "assertIsRenewable"
 		return func(t *testing.T, s *vault.Secret) {
