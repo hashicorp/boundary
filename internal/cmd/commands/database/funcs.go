@@ -13,9 +13,10 @@ import (
 
 // migrateDatabase updates the schema to the most recent version known by the binary.
 // It owns the reporting to the UI any errors.
+// We expect the database already to be initialized iff initialized is set to true.
 // Returns a cleanup function which must be called even if an error is returned and
 // an error code where a non-zero value indicates an error happened.
-func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, requireFresh bool) (func(), int) {
+func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initialized bool) (func(), int) {
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
@@ -52,7 +53,11 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, requireF
 		ui.Error(fmt.Errorf("Error getting database state: %w", err).Error())
 		return unlock, 2
 	}
-	if requireFresh && st.InitializationStarted {
+	if initialized && !st.InitializationStarted {
+		ui.Output(base.WrapAtLength("Database has not been initialized. Please use 'boundary database init' to initialize the boundary database."))
+		return unlock, -1
+	}
+	if !initialized && st.InitializationStarted {
 		ui.Output(base.WrapAtLength("Database has already been initialized. Please use 'boundary database migrate' for any upgrade needs."))
 		return unlock, -1
 	}

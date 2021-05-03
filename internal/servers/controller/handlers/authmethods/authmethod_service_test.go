@@ -126,7 +126,7 @@ func TestGet(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -246,7 +246,7 @@ func TestList(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.ActivePublicState)),
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
 			"signing_algorithms": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
 				return structpb.NewListValue(lv)
@@ -591,7 +591,7 @@ func TestCreate(t *testing.T) {
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 						"api_url_prefix":     structpb.NewStringValue("https://callback.prefix:9281/path"),
-						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
+						"callback_url":       structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback"),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 							return structpb.NewListValue(lv)
