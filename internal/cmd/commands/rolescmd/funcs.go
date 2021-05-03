@@ -297,7 +297,8 @@ func (c *Command) printListTable(items []*roles.Role) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *roles.Role) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*roles.Role)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

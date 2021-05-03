@@ -5,7 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
@@ -131,11 +133,9 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *authmethods.AuthMethod) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*authmethods.AuthMethod)
 	nonAttributeMap := map[string]interface{}{}
-	if item.IsPrimary {
-		nonAttributeMap["Is Primary For Scope"] = item.IsPrimary
-	}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -156,6 +156,11 @@ func printItemTable(item *authmethods.AuthMethod) string {
 	}
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
+	}
+	if result.GetResponse() != nil && result.GetResponse().Map != nil {
+		if result.GetResponse().Map[globals.IsPrimaryField] != nil {
+			nonAttributeMap["Is Primary For Scope"] = item.IsPrimary
+		}
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)

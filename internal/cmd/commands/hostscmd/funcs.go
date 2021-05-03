@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -107,7 +108,8 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *hosts.Host) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*hosts.Host)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

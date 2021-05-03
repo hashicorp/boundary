@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -120,15 +121,16 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *authtokens.AuthToken) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*authtokens.AuthToken)
 	nonAttributeMap := map[string]interface{}{
-		"ID":                         in.Id,
-		"Auth Method ID":             in.AuthMethodId,
-		"User ID":                    in.UserId,
-		"Created Time":               in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":               in.UpdatedTime.Local().Format(time.RFC1123),
-		"Expiration Time":            in.ExpirationTime.Local().Format(time.RFC1123),
-		"Approximate Last Used Time": in.ApproximateLastUsedTime.Local().Format(time.RFC1123),
+		"ID":                         item.Id,
+		"Auth Method ID":             item.AuthMethodId,
+		"User ID":                    item.UserId,
+		"Created Time":               item.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time":               item.UpdatedTime.Local().Format(time.RFC1123),
+		"Expiration Time":            item.ExpirationTime.Local().Format(time.RFC1123),
+		"Approximate Last Used Time": item.ApproximateLastUsedTime.Local().Format(time.RFC1123),
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -139,14 +141,14 @@ func printItemTable(in *authtokens.AuthToken) string {
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 		"",
 		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
+		base.ScopeInfoForOutput(item.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 		)
 	}
 

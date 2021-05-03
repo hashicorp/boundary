@@ -211,38 +211,39 @@ func (c *Command) printListTable(items []*users.User) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *users.User) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*users.User)
 	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+		"ID":           item.Id,
+		"Version":      item.Version,
+		"Created Time": item.CreatedTime.Local().Format(time.RFC1123),
+		"Updated Time": item.UpdatedTime.Local().Format(time.RFC1123),
 	}
 
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
 	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
 	}
-	if in.PrimaryAccountId != "" {
-		nonAttributeMap["PrimaryAccountId"] = in.PrimaryAccountId
+	if item.PrimaryAccountId != "" {
+		nonAttributeMap["PrimaryAccountId"] = item.PrimaryAccountId
 	}
-	if in.LoginName != "" {
-		nonAttributeMap["LoginName"] = in.LoginName
+	if item.LoginName != "" {
+		nonAttributeMap["LoginName"] = item.LoginName
 	}
-	if in.FullName != "" {
-		nonAttributeMap["FullName"] = in.FullName
+	if item.FullName != "" {
+		nonAttributeMap["FullName"] = item.FullName
 	}
-	if in.Email != "" {
-		nonAttributeMap["Email"] = in.Email
+	if item.Email != "" {
+		nonAttributeMap["Email"] = item.Email
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
 	var userMaps []map[string]interface{}
-	if len(in.Accounts) > 0 {
-		for _, account := range in.Accounts {
+	if len(item.Accounts) > 0 {
+		for _, account := range item.Accounts {
 			a := map[string]interface{}{
 				"ID":       account.Id,
 				"Scope ID": account.ScopeId,
@@ -260,18 +261,18 @@ func printItemTable(in *users.User) string {
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 		"",
 		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
+		base.ScopeInfoForOutput(item.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 		)
 	}
 
-	if len(in.Accounts) > 0 {
+	if len(item.Accounts) > 0 {
 		ret = append(ret,
 			"",
 			"  Accounts:",

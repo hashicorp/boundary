@@ -131,7 +131,8 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *sessions.Session) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*sessions.Session)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

@@ -43,4 +43,6 @@ const (
 	TerminationReasonField           = "termination_reason"
 	StatusField                      = "status"
 	StatesField                      = "states"
+	SessionConnectionLimitField      = "session_connection_limit"
+	SessionMaxSecondsField           = "session_max_seconds"
 )

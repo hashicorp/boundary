@@ -193,7 +193,8 @@ func (c *Command) printListTable(items []*groups.Group) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *groups.Group) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*groups.Group)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
