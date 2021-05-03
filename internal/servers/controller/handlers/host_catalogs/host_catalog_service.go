@@ -107,7 +107,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +329,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*static.HostCatalo
 	return hc, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*static.HostCatalog, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*static.HostCatalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err

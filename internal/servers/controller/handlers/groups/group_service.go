@@ -237,6 +237,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
+
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
 		return nil, errors.New(errors.Internal, op, "no request context found")
@@ -290,6 +291,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err != nil {
 		return nil, err
 	}
+
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
 		return nil, errors.New(errors.Internal, op, "no request context found")
@@ -327,6 +329,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err != nil {
 		return nil, err
 	}
+
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
 		return nil, errors.New(errors.Internal, op, "no request context found")
@@ -364,6 +367,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err != nil {
 		return nil, err
 	}
+
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
 		return nil, errors.New(errors.Internal, op, "no request context found")

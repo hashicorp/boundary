@@ -79,7 +79,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), authResults.UserId == auth.AnonymousUserId)
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +460,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bool) ([]*static.HostSet, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*static.HostSet, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err

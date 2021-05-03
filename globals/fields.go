@@ -28,4 +28,9 @@ const (
 	HostCatalogIdField               = "host_catalog_id"
 	HostSetIdsField                  = "host_set_ids"
 	HostIdsField                     = "host_ids"
+	PrincipalIdsField                = "principal_ids"
+	PrincipalsField                  = "principals"
+	GrantScopeIdField                = "grant_scope_id"
+	GrantsField                      = "grants"
+	GrantStringsField                = "grant_strings"
 )
