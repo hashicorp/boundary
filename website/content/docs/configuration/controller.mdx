@@ -30,9 +30,13 @@ controller {
   - `url` - Configures the URL for connecting to Postgres
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
-  - `max_open_connections` - Can be used to control the maximum number of connections that can be opened by the controller.
-  The minimum number of connections required is 2. Setting this value to 0 will allow the controller to open as many connections as 
-  needed.
+  - `max_open_connections` - Can be used to control the maximum number of
+    connections that can be opened by the controller. The minimum number of
+    connections required is 2. Every controller requires 1 non-pooled
+    shared lock connection (which is held for the lifetime of the controller) and
+    a minimum of 1 pooled connection which is used for all other database
+    requests. Setting this value to 0 will allow the controller to open as many
+    connections as needed.
 
   Either can refer to a file on disk (file://) from which a URL will be read; an env
   var (env://) from which the URL will be read; or a direct database URL (postgres://).
