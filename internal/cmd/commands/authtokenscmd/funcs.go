@@ -74,9 +74,9 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 				fmt.Sprintf("  ID:                            %s", t.Id),
 			)
 		}
-		if c.FlagRecursive && t.Scope != nil {
+		if c.FlagRecursive && t.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:                    %s", t.Scope.Id),
+				fmt.Sprintf("    Scope ID:                    %s", t.ScopeId),
 			)
 		}
 		if !t.ApproximateLastUsedTime.IsZero() {

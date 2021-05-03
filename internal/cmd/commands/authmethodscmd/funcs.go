@@ -89,9 +89,9 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 				fmt.Sprintf("  ID:                     %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive && m.Scope != nil {
+		if c.FlagRecursive && m.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
+				fmt.Sprintf("    Scope ID:             %s", m.ScopeId),
 			)
 		}
 		if m.Version > 0 {

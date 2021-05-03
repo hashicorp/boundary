@@ -162,9 +162,9 @@ func (c *Command) printListTable(items []*groups.Group) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive && g.Scope != nil {
+		if c.FlagRecursive && g.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", g.Scope.Id),
+				fmt.Sprintf("    Scope ID:            %s", g.ScopeId),
 			)
 		}
 		if g.Version > 0 {
