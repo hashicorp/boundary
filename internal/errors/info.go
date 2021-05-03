@@ -200,4 +200,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "vault token is not renewable",
 		Kind:    External,
 	},
+	OidcProviderCallbackError: {
+		Message: "oidc provider callback error",
+		Kind:    External,
+	},
 }

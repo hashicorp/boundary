@@ -9,8 +9,12 @@
     margin-right: 30px;
     margin-bottom: 20px;
   }
+
+  & img {
+    max-height: 48px;
+  }
 }
 
 .footerText {
-  color: var(--gray-5);
+  color: var(--gray-4);
 }
