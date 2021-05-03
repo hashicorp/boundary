@@ -24,6 +24,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -153,6 +154,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 	serversRepoFn := func() (*servers.Repository, error) {
 		return servers.NewRepository(rw, rw, kmsCache)
 	}
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -194,14 +196,14 @@ func TestList_FilterNonPublic(t *testing.T) {
 	}{
 		{
 			name:      "unauthenticated",
-			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)),
 			respCount: 1,
 		},
 		{
 			name: "authenticated",
 			reqCtx: func() context.Context {
 				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
-				return auth.NewVerifierContext(context.Background(),
+				return auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
 					nil,
 					iamRepoFn,
 					authTokenRepoFn,

@@ -29,9 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -54,21 +52,23 @@ var (
 		action.List,
 	}
 
-	orgCollectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.AuthMethod: authmethods.CollectionActions,
-		resource.AuthToken:  authtokens.CollectionActions,
-		resource.Group:      groups.CollectionActions,
-		resource.Role:       roles.CollectionActions,
-		resource.Scope:      CollectionActions,
-		resource.Session:    sessions.CollectionActions,
-		resource.User:       users.CollectionActions,
-	}
+	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
+		scope.Org.String(): {
+			resource.AuthMethod: authmethods.CollectionActions,
+			resource.AuthToken:  authtokens.CollectionActions,
+			resource.Group:      groups.CollectionActions,
+			resource.Role:       roles.CollectionActions,
+			resource.Scope:      CollectionActions,
+			resource.Session:    sessions.CollectionActions,
+			resource.User:       users.CollectionActions,
+		},
 
-	projectCollectionTypeMap = map[resource.Type]action.ActionSet{
-		resource.Group:       groups.CollectionActions,
-		resource.HostCatalog: host_catalogs.CollectionActions,
-		resource.Role:        roles.CollectionActions,
-		resource.Target:      targets.CollectionActions,
+		scope.Project.String(): {
+			resource.Group:       groups.CollectionActions,
+			resource.HostCatalog: host_catalogs.CollectionActions,
+			resource.Role:        roles.CollectionActions,
+			resource.Target:      targets.CollectionActions,
+		},
 	}
 )
 
@@ -96,36 +96,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 }
 
 var _ pbs.ScopeServiceServer = Service{}
-
-func populateCollectionAuthorizedActions(ctx context.Context,
-	authResults auth.VerifyResults,
-	item *pb.Scope) error {
-	res := &perms.Resource{
-		ScopeId: item.Id,
-	}
-	mapToRange := orgCollectionTypeMap
-	if item.Type == "project" {
-		mapToRange = projectCollectionTypeMap
-	}
-	// Range over the defined collections and check permissions against those
-	// collections. We use the ID of this scope being returned, not its parent,
-	// hence passing in a resource here.
-	for k, v := range mapToRange {
-		res.Type = k
-		acts := authResults.FetchActionSetForType(ctx, k, v, auth.WithResource(res)).Strings()
-		if len(acts) > 0 {
-			if item.AuthorizedCollectionActions == nil {
-				item.AuthorizedCollectionActions = make(map[string]*structpb.ListValue)
-			}
-			lv, err := structpb.NewList(strutil.StringListToInterfaceList(acts))
-			if err != nil {
-				return err
-			}
-			item.AuthorizedCollectionActions[k.String()+"s"] = lv
-		}
-	}
-	return nil
-}
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
@@ -178,11 +148,11 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		if len(item.AuthorizedActions) == 0 {
 			continue
 		}
+		if item.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.Id, ""); err != nil {
+			return nil, err
+		}
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
-			if err := populateCollectionAuthorizedActions(ctx, authResults, item); err != nil {
-				return nil, err
-			}
 		}
 	}
 
@@ -209,7 +179,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 		act = act[0:2]
 	}
 	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, act).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
 		return nil, err
 	}
 	return &pbs.GetScopeResponse{Item: p}, nil
@@ -230,7 +200,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	}
 	p.Scope = authResults.Scope
 	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
 		return nil, err
 	}
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
@@ -251,7 +221,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	}
 	p.Scope = authResults.Scope
 	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
-	if err := populateCollectionAuthorizedActions(ctx, authResults, p); err != nil {
+	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
 		return nil, err
 	}
 	return &pbs.UpdateScopeResponse{Item: p}, nil
