@@ -136,7 +136,7 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   accountClaimMaps,
 				Target: &c.flagAccountClaimMaps,
-				Usage:  `The optional account claim maps from custom claims to the standard claims of sub, name and email.  These maps are represented as key=value where the key equals the from-claim and the value equals the to-claim.  For example "oid=sub". May be specified multiple times.`,
+				Usage:  `The optional account claim maps from custom claims to the standard claims of sub, name and email.  These maps are represented as key=value where the key equals the Provider from-claim and the value equals the Boundary to-claim.  For example "oid=sub". May be specified multiple times for different to-claims.`,
 			})
 		case stateFlagName:
 			f.StringVar(&base.StringVar{

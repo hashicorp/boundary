@@ -38,6 +38,14 @@ func Test_upsertAccount(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
 		WithSigningAlgs(RS256))
 
+	amWithMapping := TestAuthMethod(
+		t,
+		conn, databaseWrapper, org.PublicId, ActivePrivateState,
+		"alice_rp", "fido",
+		WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim}),
+		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
+		WithSigningAlgs(RS256))
+
 	tests := []struct {
 		name            string
 		am              *AuthMethod
@@ -82,6 +90,17 @@ func Test_upsertAccount(t *testing.T) {
 				Subject:      "success-idTk-full-name-and-email",
 				Email:        "alice@alice.com",
 				FullName:     "alice eve-smith",
+			}},
+		},
+		{
+			name:     "success-map-idTk",
+			am:       amWithMapping,
+			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-defaults", "oid": "success-map"},
+			atClaims: map[string]interface{}{},
+			wantAcct: &Account{Account: &store.Account{
+				AuthMethodId: amWithMapping.PublicId,
+				Issuer:       "https://alice-active-priv.com",
+				Subject:      "success-map",
 			}},
 		},
 		{

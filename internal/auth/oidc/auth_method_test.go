@@ -576,10 +576,6 @@ func Test_convertValueObjects(t *testing.T) {
 
 	testClaimMaps := []string{"oid=sub", "display_name=name"}
 	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
-	const (
-		from = 0
-		to   = 1
-	)
 	acms, err := ParseAccountClaimMaps(testClaimMaps...)
 	require.NoError(t, err)
 	for from, to := range acms {
@@ -702,7 +698,37 @@ func Test_convertValueObjects(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			testSortConverted(t, tt.wantValues)
+			testSortConverted(t, values)
 			assert.Equal(tt.wantValues, values)
 		})
 	}
+}
+
+type converted []interface{}
+
+func (a converted) Len() int      { return len(a) }
+func (a converted) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a converted) Less(i, j int) bool {
+	switch a[i].(type) {
+	case *SigningAlg:
+		return a[i].(*SigningAlg).GetAlg() < a[j].(*SigningAlg).GetAlg()
+	case *Certificate:
+		return a[i].(*Certificate).GetCert() < a[j].(*Certificate).GetCert()
+	case *AccountClaimMap:
+		return a[i].(*AccountClaimMap).GetToClaim() < a[j].(*AccountClaimMap).GetToClaim()
+	case *AudClaim:
+		return a[i].(*AudClaim).GetAud() < a[j].(*AudClaim).GetAud()
+	case *ClaimsScope:
+		return a[i].(*ClaimsScope).GetScope() < a[j].(*ClaimsScope).GetScope()
+	}
+	return false
+}
+
+func testSortConverted(t *testing.T, c *convertedValues) {
+	sort.Sort(converted(c.Algs))
+	sort.Sort(converted(c.Certs))
+	sort.Sort(converted(c.AccountClaimMaps))
+	sort.Sort(converted(c.Auds))
+	sort.Sort(converted(c.ClaimsScopes))
 }

@@ -71,6 +71,9 @@ func (cs *AccountClaimMap) validate(caller errors.Op) error {
 	case "sub", "email", "profile":
 	default:
 	}
+	// if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
+	// 	return errors.Wrap(err, caller)
+	// }
 	return nil
 }
 

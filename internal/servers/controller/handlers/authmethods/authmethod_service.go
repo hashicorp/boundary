@@ -816,9 +816,16 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 					}
 				}
 				if len(attrs.GetAccountClaimMaps()) > 0 {
-					_, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+					acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
 					if err != nil {
 						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
+					}
+					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
+					for from, rawTo := range acm {
+						if foundTo[rawTo] {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", from, rawTo, rawTo)
+						}
+						foundTo[rawTo] = true
 					}
 				}
 			}
@@ -934,7 +941,13 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				if err != nil {
 					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 				} else {
+					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
 					for from, rawTo := range acm {
+						if foundTo[rawTo] {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", from, rawTo, rawTo)
+						}
+						foundTo[rawTo] = true
+
 						to, err := oidc.ConvertToAccountToClaim(rawTo)
 						if err != nil {
 							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", from, rawTo, err.Error())
