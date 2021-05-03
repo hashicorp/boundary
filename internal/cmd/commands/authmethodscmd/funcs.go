@@ -76,54 +76,54 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		"",
 		"Auth Method information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if m.Id != "" {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                     %s", m.Id),
+				fmt.Sprintf("  ID:                     %s", item.Id),
 			)
 		} else {
 			output = append(output,
 				fmt.Sprintf("  ID:                     %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive && m.ScopeId != "" {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:             %s", m.ScopeId),
+				fmt.Sprintf("    Scope ID:             %s", item.ScopeId),
 			)
 		}
-		if m.Version > 0 {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:              %d", m.Version),
+				fmt.Sprintf("    Version:              %d", item.Version),
 			)
 		}
-		if m.Type != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Type:                 %s", m.Type),
+				fmt.Sprintf("    Type:                 %s", item.Type),
 			)
 		}
-		if m.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                 %s", m.Name),
+				fmt.Sprintf("    Name:                 %s", item.Name),
 			)
 		}
-		if m.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:          %s", m.Description),
+				fmt.Sprintf("    Description:          %s", item.Description),
 			)
 		}
-		if true {
+		if item.IsPrimary {
 			output = append(output,
-				fmt.Sprintf("    Is Primary For Scope: %t", m.IsPrimary),
+				fmt.Sprintf("    Is Primary For Scope: %t", item.IsPrimary),
 			)
 		}
 
-		if len(m.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}

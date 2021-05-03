@@ -34,4 +34,13 @@ const (
 	GrantsField                      = "grants"
 	GrantStringsField                = "grant_strings"
 	PrimaryAuthMethodId              = "primary_auth_method_id"
+	TargetIdField                    = "target_id"
+	HostIdField                      = "host_id"
+	HostSetIdField                   = "host_set_id"
+	AuthTokenIdField                 = "auth_token_id"
+	EndpointField                    = "endpoint"
+	CertificateField                 = "certificate"
+	TerminationReasonField           = "termination_reason"
+	StatusField                      = "status"
+	StatesField                      = "states"
 )
