@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -68,6 +67,7 @@ type Command struct {
 	flagPassthroughDirectory         string
 	flagRecoveryKey                  string
 	flagDatabaseUrl                  string
+	flagContainerImage               string
 	flagDisableDatabaseDestruction   bool
 }
 
@@ -247,6 +247,11 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagDatabaseUrl,
 		Usage:  `If set, specifies the URL used to connect to the database for initialization (otherwise a Docker container will be started). This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
+	f.StringVar(&base.StringVar{
+		Name:   "container-image",
+		Target: &c.flagContainerImage,
+		Usage:  `Specifies a container image to be utilized. Must be in <repo>:<tag> format`,
+	})
 
 	return set
 }
@@ -270,8 +275,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-
-	// childShutdownCh := make(chan struct{})
 
 	c.Config, err = config.DevCombined()
 	if err != nil {
@@ -433,20 +436,20 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
+	var opts []base.Option
 	switch c.flagDatabaseUrl {
 	case "":
-		var opts []base.Option
 		if c.flagDisableDatabaseDestruction {
 			opts = append(opts, base.WithSkipDatabaseDestruction())
 		}
-		if err := c.CreateDevDatabase(c.Context, "postgres", opts...); err != nil {
-			if err == docker.ErrDockerUnsupported {
-				c.UI.Error("Automatically starting a Docker container running Postgres is not currently supported on this platform. Please use -database-url to pass in a URL (or an env var or file reference to a URL) for connecting to an existing empty database.")
-				return base.CommandCliError
-			}
-			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
+		if c.flagContainerImage != "" {
+			opts = append(opts, base.WithContainerImage(c.flagContainerImage))
+		}
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
+			c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
 			return base.CommandCliError
 		}
+
 		if !c.flagDisableDatabaseDestruction {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
@@ -456,7 +459,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
-		if err := c.CreateDevDatabase(c.Context, "postgres"); err != nil {
+		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
@@ -684,7 +687,7 @@ func (c *Command) startDevOidcAuthMethod() error {
 					PubKey:  ed25519.PublicKey(c.oidcSetup.pubKey),
 					Alg:     capoidc.EdDSA,
 				},
-				AllowedRedirectURIs: []string{fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", c.oidcSetup.callbackUrl.String(), c.DevOidcAuthMethodId)},
+				AllowedRedirectURIs: []string{fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", c.oidcSetup.callbackUrl.String())},
 				ClientID:            &c.oidcSetup.clientId,
 				ClientSecret:        &clientSecret,
 			}))

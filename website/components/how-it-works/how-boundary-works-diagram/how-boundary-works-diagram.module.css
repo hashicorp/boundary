@@ -25,7 +25,7 @@
 
   & .boundaryFill,
   & .arrowHead {
-    fill: #f04e54;
+    fill: var(--boundary, #ec585d);
   }
 
   & .arrowHead,
@@ -37,7 +37,7 @@
 
   & .arrowSegment {
     stroke-width: 2px;
-    stroke: #f04e54;
+    stroke: var(--boundary, #ec585d);
     stroke-miterlimit: 10;
     stroke-linecap: round;
     fill: none;

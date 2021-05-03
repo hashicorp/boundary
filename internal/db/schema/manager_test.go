@@ -16,6 +16,7 @@ import (
 
 func TestNewManager(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -37,6 +38,7 @@ func TestNewManager(t *testing.T) {
 
 func TestCurrentState(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	t.Cleanup(func() {
 		if err := c(); err != nil {
@@ -78,6 +80,7 @@ func TestCurrentState(t *testing.T) {
 
 func TestRollForward(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -140,6 +143,7 @@ func TestRollForward_NotFromFresh(t *testing.T) {
 
 func TestRunMigration_canceledContext(t *testing.T) {
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -191,6 +195,7 @@ func TestRollForward_BadSQL(t *testing.T) {
 func TestManager_ExclusiveLock(t *testing.T) {
 	ctx := context.Background()
 	dialect := "postgres"
+
 	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -214,7 +219,9 @@ func TestManager_ExclusiveLock(t *testing.T) {
 
 func TestManager_SharedLock(t *testing.T) {
 	ctx := context.Background()
-	c, u, _, err := docker.StartDbInDocker("postgres")
+	dialect := "postgres"
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())
@@ -241,7 +248,9 @@ func TestManager_SharedLock(t *testing.T) {
 func Test_GetMigrationLog(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	c, u, _, err := docker.StartDbInDocker("postgres")
+	dialect := "postgres"
+
+	c, u, _, err := docker.StartDbInDocker(dialect)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

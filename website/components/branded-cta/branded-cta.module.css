@@ -1,6 +1,6 @@
 .brandedCta {
   padding: 88px 0;
-  background-color: var(--boundary-l3);
+  background-color: var(--boundary-secondary);
   background-image: url('./img/bg-pattern.svg');
   background-position: bottom right;
   background-repeat: no-repeat;
@@ -41,7 +41,7 @@
 .content {
   max-width: 647px;
   margin: 0;
-  color: var(--gray-3);
+  color: var(--gray-2);
 }
 
 .content-and-links {
