@@ -67,10 +67,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `read` or other capabilities on the resources. The default scope permissions
   have been updated to convey `no-op,list` instead of `read,list`.
   ([PR](https://github.com/hashicorp/boundary/pull/1138))
-* listing: Return only specific fields when listing is occurring by the
-  anonymous user; this enhances the behavior introduced in 0.2.0 to all other
-  resource types ([PR](https://github.com/hashicorp/boundary/pull/1150))
-  [PR](https://github.com/hashicorp/boundary/pull/1138)
 * cli/api/sdk: User resources have new attributes for:
   * Primary Account ID
   * Login Name
