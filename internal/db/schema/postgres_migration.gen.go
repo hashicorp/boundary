@@ -5645,13 +5645,13 @@ create table target_credential_purpose_enm (
         references credential_library (public_id)
         on delete cascade
         on update cascade,
-    target_credential_purpose text not null
-      constraint target_credential_purpose_fkey
+    credential_purpose text not null
+      constraint target_credential_purpose_enm_fkey
         references target_credential_purpose_enm (name)
         on delete restrict
         on update cascade,
     create_time wt_timestamp,
-    primary key(target_id, credential_library_id, target_credential_purpose)
+    primary key(target_id, credential_library_id, credential_purpose)
   );
   comment on table target_credential_library is
     'target_credential_library is a join table between the target and credential_library tables. '
@@ -5661,7 +5661,7 @@ create table target_credential_purpose_enm (
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on target_credential_library
-    for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'target_credential_purpose', 'create_time');
+    for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'credential_purpose', 'create_time');
 `),
 			10004: []byte(`
 create table session_credential_library (
