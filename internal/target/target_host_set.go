@@ -23,7 +23,7 @@ type TargetHostSet struct {
 
 var _ db.VetForWriter = (*TargetHostSet)(nil)
 
-// TargetHostSet creates a new in memory target host set. No options are
+// NewTargetHostSet creates a new in memory target host set. No options are
 // currently supported.
 func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, error) {
 	const op = "target.NewTargetHostSet"
