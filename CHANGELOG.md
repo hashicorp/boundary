@@ -6,13 +6,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* Anonymous listing: As an update to the behavior introduced in 0.2.0 for auth
-  methods and scopes, when listing all types of resources without authentication
-  (that is, as the anonymous user `u_anon`), only some information is returned
-  -- type, scope, name, description, and possibly some others depending on the
-  resource type. Although in many cases listing would not be granted to the
-  anonymous user for resources, this prevents specific configuration information
-  from being returned if it is.
 * API `delete` actions now result in a `204` status code and no body when
   successful. This was not the case previously due to a technical limitation
   which has now been solved.
@@ -101,6 +94,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * cors: Fix allowing all origins by default
   ([PR](https://github.com/hashicorp/boundary/pull/1134))
+* cli: It is now an error to run `boundary database migrate` on an uninitalized db.
+  Use `boundary database init` instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/1184))
 
 ## 0.2.0 (2021/04/14)
 
