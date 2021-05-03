@@ -26,7 +26,7 @@ func TestMigrateDatabase(t *testing.T) {
 		expectedError  string
 	}{
 		{
-			name: "not_initialized_expected_not_intialized",
+			name:        "not_initialized_expected_not_intialized",
 			initialized: false,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
@@ -92,7 +92,7 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedOutput: "Database has already been initialized. Please use 'boundary database migrate'\nfor any upgrade needs.\n",
 		},
 		{
-			name: "old_version_table_used_intialized",
+			name:        "old_version_table_used_intialized",
 			initialized: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
@@ -133,7 +133,7 @@ func TestMigrateDatabase(t *testing.T) {
 		},
 		{
 			name:          "bad_url_initialized",
-			initialized: true,
+			initialized:   true,
 			urlProvider:   func() string { return "badurl" },
 			expectedCode:  2,
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
@@ -146,7 +146,7 @@ func TestMigrateDatabase(t *testing.T) {
 			expectedError: "Unable to connect to the database at \"badurl\"\n",
 		},
 		{
-			name: "cant_get_lock_initialized",
+			name:        "cant_get_lock_initialized",
 			initialized: true,
 			urlProvider: func() string {
 				c, u, _, err := db.StartDbInDocker(dialect)
