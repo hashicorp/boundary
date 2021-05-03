@@ -170,6 +170,21 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
+	// we don't allow updates for "sub" claim maps, because we have no way to
+	// determine if the updated "from" claim in the map might create collisions
+	// with any existing account's subject.
+	for _, rawCm := range addMaps {
+		cm := rawCm.(*AccountClaimMap)
+		if cm.ToClaim == string(ToSubClaim) {
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
+		}
+	}
+	for _, rawCm := range deleteMaps {
+		cm := rawCm.(*AccountClaimMap)
+		if cm.ToClaim == string(ToSubClaim) {
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
+		}
+	}
 
 	var filteredDbMask, filteredNullFields []string
 	for _, f := range dbMask {
@@ -503,38 +518,38 @@ func valueObjectChanges(
 	var deletes []interface{}
 	if strutil.StrListContains(nullFields, string(valueObjectName)) {
 		deletes = make([]interface{}, 0, len(oldVOs))
-		for _, a := range oldVOs {
-			alg, err := factory(publicId, a)
+		for _, v := range oldVOs {
+			deleteObj, err := factory(publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, op)
 			}
-			deletes = append(deletes, alg)
-			delete(foundVOs, a)
+			deletes = append(deletes, deleteObj)
+			delete(foundVOs, v)
 		}
 	}
 	if strutil.StrListContains(dbMask, string(valueObjectName)) {
 		adds = make([]interface{}, 0, len(newVOs))
-		for _, a := range newVOs {
-			if _, ok := foundVOs[a]; ok {
-				delete(foundVOs, a)
+		for _, v := range newVOs {
+			if _, ok := foundVOs[v]; ok {
+				delete(foundVOs, v)
 				continue
 			}
-			alg, err := factory(publicId, a)
+			obj, err := factory(publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, op)
 			}
-			adds = append(adds, alg)
-			delete(foundVOs, a)
+			adds = append(adds, obj)
+			delete(foundVOs, v)
 		}
 	}
 	if len(foundVOs) > 0 {
-		for a := range foundVOs {
-			alg, err := factory(publicId, a)
+		for v := range foundVOs {
+			obj, err := factory(publicId, v)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, op)
 			}
-			deletes = append(deletes, alg)
-			delete(foundVOs, a)
+			deletes = append(deletes, obj)
+			delete(foundVOs, v)
 		}
 	}
 	return adds, deletes, nil

@@ -930,9 +930,21 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 				}
 			}
 			if len(attrs.GetAccountClaimMaps()) > 0 {
-				_, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
+				acm, err := oidc.ParseAccountClaimMaps(attrs.GetAccountClaimMaps()...)
 				if err != nil {
 					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
+				} else {
+					for from, rawTo := range acm {
+						to, err := oidc.ConvertToAccountToClaim(rawTo)
+						if err != nil {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", from, rawTo, err.Error())
+							break
+						}
+						if to == oidc.ToSubClaim {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", from, rawTo)
+							break
+						}
+					}
 				}
 			}
 		default:

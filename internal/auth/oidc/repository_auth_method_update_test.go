@@ -68,7 +68,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
 					WithClaimsScopes("email", "profile"),
-					WithAccountClaimMap(map[string]AccountToClaim{"oid": "sub"}),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": "name"}),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
@@ -79,7 +79,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
 				am.ClientSecret = "This is a new secret"
-				am.AccountClaimMaps = []string{"uid=sub"}
+				am.AccountClaimMaps = []string{"preferred_name=name"}
 				return &am
 			},
 			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ClientSecretField, AccountClaimMapsField},
@@ -370,6 +370,34 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.ApiUrl = updateWith.ApiUrl
 				return am
 			},
+		},
+		{
+			name: "attempt-to-update-sub-account-claim-map",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": "sub"}),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.AccountClaimMaps = []string{"uid=sub"}
+				return &am
+			},
+			fieldMasks:   []string{AccountClaimMapsField},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name:         "nil-authMethod",

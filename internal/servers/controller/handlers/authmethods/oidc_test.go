@@ -914,7 +914,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Attributes: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"account_claim_maps": func() *structpb.Value {
-								lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
 								return structpb.NewListValue(lv)
 							}(),
 						},
@@ -931,7 +931,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
 							f["account_claim_maps"] = func() *structpb.Value {
-								lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
 								return structpb.NewListValue(lv)
 							}()
 							return f
@@ -942,6 +942,25 @@ func TestUpdate_OIDC(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "Attempt to Change Account Claim Maps for sub",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.account_claim_maps"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"oid=sub"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "Unset Issuer Is Incomplete",
