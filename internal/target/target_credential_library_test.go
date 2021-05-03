@@ -61,6 +61,7 @@ func TestTargetCredentialLibrary_New(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
+			assert.EqualValues(tt.want, got)
 		})
 	}
 }
