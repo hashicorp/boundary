@@ -37,7 +37,7 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 		return nil, errors.New(errors.InvalidParameter, op, "missing token request id")
 	}
 
-	reqTkWrapper, err := unwrapMessage(ctx, tokenRequestId)
+	reqTkWrapper, err := UnwrapMessage(ctx, tokenRequestId)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
