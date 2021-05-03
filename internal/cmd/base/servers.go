@@ -469,7 +469,14 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	var c func() error
 
 	opts := getOpts(opt...)
-	dialect = "postgres"
+
+	//We should only get back postgres for now, but laying the foundation for non-postgres
+	switch opts.withDialect {
+	case "":
+		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
+	default:
+		dialect = opts.withDialect
+	}
 
 	switch b.DatabaseUrl {
 	case "":

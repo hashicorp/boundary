@@ -22,11 +22,13 @@ type Options struct {
 	withSkipHostResourcesCreation bool
 	withSkipTargetCreation        bool
 	withContainerImage            string
+	withDialect                   string
 }
 
 func getDefaultOptions() Options {
 	return Options{
 		withContainerImage: "postgres",
+		withDialect:        "postgres",
 	}
 }
 
@@ -92,5 +94,11 @@ func WithSkipTargetCreation() Option {
 func WithContainerImage(name string) Option {
 	return func(o *Options) {
 		o.withContainerImage = name
+	}
+}
+
+func withDialect(dialect string) Option {
+	return func(o *Options) {
+		o.withDialect = dialect
 	}
 }
