@@ -89,7 +89,7 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
-	stateWrapper, err := unwrapMessage(ctx, state)
+	stateWrapper, err := UnwrapMessage(ctx, state)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
@@ -151,7 +151,7 @@ func Callback(
 	if strings.TrimSpace(am.ApiUrl) == "" {
 		return "", errors.New(errors.InvalidParameter, op, "empty api URL")
 	}
-	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, am.ApiUrl, am.PublicId), opts...)
+	oidcRequest, err := oidc.NewRequest(AttemptExpiration, fmt.Sprintf(CallbackEndpoint, am.ApiUrl), opts...)
 	if err != nil {
 		return "", errors.New(errors.Unknown, op, "unable to create oidc request for token exchange", errors.WithWrap(err))
 	}

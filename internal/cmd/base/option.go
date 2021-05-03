@@ -21,10 +21,15 @@ type Options struct {
 	withSkipScopesCreation        bool
 	withSkipHostResourcesCreation bool
 	withSkipTargetCreation        bool
+	withContainerImage            string
+	withDialect                   string
 }
 
 func getDefaultOptions() Options {
-	return Options{}
+	return Options{
+		withContainerImage: "postgres",
+		withDialect:        "postgres",
+	}
 }
 
 // WithNoTokenScope tells the client not to set a scope for the client from a
@@ -81,5 +86,19 @@ func WithSkipHostResourcesCreation() Option {
 func WithSkipTargetCreation() Option {
 	return func(o *Options) {
 		o.withSkipTargetCreation = true
+	}
+}
+
+// WithContainerImage tells the command which container image
+// to start a dev database with
+func WithContainerImage(name string) Option {
+	return func(o *Options) {
+		o.withContainerImage = name
+	}
+}
+
+func withDialect(dialect string) Option {
+	return func(o *Options) {
+		o.withDialect = dialect
 	}
 }

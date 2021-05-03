@@ -18,6 +18,7 @@ export default function HomepageHero({
     <div className={styles.homepageHero}>
       <Hero
         data={{
+          product: 'boundary',
           title: title,
           description: description,
           buttons: links,

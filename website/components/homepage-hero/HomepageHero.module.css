@@ -1,7 +1,7 @@
 .homepageHero {
   padding: 128px 0;
   background-repeat: no-repeat;
-  background-color: var(--boundary-l3);
+  background-color: var(--boundary-secondary);
   background-image: url(/img/hero-pattern.svg);
   background-position: bottom right;
 
@@ -21,7 +21,7 @@
 
     /* Asana ticket to address this debt: https://app.asana.com/0/1100423001970639/1200214305924669/f */
     & :global(.g-btn:nth-of-type(2)) {
-      color: var(--gray-1);
+      border: unset;
 
       &::after {
         display: inline-block;
@@ -42,14 +42,6 @@
       & :global(.controls) {
         padding-top: 0;
         margin-bottom: 32px;
-
-        & :global(.progress-bar) {
-          background-color: var(--gray-6);
-
-          & > span {
-            background: var(--boundary);
-          }
-        }
       }
     }
   }

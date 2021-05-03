@@ -523,7 +523,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
 		}
-		if err := tc.b.CreateDevDatabase(ctx, "postgres", createOpts...); err != nil {
+		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
 		}
 	}

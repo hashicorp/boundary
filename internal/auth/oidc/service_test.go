@@ -118,7 +118,7 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
 
-			wrappedMsg, err := unwrapMessage(ctx, encrypted)
+			wrappedMsg, err := UnwrapMessage(ctx, encrypted)
 			assert.Equalf(tt.authMethod.PublicId, wrappedMsg.AuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, wrappedMsg.AuthMethodId)
 			assert.Equalf(tt.authMethod.ScopeId, wrappedMsg.ScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, wrappedMsg.ScopeId)
 
