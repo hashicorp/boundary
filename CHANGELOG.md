@@ -90,6 +90,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * cors: Fix allowing all origins by default
   [PR](https://github.com/hashicorp/boundary/pull/1134)
+* cli: It is now an error to run `boundary database migrate` on an uninitalized db.
+  Use `boundary database init` instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/1184))
 
 ## 0.2.0 (2021/04/14)
 
