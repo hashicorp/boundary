@@ -37,6 +37,7 @@ const (
 	TargetIdField                    = "target_id"
 	HostIdField                      = "host_id"
 	HostSetIdField                   = "host_set_id"
+	HostSetsField                    = "host_sets"
 	AuthTokenIdField                 = "auth_token_id"
 	EndpointField                    = "endpoint"
 	CertificateField                 = "certificate"
@@ -45,4 +46,5 @@ const (
 	StatesField                      = "states"
 	SessionConnectionLimitField      = "session_connection_limit"
 	SessionMaxSecondsField           = "session_max_seconds"
+	WorkerFilterField                = "worker_filter"
 )
