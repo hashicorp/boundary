@@ -243,7 +243,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		return nil, err
 	}
 
-	return &pbs.CreateAccountResponse{Item: item, Uri: fmt.Sprintf("accounts/%s", acct.GetPublicId())}, nil
+	return &pbs.CreateAccountResponse{Item: item, Uri: fmt.Sprintf("accounts/%s", item.GetId())}, nil
 }
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.

@@ -18,7 +18,6 @@ const (
 	AuthMethodIdField                = "auth_method_id"
 	AccountIdField                   = "account_id"
 	UserIdField                      = "user_id"
-	HostCatalogField                 = "host_catalog_id"
 	IsPrimaryField                   = "is_primary"
 	AuthorizedActionsField           = "authorized_actions"
 	AuthorizedCollectionActionsField = "authorized_collection_actions"
@@ -26,4 +25,7 @@ const (
 	ApproximateLastUsedTimeField     = "approximate_last_used_time"
 	MembersField                     = "members"
 	MemberIdsField                   = "member_ids"
+	HostCatalogIdField               = "host_catalog_id"
+	HostSetIdsField                  = "host_set_ids"
+	HostSetsField                    = "host_sets"
 )
