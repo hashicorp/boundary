@@ -1,5 +1,5 @@
 .root {
-  border-bottom: 1px solid var(--gray-6);
+  border-bottom: 1px solid var(--gray-5);
   margin: 0;
   margin-top: -1px;
   position: relative;
@@ -56,7 +56,7 @@
   composes: g-type-code from global;
 
   & .method {
-    color: var(--gray-4);
+    color: var(--gray-3);
 
     &[data-is-hovered='true'] {
       color: var(--brand);
@@ -64,7 +64,7 @@
   }
 
   & .path {
-    color: var(--gray-3);
+    color: var(--gray-2);
   }
 }
 
@@ -125,8 +125,8 @@
   & .columnSectionHeading {
     margin: 0 !important; /* Needed to override ".g-content p" margins */
     padding-bottom: 8px;
-    border-bottom: 1px solid var(--gray-6);
-    color: var(--gray-4);
+    border-bottom: 1px solid var(--gray-5);
+    color: var(--gray-3);
   }
 }
 
