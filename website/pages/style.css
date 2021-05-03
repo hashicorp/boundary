@@ -8,7 +8,6 @@
 @import '~@hashicorp/react-button/styles/index.css';
 @import '~@hashicorp/react-consent-manager/style.css';
 @import '~@hashicorp/react-toggle/style.css';
-@import '~@hashicorp/react-section-header/style.css';
 @import '~@hashicorp/react-vertical-text-block-list/style.css';
 @import '~@hashicorp/react-docs-page/style.css';
 @import '~@hashicorp/react-search/style.css';
@@ -17,7 +16,7 @@
 @import '~@hashicorp/react-tabs/style.css';
 @import '~@hashicorp/react-enterprise-alert/style.css';
 @import '~@hashicorp/react-product-features-list/style.css';
-@import '~@hashicorp/react-use-cases/dist/style.css';
+@import '~@hashicorp/react-use-cases/style.css';
 @import '~@hashicorp/react-alert-banner/style.css';
 
 /* Local Components */
@@ -58,4 +57,8 @@
 
 .boundary-clickthrough-desktop-video {
   max-width: 800px;
+}
+
+.g-type-body {
+  color: var(--gray-2);
 }

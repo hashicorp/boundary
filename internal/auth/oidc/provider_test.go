@@ -25,7 +25,7 @@ func Test_ProviderCaching(t *testing.T) {
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
-	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider needs the complete callback URL
+	p1 := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect), tp) // provider needs the complete callback URL
 
 	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
 		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
@@ -94,7 +94,7 @@ func Test_convertToProvider(t *testing.T) {
 	require.NoError(t, err)
 	id := authMethodId
 	secret := authMethodId
-	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect, authMethodId), tp) // provider callback needs the complete URL
+	p := testProvider(t, id, secret, fmt.Sprintf(CallbackEndpoint, allowedRedirect), tp) // provider callback needs the complete URL
 	testAm, err := NewAuthMethod("fake-org", id, ClientSecret(secret),
 		WithIssuer(issuer), WithApiUrl(TestConvertToUrls(t, allowedRedirect)[0]))
 	require.NoError(t, err)

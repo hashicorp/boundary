@@ -3,7 +3,7 @@ package vault
 const (
 	insertTokenQuery = `
 insert into credential_vault_token (
-  token_sha256, -- $1
+  token_hmac, -- $1
   token, -- $2
   store_id, -- $3
   key_id, -- $4
@@ -11,7 +11,7 @@ insert into credential_vault_token (
   last_renewal_time, -- $6
   expiration_time -- $7
 ) values (
-  $1, -- token_sha256
+  $1, -- token_hmac
   $2, -- token
   $3, -- store_id
   $4, -- key_id
@@ -25,7 +25,7 @@ insert into credential_vault_lease (
   public_id, -- $1
   library_id, -- $2
   session_id, -- $3
-  token_sha256, -- $4
+  token_hmac, -- $4
   lease_id, -- $5
   is_renewable, -- $6
   last_renewal_time, -- $7
@@ -34,7 +34,7 @@ insert into credential_vault_lease (
   $1, -- public_id
   $2, -- library_id
   $3, -- session_id
-  $4, -- token_sha256
+  $4, -- token_hmac
   $5, -- lease_id
   $6, -- is_renewable
   $7, -- last_renewal_time

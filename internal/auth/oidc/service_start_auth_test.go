@@ -76,7 +76,7 @@ func Test_StartAuth(t *testing.T) {
 
 	stdSetup := func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (a *AuthMethod, allowedRedirect string) {
 		// update the allowed redirects for the TestProvider
-		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL, am.PublicId)
+		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL)
 		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 		r, err := repoFn()
 		require.NoError(t, err)
@@ -206,7 +206,7 @@ func Test_StartAuth(t *testing.T) {
 
 			// verify the state in the authUrl can be decrypted and it's correct
 			state := authParams["state"][0]
-			wrappedStReq, err := unwrapMessage(ctx, state)
+			wrappedStReq, err := UnwrapMessage(ctx, state)
 			require.NoError(err)
 			repo, err := tt.repoFn()
 			require.NoError(err)
@@ -240,7 +240,7 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(configHash, reqState.ProviderConfigHash)
 
 			// verify the token_id in the tokenUrl can be decrypted and it's correct
-			wrappedTkReq, err := unwrapMessage(ctx, tokenId)
+			wrappedTkReq, err := UnwrapMessage(ctx, tokenId)
 			require.NoError(err)
 			wrappingWrapper, err = requestWrappingWrapper(ctx, repo.kms, wrappedTkReq.ScopeId, wrappedTkReq.AuthMethodId)
 			require.NoError(err)

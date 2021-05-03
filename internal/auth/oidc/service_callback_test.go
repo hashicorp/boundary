@@ -302,7 +302,7 @@ func Test_Callback(t *testing.T) {
 			tp.SetExpectedAuthNonce(testNonce)
 			if tt.am != nil {
 				tp.SetClientCreds(tt.am.ClientId, tt.am.ClientSecret)
-				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.am.ApiUrl, tt.am.PublicId)
+				tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, tt.am.ApiUrl)
 				tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 			}
 			if tt.code != "" {
@@ -444,7 +444,7 @@ func Test_Callback(t *testing.T) {
 
 		// prime the test provider's state for the test
 		tp.SetClientCreds(testAuthMethod.ClientId, testAuthMethod.ClientSecret)
-		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testController.URL, testAuthMethod.PublicId)
+		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testController.URL)
 		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 		state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 20*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
 		tp.SetExpectedAuthCode("simple")

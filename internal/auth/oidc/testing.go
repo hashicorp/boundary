@@ -413,7 +413,7 @@ func (s *testControllerSrv) CallbackUrl() string {
 	s.t.Helper()
 	require := require.New(s.t)
 	require.NotNil(s.authMethod, "auth method was missing")
-	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethod.GetPublicId())
+	return fmt.Sprintf(CallbackEndpoint, s.Addr())
 }
 
 // ServeHTTP satisfies the http.Handler interface
@@ -421,7 +421,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	s.t.Helper()
 	require := require.New(s.t)
 	switch req.URL.Path {
-	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethod.GetPublicId()):
+	case "/v1/auth-methods/oidc:authenticate:callback":
 		err := req.ParseForm()
 		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
 		state := req.FormValue("state")

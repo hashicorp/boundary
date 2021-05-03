@@ -90,4 +90,7 @@ const (
 	VaultTokenNotOrphan    Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
 	VaultTokenNotPeriodic  Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
 	VaultTokenNotRenewable Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
+
+	// OIDC authentication provided errors
+	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
 )
