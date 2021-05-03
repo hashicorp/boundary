@@ -33,4 +33,5 @@ const (
 	GrantScopeIdField                = "grant_scope_id"
 	GrantsField                      = "grants"
 	GrantStringsField                = "grant_strings"
+	PrimaryAuthMethodId              = "primary_auth_method_id"
 )

@@ -38,8 +38,12 @@ type RequestContext struct {
 
 // NewRequestContext returns a derived context with a new RequestContext value
 // added in.
-func NewRequestContext(parent context.Context) context.Context {
-	return context.WithValue(parent, ContextRequestInformationKey, &RequestContext{})
+func NewRequestContext(parent context.Context, opt ...Option) context.Context {
+	opts := getOpts(opt...)
+	ret := &RequestContext{
+		UserId: opts.withUserId,
+	}
+	return context.WithValue(parent, ContextRequestInformationKey, ret)
 }
 
 // RequestContextFromCtx pulls out RequestContext and returns it and an
