@@ -9,14 +9,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * API `delete` actions now result in a `204` status code and no body when
   successful. This was not the case previously due to a technical limitation
   which has now been solved.
-* When using a `delete` command we now either show success or treat the `404`
-  error the same as any other `404` error, that is, it results in a non-zero
-  status code and an error message. This makes `delete` actions behave the same
-  as other commands, all of which pass through errors to the CLI. Given `-format
-  json` capability, it's relatively easy to perform a check to see whether an
-  error was `404` or something else from within scripts, in conjunction with
-  checking that the returned status code matches the API error status code
-  (`1`).
+* When using a `delete` command within the CLI we now either show success or
+  treat the `404` error the same as any other `404` error, that is, it results
+  in a non-zero status code and an error message. This makes `delete` actions
+  behave the same as other commands, all of which pass through errors to the
+  CLI. Given `-format json` capability, it's relatively easy to perform a check
+  to see whether an error was `404` or something else from within scripts, in
+  conjunction with checking that the returned status code matches the API error
+  status code (`1`).
 * When outputting from the CLI in JSON format, the resource information under
   `item` or `items` (depending on the action) now exactly matches the JSON sent
   across the wire by the controller, as opposed to matching the Go SDK
@@ -34,6 +34,20 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* permissions: Improving upon the work put into 0.2.0 to limit the fields that
+  are returned when listing as the anonymous user, grants now support a new
+  `output_fields` section. This takes in a comma-delimited (or in JSON format,
+  array) set of values that correspond to the JSON fields returned from an API
+  call (for listing, this will be applied to each resource under the `items`
+  field). If specified for a given ID or resource type (and scoped to specific
+  actions, if included), only the given values will be returned in the output.
+  If no `output_fields` are specified, the defaults are used. For authenticated
+  users this defaults to all fields; for `u_anon` this defaults to the fields
+  useful for navigating to and authenticating to the system. In either case,
+  this is overridable. See the [permissions
+  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions)
+  for more information on why and when to use this. This currently only applies
+  to top-level fields in the response.
 * cli/api/sdk: Add support to request additional OIDC claims scope values from
   the OIDC provider when making an authentication request.
   ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
@@ -80,10 +94,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Support for reading and deleting the user's own token via the new
   `read:self` and `delete:self` actions on auth tokens. If no token ID is
   provided, the stored token's ID will be used (after prompting), or `"self"`
-  can be set to the ID to trigger this behavior without prompting.
-  ([PR](https://github.com/hashicorp/boundary/pull/1162))
+  can be set as the value of the `-id` parameter to trigger this behavior
+  without prompting. ([PR](https://github.com/hashicorp/boundary/pull/1162))
 * cli: New `logout` command deletes the current token in Boundary and forgets it
-  from the local system credential store
+  from the local system credential store, respecting `-token-name`
   ([PR](https://github.com/hashicorp/boundary/pull/1134))
 
 ### Bug Fixes
