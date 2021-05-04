@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 6003,
+		binarySchemaVersion: 7002,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6179,7 +6179,7 @@ group by am.public_id, is_primary_auth_method; -- there can be only one public_i
 comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 `),
-			6002: []byte(`
+			7001: []byte(`
 create function wt_add_seconds(sec integer, ts timestamp with time zone)
         returns timestamp with time zone
     as $$
@@ -6200,7 +6200,7 @@ create function wt_add_seconds(sec integer, ts timestamp with time zone)
     comment on function wt_add_seconds_to_now is
         'wt_add_seconds_to_now returns current_timestamp + sec.';
 `),
-			6003: []byte(`
+			7002: []byte(`
 create table job_plugin (
         public_id wt_public_id primary key
     );
