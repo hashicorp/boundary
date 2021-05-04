@@ -238,6 +238,10 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
+		result.Controller.Name, err = ParseAddress(result.Controller.Name)
+		if err != nil && err != ErrNotAUrl {
+			return nil, fmt.Errorf("Error parsing controller name: %w", err)
+		}
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
 			return nil, errors.New("Controller name must be all lower-case")
 		}
@@ -263,6 +267,10 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
+		result.Worker.Name, err = ParseAddress(result.Worker.Name)
+		if err != nil && err != ErrNotAUrl {
+			return nil, fmt.Errorf("Error parsing worker name: %w", err)
+		}
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
 			return nil, errors.New("Worker name must be all lower-case")
 		}
@@ -378,9 +386,11 @@ var ErrNotAUrl = errors.New("not a url")
 // ParseAddress parses a URL with schemes file://, env://, or any other.
 // Depending on the scheme it will return specific types of data:
 //
-// * file:// will return a string with the file's contents * env:// will return
-// a string with the env var's contents * anything else will return the string
-// as it was
+// * file:// will return a string with the file's contents
+//
+// * env:// will return a string with the env var's contents
+//
+// * Anything else will return the string as it was
 //
 // On error, we return the original string along with the error. The caller can
 // switch on ErrNotAUrl to understand whether it was the parsing step that
