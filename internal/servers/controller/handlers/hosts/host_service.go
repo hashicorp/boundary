@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -75,26 +77,47 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), authResults.UserId == auth.AnonymousUserId)
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
 		return nil, err
 	}
+	if len(hl) == 0 {
+		return &pbs.ListHostsResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.Host, 0, len(hl))
-	res := &perms.Resource{
+
+	res := perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Host,
 		Pin:     req.GetHostCatalogId(),
 	}
 	for _, item := range hl {
-		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		res.Id = item.GetPublicId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -104,6 +127,8 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 
 // GetHost implements the interface pbs.HostServiceServer.
 func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.GetHostResponse, error) {
+	const op = "hosts.(Service).GetHost"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -111,17 +136,37 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.getFromRepo(ctx, req.GetId())
+	h, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	return &pbs.GetHostResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetHostResponse{Item: item}, nil
 }
 
 // CreateHost implements the interface pbs.HostServiceServer.
 func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*pbs.CreateHostResponse, error) {
+	const op = "hosts.(Service).CreateHost"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -133,16 +178,36 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	h.Scope = authResults.Scope
-	h.AuthorizedActions = authResults.FetchActionSetForId(ctx, h.Id, IdActions).Strings()
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pbs.CreateHostResponse{
-		Item: h,
-		Uri:  fmt.Sprintf("hosts/%s", h.GetId()),
+		Item: item,
+		Uri:  fmt.Sprintf("hosts/%s", item.GetId()),
 	}, nil
 }
 
 // UpdateHost implements the interface pbs.HostServiceServer.
 func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*pbs.UpdateHostResponse, error) {
+	const op = "hosts.(Service).UpdateHost"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -150,13 +215,31 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	h, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	return &pbs.UpdateHostResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, h, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateHostResponse{Item: item}, nil
 }
 
 // DeleteHost implements the interface pbs.HostServiceServer.
@@ -175,7 +258,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*static.Host, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -187,10 +270,10 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, nil)
+	return h, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*pb.Host, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).createInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
@@ -222,10 +305,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host but no error returned from repository.")
 	}
-	return toProto(out, nil)
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*pb.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).updateInRepo"
 	ha := &pb.StaticHostAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
@@ -261,7 +344,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out, nil)
+	return out, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -277,7 +360,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bool) ([]*pb.Host, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*static.Host, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -286,15 +369,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bo
 	if err != nil {
 		return nil, err
 	}
-	var outHl []*pb.Host
-	for _, h := range hl {
-		p, err := toProto(h, nil, handlers.WithUserIsAnonymous(anonUser))
-		if err != nil {
-			return nil, err
-		}
-		outHl = append(outHl, p)
-	}
-	return outHl, nil
+	return hl, nil
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
@@ -337,26 +412,50 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.Host, members []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := pb.Host{
-		Id:            in.GetPublicId(),
-		HostCatalogId: in.GetCatalogId(),
-		Type:          host.StaticSubtype.String(),
+func toProto(ctx context.Context, in *static.Host, hostSets []*static.HostSet, opt ...handlers.Option) (*pb.Host, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building host proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = wrapperspb.String(in.GetDescription())
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Host{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = wrapperspb.String(in.GetName())
+	if outputFields.Has(globals.HostCatalogIdField) {
+		out.HostCatalogId = in.GetCatalogId()
 	}
-	if !anonListing {
+	if outputFields.Has(globals.TypeField) {
+		out.Type = host.StaticSubtype.String()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
-		out.Version = in.Version
-		for _, m := range members {
-			out.HostSetIds = append(out.HostSetIds, m.GetPublicId())
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.HostSetIdsField) {
+		for _, hs := range hostSets {
+			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
 		}
+	}
+	if outputFields.Has(globals.AttributesField) {
 		st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)

@@ -5,7 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
@@ -76,54 +78,54 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 		"",
 		"Auth Method information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if m.Id != "" {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                     %s", m.Id),
+				fmt.Sprintf("  ID:                     %s", item.Id),
 			)
 		} else {
 			output = append(output,
 				fmt.Sprintf("  ID:                     %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:             %s", m.Scope.Id),
+				fmt.Sprintf("    Scope ID:             %s", item.ScopeId),
 			)
 		}
-		if m.Version > 0 {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:              %d", m.Version),
+				fmt.Sprintf("    Version:              %d", item.Version),
 			)
 		}
-		if m.Type != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Type:                 %s", m.Type),
+				fmt.Sprintf("    Type:                 %s", item.Type),
 			)
 		}
-		if m.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                 %s", m.Name),
+				fmt.Sprintf("    Name:                 %s", item.Name),
 			)
 		}
-		if m.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:          %s", m.Description),
+				fmt.Sprintf("    Description:          %s", item.Description),
 			)
 		}
-		if true {
+		if item.IsPrimary {
 			output = append(output,
-				fmt.Sprintf("    Is Primary For Scope: %t", m.IsPrimary),
+				fmt.Sprintf("    Is Primary For Scope: %t", item.IsPrimary),
 			)
 		}
 
-		if len(m.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -131,10 +133,9 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *authmethods.AuthMethod) string {
-	nonAttributeMap := map[string]interface{}{
-		"Is Primary For Scope": item.IsPrimary,
-	}
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*authmethods.AuthMethod)
+	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -156,6 +157,11 @@ func printItemTable(item *authmethods.AuthMethod) string {
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
 	}
+	if result.GetResponse() != nil && result.GetResponse().Map != nil {
+		if result.GetResponse().Map[globals.IsPrimaryField] != nil {
+			nonAttributeMap["Is Primary For Scope"] = item.IsPrimary
+		}
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
@@ -163,9 +169,14 @@ func printItemTable(item *authmethods.AuthMethod) string {
 		"",
 		"Auth Method information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

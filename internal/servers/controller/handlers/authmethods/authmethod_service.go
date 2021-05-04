@@ -272,7 +272,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		return nil, err
 	}
 
-	return &pbs.CreateAuthMethodResponse{Item: item, Uri: fmt.Sprintf("auth-methods/%s", am.GetPublicId())}, nil
+	return &pbs.CreateAuthMethodResponse{Item: item, Uri: fmt.Sprintf("auth-methods/%s", item.GetId())}, nil
 }
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.

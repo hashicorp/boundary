@@ -260,7 +260,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// Test with non-anon user
-			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -269,7 +269,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test with anon user
-			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_anon")), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {

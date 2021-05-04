@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -77,26 +79,47 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId(), authResults.UserId == auth.AnonymousUserId)
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
 	if err != nil {
 		return nil, err
 	}
+	if len(hl) == 0 {
+		return &pbs.ListHostSetsResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.HostSet, 0, len(hl))
-	res := &perms.Resource{
+
+	res := perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.HostSet,
 		Pin:     req.GetHostCatalogId(),
 	}
 	for _, item := range hl {
-		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		res.Id = item.GetPublicId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -106,6 +129,8 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 
 // GetHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*pbs.GetHostSetResponse, error) {
+	const op = "host_sets.(Service).GetHostSet"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -113,17 +138,37 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.getFromRepo(ctx, req.GetId())
+	hs, hosts, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	return &pbs.GetHostSetResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetHostSetResponse{Item: item}, nil
 }
 
 // CreateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
+	const op = "host_sets.(Service).CreateHostSet"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -131,20 +176,40 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetItem())
+	hs, err := s.createInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	h.Scope = authResults.Scope
-	h.AuthorizedActions = authResults.FetchActionSetForId(ctx, h.Id, IdActions).Strings()
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pbs.CreateHostSetResponse{
-		Item: h,
-		Uri:  fmt.Sprintf("host-sets/%s", h.GetId()),
+		Item: item,
+		Uri:  fmt.Sprintf("host-sets/%s", item.GetId()),
 	}, nil
 }
 
 // UpdateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
+	const op = "host_sets.(Service).UpdateHostSet"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -152,13 +217,31 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hs, hosts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	return &pbs.UpdateHostSetResponse{Item: hc}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateHostSetResponse{Item: item}, nil
 }
 
 // DeleteHostSet implements the interface pbs.HostSetServiceServer.
@@ -179,6 +262,8 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRequest) (*pbs.AddHostSetHostsResponse, error) {
+	const op = "host_sets.(Service).AddHostSetHosts"
+
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
@@ -186,17 +271,37 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	g, err := s.addInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.addInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
-	return &pbs.AddHostSetHostsResponse{Item: g}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.AddHostSetHostsResponse{Item: item}, nil
 }
 
 // SetHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRequest) (*pbs.SetHostSetHostsResponse, error) {
+	const op = "host_sets.(Service).SetHostSetHosts"
+
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
@@ -204,17 +309,36 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	g, err := s.setInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.setInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
-	return &pbs.SetHostSetHostsResponse{Item: g}, nil
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetHostSetHostsResponse{Item: item}, nil
 }
 
 // RemoveHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
+	const op = "host_sets.(Service).RemoveHostSetHosts"
+
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
@@ -222,31 +346,49 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	g, err := s.removeInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
+	hs, hosts, err := s.removeInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetHostIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	g.Scope = authResults.Scope
-	g.AuthorizedActions = authResults.FetchActionSetForId(ctx, g.Id, IdActions).Strings()
-	return &pbs.RemoveHostSetHostsResponse{Item: g}, nil
-}
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error) {
-	repo, err := s.staticRepoFn()
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, hs, hosts, outputOpts...)
 	if err != nil {
 		return nil, err
+	}
+
+	return &pbs.RemoveHostSetHostsResponse{Item: item}, nil
+}
+
+func (s Service) getFromRepo(ctx context.Context, id string) (*static.HostSet, []*static.Host, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, nil, err
 	}
 	h, m, err := repo.LookupSet(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if h == nil {
-		return nil, handlers.NotFoundErrorf("Host Set %q doesn't exist.", id)
+		return nil, nil, handlers.NotFoundErrorf("Host Set %q doesn't exist.", id)
 	}
-	return toProto(h, m), nil
+	return h, m, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (*pb.HostSet, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (*static.HostSet, error) {
 	const op = "host_sets.(Service).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
@@ -270,10 +412,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
 	}
-	return toProto(out, nil), nil
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.HostSet) (*pb.HostSet, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.HostSet) (*static.HostSet, []*static.Host, error) {
 	const op = "host_sets.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -284,25 +426,25 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	}
 	h, err := static.NewHostSet(catalogId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for update"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update host set"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update host set"))
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", id)
+		return nil, nil, handlers.NotFoundErrorf("Host Set %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out, m), nil
+	return out, m, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -318,7 +460,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bool) ([]*pb.HostSet, error) {
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*static.HostSet, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -327,72 +469,68 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, anonUser bo
 	if err != nil {
 		return nil, err
 	}
-	var outH []*pb.HostSet
-	for _, h := range hl {
-		outH = append(outH, toProto(h, nil, handlers.WithUserIsAnonymous(anonUser)))
-	}
-	return outH, nil
+	return hl, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
+func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []*static.Host, error) {
 	const op = "host_sets.(Service).addInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to add hosts to host set"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to add hosts to host set"))
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after adding hosts"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after adding hosts"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after adding hosts to it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after adding hosts to it.")
 	}
-	return toProto(out, m), nil
+	return out, m, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
+func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []*static.Host, error) {
 	const op = "host_sets.(Service).setInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(err, op)
 	}
 	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to set hosts in host set"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to set hosts in host set"))
 	}
 
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after setting hosts"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set after setting hosts"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after setting hosts for it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after setting hosts for it.")
 	}
-	return toProto(out, m), nil
+	return out, m, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*pb.HostSet, error) {
+func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []*static.Host, error) {
 	const op = "host_sets.(Service).removeInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, nil, errors.Wrap(err, op)
 	}
 	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("Unable to remove hosts from host set"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to remove hosts from host set"))
 	}
 	out, m, err := repo.LookupSet(ctx, setId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up host set"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after removing hosts from it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup host set after removing hosts from it.")
 	}
-	return toProto(out, m), nil
+	return out, m, nil
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
@@ -435,28 +573,50 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.HostSet, hs []*static.Host, opt ...handlers.Option) *pb.HostSet {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := pb.HostSet{
-		Id:            in.GetPublicId(),
-		HostCatalogId: in.GetCatalogId(),
-		Type:          host.StaticSubtype.String(),
+func toProto(ctx context.Context, in *static.HostSet, hosts []*static.Host, opt ...handlers.Option) (*pb.HostSet, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building hostset proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = wrapperspb.String(in.GetDescription())
+	outputFields := *opts.WithOutputFields
+
+	out := pb.HostSet{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = wrapperspb.String(in.GetName())
+	if outputFields.Has(globals.HostCatalogIdField) {
+		out.HostCatalogId = in.GetCatalogId()
 	}
-	if !anonListing {
+	if outputFields.Has(globals.TypeField) {
+		out.Type = host.StaticSubtype.String()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
-		out.Version = in.Version
-		for _, h := range hs {
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.HostIdsField) {
+		for _, h := range hosts {
 			out.HostIds = append(out.HostIds, h.GetPublicId())
 		}
 	}
-	return &out
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

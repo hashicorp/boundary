@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -105,9 +107,12 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
+	}
+	if len(ul) == 0 {
+		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
 	filter, err := handlers.NewFilter(req.GetFilter())
@@ -115,21 +120,39 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return nil, err
 	}
 	finalItems := make([]*pb.HostCatalog, 0, len(ul))
-	res := &perms.Resource{
+	res := perms.Resource{
 		Type: resource.HostCatalog,
 	}
 	for _, item := range ul {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetId())
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
+
+		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
-		item.AuthorizedCollectionActions = collectionActions
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -139,6 +162,8 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
+	const op = "host_catalogs.(Service).GetostCatalog"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -150,18 +175,40 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetId())
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toProto(ctx, hc, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
-	hc.AuthorizedCollectionActions = collectionActions
-	return &pbs.GetHostCatalogResponse{Item: hc}, nil
+
+	return &pbs.GetHostCatalogResponse{Item: item}, nil
 }
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
+	const op = "host_catalogs.(Service).CreateHostCatalog"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -173,21 +220,43 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetId())
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toProto(ctx, hc, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
-	hc.AuthorizedCollectionActions = collectionActions
+
 	return &pbs.CreateHostCatalogResponse{
-		Item: hc,
-		Uri:  fmt.Sprintf("host-catalogs/%s", hc.GetId()),
+		Item: item,
+		Uri:  fmt.Sprintf("host-catalogs/%s", item.GetId()),
 	}, nil
 }
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
+	const op = "host_catalogs.(Service).UpdateHostCatalog"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -199,14 +268,34 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	hc.AuthorizedActions = authResults.FetchActionSetForId(ctx, hc.Id, IdActions).Strings()
-	collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetId())
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, hc.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, hc.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := toProto(ctx, hc, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
-	hc.AuthorizedCollectionActions = collectionActions
-	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
+
+	return &pbs.UpdateHostCatalogResponse{Item: item}, nil
 }
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -225,7 +314,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*static.HostCatalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -237,10 +326,10 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 	if hc == nil {
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
 	}
-	return toProto(hc), nil
+	return hc, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.HostCatalog, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*static.HostCatalog, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
@@ -249,14 +338,10 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.HostCatalog
-	for _, u := range ul {
-		outUl = append(outUl, toProto(u, handlers.WithUserIsAnonymous(anonUser)))
-	}
-	return outUl, nil
+	return ul, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
 	const op = "host_catalogs.(Servivce).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
@@ -280,11 +365,11 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host catalog but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
-	const op = "service.(Service).updateInRepo"
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+	const op = "host_catalogs.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -313,11 +398,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out), nil
+	return out, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	const op = "service.(Service).deleteFromRepo"
+	const op = "host_catalogs.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, errors.Wrap(err, op)
@@ -373,25 +458,48 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *static.HostCatalog, opt ...handlers.Option) *pb.HostCatalog {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := pb.HostCatalog{
-		Id:      in.GetPublicId(),
-		ScopeId: in.GetScopeId(),
-		Type:    host.StaticSubtype.String(),
+func toProto(ctx context.Context, in *static.HostCatalog, opt ...handlers.Option) (*pb.HostCatalog, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building auth method proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.HostCatalog{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
 	}
-	if !anonListing {
+	if outputFields.Has(globals.TypeField) {
+		out.Type = host.StaticSubtype.String()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = wrapperspb.String(in.GetDescription())
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = wrapperspb.String(in.GetName())
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
 	}
-	return &out
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
+	}
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

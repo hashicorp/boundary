@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -53,6 +55,16 @@ var (
 	}
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
+		scope.Global.String(): {
+			resource.AuthMethod: authmethods.CollectionActions,
+			resource.AuthToken:  authtokens.CollectionActions,
+			resource.Group:      groups.CollectionActions,
+			resource.Role:       roles.CollectionActions,
+			resource.Scope:      CollectionActions,
+			resource.Session:    sessions.CollectionActions,
+			resource.User:       users.CollectionActions,
+		},
+
 		scope.Org.String(): {
 			resource.AuthMethod: authmethods.CollectionActions,
 			resource.AuthToken:  authtokens.CollectionActions,
@@ -128,9 +140,12 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return &pbs.ListScopesResponse{}, nil
 	}
 
-	pl, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
+	pl, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
+	}
+	if len(pl) == 0 {
+		return &pbs.ListScopesResponse{}, nil
 	}
 
 	filter, err := handlers.NewFilter(req.GetFilter())
@@ -138,29 +153,52 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return nil, err
 	}
 	finalItems := make([]*pb.Scope, 0, len(pl))
-	res := &perms.Resource{
+	res := perms.Resource{
 		Type: resource.Scope,
 	}
 	for _, item := range pl {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetParentId()
+
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
-		if item.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.Id, ""); err != nil {
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetParentId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[item.Type], item.GetPublicId(), "")
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
+
+		item, err := ToProto(ctx, item, outputOpts...)
+		if err != nil {
 			return nil, err
 		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
-
+	SortScopes(finalItems)
 	return &pbs.ListScopesResponse{Items: finalItems}, nil
 }
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
+	const op = "scopes.(Service).GetScope"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -172,21 +210,45 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	if err != nil {
 		return nil, err
 	}
-	p.Scope = authResults.Scope
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
 	act := IdActions
 	// Can't delete global so elide it
-	if p.Id == "global" {
-		act = act[0:2]
+	if p.GetPublicId() == "global" {
+		act = act[0:3]
 	}
-	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, act).Strings()
-	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), act).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := ToProto(ctx, p, outputOpts...)
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetScopeResponse{Item: p}, nil
+
+	return &pbs.GetScopeResponse{Item: item}, nil
 }
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
+	const op = "scopes.(Service).CreateScope"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -198,16 +260,40 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	if err != nil {
 		return nil, err
 	}
-	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
-	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := ToProto(ctx, p, outputOpts...)
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
+
+	return &pbs.CreateScopeResponse{Item: item, Uri: fmt.Sprintf("scopes/%s", item.GetId())}, nil
 }
 
 // UpdateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
+	const op = "scopes.(Service).UpdateScope"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -219,12 +305,34 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	if err != nil {
 		return nil, err
 	}
-	p.Scope = authResults.Scope
-	p.AuthorizedActions = authResults.FetchActionSetForId(ctx, p.Id, IdActions).Strings()
-	if p.AuthorizedCollectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.Id, ""); err != nil {
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, scopeCollectionTypeMapMap[p.Type], p.GetPublicId(), "")
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+
+	item, err := ToProto(ctx, p, outputOpts...)
+	if err != nil {
 		return nil, err
 	}
-	return &pbs.UpdateScopeResponse{Item: p}, nil
+
+	return &pbs.UpdateScopeResponse{Item: item}, nil
 }
 
 // DeleteScope implements the interface pbs.ScopeServiceServer.
@@ -243,22 +351,22 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	p, err := repo.LookupScope(ctx, id)
+	out, err := repo.LookupScope(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if p == nil {
+	if out == nil {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", id)
 	}
-	return ToProto(p), nil
+	return out, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, req *pbs.CreateScopeRequest) (*pb.Scope, error) {
+func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, req *pbs.CreateScopeRequest) (*iam.Scope, error) {
 	const op = "scopes.(Service).createInRepo"
 	item := req.GetItem()
 	var opts []iam.Option
@@ -294,10 +402,10 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create scope but no error returned from repository.")
 	}
-	return ToProto(out), nil
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*iam.Scope, error) {
 	const op = "scope.(Service).updateInRepo"
 	var opts []iam.Option
 	var scopeDesc, scopeName, scopePrimaryAuthMethodId string
@@ -354,7 +462,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist or incorrect version provided.", scopeId)
 	}
-	return ToProto(out), nil
+	return out, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
@@ -378,7 +486,7 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -387,13 +495,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}
-
-	var outPl []*pb.Scope
-	for _, scp := range scps {
-		outPl = append(outPl, ToProto(scp, handlers.WithUserIsAnonymous(anonUser)))
-	}
-	SortScopes(outPl)
-	return outPl, nil
+	return scps, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -435,29 +537,52 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func ToProto(in *iam.Scope, opt ...handlers.Option) *pb.Scope {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := pb.Scope{
-		Id:      in.GetPublicId(),
-		ScopeId: in.GetParentId(),
-		Type:    in.GetType(),
+func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Scope, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building scope proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Scope{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetParentId()
 	}
-	if in.GetPrimaryAuthMethodId() != "" {
-		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	if outputFields.Has(globals.TypeField) {
+		out.Type = in.GetType()
 	}
-	if !anonListing {
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = wrapperspb.String(in.GetDescription())
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = wrapperspb.String(in.GetName())
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
 	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
+	}
+	if outputFields.Has(globals.PrimaryAuthMethodId) && in.GetPrimaryAuthMethodId() != "" {
+		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
 
-	return &out
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

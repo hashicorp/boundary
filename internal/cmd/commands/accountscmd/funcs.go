@@ -193,43 +193,43 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 		"",
 		"Account information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if m.Id != "" {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
+				fmt.Sprintf("  ID:                    %s", item.Id),
 			)
 		} else {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if m.Version > 0 {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", m.Version),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Type != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if m.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Name:                %s", item.Name),
 			)
 		}
-		if m.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -237,7 +237,8 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *accounts.Account) string {
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*accounts.Account)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -270,9 +271,14 @@ func printItemTable(item *accounts.Account) string {
 		"",
 		"Account information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

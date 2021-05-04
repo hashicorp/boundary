@@ -183,7 +183,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
 	}
 
 	item, err := toProto(ctx, at, outputOpts...)

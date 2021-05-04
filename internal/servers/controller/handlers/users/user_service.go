@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -100,25 +102,45 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		return &pbs.ListUsersResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults.UserId == auth.AnonymousUserId)
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
+	if len(ul) == 0 {
+		return &pbs.ListUsersResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.User, 0, len(ul))
-	res := &perms.Resource{
+	res := perms.Resource{
 		Type: resource.User,
 	}
 	for _, item := range ul {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -128,6 +150,8 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 
 // GetUsers implements the interface pbs.UserServiceServer.
 func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.GetUserResponse, error) {
+	const op = "users.(Service).GetUser"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -135,17 +159,37 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	u, accts, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.GetUserResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, accts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetUserResponse{Item: item}, nil
 }
 
 // CreateUser implements the interface pbs.UserServiceServer.
 func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*pbs.CreateUserResponse, error) {
+	const op = "users.(Service).CreateUser"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -157,13 +201,32 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("users/%s", u.GetId())}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, nil, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.CreateUserResponse{Item: item, Uri: fmt.Sprintf("users/%s", item.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
 func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*pbs.UpdateUserResponse, error) {
+	const op = "users.(Service).UpdateUser"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -171,13 +234,31 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, accts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.UpdateUserResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, accts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateUserResponse{Item: item}, nil
 }
 
 // DeleteUser implements the interface pbs.UserServiceServer.
@@ -198,6 +279,8 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 
 // AddUserAccounts implements the interface pbs.GroupServiceServer.
 func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRequest) (*pbs.AddUserAccountsResponse, error) {
+	const op = "users.(Service).AddUserAccounts"
+
 	if err := validateAddUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
@@ -205,17 +288,37 @@ func (s Service) AddUserAccounts(ctx context.Context, req *pbs.AddUserAccountsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.addInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
+	u, accts, err := s.addInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.AddUserAccountsResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, accts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.AddUserAccountsResponse{Item: item}, nil
 }
 
 // SetUserAccounts implements the interface pbs.GroupServiceServer.
 func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRequest) (*pbs.SetUserAccountsResponse, error) {
+	const op = "users.(Service).SetUserAccounts"
+
 	if err := validateSetUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
@@ -223,17 +326,37 @@ func (s Service) SetUserAccounts(ctx context.Context, req *pbs.SetUserAccountsRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.setInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
+	u, accts, err := s.setInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.SetUserAccountsResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, accts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetUserAccountsResponse{Item: item}, nil
 }
 
 // RemoveUserAccounts implements the interface pbs.GroupServiceServer.
 func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAccountsRequest) (*pbs.RemoveUserAccountsResponse, error) {
+	const op = "users.(Service).RemoveUserAccounts"
+
 	if err := validateRemoveUserAccountsRequest(req); err != nil {
 		return nil, err
 	}
@@ -241,34 +364,52 @@ func (s Service) RemoveUserAccounts(ctx context.Context, req *pbs.RemoveUserAcco
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.removeInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
+	u, accts, err := s.removeInRepo(ctx, req.GetId(), req.GetAccountIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.RemoveUserAccountsResponse{Item: u}, nil
-}
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
-	repo, err := s.repoFn()
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, u.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, u, accts, outputOpts...)
 	if err != nil {
 		return nil, err
+	}
+
+	return &pbs.RemoveUserAccountsResponse{Item: item}, nil
+}
+
+func (s Service) getFromRepo(ctx context.Context, id string) (*iam.User, []string, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, nil, err
 	}
 	u, accts, err := repo.LookupUser(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
+			return nil, nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
+		return nil, nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
 	}
-	return toProto(u, accts), nil
+	return u, accts, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) (*pb.User, error) {
+func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) (*iam.User, error) {
 	const op = "users.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
@@ -292,10 +433,10 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
-	return toProto(out, nil), nil
+	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*iam.User, []string, error) {
 	const op = "users.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -307,25 +448,25 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	version := item.GetVersion()
 	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for update: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, accts, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update user"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update user"))
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
+		return nil, nil, handlers.NotFoundErrorf("User %q doesn't exist or incorrect version provided.", id)
 	}
-	return toProto(out, accts), nil
+	return out, accts, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -344,7 +485,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser bool) ([]*pb.User, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.User, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -353,71 +494,67 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, anonUser b
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.User
-	for _, u := range ul {
-		outUl = append(outUl, toProto(u, nil, handlers.WithUserIsAnonymous(anonUser)))
-	}
-	return outUl, nil
+	return ul, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+func (s Service) addInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*iam.User, []string, error) {
 	const op = "users.(Service).addInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = repo.AddUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add accounts to user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after adding accounts"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after adding accounts"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after adding accounts to it.")
 	}
-	return toProto(out, accts), nil
+	return out, accts, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+func (s Service) setInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*iam.User, []string, error) {
 	const op = "users.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = repo.SetUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set accounts for the user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after setting accounts"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after setting accounts"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after setting accounts for it.")
 	}
-	return toProto(out, accts), nil
+	return out, accts, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*pb.User, error) {
+func (s Service) removeInRepo(ctx context.Context, userId string, accountIds []string, version uint32) (*iam.User, []string, error) {
 	const op = "users.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = repo.DeleteUserAccounts(ctx, userId, version, strutil.RemoveDuplicates(accountIds, false))
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove accounts from user: %v.", err)
 	}
 	out, accts, err := repo.LookupUser(ctx, userId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after removing accounts"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up user after removing accounts"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup user after removing accounts from it.")
 	}
-	return toProto(out, accts), nil
+	return out, accts, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -459,35 +596,57 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in *iam.User, accts []string, opt ...handlers.Option) *pb.User {
-	anonListing := handlers.GetOpts(opt...).WithUserIsAnonymous
-	out := pb.User{
-		Id:      in.GetPublicId(),
-		ScopeId: in.GetScopeId(),
+func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.Option) (*pb.User, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building user proto")
 	}
-	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.User{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
 	}
-	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
 	}
-	if !anonListing {
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = wrapperspb.String(in.GetDescription())
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = wrapperspb.String(in.GetName())
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.AccountIdsField) {
 		out.AccountIds = accts
-		if in.GetPrimaryAccountId() != "" {
-			out.PrimaryAccountId = in.GetPrimaryAccountId()
-		}
-		if in.GetLoginName() != "" {
-			out.LoginName = in.GetLoginName()
-		}
-		if in.GetFullName() != "" {
-			out.FullName = in.GetFullName()
-		}
-		if in.GetEmail() != "" {
-			out.Email = in.GetEmail()
-		}
+	}
+	if outputFields.Has(globals.PrimaryAccountIdField) {
+		out.PrimaryAccountId = in.GetPrimaryAccountId()
+	}
+	if outputFields.Has(globals.LoginNameField) {
+		out.LoginName = in.GetLoginName()
+	}
+	if outputFields.Has(globals.FullNameField) {
+		out.FullName = in.GetFullName()
+	}
+	if outputFields.Has(globals.EmailField) {
+		out.Email = in.GetEmail()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.AccountsField) {
 		for _, a := range accts {
 			out.Accounts = append(out.Accounts, &pb.Account{
 				Id: a,
@@ -496,7 +655,7 @@ func toProto(in *iam.User, accts []string, opt ...handlers.Option) *pb.User {
 			})
 		}
 	}
-	return &out
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
