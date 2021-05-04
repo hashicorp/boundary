@@ -302,7 +302,7 @@ $ boundary roles create -name 'global_anon_listing' \
 $ boundary roles add-grants -id <global_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
   -grant 'id=*;type=auth-method;actions=list,authenticate' \
-  -grant 'type=scope;actions=list' \
+  -grant 'id=*;type=scope;actions=list,no-op' \
   -grant 'id={{account.id}};actions=read,change-password'
 
 $ boundary roles add-principals -id <global_anon_listing_id> \
@@ -318,7 +318,7 @@ resource "boundary_role" "global_anon_listing" {
   scope_id = "global"
   grant_strings = [
     "id=*;type=auth-method;actions=list,authenticate",
-    "type=scope;actions=list",
+    "id=*;type=scope;actions=list,no-op",
     "id={{account.id}};actions=read,change-password"
   ]
   principal_ids = ["u_anon"]

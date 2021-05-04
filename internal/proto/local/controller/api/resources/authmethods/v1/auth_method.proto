@@ -123,6 +123,13 @@ message OidcAuthMethodAttributes {
   repeated string claims_scopes = 112
       [json_name = "claims_scopes", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.claims_scopes" that: "ClaimsScopes" }];
 
+  // account_claim_maps are optional claim maps from custom claims to the
+  // standard claims of sub, name and email.  These maps are represented as
+  // key=value where the key equals the from_claim and the value equals the
+  // to_claim.  For example "oid=sub".
+  repeated string account_claim_maps = 113
+      [json_name = "account_claim_maps", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "attributes.account_claim_maps" that: "AccountClaimMaps" }];
+
   // If the Authorization Server's discovered configuration contains values
   // that do not match the configuration set on this auth method, this can be
   // set to force the local configuration to override the discovered values.

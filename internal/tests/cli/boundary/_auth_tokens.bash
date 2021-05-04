@@ -3,7 +3,7 @@ function read_token() {
   then
     echo "y" | boundary auth-tokens read
   else
-    boundary auth-tokens read -id $1
+    boundary auth-tokens read -id $1 -format json
   fi
 }
 

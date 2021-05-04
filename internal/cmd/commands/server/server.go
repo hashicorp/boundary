@@ -366,6 +366,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
+		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+
 		if err := c.ConnectToDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError

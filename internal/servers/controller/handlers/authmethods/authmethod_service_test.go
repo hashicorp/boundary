@@ -572,6 +572,10 @@ func TestCreate(t *testing.T) {
 						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
 						return structpb.NewListValue(lv)
 					}(),
+					"account_claim_maps": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+						return structpb.NewListValue(lv)
+					}(),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -598,6 +602,10 @@ func TestCreate(t *testing.T) {
 						}(),
 						"claims_scopes": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+							return structpb.NewListValue(lv)
+						}(),
+						"account_claim_maps": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -989,7 +997,7 @@ func TestCreate(t *testing.T) {
 					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

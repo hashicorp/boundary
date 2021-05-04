@@ -42,6 +42,7 @@ const (
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 	codeField                              = "attributes.code"
 	claimsScopesField                      = "attributes.claims_scopes"
+	accountClaimMapsField                  = "attributes.account_claim_maps"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -470,6 +471,28 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 
 	if len(attrs.GetClaimsScopes()) > 0 {
 		opts = append(opts, oidc.WithClaimsScopes(attrs.GetClaimsScopes()...))
+	}
+
+	if len(attrs.GetAccountClaimMaps()) > 0 {
+		claimsMap := make(map[string]oidc.AccountToClaim, len(attrs.GetAccountClaimMaps()))
+		for _, v := range attrs.GetAccountClaimMaps() {
+			acm, err := oidc.ParseAccountClaimMaps(v)
+			if err != nil {
+				return nil, false, false, errors.Wrap(err, op)
+			}
+			if len(acm) > 1 {
+				return nil, false, false, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
+			}
+			var from, rawTo string
+			for from, rawTo = range acm {
+			}
+			to, err := oidc.ConvertToAccountToClaim(rawTo)
+			if err != nil {
+				return nil, false, false, errors.Wrap(err, op)
+			}
+			claimsMap[from] = to
+		}
+		opts = append(opts, oidc.WithAccountClaimMap(claimsMap))
 	}
 
 	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)

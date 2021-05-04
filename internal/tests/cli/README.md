@@ -32,7 +32,11 @@ export BOUNDARY_ADDR=<your_install>
 2. Run the tests
 
 ```bash
+# for an untagged non-version of boundary
 bats -p boundary/
+
+# for an official boundary version
+IS_VERSION=true bats -p boundary/
 ```
 
 ## Running Tests Against Other Deployments

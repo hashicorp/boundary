@@ -906,6 +906,64 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "Change Account Claim Maps",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.account_claim_maps"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["account_claim_maps"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Attempt to Change Account Claim Maps for sub",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.account_claim_maps"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"oid=sub"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "Unset Issuer Is Incomplete",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
@@ -996,7 +1054,6 @@ func TestUpdate_OIDC(t *testing.T) {
 				tc.res.Item.Id = am.GetId()
 				tc.res.Item.CreatedTime = am.GetCreatedTime()
 			}
-
 			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
 			if tc.err != nil || tc.wantErr {

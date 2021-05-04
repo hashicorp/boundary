@@ -41,6 +41,7 @@ type options struct {
 	withKeyId               string
 	withIssuer              *url.URL
 	withOperationalState    AuthMethodState
+	withAccountClaimMap     map[string]AccountToClaim
 }
 
 func getDefaultOptions() options {
@@ -208,5 +209,12 @@ func WithIssuer(iss *url.URL) Option {
 func WithOperationalState(state AuthMethodState) Option {
 	return func(o *options) {
 		o.withOperationalState = state
+	}
+}
+
+// WithAccountClaimMap provides an option for specifying an Account Claim map.
+func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
+	return func(o *options) {
+		o.withAccountClaimMap = acm
 	}
 }

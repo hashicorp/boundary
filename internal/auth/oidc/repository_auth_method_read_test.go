@@ -28,12 +28,14 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		t,
 		conn, databaseWrapper, org.PublicId, ActivePrivateState,
 		"alice_rp", "alices-dogs-name",
+		WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 		WithApiUrl(TestConvertToUrls(t, "https://alice-active-priv.com/callback")[0]),
 		WithSigningAlgs(RS256))
 	amActivePub := TestAuthMethod(
 		t,
 		conn, databaseWrapper, org.PublicId, ActivePublicState,
 		"alice_rp", "alices-dogs-name",
+		WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 		WithApiUrl(TestConvertToUrls(t, "https://alice-active-pub.com/callback")[0]),
 		WithSigningAlgs(RS256),
 		WithClaimsScopes("email", "profile"),
@@ -100,6 +102,12 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			if tt.want != nil && tt.want.AccountClaimMaps != nil {
+				sort.Strings(tt.want.AccountClaimMaps)
+			}
+			if got != nil && got.AccountClaimMaps != nil {
+				sort.Strings(got.AccountClaimMaps)
+			}
 			assert.EqualValues(tt.want, got)
 		})
 	}
@@ -232,6 +240,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 					WithSigningAlgs(RS256, ES256),
 					WithCertificates(cert1, cert2),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": ToSubClaim, "display_name": ToNameClaim}),
 				)
 				am1b := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp-2", "alices-cat-name",
 					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))

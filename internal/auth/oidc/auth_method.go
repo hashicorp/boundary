@@ -17,6 +17,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/go-multierror"
+	kvbuilder "github.com/hashicorp/shared-secure-libs/kv-builder"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -105,6 +106,12 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		a.SigningAlgs = make([]string, 0, len(opts.withSigningAlgs))
 		for _, alg := range opts.withSigningAlgs {
 			a.SigningAlgs = append(a.SigningAlgs, string(alg))
+		}
+	}
+	if len(opts.withAccountClaimMap) > 0 {
+		a.AccountClaimMaps = make([]string, 0, len(opts.withAccountClaimMap))
+		for k, v := range opts.withAccountClaimMap {
+			a.AccountClaimMaps = append(a.AccountClaimMaps, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
 	if a.OperationalState != string(InactiveState) {
@@ -270,10 +277,11 @@ func (am *AuthMethod) isComplete() error {
 }
 
 type convertedValues struct {
-	Algs         []interface{}
-	Auds         []interface{}
-	Certs        []interface{}
-	ClaimsScopes []interface{}
+	Algs             []interface{}
+	Auds             []interface{}
+	Certs            []interface{}
+	ClaimsScopes     []interface{}
+	AccountClaimMaps []interface{}
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -284,7 +292,7 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addAuds, addCerts, addScopes []interface{}
+	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []interface{}
 	if addAlgs, err = am.convertSigningAlgs(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -297,11 +305,15 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 	if addScopes, err = am.convertClaimsScopes(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	if addAccountClaimMaps, err = am.convertAccountClaimMaps(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
 	return &convertedValues{
-		Algs:         addAlgs,
-		Auds:         addAuds,
-		Certs:        addCerts,
-		ClaimsScopes: addScopes,
+		Algs:             addAlgs,
+		Auds:             addAuds,
+		Certs:            addCerts,
+		ClaimsScopes:     addScopes,
+		AccountClaimMaps: addAccountClaimMaps,
 	}, nil
 }
 
@@ -379,4 +391,52 @@ func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
 		newInterfaces = append(newInterfaces, obj)
 	}
 	return newInterfaces, nil
+}
+
+// convertAccountClaimMaps converts the embedded account claim maps from
+// []string to []interface{} where each slice element is a *AccountClaimMap. It
+// will return an error if the AuthMethod's public id is not set or it can
+// convert the account claim maps.
+func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
+	const op = "oidc.(AuthMethod).convertAccountClaimMaps"
+	if am.PublicId == "" {
+		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]interface{}, 0, len(am.AccountClaimMaps))
+	const (
+		from = 0
+		to   = 1
+	)
+	acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	for from, to := range acms {
+		toClaim, err := ConvertToAccountToClaim(to)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		obj, err := NewAccountClaimMap(am.PublicId, from, toClaim)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
+}
+
+func ParseAccountClaimMaps(m ...string) (map[string]string, error) {
+	const op = "oidc.parseAccountClaimMaps"
+	var b kvbuilder.Builder
+	if err := b.Add(m...); err != nil {
+		return nil, errors.New(errors.InvalidParameter, op, "error parsing map", errors.WithWrap(err))
+	}
+	claimMap := map[string]string{}
+	for k, v := range b.Map() {
+		var ok bool
+		if claimMap[k], ok = v.(string); !ok {
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map key %s value %q is not a string", k, v))
+		}
+	}
+	return claimMap, nil
 }

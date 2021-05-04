@@ -516,7 +516,7 @@ func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Con
 	return &connection, connectionStates, nil
 }
 
-// CloseConnectionRep is just a wrapper for the response from CloseConnections.
+// CloseConnectionResp is just a wrapper for the response from CloseConnections.
 // It wraps the connection and its states for each connection closed.
 type CloseConnectionResp struct {
 	Connection       *Connection
