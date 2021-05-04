@@ -150,60 +150,64 @@ func (c *Command) printListTable(items []*users.User) string {
 		"User information:",
 	}
 
-	for i, u := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", u.Id),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", u.Scope.Id),
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
 			)
 		}
-		if u.Version > 0 {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", u.Version),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if u.Name != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", u.Name),
+				fmt.Sprintf("    Name:                %s", item.Name),
 			)
 		}
-		if u.Description != "" {
+		if item.Description != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", u.Description),
+				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
-		if u.PrimaryAccountId != "" {
+		if item.PrimaryAccountId != "" {
 			output = append(output,
-				fmt.Sprintf("    Primary Account ID:  %s", u.PrimaryAccountId),
+				fmt.Sprintf("    Primary Account ID:  %s", item.PrimaryAccountId),
 			)
 		}
-		if u.LoginName != "" {
+		if item.LoginName != "" {
 			output = append(output,
-				fmt.Sprintf("    Login Name:          %s", u.LoginName),
+				fmt.Sprintf("    Login Name:          %s", item.LoginName),
 			)
 		}
-		if u.FullName != "" {
+		if item.FullName != "" {
 			output = append(output,
-				fmt.Sprintf("    Full Name:           %s", u.FullName),
+				fmt.Sprintf("    Full Name:           %s", item.FullName),
 			)
 		}
-		if u.Email != "" {
+		if item.Email != "" {
 			output = append(output,
-				fmt.Sprintf("    Email:               %s", u.Email),
+				fmt.Sprintf("    Email:               %s", item.Email),
 			)
 		}
 
-		if len(u.AuthorizedActions) > 0 {
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, u.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -213,13 +217,19 @@ func (c *Command) printListTable(items []*users.User) string {
 
 func printItemTable(result api.GenericResult) string {
 	item := result.GetItem().(*users.User)
-	nonAttributeMap := map[string]interface{}{
-		"ID":           item.Id,
-		"Version":      item.Version,
-		"Created Time": item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": item.UpdatedTime.Local().Format(time.RFC1123),
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}
@@ -227,13 +237,13 @@ func printItemTable(result api.GenericResult) string {
 		nonAttributeMap["Description"] = item.Description
 	}
 	if item.PrimaryAccountId != "" {
-		nonAttributeMap["PrimaryAccountId"] = item.PrimaryAccountId
+		nonAttributeMap["Primary Account Id"] = item.PrimaryAccountId
 	}
 	if item.LoginName != "" {
-		nonAttributeMap["LoginName"] = item.LoginName
+		nonAttributeMap["Login Name"] = item.LoginName
 	}
 	if item.FullName != "" {
-		nonAttributeMap["FullName"] = item.FullName
+		nonAttributeMap["Full Name"] = item.FullName
 	}
 	if item.Email != "" {
 		nonAttributeMap["Email"] = item.Email
@@ -259,9 +269,14 @@ func printItemTable(result api.GenericResult) string {
 		"",
 		"User information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

@@ -47,4 +47,10 @@ const (
 	SessionConnectionLimitField      = "session_connection_limit"
 	SessionMaxSecondsField           = "session_max_seconds"
 	WorkerFilterField                = "worker_filter"
+	AccountIdsField                  = "account_ids"
+	AccountsField                    = "accounts"
+	LoginNameField                   = "login_name"
+	FullNameField                    = "full_name"
+	PrimaryAccountIdField            = "primary_account_id"
+	EmailField                       = "email"
 )
