@@ -117,6 +117,13 @@ message AuthMethod {
   // are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
   repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScopes" that: "attributes.claims_scopes" }];
+
+  // account_claim_maps are optional claim maps from custom claims to the
+  // standard claims of sub, name and email.  These maps are represented as
+  // key=value where the key equals the from_claim and the value equals the
+  // to_claim.  For example "oid=sub".
+  // @inject_tag: `gorm:"-"`
+  repeated string account_claim_maps = 210 [(custom_options.v1.mask_mapping) = { this: "AccountClaimMaps" that: "attributes.account_claim_maps" }];
 }
 
 // Account represents an OIDC account
@@ -224,4 +231,24 @@ message ClaimsScope {
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 30;
+}
+
+// AccountClaimMap entries are optional from/to account claim maps.
+message AccountClaimMap {
+  // @inject_tag: `gorm:"primary_key"`
+  string oidc_method_id = 10;
+
+  // from_claim is the claim from the id_token that you need to map to a
+  // standard account claim.
+  // @inject_tag: `gorm:"not_null"`
+  string from_claim = 20;
+
+  // to_claim is the standard account claim to map the from_claim to.  Valid
+  // values are: sub, name, email
+  // @inject_tag: `gorm:"column:to_claim;primary_key"`
+  string to_claim = 30;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
 }

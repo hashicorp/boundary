@@ -68,6 +68,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": "name"}),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
@@ -78,9 +79,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
 				am.ClientSecret = "This is a new secret"
+				am.AccountClaimMaps = []string{"preferred_name=name"}
 				return &am
 			},
-			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ClientSecretField},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ClientSecretField, AccountClaimMapsField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -90,6 +92,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.ClientSecret = updateWith.ClientSecret
 				am.CtClientSecret = updateWith.CtClientSecret
 				am.ClientSecretHmac = updateWith.ClientSecretHmac
+				am.AccountClaimMaps = updateWith.AccountClaimMaps
 				return am
 			},
 		},
@@ -369,6 +372,34 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
+			name: "attempt-to-update-sub-account-claim-map",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": "sub"}),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.AccountClaimMaps = []string{"uid=sub"}
+				return &am
+			},
+			fieldMasks:   []string{AccountClaimMapsField},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
 			name:         "nil-authMethod",
 			setup:        func() *AuthMethod { return nil },
 			updateWith:   func(orig *AuthMethod) *AuthMethod { return nil },
@@ -548,6 +579,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 					require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 				}
+				found, err := repo.LookupAuthMethod(ctx, want.PublicId)
+				require.NoError(err)
+				TestSortAuthMethods(t, []*AuthMethod{found})
+				assert.Empty(cmp.Diff(found.AuthMethod, want.AuthMethod, protocmp.Transform()))
 			}
 		})
 	}
