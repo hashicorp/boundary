@@ -4,7 +4,10 @@ import (
 	"time"
 )
 
-const defaultRunJobsLimit = 1
+const (
+	defaultRunJobsLimit = 1
+	defaultPluginId     = "jpi_internal"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -24,7 +27,7 @@ type options struct {
 	withRunJobsLimit uint
 	withLimit        int
 	withName         string
-	withCode         string
+	withServerId     string
 }
 
 func getDefaultOptions() options {
@@ -34,6 +37,8 @@ func getDefaultOptions() options {
 }
 
 // WithNextRunIn provides an option to provide the duration until the next run is scheduled.
+// If this option is not provided the NextScheduledRun of the job will default to the
+// current database time, and be available to run immediately.
 func WithNextRunIn(d time.Duration) Option {
 	return func(o *options) {
 		o.withNextRunIn = d
@@ -67,9 +72,9 @@ func WithName(n string) Option {
 	}
 }
 
-// WithCode provides an option to provide the code to match when calling ListJobs
-func WithCode(c string) Option {
+// WithServerId provides an option to provide the server id to match when calling InterruptRuns
+func WithServerId(id string) Option {
 	return func(o *options) {
-		o.withCode = c
+		o.withServerId = id
 	}
 }

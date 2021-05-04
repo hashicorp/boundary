@@ -40,17 +40,16 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			for rows.Next() {
 				run := allocRun()
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
 			}
-			_ = rows.Close()
 
 			// Write Run create messages to oplog
 			for _, run := range runs {
@@ -86,12 +85,6 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 
 	run := allocRun()
 	run.PrivateId = runId
-	if err := r.reader.LookupById(ctx, run); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("run %q does not exist", runId)))
-		}
-		return nil, errors.Wrap(err, op)
-	}
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, updateProgressQuery, []interface{}{completed, total, runId})
@@ -112,7 +105,15 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.InvalidJobRunState, op, "job run is already in a final run state")
+				// Failed to update run, either it does not exist or was in an invalid state
+				if err = r.LookupById(ctx, run); err != nil {
+					if errors.IsNotFoundError(err) {
+						return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+					}
+					return errors.Wrap(err, op)
+				}
+
+				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			// Write Run update to oplog
@@ -154,60 +155,58 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 
 	run := allocRun()
 	run.PrivateId = runId
-	if err := r.reader.LookupById(ctx, run); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("run %q does not exist", runId)))
-		}
-		return nil, errors.Wrap(err, op)
-	}
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, completeRunQuery, []interface{}{runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					_ = rows.Close()
 					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
-			_ = rows.Close()
 			if rowCnt == 0 {
-				return errors.New(errors.InvalidJobRunState, op, "job run is already in a final run state")
+				// Failed to update run, either it does not exist or was in an invalid state
+				if err = r.LookupById(ctx, run); err != nil {
+					if errors.IsNotFoundError(err) {
+						return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+					}
+					return errors.Wrap(err, op)
+				}
+
+				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			// Write Run update to oplog
-			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
+			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
 
-			job := allocJob()
-			job.PrivateId = run.JobId
-			rows, err = w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobId)))
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
 			}
-			defer rows.Close()
+			defer rows1.Close()
 
+			job := allocJob()
 			rowCnt = 0
-			for rows.Next() {
+			for rows1.Next() {
 				if rowCnt > 0 {
 					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, job)
+				err = r.ScanRows(rows1, job)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
 				}
 			}
@@ -248,12 +247,6 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 
 	run := allocRun()
 	run.PrivateId = runId
-	if err := r.reader.LookupById(ctx, run); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("run %q does not exist", runId)))
-		}
-		return nil, errors.Wrap(err, op)
-	}
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, failRunQuery, []interface{}{runId})
@@ -270,16 +263,23 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 				rowCnt++
 				err = r.ScanRows(rows, run)
 				if err != nil {
-					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.InvalidJobRunState, op, "job run is already in a final run state")
+				// Failed to update run, either it does not exist or was in an invalid state
+				if err = r.LookupById(ctx, run); err != nil {
+					if errors.IsNotFoundError(err) {
+						return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("job run %q does not exist", runId)))
+					}
+					return errors.Wrap(err, op)
+				}
+
+				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			// Write Run update to oplog
-			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status"}, run)
+			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -291,6 +291,67 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 	}
 
 	return run, nil
+}
+
+// InterruptRuns updates the Run repository entries for all job runs that have not been
+// updated for the provided interruptThreshold. It sets the status to 'interrupted' and
+// updates the run's EndTime to the current database time.
+//
+// Once a run has been persisted with a final run status (completed, failed
+// or interrupted), any future calls to InterruptRuns will return an error with Code
+// errors.InvalidJobRunState.
+// WithServerId is the only valid option
+func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.Duration, opt ...Option) ([]*Run, error) {
+	const op = "job.(Repository).InterruptRuns"
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	opts := getOpts(opt...)
+
+	// interruptThreshold is seconds in past so * -1
+	args := []interface{}{-1 * int(interruptThreshold.Round(time.Second).Seconds())}
+	var whereServerId string
+	if opts.withServerId != "" {
+		whereServerId = "and server_id = ?"
+		args = append(args, opts.withServerId)
+	}
+	query := fmt.Sprintf(interruptRunsQuery, whereServerId)
+
+	var runs []*Run
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			rows, err := r.Query(ctx, query, args)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				run := allocRun()
+				err = r.ScanRows(rows, run)
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
+				}
+				runs = append(runs, run)
+			}
+
+			// Write Run update to oplog
+			for _, run := range runs {
+				if err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run); err != nil {
+					return errors.Wrap(err, op)
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
+	return runs, nil
 }
 
 // LookupRun will look up a run in the repository using the runId. If the run is not

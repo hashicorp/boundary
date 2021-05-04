@@ -5009,26 +5009,31 @@ create function wt_add_seconds(sec integer, ts timestamp with time zone)
         'wt_add_seconds_to_now returns current_timestamp + sec.';
 `),
 			10010: []byte(`
-create table job (
-         private_id wt_private_id primary key,
+create table job_plugin (
+        public_id wt_public_id primary key
+    );
+
+    insert into job_plugin (public_id)
+    values
+        ('jpi_internal');
+
+    comment on table job_plugin is
+        'job_plugin is a table where each row represents a unique plugin that can register jobs.';
+
+    create table job (
+         plugin_id wt_public_id not null
+             constraint job_plugin_fk
+                 references job_plugin(public_id)
+                 on delete cascade
+                 on update cascade,
          name wt_name not null,
          description wt_description not null,
-         code text not null
-             constraint code_too_short
-                 check (length(trim(code)) > 0)
-             constraint code_too_long
-                 check (length(trim(code)) < 128),
          next_scheduled_run timestamp with time zone not null,
-
-         constraint job_name_code_uq
-             unique(name, code)
+         primary key (plugin_id, name)
     );
 
     comment on table job is
         'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
-
-    create trigger immutable_columns before update on job
-        for each row execute procedure immutable_columns('private_id', 'name', 'code');
 
     create table job_run_status_enm (
         name text not null primary key
@@ -5049,11 +5054,8 @@ create table job (
     create table job_run (
          private_id wh_dim_id primary key
              default wh_dim_id(),
-         job_id wt_private_id not null
-             constraint job_fkey
-                 references job(private_id)
-                 on delete cascade
-                 on update cascade,
+         job_plugin_id wt_public_id not null,
+         job_name wt_name not null,
          server_id wt_private_id
              constraint server_fkey
                  references server(private_id)
@@ -5078,14 +5080,20 @@ create table job (
                  on update cascade,
 
          constraint job_run_completed_count_less_than_equal_to_total_count
-             check(completed_count <= total_count)
+             check(completed_count <= total_count),
+
+         constraint job_fkey
+         foreign key (job_plugin_id, job_name)
+             references job (plugin_id, name)
+             on delete cascade
+             on update cascade
     );
 
     comment on table job_run is
         'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
 
     create unique index job_run_status_constraint
-        on job_run (job_id)
+        on job_run (job_plugin_id, job_name)
         where status = 'running';
 
     create trigger update_time_column before update on job_run
@@ -5095,7 +5103,7 @@ create table job (
         for each row execute procedure default_create_time();
 
     create trigger immutable_columns before update on job_run
-        for each row execute procedure immutable_columns('private_id', 'job_id', 'create_time');
+        for each row execute procedure immutable_columns('private_id', 'job_plugin_id', 'job_name', 'create_time');
 
     insert into oplog_ticket (name, version)
     values
@@ -5104,18 +5112,23 @@ create table job (
 
 	create view job_jobs_to_run as
 	  with
-	  running_jobs (job_id) as (
-		select job_id
+	  running_jobs (job_plugin_id, job_name) as (
+		select job_plugin_id, job_name
 		  from job_run
 		 where status = 'running'
 	  ),
-	  final (job_id, next_scheduled_run) as (
-		select private_id, next_scheduled_run
-		  from job
+	  final (job_plugin_id, job_name, next_scheduled_run) as (
+		select plugin_id, name, next_scheduled_run
+		  from job j
 		 where next_scheduled_run <= current_timestamp
-		   and private_id not in (select job_id from running_jobs)
+		   and not exists (
+		       select
+		         from running_jobs
+		        where job_plugin_id = j.plugin_id
+		          and job_name = j.name
+		       )
 	  )
-	  select job_id, next_scheduled_run from final;
+	  select job_plugin_id, job_name, next_scheduled_run from final;
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

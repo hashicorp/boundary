@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -14,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
+func testJob(t *testing.T, conn *gorm.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -23,26 +24,53 @@ func testJob(t *testing.T, conn *gorm.DB, name, code, description string, wrappe
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), name, code, description, opt...)
+	job, err := repo.CreateJob(context.Background(), name, description, opt...)
 	require.NoError(err)
 	require.NotNil(job)
 
 	return job
 }
 
-var testRunQuery = `
-	insert into job_run (
-	  job_id, server_id
-	)
-	values (?,?)
-	returning *;
-`
-
-func testRun(conn *gorm.DB, jId, cId string) (*Run, error) {
+func testRun(conn *gorm.DB, pluginId, name, cId string) (*Run, error) {
+	query := `
+		insert into job_run (
+			job_plugin_id, job_name, server_id
+		)
+		values (?,?,?)
+		returning *;
+	`
 	rw := db.New(conn)
 	run := allocRun()
 
-	rows, err := rw.Query(context.Background(), testRunQuery, []interface{}{jId, cId})
+	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId})
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		return nil, fmt.Errorf("expected to rows")
+	}
+
+	err = rw.ScanRows(rows, run)
+	if err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
+
+	return run, nil
+}
+
+func testRunWithUpdateTime(conn *gorm.DB, pluginId, name, cId string, updateTime time.Time) (*Run, error) {
+	query := `
+		insert into job_run (
+		  job_plugin_id, job_name, server_id, update_time
+		)
+		values (?,?,?,?)
+		returning *;
+	`
+	rw := db.New(conn)
+	run := allocRun()
+
+	rows, err := rw.Query(context.Background(), query, []interface{}{pluginId, name, cId, updateTime})
 	if err != nil {
 		return nil, err
 	}

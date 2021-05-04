@@ -95,6 +95,8 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 // An error is returned if the entry or it's metadata is not found.  Returning an error
 // allows clients to test if an entry was not written, which is a valid use case.
 func TestVerifyOplog(t *testing.T, r Reader, resourceId string, opt ...TestOption) error {
+	t.Helper()
+
 	// sql where clauses
 	const (
 		whereBase = `

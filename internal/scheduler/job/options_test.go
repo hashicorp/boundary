@@ -49,12 +49,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withName = "name"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithCode", func(t *testing.T) {
+	t.Run("WithServerId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithCode("code"))
+		opts := getOpts(WithServerId("server_id"))
 		testOpts := getDefaultOptions()
 		assert.NotEqual(opts, testOpts)
-		testOpts.withCode = "code"
+		testOpts.withServerId = "server_id"
 		assert.Equal(opts, testOpts)
 	})
 }

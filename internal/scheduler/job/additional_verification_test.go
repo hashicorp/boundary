@@ -13,6 +13,7 @@ import (
 )
 
 func TestJobWorkflow(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -26,17 +27,17 @@ func TestJobWorkflow(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.CreateJob(context.Background(), "job1", "code", "description")
+	job, err := repo.CreateJob(context.Background(), "job1", "description")
 	require.NoError(err)
 	require.NotNil(job)
-	assert.NotEmpty(job.PrivateId)
+	assert.Equal(defaultPluginId, job.PluginId)
 
 	runs, err := repo.RunJobs(context.Background(), server.PrivateId)
 	require.NoError(err)
 	assert.Len(runs, 1)
 	run := runs[0]
 	assert.NotEmpty(run.PrivateId)
-	assert.Equal(job.PrivateId, run.JobId)
+	assert.Equal(job.Name, run.JobName)
 
 	run, err = repo.UpdateProgress(context.Background(), run.PrivateId, 100, 110)
 	require.NoError(err)
@@ -52,7 +53,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(Completed.string(), run.Status)
 
-	job, err = repo.LookupJob(context.Background(), job.PrivateId)
+	job, err = repo.LookupJob(context.Background(), job.Name)
 	require.NoError(err)
 	assert.NotNil(job)
 
@@ -62,7 +63,7 @@ func TestJobWorkflow(t *testing.T) {
 	assert.Nil(newRuns)
 
 	// Update job next run to time in past
-	job, err = repo.UpdateJobNextRun(context.Background(), job.PrivateId, 0)
+	job, err = repo.UpdateJobNextRun(context.Background(), job.Name, 0)
 	require.NoError(err)
 
 	// Now that next scheduled time is in past, a request for work should return a Run
@@ -71,7 +72,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.Len(newRuns, 1)
 	newRun := newRuns[0]
 	require.NotEmpty(newRun.PrivateId)
-	assert.Equal(job.PrivateId, newRun.JobId)
+	assert.Equal(job.Name, newRun.JobName)
 	assert.NotEqual(run.PrivateId, newRun.PrivateId)
 
 	// The only available job is already running, a request for work should return nil
@@ -87,4 +88,60 @@ func TestJobWorkflow(t *testing.T) {
 	newRuns, err = repo.RunJobs(context.Background(), server.PrivateId)
 	require.NoError(err)
 	assert.Len(newRuns, 1)
+}
+
+// TODO (LCR): This test can be dropped once plugin support is plumbed through job repo and scheduler
+func TestJobPluginUnique(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	rows, err := rw.Query(context.Background(), createJobQuery, []interface{}{
+		defaultPluginId,
+		"same-job-name",
+		"description",
+		0,
+	})
+	require.NoError(err)
+	_ = rows.Close()
+
+	// Creating a job with same name and pluginId should return a unique constraint error
+	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+		defaultPluginId,
+		"same-job-name",
+		"description",
+		0,
+	})
+	require.Error(err)
+	assert.Nil(rows)
+	assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
+
+	// Create test plugin id
+	testPluginId := "jpi_test1234"
+	numRows, err := rw.Exec(context.Background(), "insert into job_plugin(public_id) values (?)", []interface{}{testPluginId})
+	require.NoError(err)
+	assert.Equal(1, numRows)
+
+	// Creating the a job with the same name and different pluginId should succeed
+	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+		testPluginId,
+		"same-job-name",
+		"description",
+		0,
+	})
+	assert.NoError(err)
+	_ = rows.Close()
+
+	// Creating a job with same name and pluginId should again return a unique constraint error
+	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+		testPluginId,
+		"same-job-name",
+		"description",
+		0,
+	})
+	require.Error(err)
+	assert.Nil(rows)
+	assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
 }

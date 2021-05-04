@@ -1,6 +1,8 @@
 package job
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"google.golang.org/protobuf/proto"
@@ -43,7 +45,7 @@ func (j *Job) SetTableName(n string) {
 
 func (j *Job) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-private-id": []string{j.PrivateId},
+		"resource-private-id": []string{fmt.Sprintf("%v:%v", j.PluginId, j.Name)},
 		"resource-type":       []string{"job"},
 		"op-type":             []string{op.String()},
 	}

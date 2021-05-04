@@ -15,35 +15,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// CreateJob inserts a job into the repository and returns a new *Job
-// containing the job's PrivateId.  The PrivateId is generated and
-// assigned by this method.
+// CreateJob inserts a job into the repository and returns a new *Job.
 //
-// • name must be provided and is the user-friendly name of the job.
-//
-// • code must be provided and is used to uniquely distinguish the same
-// base job (job with the same name)
+// • name must be provided and is the name of the job.
 //
 // • description must be provided and is the user-friendly description of the job.
 //
-// WithNextRunIn() is the only valid option.  If this option is not
-// provided the NextScheduledRun of the job will default to the current database time,
-// and be available to run immediately.
-func (r *Repository) CreateJob(ctx context.Context, name, code, description string, opt ...Option) (*Job, error) {
+// WithNextRunIn is the only valid options.
+func (r *Repository) CreateJob(ctx context.Context, name, description string, opt ...Option) (*Job, error) {
 	const op = "job.(Repository).CreateJob"
 	if name == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
-	if code == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing code")
-	}
 	if description == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing description")
-	}
-
-	id, err := NewJobId(name, code)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
 	}
 
 	opts := getOpts(opt...)
@@ -56,9 +41,8 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, createJobQuery, []interface{}{
-				id,
+				defaultPluginId,
 				name,
-				code,
 				description,
 				int(opts.withNextRunIn.Round(time.Second).Seconds()),
 			})
@@ -100,15 +84,15 @@ func (r *Repository) CreateJob(ctx context.Context, name, code, description stri
 	return j, nil
 }
 
-// UpdateJobNextRun updates the Job repository entry for the privateId
+// UpdateJobNextRun updates the Job repository entry for the job name
 // setting the job's NextScheduledRun to the current database time incremented by
 // the nextRunIn parameter.
 //
 // All options are ignored.
-func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nextRunIn time.Duration, _ ...Option) (*Job, error) {
+func (r *Repository) UpdateJobNextRun(ctx context.Context, name string, nextRunIn time.Duration, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).UpdateJobNextRun"
-	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	if name == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
@@ -116,13 +100,13 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	job := allocJob()
-	job.PrivateId = privateId
+	j := allocJob()
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), job.PrivateId})
+			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", job.PrivateId)))
+				return errors.Wrap(err, op, errors.WithMsg(
+					fmt.Sprintf("failed to set next scheduled run time for job %v", name)))
 			}
 			defer rows.Close()
 
@@ -132,18 +116,18 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
-				err = r.ScanRows(rows, job)
+				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows"))
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", privateId))
+				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
 			}
 
 			// Write job update to oplog
-			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, job)
+			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, j)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -154,33 +138,32 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, privateId string, nex
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return job, nil
+	return j, nil
 }
 
-// LookupJob will look up a job in the repository using the privateId. If the job is not
+// LookupJob will look up a job in the repository using the job name. If the job is not
 // found, it will return nil, nil.
 //
 // All options are ignored.
-func (r *Repository) LookupJob(ctx context.Context, privateId string, _ ...Option) (*Job, error) {
+func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).LookupJob"
-	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+	if name == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
-	j.PrivateId = privateId
-	if err := r.reader.LookupById(ctx, j); err != nil {
+	if err := r.reader.LookupWhere(ctx, j, "name = ?", []interface{}{name}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %v", name)))
 	}
 	return j, nil
 }
 
 // ListJobs returns a slice of Jobs.
 //
-// WithName, WithCode and WithLimit are the only valid options.
+// WithName and WithLimit are the only valid options.
 func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error) {
 	const op = "job.(Repository).ListJobs"
 	opts := getOpts(opt...)
@@ -194,9 +177,6 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 	if opts.withName != "" {
 		where, args = append(where, "name = ?"), append(args, opts.withName)
 	}
-	if opts.withCode != "" {
-		where, args = append(where, "code = ?"), append(args, opts.withCode)
-	}
 
 	var jobs []*Job
 	err := r.reader.SearchWhere(ctx, &jobs, strings.Join(where, " and "), args, db.WithLimit(limit))
@@ -206,28 +186,29 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 	return jobs, nil
 }
 
-// deleteJob deletes the job for the provided id from the repository
+// deleteJob deletes the job for the provided job name from the repository
 // returning a count of the number of records deleted.
 //
 // All options are ignored.
-func (r *Repository) deleteJob(ctx context.Context, privateId string, _ ...Option) (int, error) {
+func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteJob"
-	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+	if name == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing name")
 	}
-	j := allocJob()
-	j.PrivateId = privateId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	j := allocJob()
 	var rowsDeleted int
 	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, j, db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			rowsDeleted, err = w.Delete(ctx, j,
+				db.WithWhere("name = ?", []interface{}{name}),
+				db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -238,7 +219,7 @@ func (r *Repository) deleteJob(ctx context.Context, privateId string, _ ...Optio
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", privateId)))
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %v", name)))
 	}
 
 	return rowsDeleted, nil

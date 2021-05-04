@@ -3,8 +3,10 @@ package scheduler
 import "time"
 
 const (
-	defaultRunJobsLimit    = 1
-	defaultRunJobsInterval = time.Minute
+	defaultRunJobsLimit       = 1
+	defaultRunJobsInterval    = time.Minute
+	defaultMonitorInterval    = 30 * time.Second
+	defaultInterruptThreshold = 5 * time.Minute
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -21,14 +23,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withRunJobsLimit   uint
-	withRunJobInterval time.Duration
+	withRunJobsLimit       uint
+	withRunJobInterval     time.Duration
+	withMonitorInterval    time.Duration
+	withInterruptThreshold time.Duration
 }
 
 func getDefaultOptions() options {
 	return options{
-		withRunJobsLimit:   defaultRunJobsLimit,
-		withRunJobInterval: defaultRunJobsInterval,
+		withRunJobsLimit:       defaultRunJobsLimit,
+		withRunJobInterval:     defaultRunJobsInterval,
+		withMonitorInterval:    defaultMonitorInterval,
+		withInterruptThreshold: defaultInterruptThreshold,
 	}
 }
 
@@ -52,6 +58,30 @@ func WithRunJobsInterval(l time.Duration) Option {
 		o.withRunJobInterval = l
 		if o.withRunJobInterval == 0 {
 			o.withRunJobInterval = defaultRunJobsInterval
+		}
+	}
+}
+
+// WithMonitorInterval provides an option to provide the interval at which the scheduler
+// will query running jobs for status and update the repository accordingly.
+// If WithMonitorInterval == 0, then default interval is used.
+func WithMonitorInterval(l time.Duration) Option {
+	return func(o *options) {
+		o.withMonitorInterval = l
+		if o.withMonitorInterval == 0 {
+			o.withMonitorInterval = defaultMonitorInterval
+		}
+	}
+}
+
+// WithInterruptThreshold provides an option to provide the duration after which a controller
+// will interrupt a running job that is not updating its status.
+// If WithInterruptThreshold == 0, then default duration is used.
+func WithInterruptThreshold(l time.Duration) Option {
+	return func(o *options) {
+		o.withInterruptThreshold = l
+		if o.withInterruptThreshold == 0 {
+			o.withInterruptThreshold = defaultInterruptThreshold
 		}
 	}
 }
