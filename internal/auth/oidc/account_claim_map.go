@@ -65,15 +65,9 @@ func (cs *AccountClaimMap) validate(caller errors.Op) error {
 	if cs.FromClaim == "" {
 		return errors.New(errors.InvalidParameter, caller, "missing from claim")
 	}
-	switch cs.ToClaim {
-	case "":
-		return errors.New(errors.InvalidParameter, caller, "missing to claim")
-	case "sub", "email", "profile":
-	default:
+	if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
+		return errors.Wrap(err, caller)
 	}
-	// if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
-	// 	return errors.Wrap(err, caller)
-	// }
 	return nil
 }
 
