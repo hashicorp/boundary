@@ -183,4 +183,15 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithOperationalState(ActivePublicState))
 		assert.Equal(ActivePublicState, opts.withOperationalState)
 	})
+	t.Run("WithAccountClaimMap", func(t *testing.T) {
+		assert := assert.New(t)
+		acm := map[string]AccountToClaim{
+			"oid":          ToSubClaim,
+			"display_name": ToNameClaim,
+		}
+		opts := getOpts(WithAccountClaimMap(acm))
+		testOpts := getDefaultOptions()
+		testOpts.withAccountClaimMap = acm
+		assert.Equal(opts, testOpts)
+	})
 }
