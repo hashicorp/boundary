@@ -38,7 +38,7 @@ update on auth_oidc_account_claim_map
   for each row execute procedure immutable_columns('oidc_method_id', 'from_claim', 'to_claim', 'create_time');
   
 
-  -- we will drop the oidc_auth_method_with_value_obj view, so we can recreate it
+-- we will drop the oidc_auth_method_with_value_obj view, so we can recreate it
 -- and add the oidc claim's scopes to the returned set.
 drop view oidc_auth_method_with_value_obj;
 
