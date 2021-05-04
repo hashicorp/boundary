@@ -5,17 +5,4 @@
   & .g-section-header {
     margin-bottom: 100px;
   }
-
-  & .g-vertical-text-block-list {
-    & .list {
-      & .body-text {
-        & a {
-          color: var(--boundary);
-          &::after {
-            background-color: var(--boundary);
-          }
-        }
-      }
-    }
-  }
 }

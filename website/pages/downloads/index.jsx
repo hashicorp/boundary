@@ -60,8 +60,6 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
             os: 'linux',
           },
         ]}
-        productName={productName}
-        productId={productSlug}
         latestVersion={VERSION}
         getStartedLinks={[
           {
@@ -84,10 +82,10 @@ export default function DownloadsPage({ binaryReleases, desktopReleases }) {
           <img
             className={styles.logo}
             alt="Boundary"
-            src={require('./img/boundary-logo.svg')}
+            src={require('@hashicorp/mktg-logos/product/boundary/primary/color.svg')}
           />
         }
-        brand="boundary"
+        product="boundary"
         tutorialLink={{
           label: 'View Tutorial on HashiCorp Learn',
           href:

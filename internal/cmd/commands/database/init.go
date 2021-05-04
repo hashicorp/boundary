@@ -239,7 +239,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
 	defer clean()
 	switch errCode {
 	case 0:
