@@ -17,7 +17,7 @@ create table auth_oidc_account_claim_map (
       check(length(trim(from_claim)) < 1024),
   to_claim text not null 
     constraint to_claim_valid_values 
-      CHECK (to_claim IN ('sub', 'name', 'email')), -- intentionally case-sensitive matching
+      check (to_claim in ('sub', 'name', 'email')), -- intentionally case-sensitive matching
   primary key(oidc_method_id, to_claim)
 );
 comment on table auth_oidc_account_claim_map is
