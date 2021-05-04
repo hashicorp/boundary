@@ -192,6 +192,18 @@ var errorCodeInfo = map[Code]Info{
 		Message: "external system unavailable",
 		Kind:    External,
 	},
+	VaultTokenNotOrphan: {
+		Message: "vault token is not an orphan token",
+		Kind:    External,
+	},
+	VaultTokenNotPeriodic: {
+		Message: "vault token is not a periodic token",
+		Kind:    External,
+	},
+	VaultTokenNotRenewable: {
+		Message: "vault token is not renewable",
+		Kind:    External,
+	},
 	OidcProviderCallbackError: {
 		Message: "oidc provider callback error",
 		Kind:    External,

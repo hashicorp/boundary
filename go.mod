@@ -28,9 +28,11 @@ require (
 	github.com/hashicorp/go-kms-wrapping v0.6.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.6.8
+	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.5
+	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.2.0
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79

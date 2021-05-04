@@ -102,7 +102,6 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 // splitImage takes the WithDatabaseImage option and separates
 // it into repo + tag. If a tag is not found, it sets the tag to latest
 func splitImage(opts Options) (string, string, error) {
-
 	separated := strings.Split(opts.withContainerImage, ":")
 	separatedlen := len(separated)
 
@@ -121,5 +120,4 @@ func splitImage(opts Options) (string, string, error) {
 		return "", "", fmt.Errorf("valid reference format is repo:tag, got: %s", opts.withContainerImage)
 
 	}
-
 }

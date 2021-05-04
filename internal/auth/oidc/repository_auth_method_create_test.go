@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateAuthMethod(t *testing.T) {
@@ -59,6 +61,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant"),
 					WithDescription("it's a good place to eat"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": ToNameClaim, "oid": ToSubClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -92,6 +95,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant with a twist"),
 					WithDescription("it's an okay but kinda weird place to eat"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": ToNameClaim, "oid": ToSubClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -126,6 +130,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 					WithName("alice's restaurant is bad"),
 					WithDescription("their food is awful"),
 					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": ToNameClaim, "oid": ToSubClaim}),
 				)
 				require.NoError(t, err)
 				require.Equal(t, am.SigningAlgs, convertAlg(algs...))
@@ -211,6 +216,14 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 			err = db.TestVerifyOplog(t, rw, am.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
+
+			found, err := repo.LookupAuthMethod(ctx, am.PublicId)
+			require.NoError(err)
+			found.CreateTime = got.CreateTime
+			found.UpdateTime = got.UpdateTime
+			found.Version = got.Version
+			TestSortAuthMethods(t, []*AuthMethod{found, am})
+			assert.Empty(cmp.Diff(found.AuthMethod, am.AuthMethod, protocmp.Transform()))
 		})
 	}
 }

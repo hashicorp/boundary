@@ -248,6 +248,21 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: Unavailable,
 		},
 		{
+			name: "VaultTokenNotOrphan",
+			c:    VaultTokenNotOrphan,
+			want: VaultTokenNotOrphan,
+		},
+		{
+			name: "VaultTokenNotPeriodic",
+			c:    VaultTokenNotPeriodic,
+			want: VaultTokenNotPeriodic,
+		},
+		{
+			name: "VaultTokenNotRenewable",
+			c:    VaultTokenNotRenewable,
+			want: VaultTokenNotRenewable,
+		},
+		{
 			name: "OidcProviderCallbackError",
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,
