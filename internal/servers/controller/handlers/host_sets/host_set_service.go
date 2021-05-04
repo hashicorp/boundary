@@ -337,7 +337,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 
 // RemoveHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
-	const op = "host_sets.(Service).RemoveostSetHosts"
+	const op = "host_sets.(Service).RemoveHostSetHosts"
 
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
