@@ -468,14 +468,13 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 }
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
-
 	var container, url, dialect string
 	var err error
 	var c func() error
 
 	opts := getOpts(opt...)
 
-	//We should only get back postgres for now, but laying the foundation for non-postgres
+	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
 	case "":
 		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
