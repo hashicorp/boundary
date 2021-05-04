@@ -181,8 +181,8 @@ A grant like:
 will, if all by itself, result in _any_ action against auth methods in the scope
 having only `id` returned.
 
-However, since grants compose, if both of the above grants are included, the
-final set of output fields will be `id,scope_id,name,description` for `list`
+However, if both of the above grants are included, since grants are composable
+the final set of output fields will be `id,scope_id,name,description` for `list`
 (and `no-op`) actions, and `id` for all other actions.
 
 If, after the grants are composed for a given request, none of the grants
@@ -228,7 +228,7 @@ canonical string syntax; the JSON equivalents are simply an object with a string
 `id` value, a string `type` value, a string array `actions` value, and a string
 array `output_fields` value.
 
-~> `output_fields` is ommitted in most example below for brevity but are valid
+~> `output_fields` is omitted in most example below for brevity but are valid
 in all of them. It is also valid in each case to omit `actions` and specify
 _only_ `output_fields`.
 
