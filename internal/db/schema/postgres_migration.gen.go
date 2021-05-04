@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10010,
+		binarySchemaVersion: 10006,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5719,7 +5719,7 @@ create function wt_add_seconds(sec integer, ts timestamp with time zone)
   comment on function wt_add_seconds_to_now is
   'wt_add_seconds_to_now returns current_timestamp + sec.';
 `),
-			10010: []byte(`
+			10006: []byte(`
 create table job_plugin (
         public_id wt_public_id primary key
     );
