@@ -42,9 +42,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   providers, like Okta and Auth0 for example, will not return the standard claims
   of email and name when you request the default claims scope (openid). 
 
-  Boundary uses the standard email and name claims to populated an OIDC
+  Boundary uses the standard email and name claims to populate an OIDC
   account's `Email` and `FullName` attributes. If you'd like these account
-  attributes populated, you'll need reference your OIDC provider's documentation
+  attributes populated, you'll need to reference your OIDC provider's documentation
   to learn which claims scopes are required to have these claims returned during
   the authentication process.
 
