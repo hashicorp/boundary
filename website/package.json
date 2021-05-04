@@ -11,7 +11,7 @@
     "@hashicorp/react-alert-banner": "6.1.1",
     "@hashicorp/react-button": "5.0.0",
     "@hashicorp/react-content": "7.0.1",
-    "@hashicorp/react-docs-page": "13.0.3",
+    "@hashicorp/react-docs-page": "13.1.7-alpha.9",
     "@hashicorp/react-hashi-stack-menu": "2.0.3",
     "@hashicorp/react-head": "2.0.0",
     "@hashicorp/react-hero": "7.1.2",
