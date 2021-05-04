@@ -148,7 +148,7 @@ was to display all resource fields when listing, because the default was also to
 allow anonymous access to perform `list` on scopes and auth methods (in order to
 discover auth methods and then authenticate to them), returning all
 configuration information for all scopes and auth methods felt like it was
-publicly disclosing more information than users might be desire.
+publicly disclosing more information to users than might be desired.
 
 At the same time, this was not an ideal solution for two reasons:
 
@@ -186,10 +186,9 @@ the final set of output fields will be `id,scope_id,name,description` for `list`
 (and `no-op`) actions, and `id` for all other actions.
 
 If, after the grants are composed for a given request, none of the grants
-contain `output_fields` definitions (or if they do not apply to the
-resource/action in question), the defaults are used. These defaults are
-implemented using internal values for `output_fields` and vary based on whether
-the user is the anonymous user:
+applicable to the resource/action contain `output_fields` definitions, the
+defaults are used. These defaults are implemented using internal values for
+`output_fields` and vary based on whether the user is the anonymous user:
 
 - If the user is the anonymous user, a useful but restricted set of fields is
   returned. This includes `id`, `scope_id`, `scope`, `name`, `description`, and a
