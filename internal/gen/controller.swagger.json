@@ -18,6 +18,9 @@
       "name": "AuthTokenService"
     },
     {
+      "name": "CredentialStoreService"
+    },
+    {
       "name": "GroupService"
     },
     {
@@ -590,6 +593,153 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/credential-stores": {
+      "get": {
+        "summary": "Lists all Credential Stores.",
+        "operationId": "CredentialStoreService_ListCredentialStores",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListCredentialStoresResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialStoreService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Credential Store.",
+        "operationId": "CredentialStoreService_CreateCredentialStore",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialStoreService"
+        ]
+      }
+    },
+    "/v1/credential-stores/{id}": {
+      "get": {
+        "summary": "Gets a single Credential Store.",
+        "operationId": "CredentialStoreService_GetCredentialStore",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialStoreService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an CredentialStore",
+        "operationId": "CredentialStoreService_DeleteCredentialStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialStoreResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialStoreService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an Credential Store.",
+        "operationId": "CredentialStoreService_UpdateCredentialStore",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialStoreService"
         ]
       }
     },
@@ -2704,6 +2854,78 @@
       },
       "title": "AuthToken contains all fields related to an Auth Token resource"
     },
+    "controller.api.resources.credentialstores.v1.CredentialStore": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Credential Store.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The ID of the Scope of which this Credential Store is a part."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this Credential Store.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "type": {
+          "type": "string",
+          "description": "The Credential Store type."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Credential Store type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        },
+        "authorized_collection_actions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The authorized actions for the scope's collections.",
+          "readOnly": true
+        }
+      },
+      "title": "CredentialStore contains all fields related to an Credential Store resource"
+    },
     "controller.api.resources.groups.v1.Group": {
       "type": "object",
       "properties": {
@@ -4023,6 +4245,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateCredentialStoreResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+        }
+      }
+    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -4120,6 +4353,9 @@
     "controller.api.services.v1.DeleteAuthTokenResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeleteCredentialStoreResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteGroupResponse": {
       "type": "object"
     },
@@ -4165,6 +4401,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        }
+      }
+    },
+    "controller.api.services.v1.GetCredentialStoreResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
         }
       }
     },
@@ -4269,6 +4513,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListCredentialStoresResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
           }
         }
       }
@@ -4735,6 +4990,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateCredentialStoreResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
         }
       }
     },
