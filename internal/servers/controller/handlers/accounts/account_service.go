@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -15,6 +16,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -120,22 +122,45 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	if err != nil {
 		return nil, err
 	}
+	if len(ul) == 0 {
+		return &pbs.ListAccountsResponse{}, nil
+	}
+
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
 	finalItems := make([]*pb.Account, 0, len(ul))
-	res := &perms.Resource{
+
+	res := perms.Resource{
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.Account,
 		Pin:     req.GetAuthMethodId(),
 	}
-	for _, item := range ul {
-		item.Scope = authResults.Scope
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions[auth.SubtypeFromId(item.Id)], auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+	for _, acct := range ul {
+		res.Id = acct.GetPublicId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())], auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, acct, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		// This comes last so that we can use item fields in the filter after
+		// the allowed fields are populated above
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -145,56 +170,119 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 
 // GetAccount implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
+	const op = "accounts.(Service).GetAccount"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	acct, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	return &pbs.GetAccountResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetAccountResponse{Item: item}, nil
 }
 
 // CreateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
+	const op = "accounts.(Service).CreateAccount"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
+
 	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetAuthMethodId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.createInRepo(ctx, authMeth, req.GetItem())
+	acct, err := s.createInRepo(ctx, authMeth, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(req.GetItem().GetAuthMethodId())]).Strings()
-	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("accounts/%s", u.GetId())}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.CreateAccountResponse{Item: item, Uri: fmt.Sprintf("accounts/%s", item.GetId())}, nil
 }
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
+	const op = "accounts.(Service).UpdateAccount"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
+
 	authMeth, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req)
+	acct, err := s.updateInRepo(ctx, authResults.Scope.GetId(), authMeth.GetPublicId(), req)
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	return &pbs.UpdateAccountResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateAccountResponse{Item: item}, nil
 }
 
 // DeleteAccount implements the interface pbs.AccountServiceServer.
@@ -215,41 +303,83 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 
 // ChangePassword implements the interface pbs.AccountServiceServer.
 func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequest) (*pbs.ChangePasswordResponse, error) {
+	const op = "accounts.(Service).ChangePassword"
+
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.ChangePassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetCurrentPassword(), req.GetNewPassword())
+	acct, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetCurrentPassword(), req.GetNewPassword())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	return &pbs.ChangePasswordResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.ChangePasswordResponse{Item: item}, nil
 }
 
 // SetPassword implements the interface pbs.AccountServiceServer.
 func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (*pbs.SetPasswordResponse, error) {
+	const op = "accounts.(Service).SetPassword"
+
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
 	}
+
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetPassword)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.setPasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetPassword())
+	acct, err := s.setPasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetPassword())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions[auth.SubtypeFromId(u.Id)]).Strings()
-	return &pbs.SetPasswordResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+
+	item, err := toProto(ctx, acct, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetPasswordResponse{Item: item}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, error) {
 	var acct auth.Account
 	switch auth.SubtypeFromId(id) {
 	case auth.PasswordSubtype:
@@ -281,7 +411,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	default:
 		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	return toProto(acct)
+	return acct, nil
 }
 
 func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
@@ -367,7 +497,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	return out, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*pb.Account, error) {
+func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (auth.Account, error) {
 	const op = "accounts.(Service).createInRepo"
 	if item == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing item")
@@ -393,7 +523,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		}
 		out = am
 	}
-	return toProto(out)
+	return out, nil
 }
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
@@ -463,7 +593,7 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (*pb.Account, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (auth.Account, error) {
 	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
 	switch auth.SubtypeFromId(req.GetId()) {
@@ -486,7 +616,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 		}
 		out = a
 	}
-	return toProto(out)
+	return out, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
@@ -516,46 +646,40 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
-	var outUl []*pb.Account
+func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.Account, error) {
+	const op = "accounts.(Service).listFromRepo"
+
+	var outUl []auth.Account
 	switch auth.SubtypeFromId(authMethodId) {
 	case auth.PasswordSubtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
-		for _, u := range pwl {
-			ou, err := toProto(u)
-			if err != nil {
-				return nil, err
-			}
-			outUl = append(outUl, ou)
+		for _, a := range pwl {
+			outUl = append(outUl, a)
 		}
 	case auth.OidcSubtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
 		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, op)
 		}
-		for _, u := range oidcl {
-			ou, err := toProto(u)
-			if err != nil {
-				return nil, err
-			}
-			outUl = append(outUl, ou)
+		for _, a := range oidcl {
+			outUl = append(outUl, a)
 		}
 	}
 	return outUl, nil
 }
 
-func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (*pb.Account, error) {
+func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (auth.Account, error) {
 	const op = "account.(Service).changePasswordInRepo"
 	repo, err := s.pwRepoFn()
 	if err != nil {
@@ -578,10 +702,10 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
 	}
-	return toProto(out)
+	return out, nil
 }
 
-func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (*pb.Account, error) {
+func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, pw string) (auth.Account, error) {
 	const op = "accounts.(Service).setPasswordInRepo"
 
 	repo, err := s.pwRepoFn()
@@ -599,7 +723,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 		}
 		return nil, errors.Wrap(err, op)
 	}
-	return toProto(out)
+	return out, nil
 }
 
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (auth.AuthMethod, auth.VerifyResults) {
@@ -677,30 +801,61 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return authMeth, auth.Verify(ctx, opts...)
 }
 
-func toProto(in auth.Account) (*pb.Account, error) {
-	out := pb.Account{
-		Id:           in.GetPublicId(),
-		CreatedTime:  in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
-		AuthMethodId: in.GetAuthMethodId(),
-		Version:      in.GetVersion(),
+func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.Account, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building account proto")
 	}
-	if in.GetDescription() != "" {
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Account{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
+	}
+	if outputFields.Has(globals.AuthMethodIdField) {
+		out.AuthMethodId = in.GetAuthMethodId()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
-	if in.GetName() != "" {
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 	switch i := in.(type) {
 	case *password.Account:
-		out.Type = auth.PasswordSubtype.String()
+		if outputFields.Has(globals.TypeField) {
+			out.Type = auth.PasswordSubtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
+			break
+		}
 		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
 		if err != nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
 		}
 		out.Attributes = st
 	case *oidc.Account:
-		out.Type = auth.OidcSubtype.String()
+		if outputFields.Has(globals.TypeField) {
+			out.Type = auth.OidcSubtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
+			break
+		}
 		attrs := &pb.OidcAccountAttributes{
 			Issuer:   i.GetIssuer(),
 			Subject:  i.GetSubject(),

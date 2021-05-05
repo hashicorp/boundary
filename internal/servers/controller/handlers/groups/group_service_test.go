@@ -319,12 +319,26 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
+			// Test with a non-anon user
 			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+
+			// Test the anon case
+			got, gErr = s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.Members)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
