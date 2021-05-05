@@ -193,31 +193,43 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 		"",
 		"Account information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if m.Name != "" {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Description != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if item.Name != "" {
+			output = append(output,
+				fmt.Sprintf("    Name:                %s", item.Name),
+			)
+		}
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -225,16 +237,27 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *accounts.Account) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":             item.Id,
-		"Version":        item.Version,
-		"Type":           item.Type,
-		"Created Time":   item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":   item.UpdatedTime.Local().Format(time.RFC1123),
-		"Auth Method ID": item.AuthMethodId,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*accounts.Account)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.AuthMethodId != "" {
+		nonAttributeMap["Auth Method ID"] = item.AuthMethodId
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}
@@ -248,9 +271,14 @@ func printItemTable(item *accounts.Account) string {
 		"",
 		"Account information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

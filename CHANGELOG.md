@@ -9,14 +9,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * API `delete` actions now result in a `204` status code and no body when
   successful. This was not the case previously due to a technical limitation
   which has now been solved.
-* When using a `delete` command we now either show success or treat the `404`
-  error the same as any other `404` error, that is, it results in a non-zero
-  status code and an error message. This makes `delete` actions behave the same
-  as other commands, all of which pass through errors to the CLI. Given `-format
-  json` capability, it's relatively easy to perform a check to see whether an
-  error was `404` or something else from within scripts, in conjunction with
-  checking that the returned status code matches the API error status code
-  (`1`).
+* When using a `delete` command within the CLI we now either show success or
+  treat the `404` error the same as any other `404` error, that is, it results
+  in a non-zero status code and an error message. This makes `delete` actions
+  behave the same as other commands, all of which pass through errors to the
+  CLI. Given `-format json` capability, it's relatively easy to perform a check
+  to see whether an error was `404` or something else from within scripts, in
+  conjunction with checking that the returned status code matches the API error
+  status code (`1`).
 * When outputting from the CLI in JSON format, the resource information under
   `item` or `items` (depending on the action) now exactly matches the JSON sent
   across the wire by the controller, as opposed to matching the Go SDK
@@ -34,6 +34,20 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* permissions: Improving upon the work put into 0.2.0 to limit the fields that
+  are returned when listing as the anonymous user, grants now support a new
+  `output_fields` section. This takes in a comma-delimited (or in JSON format,
+  array) set of values that correspond to the JSON fields returned from an API
+  call (for listing, this will be applied to each resource under the `items`
+  field). If specified for a given ID or resource type (and scoped to specific
+  actions, if included), only the given values will be returned in the output.
+  If no `output_fields` are specified, the defaults are used. For authenticated
+  users this defaults to all fields; for `u_anon` this defaults to the fields
+  useful for navigating to and authenticating to the system. In either case,
+  this is overridable. See the [permissions
+  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions)
+  for more information on why and when to use this. This currently only applies
+  to top-level fields in the response.
 * cli/api/sdk: Add support to request additional OIDC claims scope values from
   the OIDC provider when making an authentication request.
   ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
@@ -50,7 +64,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
   Boundary now provides a new OIDC auth method parameter `claims_scopes` which
   allows you to add multiple additional claims scope values to an OIDC auth
-  method configuration. 
+  method configuration.
 
   For information on claims scope values see: [Scope Claims in the OIDC
   specification](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)
@@ -65,7 +79,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   used to allow principals to see values in list results without also giving
   `read` or other capabilities on the resources. The default scope permissions
   have been updated to convey `no-op,list` instead of `read,list`.
-  [PR](https://github.com/hashicorp/boundary/pull/1138)
+  ([PR](https://github.com/hashicorp/boundary/pull/1138))
 * cli/api/sdk: User resources have new attributes for:
   * Primary Account ID
   * Login Name
@@ -79,10 +93,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Support for reading and deleting the user's own token via the new
   `read:self` and `delete:self` actions on auth tokens. If no token ID is
   provided, the stored token's ID will be used (after prompting), or `"self"`
-  can be set to the ID to trigger this behavior without prompting.
-  ([PR](https://github.com/hashicorp/boundary/pull/1162))
+  can be set as the value of the `-id` parameter to trigger this behavior
+  without prompting. ([PR](https://github.com/hashicorp/boundary/pull/1162))
 * cli: New `logout` command deletes the current token in Boundary and forgets it
-  from the local system credential store
+  from the local system credential store, respecting `-token-name`
   ([PR](https://github.com/hashicorp/boundary/pull/1134))
 * config: The `name` field for workers and controllers now supports being set
   from environment variables or a file on disk
@@ -91,7 +105,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### Bug Fixes
 
 * cors: Fix allowing all origins by default
-  [PR](https://github.com/hashicorp/boundary/pull/1134)
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
 * cli: It is now an error to run `boundary database migrate` on an uninitalized db.
   Use `boundary database init` instead.
   ([PR](https://github.com/hashicorp/boundary/pull/1184))
@@ -141,19 +155,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   update, delete, and list (see new cli `oidc` subcommands available on CRUDL
   operations for examples), as well as the ability to authenticate against it
   via the SDK, CLI, admin UI, and desktop client.
-  [PR](https://github.com/hashicorp/boundary/pull/1090)
+  ([PR](https://github.com/hashicorp/boundary/pull/1090))
 * server: When performing recursive listing, `list` action is no longer required
   to be granted to the calling user. Instead, the given scope acts as the root
   point (so only results under that scope will be shown), and `list` grant is
-  evaluated per-scope. [PR](https://github.com/hashicorp/boundary/pull/1016)
+  evaluated per-scope. ([PR](https://github.com/hashicorp/boundary/pull/1016))
 * database init: If the database is already initialized, return 0 as the exit
   code. This matches how the `database migrate` command works.
-  [PR](https://github.com/hashicorp/boundary/pull/1033)
+  ([PR](https://github.com/hashicorp/boundary/pull/1033))
 
 ### Bug Fixes
 
 * server: Roles for auto generated scopes are now generated at database init.
-  [PR](https://github.com/hashicorp/boundary/pull/996)
+  ([PR](https://github.com/hashicorp/boundary/pull/996))
 * cli: Don't panic on certain commands when outputting in `json` format
   ([Issue](https://github.com/hashicorp/boundary/pull/992),
   [PR](https://github.com/hashicorp/boundary/pull/1095))
@@ -190,25 +204,25 @@ to call out in this changelog. The full set of open issues is on GitHub.
   `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
   This higher-level response object contains the map and body, and also exposes
   `StatusCode()` in place of indivdidual resources.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: Error return codes have been standardized across CLI commands. An error
   code of `1` indicates an error generated from the actual controller API; an
   error code of `2` is an error encountered due to the CLI command's logic; and
   an error code of `3` indicates an error that was caused due to user input to
   the command. (There is some nuance sometimes whether an error is really due to
   user input or not, but we attempt to be consistent.)
-  [PR](https://github.com/hashicorp/boundary/pull/976)
+  ([PR](https://github.com/hashicorp/boundary/pull/976))
 
 ### New and Improved
 

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/mitchellh/go-wordwrap"
@@ -286,40 +287,48 @@ func (c *Command) printListTable(items []*targets.Target) string {
 		"",
 		"Target information:",
 	}
-	for i, m := range items {
+	for i, item := range items {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
-				fmt.Sprintf("  ID:                    %s", m.Id),
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive {
+		if c.FlagRecursive && item.ScopeId != "" {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", m.Scope.Id),
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
 			)
 		}
-		if true {
+		if item.Version > 0 {
 			output = append(output,
-				fmt.Sprintf("    Version:             %d", m.Version),
-				fmt.Sprintf("    Type:                %s", m.Type),
+				fmt.Sprintf("    Version:             %d", item.Version),
 			)
 		}
-		if m.Name != "" {
+		if item.Type != "" {
 			output = append(output,
-				fmt.Sprintf("    Name:                %s", m.Name),
+				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
-		if m.Description != "" {
+		if item.Name != "" {
 			output = append(output,
-				fmt.Sprintf("    Description:         %s", m.Description),
+				fmt.Sprintf("    Name:                %s", item.Name),
 			)
 		}
-		if len(m.AuthorizedActions) > 0 {
+		if item.Description != "" {
+			output = append(output,
+				fmt.Sprintf("    Description:         %s", item.Description),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
-				base.WrapSlice(6, m.AuthorizedActions),
+				base.WrapSlice(6, item.AuthorizedActions),
 			)
 		}
 	}
@@ -327,17 +336,24 @@ func (c *Command) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(item *targets.Target) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":                       item.Id,
-		"Version":                  item.Version,
-		"Type":                     item.Type,
-		"Created Time":             item.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":             item.UpdatedTime.Local().Format(time.RFC1123),
-		"Session Connection Limit": item.SessionConnectionLimit,
-		"Session Max Seconds":      item.SessionMaxSeconds,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*targets.Target)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
 	}
@@ -346,6 +362,14 @@ func printItemTable(item *targets.Target) string {
 	}
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter
+	}
+	if result.GetResponse() != nil && result.GetResponse().Map != nil {
+		if result.GetResponse().Map[globals.SessionConnectionLimitField] != nil {
+			nonAttributeMap["Session Connection Limit"] = item.SessionConnectionLimit
+		}
+		if result.GetResponse().Map[globals.SessionMaxSecondsField] != nil {
+			nonAttributeMap["Session Max Seconds"] = item.SessionMaxSeconds
+		}
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
@@ -368,9 +392,14 @@ func printItemTable(item *targets.Target) string {
 		"",
 		"Target information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(item.Scope, maxLength),
+	}
+
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {
@@ -459,7 +488,7 @@ var keySubstMap = map[string]string{
 }
 
 func exampleOutput() string {
-	in := &targets.Target{
+	item := &targets.Target{
 		Id:      "ttcp_1234567890",
 		ScopeId: "global",
 		Scope: &scopes.ScopeInfo{
@@ -486,5 +515,7 @@ func exampleOutput() string {
 			"default_port": 22,
 		},
 	}
-	return printItemTable(in)
+	target := new(targets.TargetReadResult)
+	target.Item = item
+	return printItemTable(target)
 }

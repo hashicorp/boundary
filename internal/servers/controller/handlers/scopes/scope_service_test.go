@@ -14,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -290,13 +291,16 @@ func TestList(t *testing.T) {
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
 	require.NoError(t, err)
 
+	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults("u_auth")
 	var initialOrgs []*pb.Scope
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
-	oNoProjectsProto := scopes.ToProto(oNoProjects)
+	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(&outputFields))
+	require.NoError(t, err)
 	oNoProjectsProto.Scope = globalScope
 	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
-	oWithProjectsProto := scopes.ToProto(oWithProjects)
+	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(&outputFields))
+	require.NoError(t, err)
 	oWithProjectsProto.Scope = globalScope
 	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
@@ -342,7 +346,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -351,8 +355,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)
@@ -455,7 +460,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -465,8 +470,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)

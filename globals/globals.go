@@ -15,8 +15,8 @@ const (
 )
 
 type (
-	ContextMaxRequestSizeType      int
-	ContextOriginalRequestPathType int
+	ContextMaxRequestSizeType      struct{}
+	ContextOriginalRequestPathType struct{}
 )
 
 var (

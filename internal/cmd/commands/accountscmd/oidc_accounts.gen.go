@@ -216,8 +216,7 @@ func (c *OidcCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		item := result.GetItem().(*accounts.Account)
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
 		if ok := c.PrintJsonItem(result); !ok {
