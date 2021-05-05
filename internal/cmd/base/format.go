@@ -20,6 +20,9 @@ import (
 var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
 
 func ScopeInfoForOutput(scp *scopes.ScopeInfo, maxLength int) string {
+	if scp == nil {
+		return "    <not included in response>"
+	}
 	vals := map[string]interface{}{
 		"ID":   scp.Id,
 		"Type": scp.Type,

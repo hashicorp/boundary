@@ -316,8 +316,7 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		item := result.GetItem().(*users.User)
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
 		if ok := c.PrintJsonItem(result); !ok {

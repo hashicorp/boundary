@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -268,10 +269,11 @@ func TestListPassword(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.ListAccountsRequest
-		res  *pbs.ListAccountsResponse
-		err  error
+		name     string
+		req      *pbs.ListAccountsRequest
+		res      *pbs.ListAccountsResponse
+		err      error
+		skipAnon bool
 	}{
 		{
 			name: "List Some Accounts",
@@ -299,7 +301,8 @@ func TestListPassword(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].Attributes.AsMap()["login_name"]),
 			},
-			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			skipAnon: true,
 		},
 		{
 			name: "Filter All Accounts",
@@ -321,6 +324,7 @@ func TestListPassword(t *testing.T) {
 			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
+			// Test non-anon first
 			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
@@ -330,6 +334,20 @@ func TestListPassword(t *testing.T) {
 				require.NoError(gErr)
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Now test with anon
+			if tc.skipAnon {
+				return
+			}
+			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, g := range got.GetItems() {
+				assert.Nil(g.Attributes)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
 		})
 	}
 }
@@ -401,10 +419,11 @@ func TestListOidc(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
-		req  *pbs.ListAccountsRequest
-		res  *pbs.ListAccountsResponse
-		err  error
+		name     string
+		req      *pbs.ListAccountsRequest
+		res      *pbs.ListAccountsResponse
+		err      error
+		skipAnon bool
 	}{
 		{
 			name: "List Some Accounts",
@@ -432,7 +451,8 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject"]),
 			},
-			res: &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			skipAnon: true,
 		},
 		{
 			name: "Filter All Accounts",
@@ -467,6 +487,20 @@ func TestListOidc(t *testing.T) {
 					got.Items[j].GetAttributes().GetFields()["subject"].GetStringValue()) < 0
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Now test with anon
+			if tc.skipAnon {
+				return
+			}
+			got, gErr = s.ListAccounts(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, g := range got.GetItems() {
+				assert.Nil(g.Attributes)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
 		})
 	}
 }
@@ -1067,7 +1101,7 @@ func TestUpdatePassword(t *testing.T) {
 			name: "Update an Existing AuthMethod",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{globals.NameField, globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1126,7 +1160,7 @@ func TestUpdatePassword(t *testing.T) {
 			name: "Cant change type",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Name: &wrapperspb.StringValue{Value: ""},
@@ -1163,7 +1197,7 @@ func TestUpdatePassword(t *testing.T) {
 			name: "Unset Name",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
@@ -1185,7 +1219,7 @@ func TestUpdatePassword(t *testing.T) {
 			name: "Update Only Name",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
@@ -1209,7 +1243,7 @@ func TestUpdatePassword(t *testing.T) {
 			name: "Update Only Description",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"description"},
+					Paths: []string{globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
@@ -1258,7 +1292,7 @@ func TestUpdatePassword(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: password.AccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"description"},
+					Paths: []string{globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1434,7 +1468,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Update an Existing AuthMethod",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{globals.NameField, globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1493,7 +1527,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Cant change type",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Name: &wrapperspb.StringValue{Value: ""},
@@ -1530,7 +1564,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Unset Name",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
@@ -1552,7 +1586,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Update Only Name",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name"},
+					Paths: []string{globals.NameField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
@@ -1576,7 +1610,7 @@ func TestUpdateOidc(t *testing.T) {
 			name: "Update Only Description",
 			req: &pbs.UpdateAccountRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"description"},
+					Paths: []string{globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
@@ -1615,7 +1649,7 @@ func TestUpdateOidc(t *testing.T) {
 			req: &pbs.UpdateAccountRequest{
 				Id: password.AccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"description"},
+					Paths: []string{globals.DescriptionField},
 				},
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "new"},
@@ -1864,7 +1898,7 @@ func TestSetPassword(t *testing.T) {
 			password:  "anewpassword",
 		},
 		{
-			name:      "password to short",
+			name:      "password too short",
 			accountId: defaultAcct.GetId(),
 			version:   defaultAcct.GetVersion(),
 			password:  "123",
@@ -2027,7 +2061,7 @@ func TestChangePassword(t *testing.T) {
 			newPW:        "anewpassword",
 		},
 		{
-			name:         "new password to short",
+			name:         "new password too short",
 			authMethodId: defaultAcct.GetAuthMethodId(),
 			accountId:    defaultAcct.GetId(),
 			version:      defaultAcct.GetVersion(),
