@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
@@ -145,26 +147,45 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	tl, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
 		return nil, err
+	}
+	if len(tl) == 0 {
+		return &pbs.ListTargetsResponse{}, nil
 	}
 
 	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Target, 0, len(ul))
-	res := &perms.Resource{
+	finalItems := make([]*pb.Target, 0, len(tl))
+	res := perms.Resource{
 		Type: resource.Target,
 	}
-	for _, item := range ul {
-		item.Scope = scopeInfoMap[item.GetScopeId()]
-		res.ScopeId = item.Scope.Id
-		item.AuthorizedActions = authResults.FetchActionSetForId(ctx, item.Id, IdActions, auth.WithResource(res)).Strings()
-		if len(item.AuthorizedActions) == 0 {
+	for _, item := range tl {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
 			continue
 		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, nil, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
 		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
@@ -174,6 +195,8 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 
 // GetTargets implements the interface pbs.TargetServiceServer.
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
+	const op = "targets.(Service).GetTarget"
+
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -181,17 +204,37 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.getFromRepo(ctx, req.GetId())
+	t, ts, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.GetTargetResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetTargetResponse{Item: item}, nil
 }
 
 // CreateTarget implements the interface pbs.TargetServiceServer.
 func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest) (*pbs.CreateTargetResponse, error) {
+	const op = "targets.(Service).CreateTarget"
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -199,17 +242,37 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.createInRepo(ctx, req.GetItem())
+	t, ts, err := s.createInRepo(ctx, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.CreateTargetResponse{Item: u, Uri: fmt.Sprintf("targets/%s", u.GetId())}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.CreateTargetResponse{Item: item, Uri: fmt.Sprintf("targets/%s", item.GetId())}, nil
 }
 
 // UpdateTarget implements the interface pbs.TargetServiceServer.
 func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest) (*pbs.UpdateTargetResponse, error) {
+	const op = "targets.(Service).UpdateTarget"
+
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -217,13 +280,31 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	t, ts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.UpdateTargetResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateTargetResponse{Item: item}, nil
 }
 
 // DeleteTarget implements the interface pbs.TargetServiceServer.
@@ -244,6 +325,8 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 
 // AddTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSetsRequest) (*pbs.AddTargetHostSetsResponse, error) {
+	const op = "targets.(Service).AddTargetHostSets"
+
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
@@ -251,17 +334,37 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.AddTargetHostSetsResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.AddTargetHostSetsResponse{Item: item}, nil
 }
 
 // SetTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSetsRequest) (*pbs.SetTargetHostSetsResponse, error) {
+	const op = "targets.(Service).SetTargetHostSets"
+
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
@@ -269,17 +372,37 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.SetTargetHostSetsResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetTargetHostSetsResponse{Item: item}, nil
 }
 
 // RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTargetHostSetsRequest) (*pbs.RemoveTargetHostSetsResponse, error) {
+	const op = "targets.(Service).RemoveTargetHostSets"
+
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
@@ -287,13 +410,31 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	u, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = authResults.Scope
-	u.AuthorizedActions = authResults.FetchActionSetForId(ctx, u.Id, IdActions).Strings()
-	return &pbs.RemoveTargetHostSetsResponse{Item: u}, nil
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, t, ts, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.RemoveTargetHostSetsResponse{Item: item}, nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
@@ -574,25 +715,25 @@ HostSetIterationLoop:
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Target, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*target.TargetSet, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	u, m, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+			return nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return toProto(u, m)
+	return u, m, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target, error) {
+func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []*target.TargetSet, error) {
 	const op = "targets.(Service).createInRepo"
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
@@ -609,30 +750,30 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (*pb.Target,
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
 	}
 	u, err := target.NewTcpTarget(item.GetScopeId(), opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, m, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
-	return toProto(out, m)
+	return out, m, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (*pb.Target, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []*target.TargetSet, error) {
 	const op = "targets.(Service).updateInRepo"
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -652,7 +793,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
@@ -660,25 +801,25 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
+		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
+		return nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
 	}
-	return toProto(out, m)
+	return out, m, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -697,7 +838,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -706,74 +847,66 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*pb.Tar
 	if err != nil {
 		return nil, err
 	}
-	var outUl []*pb.Target
-	for _, u := range ul {
-		o, err := toProto(u, nil)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert value to proto: %v.", err)
-		}
-		outUl = append(outUl, o)
-	}
-	return outUl, nil
+	return ul, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (*pb.Target, error) {
+func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
-	return toProto(out, m)
+	return out, m, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, error) {
 	const op = "targets.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
 	}
 
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
 	}
-	return toProto(out, m)
+	return out, m, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (*pb.Target, error) {
+func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, error) {
 	const op = "targets.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
 	}
 	out, m, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
+		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
 	}
-	return toProto(out, m)
+	return out, m, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
@@ -829,41 +962,76 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	return ret
 }
 
-func toProto(in target.Target, m []*target.TargetSet) (*pb.Target, error) {
-	out := pb.Target{
-		Id:                     in.GetPublicId(),
-		ScopeId:                in.GetScopeId(),
-		CreatedTime:            in.GetCreateTime().GetTimestamp(),
-		UpdatedTime:            in.GetUpdateTime().GetTimestamp(),
-		Version:                in.GetVersion(),
-		Type:                   target.TcpTargetType.String(),
-		SessionMaxSeconds:      wrapperspb.UInt32(in.GetSessionMaxSeconds()),
-		SessionConnectionLimit: wrapperspb.Int32(in.GetSessionConnectionLimit()),
+func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, opt ...handlers.Option) (*pb.Target, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building target proto")
 	}
-	if in.GetDescription() != "" {
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Target{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
+	}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has(globals.TypeField) {
+		out.Type = target.TcpTargetType.String()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
 	}
-	if in.GetName() != "" {
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
 	}
-	if in.GetWorkerFilter() != "" {
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.SessionMaxSecondsField) {
+		out.SessionMaxSeconds = wrapperspb.UInt32(in.GetSessionMaxSeconds())
+	}
+	if outputFields.Has(globals.SessionConnectionLimitField) {
+		out.SessionConnectionLimit = wrapperspb.Int32(in.GetSessionConnectionLimit())
+	}
+	if outputFields.Has(globals.WorkerFilterField) && in.GetWorkerFilter() != "" {
 		out.WorkerFilter = wrapperspb.String(in.GetWorkerFilter())
 	}
-	attrs := &pb.TcpTargetAttributes{}
-	if in.GetDefaultPort() > 0 {
-		attrs.DefaultPort = &wrappers.UInt32Value{Value: in.GetDefaultPort()}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
 	}
-	st, err := handlers.ProtoToStruct(attrs)
-	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	out.Attributes = st
-	for _, hs := range m {
-		out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
-		out.HostSets = append(out.HostSets, &pb.HostSet{
-			Id:            hs.GetPublicId(),
-			HostCatalogId: hs.GetCatalogId(),
-		})
+	if outputFields.Has(globals.HostSetIdsField) {
+		for _, hs := range m {
+			out.HostSetIds = append(out.HostSetIds, hs.GetPublicId())
+		}
+	}
+	if outputFields.Has(globals.HostSetsField) {
+		for _, hs := range m {
+			out.HostSets = append(out.HostSets, &pb.HostSet{
+				Id:            hs.GetPublicId(),
+				HostCatalogId: hs.GetCatalogId(),
+			})
+		}
+	}
+	if outputFields.Has(globals.AttributesField) {
+		attrs := &pb.TcpTargetAttributes{}
+		if in.GetDefaultPort() > 0 {
+			attrs.DefaultPort = &wrappers.UInt32Value{Value: in.GetDefaultPort()}
+		}
+		st, err := handlers.ProtoToStruct(attrs)
+		if err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		}
+		out.Attributes = st
 	}
 	return &out, nil
 }

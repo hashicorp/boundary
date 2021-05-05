@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -96,7 +97,7 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 				fmt.Sprintf("    Scope ID:            %s", item.Scope.Id),
 			)
 		}
-		if true {
+		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
 			)
@@ -127,22 +128,29 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *scopes.Scope) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":           in.Id,
-		"Version":      in.Version,
-		"Created Time": in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time": in.UpdatedTime.Local().Format(time.RFC1123),
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*scopes.Scope)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
 	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
 	}
-	if in.PrimaryAuthMethodId != "" {
-		nonAttributeMap[flagPrimaryAuthMethodIdName] = in.PrimaryAuthMethodId
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.PrimaryAuthMethodId != "" {
+		nonAttributeMap[flagPrimaryAuthMethodIdName] = item.PrimaryAuthMethodId
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
@@ -151,23 +159,28 @@ func printItemTable(in *scopes.Scope) string {
 		"",
 		"Scope information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope (parent):",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope (parent):",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 			"",
 		)
 	}
 
-	if len(in.AuthorizedCollectionActions) > 0 {
-		keys := make([]string, 0, len(in.AuthorizedCollectionActions))
-		for k := range in.AuthorizedCollectionActions {
+	if len(item.AuthorizedCollectionActions) > 0 {
+		keys := make([]string, 0, len(item.AuthorizedCollectionActions))
+		for k := range item.AuthorizedCollectionActions {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
@@ -175,7 +188,7 @@ func printItemTable(in *scopes.Scope) string {
 		for _, key := range keys {
 			ret = append(ret,
 				fmt.Sprintf("    %s:", key),
-				base.WrapSlice(6, in.AuthorizedCollectionActions[key]),
+				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
 			)
 		}
 	}

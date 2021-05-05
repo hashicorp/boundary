@@ -194,14 +194,26 @@ func TestList(t *testing.T) {
 			s, err := host_sets.NewService(repoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
+			// Test with non-anon user
 			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostSets(%q) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(gErr)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test with anon user
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+				require.Empty(item.HostIds)
+			}
 		})
 	}
 }

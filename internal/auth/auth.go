@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -158,6 +159,19 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	ret.Scope = new(scopes.ScopeInfo)
 
+	// Note: we don't call RequestContextFromCtx here because that performs a
+	// SelfOrDefault. That's useful in the handlers, but here we don't want to
+	// do anything if it's nil. That's mainly useful in tests where
+	// DisableAuthEntirely is set. Later, if we don't have the value set at all,
+	// we have some safeguards to ensure we fail safe (e.g. no output fields at
+	// all). So it provides a good indication as well whether we have set this
+	// where and when needed.
+	var reqInfo *requests.RequestContext
+	reqInfoRaw := ctx.Value(requests.ContextRequestInformationKey)
+	if reqInfoRaw != nil {
+		reqInfo = reqInfoRaw.(*requests.RequestContext)
+	}
+
 	// In tests we often simply disable auth so we can test the service handlers
 	// without fuss
 	if v.requestInfo.DisableAuthEntirely {
@@ -203,6 +217,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 		}
 		ret.UserId = v.requestInfo.userIdOverride
+		if reqInfo != nil {
+			reqInfo.UserId = ret.UserId
+		}
 		ret.Error = nil
 		return
 	}
@@ -247,6 +264,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 			return
 		}
+	}
+
+	if reqInfo != nil {
+		reqInfo.UserId = ret.UserId
+		reqInfo.OutputFields = authResults.OutputFields
 	}
 
 	ret.Error = nil
@@ -513,16 +535,16 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 // FetchActionSetForId returns the allowed actions for a given ID using the
 // current set of ACLs and all other parameters the same (user, etc.)
 func (r *VerifyResults) FetchActionSetForId(ctx context.Context, id string, availableActions action.ActionSet, opt ...Option) action.ActionSet {
-	return r.fetchActions(ctx, id, resource.Unknown, availableActions, opt...)
+	return r.fetchActions(id, resource.Unknown, availableActions, opt...)
 }
 
 // FetchActionSetForType returns the allowed actions for a given collection type
 // using the current set of ACLs and all other parameters the same (user, etc.)
 func (r *VerifyResults) FetchActionSetForType(ctx context.Context, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
-	return r.fetchActions(ctx, "", typ, availableActions, opt...)
+	return r.fetchActions("", typ, availableActions, opt...)
 }
 
-func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
+func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActions action.ActionSet, opt ...Option) action.ActionSet {
 	switch {
 	case r.v.requestInfo.DisableAuthEntirely,
 		r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
@@ -558,6 +580,17 @@ func (r *VerifyResults) fetchActions(ctx context.Context, id string, typ resourc
 		return nil
 	}
 	return ret
+}
+
+func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) perms.OutputFieldsMap {
+	switch {
+	case r.v.requestInfo.TokenFormat == AuthTokenTypeRecoveryKms:
+		return perms.OutputFieldsMap{"*": true}
+	case r.v.requestInfo.DisableAuthEntirely:
+		return nil
+	}
+
+	return r.v.acl.Allowed(res, act).OutputFields
 }
 
 // GetTokenFromRequest pulls the token from either the Authorization header or

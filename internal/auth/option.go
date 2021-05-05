@@ -33,9 +33,7 @@ type options struct {
 }
 
 func getDefaultOptions() options {
-	return options{
-		withUserId: AnonymousUserId,
-	}
+	return options{}
 }
 
 func WithScopeId(id string) Option {

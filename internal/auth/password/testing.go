@@ -11,40 +11,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthMethod creates a password auth methods to the provided DB with the
+// provided scope id. If any errors are encountered during the creation of the
+// auth methods, the test will fail.
+func TestAuthMethod(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *AuthMethod {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	cat, err := NewAuthMethod(scopeId, opt...)
+	assert.NoError(err)
+	require.NotNil(cat)
+	id, err := newAuthMethodId()
+	assert.NoError(err)
+	require.NotEmpty(id)
+	cat.PublicId = id
+
+	conf := NewArgon2Configuration()
+	require.NotNil(conf)
+	conf.PrivateId, err = newArgon2ConfigurationId()
+	require.NoError(err)
+	conf.PasswordMethodId = cat.PublicId
+	cat.PasswordConfId = conf.PrivateId
+
+	ctx := context.Background()
+	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, iw db.Writer) error {
+			require.NoError(iw.Create(ctx, conf))
+			return iw.Create(ctx, cat)
+		},
+	)
+
+	require.NoError(err2)
+	return cat
+}
+
 // TestAuthMethods creates count number of password auth methods to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the auth methods, the test will fail.
 func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*AuthMethod {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	w := db.New(conn)
 	var auts []*AuthMethod
 	for i := 0; i < count; i++ {
-		cat, err := NewAuthMethod(scopeId)
-		assert.NoError(err)
-		require.NotNil(cat)
-		id, err := newAuthMethodId()
-		assert.NoError(err)
-		require.NotEmpty(id)
-		cat.PublicId = id
-
-		conf := NewArgon2Configuration()
-		require.NotNil(conf)
-		conf.PrivateId, err = newArgon2ConfigurationId()
-		require.NoError(err)
-		conf.PasswordMethodId = cat.PublicId
-		cat.PasswordConfId = conf.PrivateId
-
-		ctx := context.Background()
-		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-			func(_ db.Reader, iw db.Writer) error {
-				require.NoError(iw.Create(ctx, conf))
-				return iw.Create(ctx, cat)
-			},
-		)
-
-		require.NoError(err2)
-		auts = append(auts, cat)
+		auts = append(auts, TestAuthMethod(t, conn, scopeId))
 	}
 	return auts
 }
