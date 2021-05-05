@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.1 (2021/05/04)
+
 ### Deprecations/Changes
 
 * API `delete` actions now result in a `204` status code and no body when
