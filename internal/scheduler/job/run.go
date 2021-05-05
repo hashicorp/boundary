@@ -1,7 +1,6 @@
 package job
 
 import (
-	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -38,13 +37,4 @@ func (j *Run) TableName() string {
 // set the name to "" the name will be reset to the default name "job_run".
 func (j *Run) SetTableName(n string) {
 	j.tableName = n
-}
-
-func (j *Run) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-private-id": []string{j.PrivateId},
-		"resource-type":       []string{"job-run"},
-		"op-type":             []string{op.String()},
-	}
-	return metadata
 }

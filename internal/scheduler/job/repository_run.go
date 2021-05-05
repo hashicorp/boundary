@@ -7,11 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"google.golang.org/protobuf/proto"
 )
 
 // RunJobs queries the job repository for jobs that need to be run. It creates new entries
@@ -27,14 +22,9 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	opts := getOpts(opt...)
 	var runs []*Run
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, runJobsQuery, []interface{}{serverId, opts.withRunJobsLimit})
 			if err != nil {
@@ -49,13 +39,6 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job run"))
 				}
 				runs = append(runs, run)
-			}
-
-			// Write Run create messages to oplog
-			for _, run := range runs {
-				if err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, nil, run); err != nil {
-					return errors.Wrap(err, op)
-				}
 			}
 
 			return nil
@@ -78,14 +61,9 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	run := allocRun()
 	run.PrivateId = runId
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, updateProgressQuery, []interface{}{completed, total, runId})
 			if err != nil {
@@ -116,12 +94,6 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
-			// Write Run update to oplog
-			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"CompletedCount", "TotalCount"}, run)
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
-
 			return nil
 		},
 	)
@@ -148,14 +120,9 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	run := allocRun()
 	run.PrivateId = runId
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, completeRunQuery, []interface{}{runId})
 			if err != nil {
@@ -186,12 +153,6 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
-			// Write Run update to oplog
-			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run)
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
-
 			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
@@ -209,12 +170,6 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
 				}
-			}
-
-			// Write job update to oplog
-			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, job)
-			if err != nil {
-				return errors.Wrap(err, op)
 			}
 
 			return nil
@@ -240,14 +195,9 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	run := allocRun()
 	run.PrivateId = runId
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, failRunQuery, []interface{}{runId})
 			if err != nil {
@@ -278,11 +228,6 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
-			// Write Run update to oplog
-			err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run)
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
 			return nil
 		},
 	)
@@ -304,11 +249,6 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.Duration, opt ...Option) ([]*Run, error) {
 	const op = "job.(Repository).InterruptRuns"
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	opts := getOpts(opt...)
 
 	// interruptThreshold is seconds in past so * -1
@@ -321,7 +261,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 	query := fmt.Sprintf(interruptRunsQuery, whereServerId)
 
 	var runs []*Run
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, query, args)
 			if err != nil {
@@ -338,12 +278,6 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 				runs = append(runs, run)
 			}
 
-			// Write Run update to oplog
-			for _, run := range runs {
-				if err = upsertRunOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"Status", "EndTime"}, run); err != nil {
-					return errors.Wrap(err, op)
-				}
-			}
 			return nil
 		},
 	)
@@ -385,18 +319,13 @@ func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing run id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	run := allocRun()
 	run.PrivateId = runId
 	var rowsDeleted int
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, run, db.WithOplog(oplogWrapper, run.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			rowsDeleted, err = w.Delete(ctx, run)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -411,25 +340,4 @@ func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (
 	}
 
 	return rowsDeleted, nil
-}
-
-// upsertRunOplog will write oplog msgs for run upserts. The db.Writer needs to be the writer for the current
-// transaction that's executing the upsert.
-func upsertRunOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper, opType oplog.OpType, fieldMasks []string, run *Run) error {
-	const op = "job.upsertRunOplog"
-	ticket, err := w.GetTicket(run)
-	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-	}
-	msg := oplog.Message{
-		Message:        interface{}(run).(proto.Message),
-		TypeName:       run.TableName(),
-		OpType:         opType,
-		FieldMaskPaths: fieldMasks,
-	}
-	err = w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, run.oplog(opType), []*oplog.Message{&msg})
-	if err != nil {
-		return errors.Wrap(err, op)
-	}
-	return nil
 }

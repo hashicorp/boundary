@@ -8,11 +8,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"google.golang.org/protobuf/proto"
 )
 
 // CreateJob inserts a job into the repository and returns a new *Job.
@@ -32,13 +27,9 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	}
 
 	opts := getOpts(opt...)
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
 
 	j := allocJob()
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := r.Query(ctx, createJobQuery, []interface{}{
 				defaultPluginId,
@@ -67,11 +58,6 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				return errors.New(errors.NotSpecificIntegrity, op, "failed to create new job")
 			}
 
-			// Write job create to oplog
-			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, nil, j)
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
 			return nil
 		},
 	)
@@ -95,13 +81,8 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, name string, nextRunI
 		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	j := allocJob()
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
 			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
@@ -124,12 +105,6 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, name string, nextRunI
 			}
 			if rowCnt == 0 {
 				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
-			}
-
-			// Write job update to oplog
-			err = upsertJobOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, []string{"NextScheduledRun"}, j)
-			if err != nil {
-				return errors.Wrap(err, op)
 			}
 
 			return nil
@@ -196,19 +171,13 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing name")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
 	j := allocJob()
 	var rowsDeleted int
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
 			rowsDeleted, err = w.Delete(ctx, j,
-				db.WithWhere("name = ?", []interface{}{name}),
-				db.WithOplog(oplogWrapper, j.oplog(oplog.OpType_OP_TYPE_DELETE)))
+				db.WithWhere("name = ?", []interface{}{name}))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -223,25 +192,4 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 	}
 
 	return rowsDeleted, nil
-}
-
-// upsertJobOplog will write oplog msgs for job upserts. The db.Writer needs to be the writer for the current
-// transaction that's executing the upsert.
-func upsertJobOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper, opType oplog.OpType, fieldMasks []string, job *Job) error {
-	const op = "job.upsertJobOplog"
-	ticket, err := w.GetTicket(job)
-	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-	}
-	msg := oplog.Message{
-		Message:        interface{}(job).(proto.Message),
-		TypeName:       job.TableName(),
-		OpType:         opType,
-		FieldMaskPaths: fieldMasks,
-	}
-	err = w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, job.oplog(opType), []*oplog.Message{&msg})
-	if err != nil {
-		return errors.Wrap(err, op)
-	}
-	return nil
 }

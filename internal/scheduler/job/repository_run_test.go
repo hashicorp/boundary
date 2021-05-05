@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler/job/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,9 +100,6 @@ func TestRepository_RunJobs(t *testing.T) {
 
 			require.Len(got, 1)
 			assert.Equal(tt.job.Name, got[0].JobName)
-
-			// Verify Run has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, got[0].PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 }
@@ -160,11 +156,6 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 			got, err := repo.RunJobs(context.Background(), server.PrivateId, tt.opts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
-
-			// Verify runs have oplog entries
-			for _, run := range got {
-				assert.NoError(db.TestVerifyOplog(t, rw, run.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
-			}
 		})
 	}
 }
@@ -426,9 +417,6 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
 			assert.NoError(err)
-
-			// Verify Run has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 
@@ -579,13 +567,6 @@ func TestRepository_CompleteRun(t *testing.T) {
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
 			assert.NoError(err)
-
-			// Verify Run has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
-
-			// Verify Job has oplog entry
-			jobId := fmt.Sprintf("%v:%v", job.PluginId, job.Name)
-			assert.NoError(db.TestVerifyOplog(t, rw, jobId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 
@@ -720,9 +701,6 @@ func TestRepository_FailRun(t *testing.T) {
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
 			assert.NoError(err)
-
-			// Verify Run has oplog entry
-			assert.NoError(db.TestVerifyOplog(t, rw, privateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second), db.WithResourcePrivateId(true)))
 		})
 	}
 
