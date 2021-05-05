@@ -9,18 +9,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A TargetCredentialLibrary represents the relationship between a target
+// A CredentialLibrary represents the relationship between a target
 // and a credential library.
-type TargetCredentialLibrary struct {
-	*store.TargetCredentialLibrary
+type CredentialLibrary struct {
+	*store.CredentialLibrary
 	tableName string `gorm:"-"`
 }
 
-// NewTargetCredentialLibrary creates a new in memory
-// TargetCredentialLibrary representing the relationship between targetId
-// and credentialLibraryId.
-func NewTargetCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*TargetCredentialLibrary, error) {
-	const op = "target.NewTargetCredentialLibrary"
+// NewCredentialLibrary creates a new in memory CredentialLibrary
+// representing the relationship between targetId and credentialLibraryId.
+func NewCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*CredentialLibrary, error) {
+	const op = "target.NewCredentialLibrary"
 	if targetId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no target id")
 	}
@@ -28,8 +27,8 @@ func NewTargetCredentialLibrary(targetId, credentialLibraryId string, _ ...Optio
 		return nil, errors.New(errors.InvalidParameter, op, "no credential library id")
 	}
 
-	t := &TargetCredentialLibrary{
-		TargetCredentialLibrary: &store.TargetCredentialLibrary{
+	t := &CredentialLibrary{
+		CredentialLibrary: &store.CredentialLibrary{
 			TargetId:            targetId,
 			CredentialLibraryId: credentialLibraryId,
 			CredentialPurpose:   "application", // application is the only purpose currently supported
@@ -38,21 +37,21 @@ func NewTargetCredentialLibrary(targetId, credentialLibraryId string, _ ...Optio
 	return t, nil
 }
 
-func allocTargetCredentialLibrary() *TargetCredentialLibrary {
-	return &TargetCredentialLibrary{
-		TargetCredentialLibrary: &store.TargetCredentialLibrary{},
+func allocCredentialLibrary() *CredentialLibrary {
+	return &CredentialLibrary{
+		CredentialLibrary: &store.CredentialLibrary{},
 	}
 }
 
-func (t *TargetCredentialLibrary) clone() *TargetCredentialLibrary {
-	cp := proto.Clone(t.TargetCredentialLibrary)
-	return &TargetCredentialLibrary{
-		TargetCredentialLibrary: cp.(*store.TargetCredentialLibrary),
+func (t *CredentialLibrary) clone() *CredentialLibrary {
+	cp := proto.Clone(t.CredentialLibrary)
+	return &CredentialLibrary{
+		CredentialLibrary: cp.(*store.CredentialLibrary),
 	}
 }
 
 // TableName returns the table name.
-func (t *TargetCredentialLibrary) TableName() string {
+func (t *CredentialLibrary) TableName() string {
 	if t.tableName != "" {
 		return t.tableName
 	}
@@ -60,11 +59,11 @@ func (t *TargetCredentialLibrary) TableName() string {
 }
 
 // SetTableName sets the table name.
-func (t *TargetCredentialLibrary) SetTableName(n string) {
+func (t *CredentialLibrary) SetTableName(n string) {
 	t.tableName = n
 }
 
-func (t *TargetCredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
+func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{fmt.Sprintf("%s:%s:%s", t.TargetId, t.CredentialLibraryId, t.CredentialPurpose)},
 		"resource-type":      []string{"target-credential-library"},

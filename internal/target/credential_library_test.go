@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTargetCredentialLibrary_New(t *testing.T) {
+func TestCredentialLibrary_New(t *testing.T) {
 	type args struct {
 		targetId  string
 		libraryId string
@@ -17,7 +17,7 @@ func TestTargetCredentialLibrary_New(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *TargetCredentialLibrary
+		want    *CredentialLibrary
 		wantErr errors.Code
 	}{
 		{
@@ -40,8 +40,8 @@ func TestTargetCredentialLibrary_New(t *testing.T) {
 				targetId:  "targ_0000000",
 				libraryId: "lib_0000000",
 			},
-			want: &TargetCredentialLibrary{
-				TargetCredentialLibrary: &store.TargetCredentialLibrary{
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
 					TargetId:            "targ_0000000",
 					CredentialLibraryId: "lib_0000000",
 					CredentialPurpose:   "application",
@@ -53,7 +53,7 @@ func TestTargetCredentialLibrary_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewTargetCredentialLibrary(tt.args.targetId, tt.args.libraryId)
+			got, err := NewCredentialLibrary(tt.args.targetId, tt.args.libraryId)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
