@@ -6297,11 +6297,6 @@ create table job_plugin (
     create trigger immutable_columns before update on job_run
         for each row execute procedure immutable_columns('private_id', 'job_plugin_id', 'job_name', 'create_time');
 
-    insert into oplog_ticket (name, version)
-    values
-        ('job', 1),
-        ('job_run', 1);
-
 	create view job_jobs_to_run as
 	  with
 	  running_jobs (job_plugin_id, job_name) as (
