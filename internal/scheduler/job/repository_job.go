@@ -176,8 +176,7 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 	_, err := r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Delete(ctx, j,
-				db.WithWhere("name = ?", []interface{}{name}))
+			rowsDeleted, err = w.Delete(ctx, j, db.WithWhere("name = ?", []interface{}{name}))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
