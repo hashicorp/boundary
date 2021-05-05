@@ -67,6 +67,8 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					"alice-rp", "alice-secret",
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"display_name": "name"}),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
@@ -77,9 +79,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
 				am.ClientSecret = "This is a new secret"
+				am.AccountClaimMaps = []string{"preferred_name=name"}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "ClientSecret"},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ClientSecretField, AccountClaimMapsField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -89,6 +92,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.ClientSecret = updateWith.ClientSecret
 				am.CtClientSecret = updateWith.CtClientSecret
 				am.ClientSecretHmac = updateWith.ClientSecretHmac
+				am.AccountClaimMaps = updateWith.AccountClaimMaps
 				return am
 			},
 		},
@@ -106,6 +110,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
 			},
@@ -119,9 +124,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.AudClaims = []string{"www.alice.com/admin"}
 				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				am.Certificates = []string{pem}
+				am.ClaimsScopes = []string{"custom-scope1", "email"}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl", "SigningAlgs", "Certificates"},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ApiUrlField, SigningAlgsField, CertificatesField, ClaimsScopesField},
 			version:    1,
 			opt:        []Option{WithForce()},
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -132,6 +138,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.AudClaims = updateWith.AudClaims
 				am.SigningAlgs = updateWith.SigningAlgs
 				am.Certificates = updateWith.Certificates
+				am.ClaimsScopes = updateWith.ClaimsScopes
 				am.DisableDiscoveredConfigValidation = true
 				return am
 			},
@@ -151,7 +158,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = ""
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description"},
+			fieldMasks: []string{NameField, DescriptionField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -173,11 +180,36 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.PublicId = orig.PublicId
 				return &am
 			},
-			fieldMasks: []string{"SigningAlgs"},
+			fieldMasks: []string{SigningAlgsField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
 				am.SigningAlgs = nil
+				return am
+			},
+		},
+		{
+			name: "null-claims-scope",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				return &am
+			},
+			fieldMasks: []string{ClaimsScopesField},
+			version:    1,
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.Clone()
+				am.ClaimsScopes = nil
 				return am
 			},
 		},
@@ -195,7 +227,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.ApiUrl = "https://www.updated.com/callback"
 				return &am
 			},
-			fieldMasks: []string{"ApiUrl"},
+			fieldMasks: []string{ApiUrlField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -209,7 +241,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret", WithCertificates(tpCert[0]), WithSigningAlgs(Alg(tpAlg)), WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+				return TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				am := AllocAuthMethod()
@@ -217,7 +252,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.SigningAlgs = []string{string(tpAlg)}
 				return &am
 			},
-			fieldMasks: []string{"SigningAlgs"},
+			fieldMasks: []string{SigningAlgsField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -241,7 +276,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.AudClaims = []string{"www.alice.com", "www.alice.com/admin"}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims"},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField},
 			version:    1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.Clone()
@@ -265,6 +300,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
 					WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
@@ -276,10 +312,11 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Description = "the best place to eat"
 				am.AudClaims = []string{"www.alice.com/admin"}
 				am.ApiUrl = "https://www.bob.com/callback"
+				am.ClaimsScopes = []string{"custom-scope1"}
 				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl", "SigningAlgs"},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ApiUrlField, SigningAlgsField, ClaimsScopesField},
 			version:    1,
 			opt:        []Option{WithDryRun()},
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -289,6 +326,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.AudClaims = updateWith.AudClaims
 				am.ApiUrl = updateWith.ApiUrl
 				am.SigningAlgs = updateWith.SigningAlgs
+				am.ClaimsScopes = updateWith.ClaimsScopes
 				return am
 			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
@@ -307,6 +345,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					WithAudClaims("www.alice.com"),
 					WithCertificates(tpCert[0]),
 					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
 					WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
 					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 				)
@@ -320,7 +359,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.ApiUrl = "https://www.bob.com/callback"
 				return &am
 			},
-			fieldMasks: []string{"Name", "Description", "AudClaims", "ApiUrl"},
+			fieldMasks: []string{NameField, DescriptionField, AudClaimsField, ApiUrlField},
 			version:    1,
 			opt:        []Option{WithDryRun()},
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -333,10 +372,38 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
+			name: "attempt-to-update-sub-account-claim-map",
+			setup: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				return TestAuthMethod(t,
+					conn, databaseWrapper,
+					org.PublicId,
+					InactiveState,
+					"alice-rp", "alice-secret",
+					WithCertificates(tpCert[0]),
+					WithSigningAlgs(Alg(tpAlg)),
+					WithClaimsScopes("email", "profile"),
+					WithAccountClaimMap(map[string]AccountToClaim{"oid": "sub"}),
+					WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+				)
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := AllocAuthMethod()
+				am.PublicId = orig.PublicId
+				am.AccountClaimMaps = []string{"uid=sub"}
+				return &am
+			},
+			fieldMasks:   []string{AccountClaimMapsField},
+			version:      1,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
 			name:         "nil-authMethod",
 			setup:        func() *AuthMethod { return nil },
 			updateWith:   func(orig *AuthMethod) *AuthMethod { return nil },
-			fieldMasks:   []string{"Name"},
+			fieldMasks:   []string{NameField},
 			version:      1,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -344,7 +411,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			name:         "nil-authMethod-store",
 			setup:        func() *AuthMethod { return nil },
 			updateWith:   func(orig *AuthMethod) *AuthMethod { return &AuthMethod{} },
-			fieldMasks:   []string{"Name"},
+			fieldMasks:   []string{NameField},
 			version:      1,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -352,7 +419,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 			name:         "missing-public-id",
 			setup:        func() *AuthMethod { return nil },
 			updateWith:   func(orig *AuthMethod) *AuthMethod { a := AllocAuthMethod(); return &a },
-			fieldMasks:   []string{"Name"},
+			fieldMasks:   []string{NameField},
 			version:      1,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -390,7 +457,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				a.PublicId = id
 				return &a
 			},
-			fieldMasks:   []string{"Name"},
+			fieldMasks:   []string{NameField},
 			version:      1,
 			wantErrMatch: errors.T(errors.RecordNotFound),
 		},
@@ -408,7 +475,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.Name = "alice's restaurant"
 				return &am
 			},
-			fieldMasks:   []string{"Name"},
+			fieldMasks:   []string{NameField},
 			version:      100,
 			wantErrMatch: errors.T(errors.VersionMismatch),
 		},
@@ -438,7 +505,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.SigningAlgs = []string{string(ES384), string(ES512)}
 				return &am
 			},
-			fieldMasks:   []string{"Name", "Description", "SigningAlgs"},
+			fieldMasks:   []string{NameField, DescriptionField, SigningAlgsField},
 			version:      1,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -455,7 +522,7 @@ func Test_UpdateAuthMethod(t *testing.T) {
 				am.PublicId = orig.PublicId
 				return &am
 			},
-			fieldMasks:   []string{"SigningAlgs"},
+			fieldMasks:   []string{SigningAlgsField},
 			version:      2, // since TestAuthMethod(...) did an update to get it to ActivePublicState
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -512,6 +579,10 @@ func Test_UpdateAuthMethod(t *testing.T) {
 					err = db.TestVerifyOplog(t, rw, updateWith.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 					require.NoErrorf(err, "unexpected error verifying oplog entry: %s", err)
 				}
+				found, err := repo.LookupAuthMethod(ctx, want.PublicId)
+				require.NoError(err)
+				TestSortAuthMethods(t, []*AuthMethod{found})
+				assert.Empty(cmp.Diff(found.AuthMethod, want.AuthMethod, protocmp.Transform()))
 			}
 		})
 	}
@@ -554,13 +625,13 @@ func Test_DisableDiscoveredConfigValidation(t *testing.T) {
 
 	updateWith := am.Clone()
 	updateWith.Name = "alice's restaurant"
-	updatedWithForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updateWith, updateWith.Version, []string{"Name"}, WithForce())
+	updatedWithForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updateWith, updateWith.Version, []string{NameField}, WithForce())
 	require.NoError(err)
 	assert.Equal(1, rowsUpdated)
 	assert.Equal(true, updatedWithForce.DisableDiscoveredConfigValidation)
 
 	updateWith.Name = "alice and eve's restaurant"
-	updatedWithoutForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updatedWithForce, updatedWithForce.Version, []string{"Name"})
+	updatedWithoutForce, rowsUpdated, err := repo.UpdateAuthMethod(ctx, updatedWithForce, updatedWithForce.Version, []string{NameField})
 	require.NoError(err)
 	assert.Equal(1, rowsUpdated)
 	assert.Equal(false, updatedWithoutForce.DisableDiscoveredConfigValidation)
@@ -803,6 +874,47 @@ func Test_valueObjectChanges(t *testing.T) {
 			}(),
 		},
 		{
+			name:   string(ClaimsScopesVO),
+			id:     "am-public-id",
+			voName: ClaimsScopesVO,
+			new:    []string{"new-scope1", "new-scope2"},
+			old:    []string{"old-scope1", "old-scope2", "old-scope3"},
+			dbMask: []string{string(ClaimsScopesVO)},
+			wantAdd: func() []interface{} {
+				cs, err := NewClaimsScope("am-public-id", "new-scope1")
+				require.NoError(t, err)
+				cs2, err := NewClaimsScope("am-public-id", "new-scope2")
+				require.NoError(t, err)
+				return []interface{}{cs, cs2}
+			}(),
+			wantDel: func() []interface{} {
+				cs, err := NewClaimsScope("am-public-id", "old-scope1")
+				require.NoError(t, err)
+				cs2, err := NewClaimsScope("am-public-id", "old-scope2")
+				require.NoError(t, err)
+				cs3, err := NewClaimsScope("am-public-id", "old-scope3")
+				require.NoError(t, err)
+				return []interface{}{cs, cs2, cs3}
+			}(),
+		},
+		{
+			name:       string(ClaimsScopesVO) + "-null-fields",
+			id:         "am-public-id",
+			voName:     ClaimsScopesVO,
+			new:        nil,
+			old:        []string{"old-scope1", "old-scope2", "old-scope3"},
+			nullFields: []string{string(ClaimsScopesVO)},
+			wantDel: func() []interface{} {
+				cs, err := NewClaimsScope("am-public-id", "old-scope1")
+				require.NoError(t, err)
+				cs2, err := NewClaimsScope("am-public-id", "old-scope2")
+				require.NoError(t, err)
+				cs3, err := NewClaimsScope("am-public-id", "old-scope3")
+				require.NoError(t, err)
+				return []interface{}{cs, cs2, cs3}
+			}(),
+		},
+		{
 			name:       "missing-public-id",
 			voName:     AudClaimVO,
 			new:        nil,
@@ -919,6 +1031,12 @@ func Test_valueObjectChanges(t *testing.T) {
 					bb := gotDel[b]
 					return aa.(*AudClaim).Aud < bb.(*AudClaim).Aud
 				})
+			case ClaimsScopesVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*ClaimsScope).Scope < bb.(*ClaimsScope).Scope
+				})
 			}
 			assert.Equalf(tt.wantDel, gotDel, "wantDel: %s\ngotDel:  %s\n", tt.wantDel, gotDel)
 		})
@@ -935,21 +1053,22 @@ func Test_validateFieldMask(t *testing.T) {
 		{
 			name: "all-valid-fields",
 			fieldMask: []string{
-				"Name",
-				"Description",
-				"Issuer",
-				"ClientId",
-				"ClientSecret",
-				"MaxAge",
-				"SigningAlgs",
-				"ApiUrl",
-				"AudClaims",
-				"Certificates",
+				NameField,
+				DescriptionField,
+				IssuerField,
+				ClientIdField,
+				ClientSecretField,
+				MaxAgeField,
+				SigningAlgsField,
+				ApiUrlField,
+				AudClaimsField,
+				CertificatesField,
+				ClaimsScopesField,
 			},
 		},
 		{
 			name:      "invalid",
-			fieldMask: []string{"Invalid", "Name"},
+			fieldMask: []string{"Invalid", NameField},
 			wantErr:   true,
 		},
 	}
@@ -990,6 +1109,7 @@ func Test_applyUpdate(t *testing.T) {
 					ApiUrl:           "new-callback-1",
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
+					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
 				},
 			},
 			orig: &AuthMethod{
@@ -1005,6 +1125,7 @@ func Test_applyUpdate(t *testing.T) {
 					ApiUrl:           "orig-callback-1",
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
+					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
 				},
 			},
 			want: &AuthMethod{
@@ -1020,19 +1141,21 @@ func Test_applyUpdate(t *testing.T) {
 					ApiUrl:           "new-callback-1",
 					AudClaims:        []string{"new-aud-1", "new-aud-2"},
 					Certificates:     []string{"new-pem1", "new-pem-2"},
+					ClaimsScopes:     []string{"new-scope1", "new-scope2"},
 				},
 			},
 			fieldMask: []string{
-				"Name",
-				"Description",
-				"Issuer",
-				"ClientId",
-				"ClientSecret",
-				"MaxAge",
-				"SigningAlgs",
-				"ApiUrl",
-				"AudClaims",
-				"Certificates",
+				NameField,
+				DescriptionField,
+				IssuerField,
+				ClientIdField,
+				ClientSecretField,
+				MaxAgeField,
+				SigningAlgsField,
+				ApiUrlField,
+				AudClaimsField,
+				CertificatesField,
+				ClaimsScopesField,
 			},
 		},
 		{
@@ -1061,6 +1184,7 @@ func Test_applyUpdate(t *testing.T) {
 					ApiUrl:           "orig-callback-1",
 					AudClaims:        []string{"orig-aud-1", "orig-aud-2"},
 					Certificates:     []string{"orig-pem1", "orig-pem-2"},
+					ClaimsScopes:     []string{"orig-scope1", "orig-scope2"},
 				},
 			},
 			want: &AuthMethod{
@@ -1075,16 +1199,17 @@ func Test_applyUpdate(t *testing.T) {
 				},
 			},
 			fieldMask: []string{
-				"Name",
-				"Description",
-				"Issuer",
-				"ClientId",
-				"ClientSecret",
-				"MaxAge",
-				"SigningAlgs",
-				"ApiUrl",
-				"AudClaims",
-				"Certificates",
+				NameField,
+				DescriptionField,
+				IssuerField,
+				ClientIdField,
+				ClientSecretField,
+				MaxAgeField,
+				SigningAlgsField,
+				ApiUrlField,
+				AudClaimsField,
+				CertificatesField,
+				ClaimsScopesField,
 			},
 		},
 	}

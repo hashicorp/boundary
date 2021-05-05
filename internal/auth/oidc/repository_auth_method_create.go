@@ -105,7 +105,20 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 				}
 				msgs = append(msgs, certOplogMsgs...)
 			}
-
+			if len(vo.ClaimsScopes) > 0 {
+				scopesOplogMsgs := make([]*oplog.Message, 0, len(vo.ClaimsScopes))
+				if err := w.CreateItems(ctx, vo.ClaimsScopes, db.NewOplogMsgs(&scopesOplogMsgs)); err != nil {
+					return err
+				}
+				msgs = append(msgs, scopesOplogMsgs...)
+			}
+			if len(vo.AccountClaimMaps) > 0 {
+				accountClaimMapsOplogMsgs := make([]*oplog.Message, 0, len(vo.AccountClaimMaps))
+				if err := w.CreateItems(ctx, vo.AccountClaimMaps, db.NewOplogMsgs(&accountClaimMapsOplogMsgs)); err != nil {
+					return err
+				}
+				msgs = append(msgs, accountClaimMapsOplogMsgs...)
+			}
 			metadata := am.oplog(oplog.OpType_OP_TYPE_CREATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))

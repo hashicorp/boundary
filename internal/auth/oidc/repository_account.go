@@ -213,8 +213,8 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("Name", f):
-		case strings.EqualFold("Description", f):
+		case strings.EqualFold(NameField, f):
+		case strings.EqualFold(DescriptionField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
@@ -222,8 +222,8 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":        a.Name,
-			"Description": a.Description,
+			NameField:        a.Name,
+			DescriptionField: a.Description,
 		},
 		fieldMaskPaths,
 		nil,

@@ -33,6 +33,7 @@ func init() {
 	}
 
 	IdActions[auth.PasswordSubtype] = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -126,7 +127,7 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 		return nil, err
 	}
 
-	return s.convertInternalAuthTokenToApiAuthToken(
+	return s.ConvertInternalAuthTokenToApiAuthToken(
 		ctx,
 		tok,
 	)

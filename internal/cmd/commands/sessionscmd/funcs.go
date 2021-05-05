@@ -76,23 +76,47 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", item.Id),
 			)
-		}
-		if c.FlagRecursive {
+		} else {
 			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", item.Scope.Id),
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if true {
+		if c.FlagRecursive && item.ScopeId != "" {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
+			)
+		}
+		if item.Status != "" {
 			output = append(output,
 				fmt.Sprintf("    Status:              %s", item.Status),
+			)
+		}
+		if !item.CreatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Created Time:        %s", item.CreatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.ExpirationTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Expiration Time:     %s", item.ExpirationTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.UpdatedTime.IsZero() {
+			output = append(output,
 				fmt.Sprintf("    Updated Time:        %s", item.UpdatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if item.UserId != "" {
+			output = append(output,
 				fmt.Sprintf("    User ID:             %s", item.UserId),
+			)
+		}
+		if item.TargetId != "" {
+			output = append(output,
 				fmt.Sprintf("    Target ID:           %s", item.TargetId),
 			)
 		}
@@ -107,31 +131,57 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *sessions.Session) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":              in.Id,
-		"Target ID":       in.TargetId,
-		"Created Time":    in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC1123),
-		"Expiration Time": in.ExpirationTime.Local().Format(time.RFC1123),
-		"Version":         in.Version,
-		"Type":            in.Type,
-		"Auth Token ID":   in.AuthTokenId,
-		"User ID":         in.UserId,
-		"Host Set ID":     in.HostSetId,
-		"Host ID":         in.HostId,
-		"Endpoint":        in.Endpoint,
-		"Status":          in.Status,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*sessions.Session)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
 	}
-	if len(strings.TrimSpace(in.TerminationReason)) > 0 {
-		nonAttributeMap["Termination Reason"] = in.TerminationReason
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.ExpirationTime.IsZero() {
+		nonAttributeMap["Expiration Time"] = item.ExpirationTime.Local().Format(time.RFC1123)
+	}
+	if item.TargetId != "" {
+		nonAttributeMap["Target ID"] = item.TargetId
+	}
+	if item.AuthTokenId != "" {
+		nonAttributeMap["Auth Token ID"] = item.AuthTokenId
+	}
+	if item.UserId != "" {
+		nonAttributeMap["User ID"] = item.UserId
+	}
+	if item.HostSetId != "" {
+		nonAttributeMap["Host Set ID"] = item.HostSetId
+	}
+	if item.HostId != "" {
+		nonAttributeMap["Host ID"] = item.HostId
+	}
+	if item.Endpoint != "" {
+		nonAttributeMap["Endpoint"] = item.Endpoint
+	}
+	if item.Status != "" {
+		nonAttributeMap["Status"] = item.Status
+	}
+	if len(strings.TrimSpace(item.TerminationReason)) > 0 {
+		nonAttributeMap["Termination Reason"] = item.TerminationReason
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
 	var statesMaps []map[string]interface{}
-	if len(in.States) > 0 {
-		for _, state := range in.States {
+	if len(item.States) > 0 {
+		for _, state := range item.States {
 			m := map[string]interface{}{
 				"Status":     state.Status,
 				"Start Time": state.StartTime.Local().Format(time.RFC1123),
@@ -147,8 +197,8 @@ func printItemTable(in *sessions.Session) string {
 	}
 
 	var workerInfoMaps []map[string]interface{}
-	if len(in.WorkerInfo) > 0 {
-		for _, wi := range in.WorkerInfo {
+	if len(item.WorkerInfo) > 0 {
+		for _, wi := range item.WorkerInfo {
 			m := map[string]interface{}{
 				"Address": wi.Address,
 			}
@@ -163,20 +213,25 @@ func printItemTable(in *sessions.Session) string {
 		"",
 		"Session information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
 		ret = append(ret,
 			"",
-			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
 		)
 	}
 
-	if len(in.States) > 0 {
+	if len(item.AuthorizedActions) > 0 {
+		ret = append(ret,
+			"",
+			"  Authorized Actions:",
+			base.WrapSlice(4, item.AuthorizedActions),
+		)
+	}
+
+	if len(item.States) > 0 {
 		ret = append(ret,
 			"",
 			"  States:",
@@ -189,7 +244,7 @@ func printItemTable(in *sessions.Session) string {
 		}
 	}
 
-	if len(in.WorkerInfo) > 0 {
+	if len(item.WorkerInfo) > 0 {
 		ret = append(ret,
 			fmt.Sprintf("  Worker Info:   %s", ""),
 		)

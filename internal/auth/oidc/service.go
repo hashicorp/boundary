@@ -32,7 +32,7 @@ const (
 
 	// CallbackEndpoint is the endpoint for the oidc callback which will be
 	// included in the auth URL returned when an authen attempted is kicked off.
-	CallbackEndpoint = "%s/v1/auth-methods/%s:authenticate:callback"
+	CallbackEndpoint = "%s/v1/auth-methods/oidc:authenticate:callback"
 )
 
 type (
@@ -139,8 +139,8 @@ func decryptMessage(ctx context.Context, wrappingWrapper wrapping.Wrapper, wrapp
 	return decryptedMsg, nil
 }
 
-// unwrapMessage does just that, it unwraps the encoded request.Wrapper proto message
-func unwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
+// UnwrapMessage does just that, it unwraps the encoded request.Wrapper proto message
+func UnwrapMessage(ctx context.Context, encodedWrappedMsg string) (*request.Wrapper, error) {
 	const op = ""
 	decoded, err := base58.FastBase58Decoding(encodedWrappedMsg)
 	if err != nil {

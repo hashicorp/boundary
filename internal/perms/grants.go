@@ -43,6 +43,9 @@ type Grant struct {
 	// The set of actions being granted
 	actions map[action.Type]bool
 
+	// The set of output fields granted
+	OutputFields OutputFieldsMap
+
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
 	actionsBeingParsed []string
@@ -85,6 +88,12 @@ func (g Grant) clone() *Grant {
 			ret.actions[action] = true
 		}
 	}
+	if g.OutputFields != nil {
+		ret.OutputFields = make(OutputFieldsMap, len(g.OutputFields))
+		for k, v := range g.OutputFields {
+			ret.OutputFields[k] = v
+		}
+	}
 	return ret
 }
 
@@ -109,6 +118,10 @@ func (g Grant) CanonicalString() string {
 		builder = append(builder, fmt.Sprintf("actions=%s", strings.Join(actions, ",")))
 	}
 
+	if len(g.OutputFields) > 0 {
+		builder = append(builder, fmt.Sprintf("output_fields=%s", strings.Join(g.OutputFields.Fields(), ",")))
+	}
+
 	return strings.Join(builder, ";")
 }
 
@@ -129,6 +142,9 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 		}
 		sort.Strings(actions)
 		res["actions"] = actions
+	}
+	if len(g.OutputFields) > 0 {
+		res["output_fields"] = g.OutputFields.Fields()
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
@@ -183,6 +199,26 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 			}
 		}
 	}
+	if rawOutputFields, ok := raw["output_fields"]; ok {
+		interfaceOutputFields, ok := rawOutputFields.([]interface{})
+		if !ok {
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
+		}
+		// We do the make here because we detect later if the field was set but
+		// no values given
+		g.OutputFields = make(OutputFieldsMap, len(interfaceOutputFields))
+		if len(interfaceOutputFields) > 0 {
+			for _, v := range interfaceOutputFields {
+				field, ok := v.(string)
+				switch {
+				case !ok:
+					return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
+				default:
+					g.OutputFields[field] = true
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -224,6 +260,9 @@ func (g *Grant) unmarshalText(grantString string) error {
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
 				}
 			}
+
+		case "output_fields":
+			g.OutputFields = g.OutputFields.AddFields(strings.Split(kv[1], ","))
 		}
 	}
 
@@ -348,26 +387,33 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				}
 			}
 		}
-		// Create a dummy resource and pass it through Allowed and ensure that
-		// we get allowed.
-		acl := NewACL(grant)
-		r := Resource{
-			ScopeId: scopeId,
-			Id:      grant.id,
-			Type:    grant.typ,
+		// Set but empty output fields...
+		if grant.OutputFields != nil && len(grant.OutputFields) == 0 {
+			return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string has output_fields set but empty")
 		}
-		if !topLevelType(grant.typ) {
-			r.Pin = grant.id
-		}
-		var allowed bool
-		for k := range grant.actions {
-			results := acl.Allowed(r, k)
-			if results.Authorized {
-				allowed = true
+		// This might be zero if output fields is populated
+		if len(grant.actions) > 0 {
+			// Create a dummy resource and pass it through Allowed and ensure that
+			// we get allowed.
+			acl := NewACL(grant)
+			r := Resource{
+				ScopeId: scopeId,
+				Id:      grant.id,
+				Type:    grant.typ,
 			}
-		}
-		if !allowed {
-			return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
+			if !topLevelType(grant.typ) {
+				r.Pin = grant.id
+			}
+			var allowed bool
+			for k := range grant.actions {
+				results := acl.Allowed(r, k)
+				if results.Authorized {
+					allowed = true
+				}
+			}
+			if !allowed {
+				return Grant{}, errors.New(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
+			}
 		}
 	}
 
@@ -385,6 +431,7 @@ func (g Grant) validateType() error {
 		resource.Role,
 		resource.AuthMethod,
 		resource.Account,
+		resource.AuthToken,
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
@@ -398,6 +445,12 @@ func (g Grant) validateType() error {
 func (g *Grant) parseAndValidateActions() error {
 	const op = "perms.(Grant).parseAndValidateActions"
 	if len(g.actionsBeingParsed) == 0 {
+		g.actionsBeingParsed = nil
+		// If there are no actions it's fine if the grant is just used to
+		// specify output fields
+		if len(g.OutputFields) > 0 {
+			return nil
+		}
 		return errors.New(errors.InvalidParameter, op, "missing actions")
 	}
 

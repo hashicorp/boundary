@@ -212,13 +212,12 @@ func (c *StaticCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*hostsets.HostSet)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}

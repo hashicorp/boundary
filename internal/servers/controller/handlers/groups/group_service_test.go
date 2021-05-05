@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -23,11 +22,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-members", "set-members", "remove-members"}
 
 // Creates an org scoped group and a project scoped group.
 func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*iam.Repository, error)) {
@@ -106,7 +108,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
-		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	wantProjGroup := &pb.Group{
@@ -125,7 +127,7 @@ func TestGet(t *testing.T) {
 				ScopeId: u.GetScopeId(),
 			},
 		},
-		AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -227,7 +229,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       og.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       og.GetUpdateTime().GetTimestamp(),
 			Version:           1,
-			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalGroups = append(totalGroups, wantOrgGroups[i])
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
@@ -238,7 +240,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       pg.GetUpdateTime().GetTimestamp(),
 			Version:           1,
-			AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 		totalGroups = append(totalGroups, wantProjGroups[i])
 	}
@@ -317,12 +319,26 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
+			// Test with a non-anon user
 			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListGroups(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+
+			// Test the anon case
+			got, gErr = s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.Members)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
@@ -346,7 +362,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: og.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Delete bad group id",
@@ -370,7 +385,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteGroupRequest{
 				Id: pg.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{},
 		},
 		{
 			name:    "Project Scoped Delete bad group id",
@@ -425,8 +439,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	defaultOGroup, defaultPGroup, repoFn := createDefaultGroupsAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultOGroup.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultCreated := defaultOGroup.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateGroupRequest{}
 
 	cases := []struct {
@@ -450,7 +463,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -469,7 +482,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -490,7 +503,7 @@ func TestCreate(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "name"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Version:           1,
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -505,7 +518,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -513,7 +526,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -536,10 +549,8 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.GroupPrefix+"_"))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a group created after the test setup's default group
 				assert.True(gotCreateTime.After(defaultCreated), "New group should have been created after default group. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.After(defaultCreated), "New group should have been updated after default group. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
@@ -590,8 +601,7 @@ func TestUpdate(t *testing.T) {
 		}
 	}
 
-	created, err := ptypes.Timestamp(og.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
+	created := og.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateGroupRequest{
 		Id: og.GetPublicId(),
 	}
@@ -632,7 +642,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -663,7 +673,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -695,7 +705,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -727,7 +737,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -790,7 +800,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -821,7 +831,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -852,7 +862,7 @@ func TestUpdate(t *testing.T) {
 							ScopeId: u.GetScopeId(),
 						},
 					},
-					AuthorizedActions: []string{"read", "update", "delete", "add-members", "set-members", "remove-members"},
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -893,7 +903,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.Group{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -906,7 +916,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.Group{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -946,8 +956,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateGroup response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp")
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a group updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated group should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 

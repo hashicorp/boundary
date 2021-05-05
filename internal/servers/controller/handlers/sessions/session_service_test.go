@@ -31,6 +31,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+var testAuthorizedActions = []string{"no-op", "read", "read:self", "cancel", "cancel:self"}
+
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -86,7 +88,7 @@ func TestGetSession(t *testing.T) {
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -299,7 +301,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 
 		totalSession = append(totalSession, wantSession[i])
@@ -334,7 +336,7 @@ func TestList(t *testing.T) {
 			States:            states,
 			Certificate:       sess.Certificate,
 			Type:              target.TcpSubType.String(),
-			AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+			AuthorizedActions: testAuthorizedActions,
 		})
 	}
 
@@ -385,24 +387,44 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
 			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
-			require.NoError(t, err, "Couldn't create new session service.")
+			require.NoError(err, "Couldn't create new session service.")
 
+			// Test without anon user
 			got, gErr := s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
-				require.Error(t, gErr)
-				assert.True(t, errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(t, gErr)
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
 			}
+			require.NoError(gErr)
 			if tc.res != nil {
-				require.Equal(t, len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
+				require.Equal(len(tc.res.GetItems()), len(got.GetItems()), "Didn't get expected number of sessions: %v", got.GetItems())
 				for i, wantSess := range tc.res.GetItems() {
-					assert.True(t, got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
 				}
 			}
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Test with anon user
+			got, gErr = s.ListSessions(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Empty(item.Version)
+				require.Empty(item.UserId)
+				require.Empty(item.HostId)
+				require.Empty(item.HostSetId)
+				require.Empty(item.AuthTokenId)
+				require.Empty(item.Endpoint)
+				require.Nil(item.CreatedTime)
+				require.Nil(item.ExpirationTime)
+				require.Nil(item.UpdatedTime)
+				require.Empty(item.Certificate)
+				require.Empty(item.TerminationReason)
+			}
 		})
 	}
 }
@@ -477,7 +499,7 @@ func TestCancel(t *testing.T) {
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
 		Type:              target.TcpSubType.String(),
-		AuthorizedActions: []string{"read", "read:self", "cancel", "cancel:self"},
+		AuthorizedActions: testAuthorizedActions,
 	}
 
 	version := wireSess.GetVersion()

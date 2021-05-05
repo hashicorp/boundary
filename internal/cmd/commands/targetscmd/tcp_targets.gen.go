@@ -219,13 +219,12 @@ func (c *TcpCommand) Run(args []string) int {
 	switch c.Func {
 	}
 
-	item := result.GetItem().(*targets.Target)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}

@@ -4,7 +4,6 @@ package hostcatalogscmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/hashicorp/boundary/api"
@@ -173,8 +172,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	existed := true
-
 	var result api.GenericResult
 
 	var listResult api.GenericListResult
@@ -185,11 +182,7 @@ func (c *Command) Run(args []string) int {
 		result, err = hostcatalogsClient.Read(c.Context, c.FlagId, opts...)
 
 	case "delete":
-		_, err = hostcatalogsClient.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
-			existed = false
-			err = nil
-		}
+		result, err = hostcatalogsClient.Delete(c.Context, c.FlagId, opts...)
 
 	case "list":
 		listResult, err = hostcatalogsClient.List(c.Context, c.FlagScopeId, opts...)
@@ -221,41 +214,25 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
+			if ok := c.PrintJsonItem(result); !ok {
+				return base.CommandCliError
+			}
 
 		case "table":
-			output := "The delete operation completed successfully"
-			switch existed {
-			case true:
-				output += "."
-			default:
-				output += ", however the resource did not exist at the time."
-			}
-			c.UI.Output(output)
+			c.UI.Output("The delete operation completed successfully.")
 		}
 
 		return base.CommandSuccess
 
 	case "list":
-		listedItems := listResult.GetItems().([]*hostcatalogs.HostCatalog)
 		switch base.Format(c.UI) {
 		case "json":
-			switch {
-
-			case len(listedItems) == 0:
-				c.UI.Output("null")
-
-			default:
-				items := make([]interface{}, len(listedItems))
-				for i, v := range listedItems {
-					items[i] = v
-				}
-				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return base.CommandCliError
-				}
+			if ok := c.PrintJsonItems(listResult); !ok {
+				return base.CommandCliError
 			}
 
 		case "table":
+			listedItems := listResult.GetItems().([]*hostcatalogs.HostCatalog)
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
@@ -263,13 +240,12 @@ func (c *Command) Run(args []string) int {
 
 	}
 
-	item := result.GetItem().(*hostcatalogs.HostCatalog)
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}

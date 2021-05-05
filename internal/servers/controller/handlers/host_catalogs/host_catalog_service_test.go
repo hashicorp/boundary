@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -27,6 +26,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +46,8 @@ var authorizedCollectionActions = map[string]*structpb.ListValue{
 		},
 	},
 }
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, common.StaticRepoFactory, common.IamRepoFactory) {
 	t.Helper()
@@ -90,7 +92,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
 		Type:                        "static",
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
@@ -174,7 +176,7 @@ func TestList(t *testing.T) {
 			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
 			Version:                     1,
 			Type:                        "static",
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -189,7 +191,7 @@ func TestList(t *testing.T) {
 			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
 			Version:                     1,
 			Type:                        "static",
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
 	}
@@ -257,12 +259,24 @@ func TestList(t *testing.T) {
 			s, err := host_catalogs.NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
+			// Test with non-anon user
 			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListHostCatalogs() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
+				return
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+
+			// Test with anon user
+			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_anon")), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, item := range got.GetItems() {
+				require.Nil(item.CreatedTime)
+				require.Nil(item.UpdatedTime)
+				require.Zero(item.Version)
+			}
 		})
 	}
 }
@@ -287,7 +301,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				Id: hc.GetPublicId(),
 			},
-			res: &pbs.DeleteHostCatalogResponse{},
 		},
 		{
 			name:    "Delete bad id HostCatalog",
@@ -340,8 +353,7 @@ func TestDelete_twice(t *testing.T) {
 func TestCreate(t *testing.T) {
 	t.Parallel()
 	defaultHc, proj, repo, iamRepoFn := createDefaultHostCatalogAndRepo(t)
-	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp.")
+	defaultHcCreated := defaultHc.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateHostCatalogRequest{}
 
 	cases := []struct {
@@ -366,7 +378,7 @@ func TestCreate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "name"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -419,7 +431,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				CreatedTime: ptypes.TimestampNow(),
+				CreatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -427,7 +439,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Update Time",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
-				UpdatedTime: ptypes.TimestampNow(),
+				UpdatedTime: timestamppb.Now(),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -450,9 +462,9 @@ func TestCreate(t *testing.T) {
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a catalog created after the test setup's default catalog
 				assert.True(gotCreateTime.After(defaultHcCreated), "New catalog should have been created after default catalog. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
@@ -488,8 +500,7 @@ func TestUpdate(t *testing.T) {
 		version++
 	}
 
-	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Failed to convert proto to timestamp")
+	hcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.UpdateHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
@@ -521,7 +532,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -547,7 +558,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "desc"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -602,7 +613,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -625,7 +636,7 @@ func TestUpdate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -650,7 +661,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -675,7 +686,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 					Type:                        "static",
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
@@ -732,7 +743,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"created_time"},
 				},
 				Item: &pb.HostCatalog{
-					CreatedTime: ptypes.TimestampNow(),
+					CreatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -745,7 +756,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"updated_time"},
 				},
 				Item: &pb.HostCatalog{
-					UpdatedTime: ptypes.TimestampNow(),
+					UpdatedTime: timestamppb.Now(),
 				},
 			},
 			res: nil,
@@ -794,7 +805,7 @@ func TestUpdate(t *testing.T) {
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHostCatalog response to be nil, but was %v", got)
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				require.NoError(err, "Failed to convert proto to timestamp")
 				// Verify it is a catalog updated after it was created
 				// TODO: This is currently failing.

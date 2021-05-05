@@ -87,6 +87,30 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
+func WithOidcAuthMethodAccountClaimMaps(inAccountClaimMaps []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["account_claim_maps"] = inAccountClaimMaps
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodAccountClaimMaps() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["account_claim_maps"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodAllowedAudiences(inAllowedAudiences []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -144,6 +168,30 @@ func WithAttributes(inAttributes map[string]interface{}) Option {
 func DefaultAttributes() Option {
 	return func(o *options) {
 		o.postMap["attributes"] = nil
+	}
+}
+
+func WithOidcAuthMethodClaimsScopes(inClaimsScopes []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["claims_scopes"] = inClaimsScopes
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultOidcAuthMethodClaimsScopes() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["claims_scopes"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

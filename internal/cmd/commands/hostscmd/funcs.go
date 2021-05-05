@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -67,10 +68,22 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 		if i > 0 {
 			output = append(output, "")
 		}
-		if true {
+		if item.Id != "" {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
+			)
+		}
+		if item.Version > 0 {
+			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
+			)
+		}
+		if item.Type != "" {
+			output = append(output,
 				fmt.Sprintf("    Type:                %s", item.Type),
 			)
 		}
@@ -95,55 +108,71 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(in *hosts.Host) string {
-	nonAttributeMap := map[string]interface{}{
-		"ID":              in.Id,
-		"Version":         in.Version,
-		"Type":            in.Type,
-		"Created Time":    in.CreatedTime.Local().Format(time.RFC1123),
-		"Updated Time":    in.UpdatedTime.Local().Format(time.RFC1123),
-		"Host Catalog ID": in.HostCatalogId,
+func printItemTable(result api.GenericResult) string {
+	item := result.GetItem().(*hosts.Host)
+	nonAttributeMap := map[string]interface{}{}
+	if item.Id != "" {
+		nonAttributeMap["ID"] = item.Id
+	}
+	if item.Version != 0 {
+		nonAttributeMap["Version"] = item.Version
+	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.Name != "" {
+		nonAttributeMap["Name"] = item.Name
+	}
+	if item.Description != "" {
+		nonAttributeMap["Description"] = item.Description
+	}
+	if item.HostCatalogId != "" {
+		nonAttributeMap["Host Catalog ID"] = item.HostCatalogId
 	}
 
-	if in.Name != "" {
-		nonAttributeMap["Name"] = in.Name
-	}
-	if in.Description != "" {
-		nonAttributeMap["Description"] = in.Description
-	}
-
-	maxLength := base.MaxAttributesLength(nonAttributeMap, in.Attributes, keySubstMap)
+	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	ret := []string{
 		"",
 		"Host information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
-		"",
-		"  Scope:",
-		base.ScopeInfoForOutput(in.Scope, maxLength),
 	}
 
-	if len(in.AuthorizedActions) > 0 {
+	if item.Scope != nil {
+		ret = append(ret,
+			"",
+			"  Scope:",
+			base.ScopeInfoForOutput(item.Scope, maxLength),
+		)
+	}
+
+	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",
 			"  Authorized Actions:",
-			base.WrapSlice(4, in.AuthorizedActions),
+			base.WrapSlice(4, item.AuthorizedActions),
 		)
 	}
 
-	if len(in.HostSetIds) > 0 {
+	if len(item.HostSetIds) > 0 {
 		ret = append(ret,
 			"",
 			"  Host Set IDs:",
-			base.WrapSlice(4, in.HostSetIds),
+			base.WrapSlice(4, item.HostSetIds),
 		)
 	}
 
-	if len(in.Attributes) > 0 {
+	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
 			"  Attributes:",
-			base.WrapMap(4, maxLength, in.Attributes),
+			base.WrapMap(4, maxLength, item.Attributes),
 		)
 	}
 

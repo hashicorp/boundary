@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"sort"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -117,7 +119,7 @@ func getSetup(t *testing.T) setup {
 		oidc.WithCertificates(ret.testProviderCaCert...),
 	)
 
-	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL, ret.authMethod.PublicId)
+	ret.testProviderAllowedRedirect = fmt.Sprintf(oidc.CallbackEndpoint, ret.testController.URL)
 	ret.testProvider.SetAllowedRedirectURIs([]string{ret.testProviderAllowedRedirect})
 
 	r, err := ret.oidcRepoFn()
@@ -152,6 +154,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 	serversRepoFn := func() (*servers.Repository, error) {
 		return servers.NewRepository(rw, rw, kmsCache)
 	}
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -193,14 +196,14 @@ func TestList_FilterNonPublic(t *testing.T) {
 	}{
 		{
 			name:      "unauthenticated",
-			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)),
 			respCount: 1,
 		},
 		{
 			name: "authenticated",
 			reqCtx: func() context.Context {
 				at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
-				return auth.NewVerifierContext(context.Background(),
+				return auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
 					nil,
 					iamRepoFn,
 					authTokenRepoFn,
@@ -287,7 +290,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
 			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf("http://example.com/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
+			"callback_url":       structpb.NewStringValue("http://example.com/v1/auth-methods/oidc:authenticate:callback"),
 			"idp_ca_certs": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
 				return structpb.NewListValue(lv)
@@ -816,7 +819,7 @@ func TestUpdate_OIDC(t *testing.T) {
 						Fields: func() map[string]*structpb.Value {
 							f := defaultReadAttributeFields()
 							f["api_url_prefix"] = structpb.NewStringValue("https://callback.prefix:9281/path")
-							f["callback_url"] = structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix))
+							f["callback_url"] = structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback")
 							return f
 						}(),
 					},
@@ -864,6 +867,103 @@ func TestUpdate_OIDC(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "Change Claims Scopes",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.claims_scopes"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"claims_scopes": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["claims_scopes"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Change Account Claim Maps",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.account_claim_maps"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        auth.OidcSubtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["account_claim_maps"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           oidcAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Attempt to Change Account Claim Maps for sub",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.account_claim_maps"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"oid=sub"})
+								return structpb.NewListValue(lv)
+							}(),
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "Unset Issuer Is Incomplete",
@@ -956,7 +1056,6 @@ func TestUpdate_OIDC(t *testing.T) {
 				tc.res.Item.Id = am.GetId()
 				tc.res.Item.CreatedTime = am.GetCreatedTime()
 			}
-
 			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
 			if tc.err != nil || tc.wantErr {
@@ -1062,7 +1161,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"api_url_prefix":     structpb.NewStringValue(am.GetApiUrl()),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/%s:authenticate:callback", am.GetApiUrl(), am.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", am.GetApiUrl())),
 			"client_id":          structpb.NewStringValue(am.GetClientId()),
 			"client_secret_hmac": structpb.NewStringValue(am.GetClientSecretHmac()),
 			"issuer":             structpb.NewStringValue(am.GetIssuer()),
@@ -1244,7 +1343,7 @@ func TestChangeState_OIDC(t *testing.T) {
 			"client_id":          structpb.NewStringValue(tpClientId),
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
-			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/amoidc_[0-9A-z]*:authenticate:callback"),
+			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/oidc:authenticate:callback"),
 			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
 			"signing_algorithms": signingAlg,
 			"idp_ca_certs":       certs,
@@ -1612,6 +1711,110 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			require.NotNil(m)
 			require.Contains(m, "token")
 			require.NotEmpty(m["token"])
+		})
+	}
+}
+
+func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
+	s := getSetup(t)
+
+	directErrorCases := []struct {
+		name string
+		req  *pbs.AuthenticateRequest
+	}{
+		{
+			name: "No Code Or Error",
+			req: &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Command:      "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						State: "anything",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name: "No Auth Method Id",
+			req: &pbs.AuthenticateRequest{
+				Command: "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						Code:  "anythingworks",
+						State: "anything",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name: "No State",
+			req: &pbs.AuthenticateRequest{
+				AuthMethodId: s.authMethod.GetPublicId(),
+				Command:      "callback",
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
+						Code: "anythingworks",
+					})
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+	}
+	for _, tc := range directErrorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()), tc.req)
+			require.Error(t, err)
+		})
+	}
+
+	redirectUrlErrorCases := []struct {
+		name        string
+		attrs       *pb.OidcAuthMethodAuthenticateCallbackRequest
+		errorSubStr string
+	}{
+		{
+			name: "Cant decrypt state",
+			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Code:  "anythingworkshere",
+				State: "cant decrypt this!",
+			},
+			errorSubStr: url.QueryEscape("unable to decode message"),
+		},
+		{
+			name: "OIDC Error",
+			attrs: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				State:            "foo",
+				Error:            "some_error",
+				ErrorDescription: "error description",
+			},
+			errorSubStr: url.QueryEscape("error description"),
+		},
+	}
+	for _, tc := range redirectUrlErrorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.authMethodService.Authenticate(auth.DisabledAuthTestContext(s.iamRepoFn, s.org.GetPublicId()),
+				&pbs.AuthenticateRequest{
+					AuthMethodId: s.authMethod.GetPublicId(),
+					Command:      "callback",
+					Attributes: func() *structpb.Struct {
+						st, err := handlers.ProtoToStruct(tc.attrs)
+						require.NoError(t, err)
+						return st
+					}(),
+				})
+
+			require.NoError(t, err)
+			respAttrs := &pb.OidcAuthMethodAuthenticateCallbackResponse{}
+			require.NoError(t, handlers.StructToProto(got.GetAttributes(), respAttrs))
+			assert.Contains(t, respAttrs.FinalRedirectUrl, fmt.Sprintf("%s/authentication-error?", s.authMethod.GetApiUrl()))
+			u, err := url.Parse(respAttrs.GetFinalRedirectUrl())
+			require.NoError(t, err)
+			assert.Contains(t, u.RawQuery, tc.errorSubStr)
 		})
 	}
 }

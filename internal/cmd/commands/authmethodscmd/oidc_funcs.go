@@ -26,6 +26,8 @@ type extraOidcCmdVars struct {
 	flagSigningAlgorithms                 []string
 	flagIdpCaCerts                        []string
 	flagAllowedAudiences                  []string
+	flagClaimsScopes                      []string
+	flagAccountClaimMaps                  []string
 	flagDisableDiscoveredConfigValidation bool
 	flagDryRun                            bool
 }
@@ -40,6 +42,8 @@ const (
 	apiUrlPrefixFlagName                      = "api-url-prefix"
 	caCertFlagName                            = "idp-ca-cert"
 	allowedAudienceFlagName                   = "allowed-audience"
+	claimsScopes                              = "claims-scopes"
+	accountClaimMaps                          = "account-claim-maps"
 	stateFlagName                             = "state"
 	disableDiscoveredConfigValidationFlagName = "disable-discovered-config-validation"
 	dryRunFlagName                            = "dry-run"
@@ -56,6 +60,8 @@ func extraOidcActionsFlagsMapFuncImpl() map[string][]string {
 			apiUrlPrefixFlagName,
 			caCertFlagName,
 			allowedAudienceFlagName,
+			claimsScopes,
+			accountClaimMaps,
 		},
 		"change-state": {
 			idFlagName,
@@ -119,6 +125,18 @@ func extraOidcFlagsFuncImpl(c *OidcCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   allowedAudienceFlagName,
 				Target: &c.flagAllowedAudiences,
 				Usage:  `The acceptable audience ("aud") claim. May be specified multiple times.`,
+			})
+		case claimsScopes:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   claimsScopes,
+				Target: &c.flagClaimsScopes,
+				Usage:  `The optional claims scope requested. May be specified multiple times.`,
+			})
+		case accountClaimMaps:
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   accountClaimMaps,
+				Target: &c.flagAccountClaimMaps,
+				Usage:  `The optional account claim maps from custom claims to the standard claims of sub, name and email.  These maps are represented as key=value where the key equals the Provider from-claim and the value equals the Boundary to-claim.  For example "oid=sub". May be specified multiple times for different to-claims.`,
 			})
 		case stateFlagName:
 			f.StringVar(&base.StringVar{
@@ -241,6 +259,20 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAllowedAudiences())
 	default:
 		*opts = append(*opts, authmethods.WithOidcAuthMethodAllowedAudiences(c.flagAllowedAudiences))
+	}
+	switch {
+	case len(c.flagClaimsScopes) == 0:
+	case len(c.flagClaimsScopes) == 1 && c.flagClaimsScopes[0] == "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodClaimsScopes())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodClaimsScopes(c.flagClaimsScopes))
+	}
+	switch {
+	case len(c.flagAccountClaimMaps) == 0:
+	case len(c.flagAccountClaimMaps) == 1 && c.flagAccountClaimMaps[0] == "null":
+		*opts = append(*opts, authmethods.DefaultOidcAuthMethodAccountClaimMaps())
+	default:
+		*opts = append(*opts, authmethods.WithOidcAuthMethodAccountClaimMaps(c.flagAccountClaimMaps))
 	}
 	if c.flagDisableDiscoveredConfigValidation {
 		*opts = append(*opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(c.flagDisableDiscoveredConfigValidation))

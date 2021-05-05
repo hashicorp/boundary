@@ -150,7 +150,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: 'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-users-groups',
                 },
               },
               {
@@ -162,7 +163,8 @@ export default function HomePage() {
                 },
                 link: {
                   title: 'Learn more',
-                  url: 'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
+                  url:
+                    'https://learn.hashicorp.com/tutorials/boundary/manage-sessions',
                 },
               },
             ]}

@@ -206,7 +206,7 @@ func TestAccount_Create(t *testing.T) {
 		discoUrl := am.GetIssuer()
 		newDiscoUrl := "https://changed.com"
 		am.Issuer = newDiscoUrl
-		n, err := rw.Update(ctx, am, []string{"Issuer"}, nil)
+		n, err := rw.Update(ctx, am, []string{IssuerField}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 		assert.Equal(t, newDiscoUrl, am.GetIssuer())

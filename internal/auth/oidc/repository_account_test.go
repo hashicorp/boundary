@@ -458,7 +458,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		authMethod.Issuer = "https://somethingelse.com"
-		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{"Issuer"}, WithForce())
+		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{IssuerField}, WithForce())
 		require.NoError(err)
 
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
@@ -881,7 +881,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				Account: &store.Account{},
 			},
 			chgFn:      makeNil(),
-			masks:      []string{"Name", "Description"},
+			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
 		},
@@ -893,7 +893,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				Account: &store.Account{},
 			},
 			chgFn:      makeEmbeddedNil(),
-			masks:      []string{"Name", "Description"},
+			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
 		},
@@ -906,7 +906,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn:      changeName("no-scope-id-test-update-name-repo"),
-			masks:      []string{"Name"},
+			masks:      []string{NameField},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing scope id: parameter violation: error #100",
 		},
@@ -919,7 +919,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn:      changeName("test-update-name-repo"),
-			masks:      []string{"Name"},
+			masks:      []string{NameField},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing version: parameter violation: error #100",
 		},
@@ -931,7 +931,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				Account: &store.Account{},
 			},
 			chgFn:      deletePublicId(),
-			masks:      []string{"Name", "Description"},
+			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidPublicId,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
 		},
@@ -945,7 +945,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-Account-test-update-name-repo")),
-			masks:      []string{"Name"},
+			masks:      []string{NameField},
 			wantIsErr:  errors.RecordNotFound,
 			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
@@ -1000,7 +1000,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn: changeName("change-name-test-update-name-repo"),
-			masks: []string{"Name"},
+			masks: []string{NameField},
 			want: &Account{
 				Account: &store.Account{
 					Name: "change-name-test-update-name-repo",
@@ -1018,7 +1018,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn: changeDescription("test-update-description-repo"),
-			masks: []string{"Description"},
+			masks: []string{DescriptionField},
 			want: &Account{
 				Account: &store.Account{
 					Description: "test-update-description-repo",
@@ -1037,7 +1037,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				},
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("change-name-and-description-test-update-name-repo")),
-			masks: []string{"Name", "Description"},
+			masks: []string{NameField, DescriptionField},
 			want: &Account{
 				Account: &store.Account{
 					Name:        "change-name-and-description-test-update-name-repo",
@@ -1056,7 +1056,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Name"},
+			masks: []string{NameField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &Account{
 				Account: &store.Account{
@@ -1075,7 +1075,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Description"},
+			masks: []string{DescriptionField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &Account{
 				Account: &store.Account{
@@ -1094,7 +1094,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Description"},
+			masks: []string{DescriptionField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &Account{
 				Account: &store.Account{
@@ -1114,7 +1114,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Name"},
+			masks: []string{NameField},
 			chgFn: combine(changeDescription(""), changeName("do-not-delete-description-test-update-name-repo")),
 			want: &Account{
 				Account: &store.Account{
@@ -1208,7 +1208,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		ab := TestAccount(t, conn, am, "create-success2")
 
 		aa.Name = name
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{NameField})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -1216,7 +1216,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		ab.Name = name
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{NameField})
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -1254,7 +1254,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		ab := TestAccount(t, conn, amb, "create-success2", WithName("test-name-ab"))
 
 		ab.Name = aa.Name
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{NameField})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(ab, got3)
@@ -1297,7 +1297,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		aa.AuthMethodId = ab.AuthMethodId
 		assert.Equal(aa.AuthMethodId, ab.AuthMethodId)
 
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{NameField})
 
 		assert.NoError(err)
 		require.NotNil(got1)

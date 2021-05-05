@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +52,7 @@ func Test_StartAuth(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]),
 		WithSigningAlgs(Alg(tpAlg)),
 		WithCertificates(tpCert...),
+		WithClaimsScopes("email", "profile"),
 	)
 
 	testAuthMethodInactive := TestAuthMethod(
@@ -73,7 +76,7 @@ func Test_StartAuth(t *testing.T) {
 
 	stdSetup := func(am *AuthMethod, repoFn OidcRepoFactory, apiSrv *httptest.Server) (a *AuthMethod, allowedRedirect string) {
 		// update the allowed redirects for the TestProvider
-		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL, am.PublicId)
+		tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, apiSrv.URL)
 		tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
 		r, err := repoFn()
 		require.NoError(t, err)
@@ -172,12 +175,18 @@ func Test_StartAuth(t *testing.T) {
 			authParams, err := url.ParseQuery(authUrl.RawQuery)
 			require.NoError(err)
 			assert.Equal(authParams["response_type"], []string{"code"})
-			assert.Equal(authParams["scope"], []string{"openid"})
 			assert.Equal(authParams["response_type"], []string{"code"})
 			assert.Equal(authParams["redirect_uri"], []string{allowedRedirect})
 			assert.Equal(authParams["client_id"], []string{tt.authMethod.ClientId})
 			require.Equal(1, len(authParams["nonce"]))
 			require.Equal(1, len(authParams["state"]))
+
+			require.Len(authParams["scope"], 1)
+			wantClaimsScopes := append(tt.authMethod.ClaimsScopes, DefaultClaimsScope)
+			gotScopes := strings.Split(authParams["scope"][0], " ")
+			sort.Strings(gotScopes)
+			sort.Strings(wantClaimsScopes)
+			assert.Equal(wantClaimsScopes, gotScopes)
 
 			if tt.authMethod.MaxAge != 0 {
 				var expected int
@@ -197,7 +206,7 @@ func Test_StartAuth(t *testing.T) {
 
 			// verify the state in the authUrl can be decrypted and it's correct
 			state := authParams["state"][0]
-			wrappedStReq, err := unwrapMessage(ctx, state)
+			wrappedStReq, err := UnwrapMessage(ctx, state)
 			require.NoError(err)
 			repo, err := tt.repoFn()
 			require.NoError(err)
@@ -231,7 +240,7 @@ func Test_StartAuth(t *testing.T) {
 			assert.Equal(configHash, reqState.ProviderConfigHash)
 
 			// verify the token_id in the tokenUrl can be decrypted and it's correct
-			wrappedTkReq, err := unwrapMessage(ctx, tokenId)
+			wrappedTkReq, err := UnwrapMessage(ctx, tokenId)
 			require.NoError(err)
 			wrappingWrapper, err = requestWrappingWrapper(ctx, repo.kms, wrappedTkReq.ScopeId, wrappedTkReq.AuthMethodId)
 			require.NoError(err)

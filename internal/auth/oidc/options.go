@@ -27,6 +27,7 @@ type options struct {
 	withCertificates        []*x509.Certificate
 	withAudClaims           []string
 	withSigningAlgs         []Alg
+	withClaimsScopes        []string
 	withEmail               string
 	withFullName            string
 	withOrderByCreateTime   bool
@@ -40,6 +41,7 @@ type options struct {
 	withKeyId               string
 	withIssuer              *url.URL
 	withOperationalState    AuthMethodState
+	withAccountClaimMap     map[string]AccountToClaim
 }
 
 func getDefaultOptions() options {
@@ -109,6 +111,13 @@ func WithAudClaims(aud ...string) Option {
 func WithSigningAlgs(alg ...Alg) Option {
 	return func(o *options) {
 		o.withSigningAlgs = alg
+	}
+}
+
+// WithClaimsScopes provides optional claims scopes
+func WithClaimsScopes(claimsScope ...string) Option {
+	return func(o *options) {
+		o.withClaimsScopes = claimsScope
 	}
 }
 
@@ -200,5 +209,12 @@ func WithIssuer(iss *url.URL) Option {
 func WithOperationalState(state AuthMethodState) Option {
 	return func(o *options) {
 		o.withOperationalState = state
+	}
+}
+
+// WithAccountClaimMap provides an option for specifying an Account Claim map.
+func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
+	return func(o *options) {
+		o.withAccountClaimMap = acm
 	}
 }

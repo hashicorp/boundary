@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -32,6 +31,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
@@ -97,9 +97,29 @@ func TestAuthMethod(
 		require.NoError(err)
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
-
+	if len(opts.withClaimsScopes) > 0 {
+		newClaimsScopes := make([]interface{}, 0, len(opts.withClaimsScopes))
+		for _, cs := range opts.withClaimsScopes {
+			s, err := NewClaimsScope(authMethod.PublicId, cs)
+			require.NoError(err)
+			newClaimsScopes = append(newClaimsScopes, s)
+		}
+		err := rw.CreateItems(ctx, newClaimsScopes)
+		require.NoError(err)
+		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
+	}
+	if len(opts.withAccountClaimMap) > 0 {
+		newAccountClaimMaps := make([]interface{}, 0, len(opts.withAccountClaimMap))
+		for k, v := range opts.withAccountClaimMap {
+			acm, err := NewAccountClaimMap(authMethod.PublicId, k, v)
+			require.NoError(err)
+			newAccountClaimMaps = append(newAccountClaimMaps, acm)
+		}
+		require.NoError(rw.CreateItems(ctx, newAccountClaimMaps))
+		require.Equal(len(opts.withAccountClaimMap), len(authMethod.AccountClaimMaps))
+	}
 	authMethod.OperationalState = string(state)
-	rowsUpdated, err := rw.Update(ctx, authMethod, []string{"OperationalState"}, nil)
+	rowsUpdated, err := rw.Update(ctx, authMethod, []string{OperationalStateField}, nil)
 	require.NoError(err)
 	require.True(rowsUpdated == 0 || rowsUpdated == 1)
 
@@ -125,6 +145,12 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 		})
 		sort.Slice(am.Certificates, func(a, b int) bool {
 			return am.Certificates[a] < am.Certificates[b]
+		})
+		sort.Slice(am.ClaimsScopes, func(a, b int) bool {
+			return am.ClaimsScopes[a] < am.ClaimsScopes[b]
+		})
+		sort.Slice(am.AccountClaimMaps, func(a, b int) bool {
+			return am.AccountClaimMaps[a] < am.AccountClaimMaps[b]
 		})
 	}
 }
@@ -263,10 +289,8 @@ func testState(
 	require.NotNil(kms)
 
 	now := time.Now()
-	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
-	require.NoError(err)
-	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
-	require.NoError(err)
+	createTime := timestamppb.New(now.Truncate(time.Second))
+	exp := timestamppb.New(now.Add(expIn).Truncate(time.Second))
 
 	st := &request.State{
 		TokenRequestId:     tokenRequestId,
@@ -297,8 +321,7 @@ func TestTokenRequestId(
 	require := require.New(t)
 
 	now := time.Now()
-	exp, err := ptypes.TimestampProto(now.Add(expIn).Truncate(time.Second))
-	require.NoError(err)
+	exp := timestamppb.New(now.Add(expIn).Truncate(time.Second))
 
 	reqTk := &request.Token{
 		RequestId:      tokenPublicId,
@@ -402,7 +425,7 @@ func (s *testControllerSrv) CallbackUrl() string {
 	s.t.Helper()
 	require := require.New(s.t)
 	require.NotNil(s.authMethod, "auth method was missing")
-	return fmt.Sprintf(CallbackEndpoint, s.Addr(), s.authMethod.GetPublicId())
+	return fmt.Sprintf(CallbackEndpoint, s.Addr())
 }
 
 // ServeHTTP satisfies the http.Handler interface
@@ -410,7 +433,7 @@ func (s *testControllerSrv) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	s.t.Helper()
 	require := require.New(s.t)
 	switch req.URL.Path {
-	case fmt.Sprintf("/v1/auth-methods/%s:authenticate:callback", s.authMethod.GetPublicId()):
+	case "/v1/auth-methods/oidc:authenticate:callback":
 		err := req.ParseForm()
 		require.NoErrorf(err, "%s: internal error: %w", "callback", err)
 		state := req.FormValue("state")

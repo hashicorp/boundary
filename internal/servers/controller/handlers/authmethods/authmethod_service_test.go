@@ -40,12 +40,14 @@ const (
 
 var (
 	pwAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
 		action.Authenticate.String(),
 	}
 	oidcAuthorizedActions = []string{
+		action.NoOp.String(),
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
@@ -124,7 +126,7 @@ func TestGet(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
 		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
@@ -244,7 +246,7 @@ func TestList(t *testing.T) {
 			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 			"state":              structpb.NewStringValue(string(oidc.ActivePublicState)),
 			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
-			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com", oidcam.GetPublicId())),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
 			"signing_algorithms": func() *structpb.Value {
 				lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
 				return structpb.NewListValue(lv)
@@ -351,7 +353,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -368,8 +370,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
-			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
@@ -421,14 +424,12 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: pwam.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete an Existing OIDC AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: oidcam.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
 			name: "Delete bad auth_method id",
@@ -568,6 +569,14 @@ func TestCreate(t *testing.T) {
 						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
 						return structpb.NewListValue(lv)
 					}(),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+						return structpb.NewListValue(lv)
+					}(),
+					"account_claim_maps": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+						return structpb.NewListValue(lv)
+					}(),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -587,9 +596,17 @@ func TestCreate(t *testing.T) {
 						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
 						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
 						"api_url_prefix":     structpb.NewStringValue("https://callback.prefix:9281/path"),
-						"callback_url":       structpb.NewStringValue(fmt.Sprintf("https://callback.prefix:9281/path/v1/auth-methods/%s_[0-9A-z]*:authenticate:callback", oidc.AuthMethodPrefix)),
+						"callback_url":       structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback"),
 						"allowed_audiences": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+							return structpb.NewListValue(lv)
+						}(),
+						"claims_scopes": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+							return structpb.NewListValue(lv)
+						}(),
+						"account_claim_maps": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -917,6 +934,24 @@ func TestCreate(t *testing.T) {
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "OIDC AuthMethod cant specify default claims scopes of openid",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    auth.OidcSubtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"openid"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
+			}},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -963,7 +998,7 @@ func TestCreate(t *testing.T) {
 					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

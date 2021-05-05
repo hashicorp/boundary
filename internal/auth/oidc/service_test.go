@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -17,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Test_encryptState_decryptState are unit tests for both encryptState(...) and decryptState(...)
@@ -31,10 +31,9 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePrivateState, "alice-rp", "fido", WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]), WithSigningAlgs(RS256))
 
 	now := time.Now()
-	createTime, err := ptypes.TimestampProto(now.Truncate(time.Second))
+	createTime := timestamppb.New(now.Truncate(time.Second))
 	require.NoError(t, err)
-	exp, err := ptypes.TimestampProto(now.Add(AttemptExpiration).Truncate(time.Second))
-	require.NoError(t, err)
+	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
 
 	tests := []struct {
 		name            string
@@ -119,7 +118,7 @@ func Test_encryptMessage_decryptMessage(t *testing.T) {
 			require.NoError(err)
 			assert.NotEmpty(encrypted)
 
-			wrappedMsg, err := unwrapMessage(ctx, encrypted)
+			wrappedMsg, err := UnwrapMessage(ctx, encrypted)
 			assert.Equalf(tt.authMethod.PublicId, wrappedMsg.AuthMethodId, "expected auth method %s and got: %s", tt.authMethod.PublicId, wrappedMsg.AuthMethodId)
 			assert.Equalf(tt.authMethod.ScopeId, wrappedMsg.ScopeId, "expected scope id %s and got: %s", tt.authMethod.ScopeId, wrappedMsg.ScopeId)
 

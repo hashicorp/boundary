@@ -58,7 +58,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	if err != nil {
 		return nil, "", errors.Wrap(err, op)
 	}
-	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl(), authMethodId)
+	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl())
 
 	opts := getOpts(opt...)
 	finalRedirect := fmt.Sprintf(FinalRedirectEndpoint, am.GetApiUrl())
@@ -109,6 +109,10 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	case am.MaxAge > 0:
 		oidcOpts = append(oidcOpts, oidc.WithMaxAge(uint(am.MaxAge)))
 	default:
+	}
+
+	if len(am.ClaimsScopes) > 0 {
+		oidcOpts = append(oidcOpts, oidc.WithScopes(am.ClaimsScopes...))
 	}
 
 	// a bare min oidc.Request needed for the provider.AuthURL(...) call.  We've intentionally not populated

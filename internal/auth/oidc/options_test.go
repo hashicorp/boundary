@@ -85,6 +85,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSigningAlgs = algs
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithClaimsScopes", func(t *testing.T) {
+		assert := assert.New(t)
+		scopes := []string{"email", "profile"}
+		opts := getOpts(WithClaimsScopes(scopes...))
+		testOpts := getDefaultOptions()
+		testOpts.withClaimsScopes = scopes
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithEmail", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithEmail("bob@alice.com"))
@@ -174,5 +182,16 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(InactiveState, testOpts.withOperationalState)
 		opts := getOpts(WithOperationalState(ActivePublicState))
 		assert.Equal(ActivePublicState, opts.withOperationalState)
+	})
+	t.Run("WithAccountClaimMap", func(t *testing.T) {
+		assert := assert.New(t)
+		acm := map[string]AccountToClaim{
+			"oid":          ToSubClaim,
+			"display_name": ToNameClaim,
+		}
+		opts := getOpts(WithAccountClaimMap(acm))
+		testOpts := getDefaultOptions()
+		testOpts.withAccountClaimMap = acm
+		assert.Equal(opts, testOpts)
 	})
 }

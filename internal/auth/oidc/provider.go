@@ -114,7 +114,7 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 		am.ClientId,
 		oidc.ClientSecret(am.ClientSecret),
 		algs,
-		[]string{fmt.Sprintf(CallbackEndpoint, am.GetApiUrl(), am.PublicId)},
+		[]string{fmt.Sprintf(CallbackEndpoint, am.GetApiUrl())},
 		oidc.WithAudiences(am.AudClaims...),
 		oidc.WithProviderCA(strings.Join(am.Certificates, "\n")),
 	)

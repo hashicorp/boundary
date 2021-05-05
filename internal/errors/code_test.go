@@ -242,6 +242,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    Unavailable,
 			want: Unavailable,
 		},
+		{
+			name: "OidcProviderCallbackError",
+			c:    OidcProviderCallbackError,
+			want: OidcProviderCallbackError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

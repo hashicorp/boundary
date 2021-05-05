@@ -41,6 +41,8 @@ const (
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
 	codeField                              = "attributes.code"
+	claimsScopesField                      = "attributes.claims_scopes"
+	accountClaimMapsField                  = "attributes.account_claim_maps"
 )
 
 var oidcMaskManager handlers.MaskManager
@@ -52,6 +54,7 @@ func init() {
 	}
 
 	IdActions[auth.OidcSubtype] = action.ActionSet{
+		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
@@ -200,6 +203,9 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 // error details.
 func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).authenticateOidcCallback"
+	// TODO: Return all errors (including the validate request based errors
+	//   in the redirect URL once we start looking at the url used for this
+	//   request instead of requiring the API URL to be set on the auth method.
 	if req == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "Nil request.")
 	}
@@ -220,28 +226,34 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 	}
 
 	errRedirectBase := fmt.Sprintf(oidc.AuthenticationErrorsEndpoint, am.GetApiUrl())
-	errResponse := func(err error) *pbs.AuthenticateResponse {
+	errResponse := func(err error) (*pbs.AuthenticateResponse, error) {
 		u := make(url.Values)
-		// TODO: Decide how to format the domain error to match OIDC error format
-		u.Add("error", err.Error())
+		pbErr := handlers.ToApiError(err)
+		out, err := handlers.JSONMarshaler().Marshal(pbErr)
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to marshal the error for callback"))
+		}
+		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
-		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"final_redirect_url": structpb.NewStringValue(errRedirect),
-			},
-		}}
+		respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
+			FinalRedirectUrl: errRedirect,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("failed creating error redirect response"))
+		}
+		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: respAttrs}, nil
 	}
 
 	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
 	// Note that this conversion has already happened in the validate call so we don't expect errors here.
 	if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
-		return errResponse(err), nil
+		return errResponse(err)
 	}
 
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
-		// TODO: Package the OIDC error into the redirectUrl
-		return errResponse(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription())), nil
+		err := errors.Wrap(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription()), op, errors.WithCode(errors.OidcProviderCallbackError))
+		return errResponse(err)
 	}
 	finalRedirectUrl, err = oidc.Callback(
 		ctx,
@@ -252,14 +264,14 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		attrs.GetState(),
 		attrs.GetCode())
 	if err != nil {
-		return errResponse(errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err))), nil
+		return errResponse(errors.New(errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err)))
 	}
 
 	respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
 		FinalRedirectUrl: finalRedirectUrl,
 	})
 	if err != nil {
-		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err))), nil
+		return errResponse(errors.New(errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err)))
 	}
 
 	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
@@ -312,7 +324,7 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		}, nil
 	}
 
-	responseToken, err := s.convertInternalAuthTokenToApiAuthToken(
+	responseToken, err := s.ConvertInternalAuthTokenToApiAuthToken(
 		ctx,
 		token,
 	)
@@ -455,6 +467,32 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			return nil, false, false, err
 		}
 		opts = append(opts, oidc.WithCertificates(certs...))
+	}
+
+	if len(attrs.GetClaimsScopes()) > 0 {
+		opts = append(opts, oidc.WithClaimsScopes(attrs.GetClaimsScopes()...))
+	}
+
+	if len(attrs.GetAccountClaimMaps()) > 0 {
+		claimsMap := make(map[string]oidc.AccountToClaim, len(attrs.GetAccountClaimMaps()))
+		for _, v := range attrs.GetAccountClaimMaps() {
+			acm, err := oidc.ParseAccountClaimMaps(v)
+			if err != nil {
+				return nil, false, false, errors.Wrap(err, op)
+			}
+			if len(acm) > 1 {
+				return nil, false, false, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
+			}
+			var from, rawTo string
+			for from, rawTo = range acm {
+			}
+			to, err := oidc.ConvertToAccountToClaim(rawTo)
+			if err != nil {
+				return nil, false, false, errors.Wrap(err, op)
+			}
+			claimsMap[from] = to
+		}
+		opts = append(opts, oidc.WithAccountClaimMap(claimsMap))
 	}
 
 	u, err := oidc.NewAuthMethod(scopeId, clientId, clientSecret, opts...)

@@ -15,7 +15,9 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
@@ -35,7 +37,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type HandlerProperties struct {
@@ -70,18 +71,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	ctx := props.CancelCtx
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-			Marshaler: &runtime.JSONPb{
-				MarshalOptions: protojson.MarshalOptions{
-					// Ensures the json marshaler uses the snake casing as defined in the proto field names.
-					UseProtoNames: true,
-					// Do not add fields set to zero value to json.
-					EmitUnpopulated: false,
-				},
-				UnmarshalOptions: protojson.UnmarshalOptions{
-					// Allows requests to contain unknown fields.
-					DiscardUnknown: true,
-				},
-			},
+			Marshaler: handlers.JSONMarshaler(),
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
 		runtime.WithForwardResponseOption(handlers.OutgoingInterceptor),
@@ -239,6 +229,18 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
+		// Add general request information to the context. The information from
+		// the auth verifier context is pretty specifically curated to
+		// authentication/authorization verification so this is more
+		// general-purpose.
+		//
+		// We could use requests.NewRequestContext but this saves an immediate
+		// lookup.
+		ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{
+			Path:   r.URL.Path,
+			Method: r.Method,
+		})
+
 		// Set the context back on the request
 		r = r.WithContext(ctx)
 
@@ -372,6 +374,28 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 				// We can address that if needed, which seems unlikely.
 				for k := range req.Form {
 					values[k] = req.Form.Get(k)
+				}
+
+				if strings.HasSuffix(req.URL.Path, "oidc:authenticate") {
+					if s, ok := values["state"].(string); ok {
+						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
+						if err != nil {
+							c.logger.Trace("callback error marshaling state", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						if stateWrapper.AuthMethodId == "" {
+							c.logger.Trace("callback error: missing auth method id", "method", req.Method, "url", req.URL.RequestURI())
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						stripped := strings.TrimSuffix(req.URL.Path, "oidc:authenticate")
+						req.URL.Path = fmt.Sprintf("%s%s:authenticate", stripped, stateWrapper.AuthMethodId)
+					} else {
+						c.logger.Trace("callback error: missing state parameter", "method", req.Method, "url", req.URL.RequestURI())
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
 				}
 				attrs.Attributes = values
 			}

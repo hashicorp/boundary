@@ -4,10 +4,111 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* API `delete` actions now result in a `204` status code and no body when
+  successful. This was not the case previously due to a technical limitation
+  which has now been solved.
+* When using a `delete` command within the CLI we now either show success or
+  treat the `404` error the same as any other `404` error, that is, it results
+  in a non-zero status code and an error message. This makes `delete` actions
+  behave the same as other commands, all of which pass through errors to the
+  CLI. Given `-format json` capability, it's relatively easy to perform a check
+  to see whether an error was `404` or something else from within scripts, in
+  conjunction with checking that the returned status code matches the API error
+  status code (`1`).
+* When outputting from the CLI in JSON format, the resource information under
+  `item` or `items` (depending on the action) now exactly matches the JSON sent
+  across the wire by the controller, as opposed to matching the Go SDK
+  representation which could result in some extra fields being shown or fields
+  having Go-specific types. This includes `delete` actions which previously
+  would show an object indicating existence, but now show no `item` on success
+  or the API's `404` error.
+* Permissions in new scope default roles have been updated to include support
+  for `list`, `read:self`, and `delete:self` on `auth-token` resources. This
+  allows a user to list and manage their own authentication tokens. (As is the
+  case with other resources, `list` will still be limited to returning tokens on
+  which the user has authorization to perform actions, so granting this
+  capability does not automatically give user the ability to list other users'
+  authentication tokens.)
+
+### New and Improved
+
+* permissions: Improving upon the work put into 0.2.0 to limit the fields that
+  are returned when listing as the anonymous user, grants now support a new
+  `output_fields` section. This takes in a comma-delimited (or in JSON format,
+  array) set of values that correspond to the JSON fields returned from an API
+  call (for listing, this will be applied to each resource under the `items`
+  field). If specified for a given ID or resource type (and scoped to specific
+  actions, if included), only the given values will be returned in the output.
+  If no `output_fields` are specified, the defaults are used. For authenticated
+  users this defaults to all fields; for `u_anon` this defaults to the fields
+  useful for navigating to and authenticating to the system. In either case,
+  this is overridable. See the [permissions
+  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions)
+  for more information on why and when to use this. This currently only applies
+  to top-level fields in the response.
+* cli/api/sdk: Add support to request additional OIDC claims scope values from
+  the OIDC provider when making an authentication request.
+  ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
+
+  By default, Boundary only requests the "openid" claims scope value. Many
+  providers, like Okta and Auth0 for example, will not return the standard claims
+  of email and name when you request the default claims scope (openid). 
+
+  Boundary uses the standard email and name claims to populate an OIDC
+  account's `Email` and `FullName` attributes. If you'd like these account
+  attributes populated, you'll need to reference your OIDC provider's documentation
+  to learn which claims scopes are required to have these claims returned during
+  the authentication process.
+
+  Boundary now provides a new OIDC auth method parameter `claims_scopes` which
+  allows you to add multiple additional claims scope values to an OIDC auth
+  method configuration.
+
+  For information on claims scope values see: [Scope Claims in the OIDC
+  specification](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims)
+
+* cli: Match JSON format output with the across-the-wire API JSON format
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
+* api: Return `204` instead of an empty object on successful `delete` operations
+  ([PR](https://github.com/hashicorp/boundary/pull/1155))
+* actions: The new `no-op` action allows a grant to be given to a principals
+  without conveying any actionable result. Since resources do not appear in list
+  results if the principal has no actions granted on that resource, this can be
+  used to allow principals to see values in list results without also giving
+  `read` or other capabilities on the resources. The default scope permissions
+  have been updated to convey `no-op,list` instead of `read,list`.
+  ([PR](https://github.com/hashicorp/boundary/pull/1138))
+* cli/api/sdk: User resources have new attributes for:
+  * Primary Account ID
+  * Login Name
+  * Full Name
+  * Email
+
+  These new user attributes correspond to attributes from the user's primary
+  auth method account. These attributes will be empty when the user has no
+  account in the primary auth method for their scope, or there is no designated
+  primary auth method for their scope.
+* cli: Support for reading and deleting the user's own token via the new
+  `read:self` and `delete:self` actions on auth tokens. If no token ID is
+  provided, the stored token's ID will be used (after prompting), or `"self"`
+  can be set as the value of the `-id` parameter to trigger this behavior
+  without prompting. ([PR](https://github.com/hashicorp/boundary/pull/1162))
+* cli: New `logout` command deletes the current token in Boundary and forgets it
+  from the local system credential store, respecting `-token-name`
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
+* config: The `name` field for workers and controllers now supports being set
+  from environment variables or a file on disk
+  ([PR](https://github.com/hashicorp/boundary/pull/1181))
+
 ### Bug Fixes
 
 * cors: Fix allowing all origins by default
-  [PR](https://github.com/hashicorp/boundary/pull/1134)
+  ([PR](https://github.com/hashicorp/boundary/pull/1134))
+* cli: It is now an error to run `boundary database migrate` on an uninitalized db.
+  Use `boundary database init` instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/1184))
 
 ## 0.2.0 (2021/04/14)
 
@@ -54,19 +155,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   update, delete, and list (see new cli `oidc` subcommands available on CRUDL
   operations for examples), as well as the ability to authenticate against it
   via the SDK, CLI, admin UI, and desktop client.
-  [PR](https://github.com/hashicorp/boundary/pull/1090)
+  ([PR](https://github.com/hashicorp/boundary/pull/1090))
 * server: When performing recursive listing, `list` action is no longer required
   to be granted to the calling user. Instead, the given scope acts as the root
   point (so only results under that scope will be shown), and `list` grant is
-  evaluated per-scope. [PR](https://github.com/hashicorp/boundary/pull/1016)
+  evaluated per-scope. ([PR](https://github.com/hashicorp/boundary/pull/1016))
 * database init: If the database is already initialized, return 0 as the exit
   code. This matches how the `database migrate` command works.
-  [PR](https://github.com/hashicorp/boundary/pull/1033)
+  ([PR](https://github.com/hashicorp/boundary/pull/1033))
 
 ### Bug Fixes
 
 * server: Roles for auto generated scopes are now generated at database init.
-  [PR](https://github.com/hashicorp/boundary/pull/996)
+  ([PR](https://github.com/hashicorp/boundary/pull/996))
 * cli: Don't panic on certain commands when outputting in `json` format
   ([Issue](https://github.com/hashicorp/boundary/pull/992),
   [PR](https://github.com/hashicorp/boundary/pull/1095))
@@ -103,25 +204,25 @@ to call out in this changelog. The full set of open issues is on GitHub.
   `ResponseMap()` and `ResponseBody()`, resources simply expose `Response()`.
   This higher-level response object contains the map and body, and also exposes
   `StatusCode()` in place of indivdidual resources.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, a resource item is now an object under the
   top-level key `item`; a list of resource items is now an list of objects under
   the top-level key `items`. This preserves the top level for putting in other
   useful information later on (and the HTTP status code is included now).
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: In `json` output format, errors are now serialized as a JSON object with
   an `error` key instead of outputting normal text
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: All errors, including API errors, are now written to `stderr`. Previously
   in the default table format, API errors would be written to `stdout`.
-  [PR](https://github.com/hashicorp/boundary/pull/962)
+  ([PR](https://github.com/hashicorp/boundary/pull/962))
 * cli: Error return codes have been standardized across CLI commands. An error
   code of `1` indicates an error generated from the actual controller API; an
   error code of `2` is an error encountered due to the CLI command's logic; and
   an error code of `3` indicates an error that was caused due to user input to
   the command. (There is some nuance sometimes whether an error is really due to
   user input or not, but we attempt to be consistent.)
-  [PR](https://github.com/hashicorp/boundary/pull/976)
+  ([PR](https://github.com/hashicorp/boundary/pull/976))
 
 ### New and Improved
 
@@ -232,10 +333,11 @@ database migrate` command.
 
 * controller/worker: Require names to be all lowercase. This removes ambiguity
   or accidental mismatching when using upcoming filtering features.
-* api/cli: Due to visibility changes on collection listing, a list
-  will not include any resources if the user only has `list` as an authorized action.
-  As a result `scope list`, which is used by the UI to populate the login scope dropdown, 
-  will be empty if the role granting the `u_anon` user `list` privileges is not updated to also contain a `read` action
+* api/cli: Due to visibility changes on collection listing, a list will not
+  include any resources if the user only has `list` as an authorized action. As
+  a result `scope list`, which is used by the UI to populate the login scope
+  dropdown, will be empty if the role granting the `u_anon` user `list`
+  privileges is not updated to also contain a `read` action
 
 ### New and Improved
 
@@ -248,13 +350,14 @@ database migrate` command.
 * api/cli: Most resource types now support recursive listing, allowing listing
   to occur down a scope tree
   ([PR](https://github.com/hashicorp/boundary/pull/885))
-* cli: Add a `database migrate` command which updates a database's schema to 
-  the version supported by the boundary binary ([PR](https://github.com/hashicorp/boundary/pull/872)).
+* cli: Add a `database migrate` command which updates a database's schema to the
+  version supported by the boundary binary
+  ([PR](https://github.com/hashicorp/boundary/pull/872)).
 
 ### Bug Fixes
 
-* controller/db: Correctly check if db init previously completed successfully 
-  when starting a controller or when running `database init` 
+* controller/db: Correctly check if db init previously completed successfully
+  when starting a controller or when running `database init`
   ([Issue](https://github.com/hashicorp/boundary/issues/805))
   ([PR](https://github.com/hashicorp/boundary/pull/842))
 * cli: When `output-curl-string` is used with `update` or `add-/remove-/set-`
@@ -263,8 +366,8 @@ database migrate` command.
   fetches the current version
   ([Issue](https://github.com/hashicorp/boundary/issues/856))
   ([PR](https://github.com/hashicorp/boundary/pull/858))
-* db: Fix panic in `database init` when controller config block is missing 
-  ([Issue](https://github.com/hashicorp/boundary/issues/819)) 
+* db: Fix panic in `database init` when controller config block is missing
+  ([Issue](https://github.com/hashicorp/boundary/issues/819))
   ([PR](https://github.com/hashicorp/boundary/pull/851))
 
 ## 0.1.4 (2021/01/05)
@@ -304,8 +407,8 @@ database migrate` command.
   ([PR](https://github.com/hashicorp/boundary/pull/831))
 * controller: Improved error handling in hosts, host catalog and host set
   ([PR](https://github.com/hashicorp/boundary/pull/786))
-* controller: Relax account login name constraints to allow dash as valid character 
-  ([Issue](https://github.com/hashicorp/boundary/issues/759))
+* controller: Relax account login name constraints to allow dash as valid
+  character ([Issue](https://github.com/hashicorp/boundary/issues/759))
   ([PR](https://github.com/hashicorp/boundary/pull/806))
 * cli/connect/http: Pass endpoint address through to allow setting TLS server
   name directly in most cases

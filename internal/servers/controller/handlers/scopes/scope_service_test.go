@@ -14,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -28,6 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
@@ -185,7 +188,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 org.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Org.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 	}
 
@@ -199,7 +202,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:                 proj.UpdateTime.GetTimestamp(),
 		Version:                     2,
 		Type:                        scope.Project.String(),
-		AuthorizedActions:           []string{"read", "update", "delete"},
+		AuthorizedActions:           testAuthorizedActions,
 		AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 	}
 
@@ -288,15 +291,18 @@ func TestList(t *testing.T) {
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
 	require.NoError(t, err)
 
+	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults("u_auth")
 	var initialOrgs []*pb.Scope
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
-	oNoProjectsProto := scopes.ToProto(oNoProjects)
+	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(&outputFields))
+	require.NoError(t, err)
 	oNoProjectsProto.Scope = globalScope
-	oNoProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
-	oWithProjectsProto := scopes.ToProto(oWithProjects)
+	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(&outputFields))
+	require.NoError(t, err)
 	oWithProjectsProto.Scope = globalScope
-	oWithProjectsProto.AuthorizedActions = []string{"read", "update", "delete"}
+	oWithProjectsProto.AuthorizedActions = testAuthorizedActions
 	oWithProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
 	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
 	scopes.SortScopes(initialOrgs)
@@ -340,7 +346,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -349,8 +355,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)
@@ -373,7 +380,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 o.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Org.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 		})
 	}
@@ -394,7 +401,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:                 p.GetUpdateTime().GetTimestamp(),
 			Version:                     1,
 			Type:                        scope.Project.String(),
-			AuthorizedActions:           []string{"read", "update", "delete"},
+			AuthorizedActions:           testAuthorizedActions,
 			AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 		})
 	}
@@ -453,7 +460,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.err)
@@ -463,8 +470,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
 				assert.Nil(item.CreatedTime)
 				assert.Nil(item.UpdatedTime)
@@ -493,7 +501,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad project id Project",
@@ -517,7 +524,6 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteScopeRequest{
 				Id: org.GetPublicId(),
 			},
-			res: &pbs.DeleteScopeResponse{},
 		},
 		{
 			name:    "Delete bad org id Org",
@@ -619,7 +625,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -643,7 +649,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -666,7 +672,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -689,7 +695,7 @@ func TestCreate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					Version:                     1,
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -918,7 +924,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -945,7 +951,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Org.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
 				},
 			},
@@ -971,7 +977,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 global.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Global.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: globalAuthorizedCollectionActions,
 				},
 			},
@@ -997,7 +1003,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1070,7 +1076,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1094,7 +1100,7 @@ func TestUpdate(t *testing.T) {
 					Name:                        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1120,7 +1126,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},
@@ -1146,7 +1152,7 @@ func TestUpdate(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:                 proj.GetCreateTime().GetTimestamp(),
 					Type:                        scope.Project.String(),
-					AuthorizedActions:           []string{"read", "update", "delete"},
+					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: projectAuthorizedCollectionActions,
 				},
 			},

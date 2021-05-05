@@ -1,11 +1,14 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDevController(t *testing.T) {
@@ -273,4 +276,58 @@ func TestDevWorker(t *testing.T) {
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+}
+
+func TestParsingName(t *testing.T) {
+	t.Parallel()
+	config := `
+	controller {
+		name = "%s"
+	}
+	worker {
+		name = "%s"
+	}
+	`
+	controllerEnv := "FOOENV"
+	workerEnv := "BARENV"
+	cases := []struct {
+		name               string
+		templateController string
+		templateWorker     string
+		envController      string
+		envWorker          string
+		expectedController string
+		expectedWorker     string
+	}{
+		{
+			name:               "no env",
+			templateController: "foobar",
+			templateWorker:     "barfoo",
+			expectedController: "foobar",
+			expectedWorker:     "barfoo",
+		},
+		{
+			name:               "env",
+			templateController: fmt.Sprintf("env://%s", controllerEnv),
+			templateWorker:     fmt.Sprintf("env://%s", workerEnv),
+			envController:      "foobar2",
+			envWorker:          "barfoo2",
+			expectedController: "foobar2",
+			expectedWorker:     "barfoo2",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envController != "" {
+				os.Setenv(controllerEnv, tt.envController)
+			}
+			if tt.envWorker != "" {
+				os.Setenv(workerEnv, tt.envWorker)
+			}
+			out, err := Parse(fmt.Sprintf(config, tt.templateController, tt.templateWorker))
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedController, out.Controller.Name)
+			assert.Equal(t, tt.expectedWorker, out.Worker.Name)
+		})
+	}
 }

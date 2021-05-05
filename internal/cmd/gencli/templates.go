@@ -327,9 +327,6 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	{{ if hasAction .StdActions "delete" }}
-	existed := true
-	{{ end }}
 	var result api.GenericResult
 	{{ if hasAction .StdActions "list" }}
 	var listResult api.GenericListResult
@@ -351,11 +348,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":
-		_, err = {{ $input.Pkg}}Client.Delete(c.Context, c.FlagId, opts...)
-		if apiErr := api.AsServerError(err); apiErr != nil && apiErr.Response().StatusCode() == http.StatusNotFound {
-			existed = false
-			err = nil
-		}
+		result, err = {{ $input.Pkg }}Client.Delete(c.Context, c.FlagId, opts...)
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
@@ -390,42 +383,26 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			c.UI.Output(fmt.Sprintf("{ \"existed\": %t }", existed))
+			if ok := c.PrintJsonItem(result); !ok {
+				return base.CommandCliError
+			}
 
 		case "table":
-			output := "The delete operation completed successfully"
-			switch existed {
-			case true:
-				output += "."
-			default:
-				output += ", however the resource did not exist at the time."
-			}
-			c.UI.Output(output)
+			c.UI.Output("The delete operation completed successfully.")
 		}
 
 		return base.CommandSuccess
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
 		switch base.Format(c.UI) {
 		case "json":
-			switch {
-			
-			case len(listedItems) == 0:
-				c.UI.Output("null")
-			
-			default:
-				items := make([]interface{}, len(listedItems))
-				for i, v := range listedItems {
-					items[i] = v
-				}
-				if ok := c.PrintJsonItems(listResult, items); !ok {
-					return base.CommandCliError
-				}
+			if ok := c.PrintJsonItems(listResult); !ok {
+				return base.CommandCliError
 			}
 
 		case "table":
+			listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
 			c.UI.Output(c.printListTable(listedItems))
 		}
 
@@ -434,13 +411,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	item := result.GetItem().(*{{ .Pkg }}.{{ camelCase .ResourceType }})
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(item))
+		c.UI.Output(printItemTable(result))
 
 	case "json":
-		if ok := c.PrintJsonItem(result, item); !ok {
+		if ok := c.PrintJsonItem(result); !ok {
 			return base.CommandCliError
 		}
 	}
