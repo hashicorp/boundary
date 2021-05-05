@@ -49,3 +49,16 @@ func testId(t *testing.T) string {
 	require.NoError(t, err)
 	return id
 }
+
+// TestCredentialLibrary creates a CredentialLibrary for targetId and
+// libraryId.
+func TestCredentialLibrary(t *testing.T, conn *gorm.DB, targetId, libraryId string) *CredentialLibrary {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	lib, err := NewCredentialLibrary(targetId, libraryId)
+	require.NoError(err)
+	err = rw.Create(context.Background(), lib)
+	require.NoError(err)
+	return lib
+}
