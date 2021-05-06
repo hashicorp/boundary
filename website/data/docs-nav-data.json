@@ -7,6 +7,20 @@
         "path": "getting-started"
       },
       {
+        "title": "Installing",
+        "hidden": true,
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "getting-started/installing"
+          },
+          {
+            "title": "Production",
+            "path": "getting-started/installing/production"
+          }
+        ]
+      },
+      {
         "title": "Run and Login",
         "path": "getting-started/run-and-login"
       },
@@ -260,6 +274,40 @@
   {
     "title": "Common Workflows",
     "href": "https://learn.hashicorp.com/collections/boundary/basic-administration"
+  },
+  {
+    "title": "Common Workflows",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "common-workflows"
+      },
+      {
+        "title": "Manage Roles",
+        "path": "common-workflows/manage-roles"
+      },
+      {
+        "title": "Manage Scopes",
+        "path": "common-workflows/manage-scopes"
+      },
+      {
+        "title": "Manage Sessions",
+        "path": "common-workflows/manage-sessions"
+      },
+      {
+        "title": "Manage Targets",
+        "path": "common-workflows/manage-targets"
+      },
+      {
+        "title": "Manage Users and Groups",
+        "path": "common-workflows/manage-users-groups"
+      },
+      {
+        "title": "Workflow SSH Proxy",
+        "path": "common-workflows/workflow-ssh-proxycommand"
+      }
+    ]
   },
   {
     "divider": true
