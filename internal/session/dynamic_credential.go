@@ -20,7 +20,7 @@ type DynamicCredential struct {
 // NewDynamicCredential creates a new in memory Credential representing the
 // relationship between sessionId, credentialId, and library.
 func NewDynamicCredential(sessionId, credentialId string, library *target.CredentialLibrary, _ ...Option) (*DynamicCredential, error) {
-	const op = "session.NewCredential"
+	const op = "session.NewDynamicCredential"
 	if sessionId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no session id")
 	}
