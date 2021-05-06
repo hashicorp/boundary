@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -53,11 +54,14 @@ type Config struct {
 
 func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	const op = "event.NewEventer"
+	if log == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+	}
 	var auditNodeIds, infoNodeIds, errNodeIds []eventlogger.NodeID
 	broker := eventlogger.NewBroker()
 
 	// Create JSONFormatter node
-	id, err := newId("node")
+	id, err := newId("json")
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -71,6 +75,16 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	infoNodeIds = append(infoNodeIds, jsonfmtID)
 	errNodeIds = append(errNodeIds, jsonfmtID)
 
+	if len(c.Sinks) == 0 {
+		c.Sinks = append(c.Sinks, SinkConfig{
+			Name:       "default",
+			EventTypes: []Type{EveryType},
+			Format:     JSONSinkFormat,
+			Path:       "./",
+			FileName:   "foo.txt",
+		})
+	}
+
 	for _, s := range c.Sinks {
 		fileSinkNode := eventlogger.FileSink{
 			Format:      string(s.Format),
@@ -81,7 +95,7 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 			MaxFiles:    s.RotateMaxFiles,
 		}
 
-		id, err = newId("node")
+		id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -168,6 +182,7 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	}
 
 	return &Eventer{
+		logger: log,
 		conf:   c,
 		broker: broker,
 	}, nil

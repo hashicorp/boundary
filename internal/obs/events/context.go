@@ -33,7 +33,7 @@ func WriteInfo(ctx context.Context, caller Op, opt ...Option) error {
 	if !ok {
 		return errors.New(errors.InvalidParameter, op, "context missing request info")
 	}
-	e, err := NewInfo(Id(reqInfo.ID), caller, opt...)
+	e, err := NewInfo(reqInfo.ID, caller, opt...)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}

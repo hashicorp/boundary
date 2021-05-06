@@ -1,7 +1,7 @@
 package event
 
 import (
-	"time"
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 type Type string
@@ -17,9 +17,8 @@ type Id string
 type Op string
 
 type base struct {
-	Timestamp time.Time
-	ID        Id
-	Op        Op
+	ID Id
+	Op Op
 }
 type Audit struct {
 	*base
@@ -31,19 +30,22 @@ type Err struct {
 
 type Info struct {
 	*base
-	details map[string]interface{}
-	header  map[string]interface{}
+	Details map[string]interface{} `json:"details,omitempty"`
+	Header  map[string]interface{} `json:"header,omitempty"`
 }
 
-func NewInfo(id Id, op Op, opt ...Option) (*Info, error) {
+func NewInfo(eventId string, fromOperation Op, opt ...Option) (*Info, error) {
+	const op = "event.NewInfo"
 	opts := getOpts(opt...)
+	if eventId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing event id")
+	}
 	i := &Info{
-		header:  opts.withHeader,
-		details: opts.withDetails,
+		Header:  opts.withHeader,
+		Details: opts.withDetails,
 		base: &base{
-			ID:        id,
-			Op:        op,
-			Timestamp: time.Now(),
+			ID: Id(eventId),
+			Op: fromOperation,
 		},
 	}
 	return i, nil
