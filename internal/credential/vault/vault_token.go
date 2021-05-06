@@ -50,15 +50,15 @@ type Token struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newToken(storeId string, token, accessor []byte, expiration time.Duration) (*Token, error) {
+func newToken(storeId, token, accessor string, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no store id")
 	}
-	if len(token) == 0 {
+	if token == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
 	}
-	if len(accessor) == 0 {
+	if accessor == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no vault token accessor")
 	}
 	if expiration == 0 {

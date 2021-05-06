@@ -48,7 +48,7 @@ func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper,
 
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
-		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("vault-token-%s-%d", scopeId, i)))
+		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", scopeId, i))
 		assert.NoError(err)
 		require.NotNil(cs)
 		id, err := newCredentialStoreId()
@@ -131,7 +131,7 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%s-%d", storeId, i)), []byte(fmt.Sprintf("accessor-%s-%d", storeId, i)), 5*time.Minute)
+		inToken, err := newToken(storeId, fmt.Sprintf("vault-token-%s-%d", storeId, i), fmt.Sprintf("accessor-%s-%d", storeId, i), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(inToken)
 
