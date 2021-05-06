@@ -15,8 +15,8 @@ type RequestInfo struct {
 	ID string
 }
 
-func NewEventerContext(ctx context.Context) (context.Context, error) {
-	return context.WithValue(ctx, eventerKey, &Eventer{}), nil
+func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
+	return context.WithValue(ctx, eventerKey, eventer), nil
 }
 
 func WriteInfo(ctx context.Context, caller Op, opt ...Option) error {
