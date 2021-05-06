@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.2.1 (2021/05/04)
+## 0.2.1 (2021/05/05)
 
 ### Deprecations/Changes
 
@@ -111,6 +111,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: It is now an error to run `boundary database migrate` on an uninitalized db.
   Use `boundary database init` instead.
   ([PR](https://github.com/hashicorp/boundary/pull/1184))
+* cli: Correctly honor the `-format` flag when running `boundary database init`
+  ([PR](https://github.com/hashicorp/boundary/pull/1204))
 
 ## 0.2.0 (2021/04/14)
 
