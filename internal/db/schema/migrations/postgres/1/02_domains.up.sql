@@ -23,7 +23,7 @@ comment on domain wt_full_name is
 'standard column for the full name of a person';
 
 -- wt_url defines a type for URLs which must be longer that 3 chars and
--- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- less than 4k chars.  It's defined to allow nulls, which can be overridden as
 -- needed when used in tables.
 create domain wt_url as text
     constraint wt_url_too_short
@@ -45,7 +45,7 @@ create domain wt_name as text
 comment on domain wt_name is
 'standard column for resource names';
 
--- wt_description defines a type for resource descriptionss that must be less
+-- wt_description defines a type for resource descriptions that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
     constraint wt_description_too_short

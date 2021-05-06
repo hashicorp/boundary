@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 6001,
+		binarySchemaVersion: 7003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4892,7 +4892,7 @@ comment on domain wt_full_name is
 'standard column for the full name of a person';
 
 -- wt_url defines a type for URLs which must be longer that 3 chars and
--- less than 4k chars.  It's defined to allow nulls, which can be overriden as
+-- less than 4k chars.  It's defined to allow nulls, which can be overridden as
 -- needed when used in tables.
 create domain wt_url as text
     constraint wt_url_too_short
@@ -4914,7 +4914,7 @@ create domain wt_name as text
 comment on domain wt_name is
 'standard column for resource names';
 
--- wt_description defines a type for resource descriptionss that must be less
+-- wt_description defines a type for resource descriptions that must be less
 -- than 1024 chars. It's defined to allow nulls.
 create domain wt_description as text
     constraint wt_description_too_short
@@ -6178,6 +6178,174 @@ from
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
+`),
+			7001: []byte(`
+create function wt_add_seconds(sec integer, ts timestamp with time zone)
+        returns timestamp with time zone
+    as $$
+    select ts + sec * '1 second'::interval;
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds is
+        'wt_add_seconds returns ts + sec.';
+
+    create function wt_add_seconds_to_now(sec integer)
+        returns timestamp with time zone
+    as $$
+    select wt_add_seconds(sec, current_timestamp);
+    $$ language sql
+        stable
+        returns null on null input;
+    comment on function wt_add_seconds_to_now is
+        'wt_add_seconds_to_now returns current_timestamp + sec.';
+`),
+			7002: []byte(`
+create domain wt_plugin_id as text
+        not null
+        check(
+                    length(trim(value)) > 10 or value = 'pi_system'
+            );
+    comment on domain wt_plugin_id is
+        '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+    create table plugin (
+        public_id wt_plugin_id primary key
+    );
+
+    comment on table plugin is
+        'plugin is a table where each row represents a unique plugin registered with Boundary.';
+
+    insert into plugin (public_id)
+        values
+        ('pi_system');
+
+    create trigger immutable_columns before update on plugin
+        for each row execute procedure immutable_columns('public_id');
+
+    create or replace function
+        disallow_system_plugin_deletion()
+        returns trigger
+    as $$
+    begin
+        if old.public_id = 'pi_system' then
+            raise exception 'deletion of system plugin not allowed';
+        end if;
+        return old;
+    end;
+    $$ language plpgsql;
+
+    create trigger plugin_disallow_system_deletion before delete on plugin
+        for each row execute procedure disallow_system_plugin_deletion();
+`),
+			7003: []byte(`
+create table job (
+         plugin_id wt_plugin_id not null
+             constraint plugin_fk
+                 references plugin(public_id)
+                 on delete cascade
+                 on update cascade,
+         name wt_name not null,
+         description wt_description not null,
+         next_scheduled_run timestamp with time zone not null,
+         primary key (plugin_id, name)
+    );
+
+    comment on table job is
+        'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+    create trigger immutable_columns before update on job
+        for each row execute procedure immutable_columns('plugin_id', 'name');
+
+    create table job_run_status_enm (
+        name text not null primary key
+            constraint only_predefined_job_status_allowed
+                check(name in ('running', 'completed', 'failed', 'interrupted'))
+    );
+
+    comment on table job_run_status_enm is
+        'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
+
+    insert into job_run_status_enm (name)
+        values
+        ('running'),
+        ('completed'),
+        ('failed'),
+        ('interrupted');
+
+    create table job_run (
+         private_id wh_dim_id primary key
+             default wh_dim_id(),
+         job_plugin_id wt_plugin_id not null,
+         job_name wt_name not null,
+         server_id wt_private_id
+             constraint server_fkey
+                 references server(private_id)
+                 on delete set null
+                 on update cascade,
+         create_time wt_timestamp,
+         update_time wt_timestamp,
+         end_time timestamp with time zone,
+         completed_count int not null
+             default 0
+             constraint completed_count_can_not_be_negative
+                 check(completed_count >= 0),
+         total_count int not null
+             default 0
+             constraint total_count_can_not_be_negative
+                 check(total_count >= 0),
+         status text not null
+             default 'running'
+             constraint job_run_status_enm_fkey
+                 references job_run_status_enm (name)
+                 on delete restrict
+                 on update cascade,
+
+         constraint job_run_completed_count_less_than_equal_to_total_count
+             check(completed_count <= total_count),
+
+         constraint job_fkey
+         foreign key (job_plugin_id, job_name)
+             references job (plugin_id, name)
+             on delete cascade
+             on update cascade
+    );
+
+    comment on table job_run is
+        'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
+
+    create unique index job_run_status_constraint
+        on job_run (job_plugin_id, job_name)
+        where status = 'running';
+
+    create trigger update_time_column before update on job_run
+        for each row execute procedure update_time_column();
+
+    create trigger default_create_time_column before insert on job_run
+        for each row execute procedure default_create_time();
+
+    create trigger immutable_columns before update on job_run
+        for each row execute procedure immutable_columns('private_id', 'job_plugin_id', 'job_name', 'create_time');
+
+	create view job_jobs_to_run as
+	  with
+	  running_jobs (job_plugin_id, job_name) as (
+		select job_plugin_id, job_name
+		  from job_run
+		 where status = 'running'
+	  ),
+	  final (job_plugin_id, job_name, next_scheduled_run) as (
+		select plugin_id, name, next_scheduled_run
+		  from job j
+		 where next_scheduled_run <= current_timestamp
+		   and not exists (
+		       select
+		         from running_jobs
+		        where job_plugin_id = j.plugin_id
+		          and job_name = j.name
+		       )
+	  )
+	  select job_plugin_id, job_name, next_scheduled_run from final;
 `),
 		},
 	}
