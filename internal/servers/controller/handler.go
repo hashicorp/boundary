@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
@@ -165,6 +166,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterSessionServiceHandlerServer(ctx, mux, ss); err != nil {
 		return nil, fmt.Errorf("failed to register session service handler: %w", err)
+	}
+	cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credential store handler service: %w", err)
+	}
+	if err := services.RegisterCredentialStoreServiceHandlerServer(ctx, mux, cs); err != nil {
+		return nil, fmt.Errorf("failed to register credential store service handler: %w", err)
 	}
 
 	return mux, nil
