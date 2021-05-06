@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/session"
@@ -49,6 +51,8 @@ type Controller struct {
 	SessionRepoFn         common.SessionRepoFactory
 	StaticHostRepoFn      common.StaticRepoFactory
 	TargetRepoFn          common.TargetRepoFactory
+
+	scheduler *scheduler.Scheduler
 
 	kms *kms.Kms
 }
@@ -142,6 +146,14 @@ func New(conf *Config) (*Controller, error) {
 
 	c.workerAuthCache = cache.New(0, 0)
 
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(dbase, dbase, c.kms)
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new scheduler: %w", err)
+	}
+
 	return c, nil
 }
 
@@ -151,6 +163,9 @@ func (c *Controller) Start() error {
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+	if err := c.scheduler.Start(c.baseContext); err != nil {
+		return fmt.Errorf("error starting scheduler: %w", err)
+	}
 
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
