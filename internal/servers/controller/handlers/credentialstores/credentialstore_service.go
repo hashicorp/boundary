@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
@@ -159,7 +159,6 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.
 	return csl, nil
 }
 
-
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	iamRepo, err := s.iamRepoFn()
@@ -252,12 +251,22 @@ func toProto(in credential.CredentialStore, opt ...handlers.Option) (*pb.Credent
 				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential store")
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{
-				Address:           vaultIn.GetVaultAddress(),
-				Namespace:         vaultIn.GetNamespace(),
-				VaultCaCert:       string(vaultIn.GetCaCert()),
-				TlsServerName:     vaultIn.GetTlsServerName(),
-				TlsSkipVerify:     vaultIn.GetTlsSkipVerify(),
+				Address: vaultIn.GetVaultAddress(),
 			}
+			if vaultIn.GetNamespace() != "" {
+				attrs.Namespace = wrapperspb.String(vaultIn.GetNamespace())
+			}
+			if len(vaultIn.GetCaCert()) != 0 {
+				attrs.VaultCaCert = wrapperspb.String(string(vaultIn.GetCaCert()))
+			}
+			if vaultIn.GetTlsServerName() != "" {
+				attrs.TlsServerName = wrapperspb.String(vaultIn.GetTlsServerName())
+			}
+			if vaultIn.GetTlsSkipVerify() {
+				attrs.TlsSkipVerify = wrapperspb.Bool(vaultIn.GetTlsSkipVerify())
+			}
+			// TODO: Add vault token hmac and client cert read only fields.
+
 			var err error
 			if out.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
 				return nil, errors.Wrap(err, op)
@@ -279,17 +288,29 @@ func validateGetRequest(req *pbs.GetCredentialStoreRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Org.Prefix()) &&
-			!handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) &&
-			scope.Global.String() != req.GetItem().GetScopeId() {
-			badFields["scope_id"] = "This field is missing or improperly formatted."
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
+			badFields["scope_id"] = "This field must be a valid project scope id."
+		}
+		switch credential.SubtypeFromType(req.GetItem().GetType()) {
+		case credential.VaultSubtype:
+		default:
+			badFields["type"] = "This is a required field and must be a known credential store type."
 		}
 		return badFields
 	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, vault.CredentialStorePrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		switch credential.SubtypeFromId(req.GetId()) {
+		case credential.VaultSubtype:
+			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != credential.VaultSubtype {
+				badFields["type"] = "Cannot modify resource type."
+			}
+		}
+		return badFields
+	}, vault.CredentialStorePrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialStoreRequest) error {
@@ -298,9 +319,9 @@ func validateDeleteRequest(req *pbs.DeleteCredentialStoreRequest) error {
 
 func validateListRequest(req *pbs.ListCredentialStoresRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix(), scope.Project.Prefix()) &&
-		req.GetScopeId() != scope.Global.String() {
-		badFields["scope_id"] = "Incorrectly formatted identifier."
+	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
+		!req.GetRecursive() {
+		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
