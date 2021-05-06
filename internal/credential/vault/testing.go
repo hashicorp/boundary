@@ -118,6 +118,52 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 	return libs
 }
 
+// TestLeases creates count number of vault leases in the provided DB with
+// the provided library id and session id. If any errors are encountered
+// during the creation of the leases , the test will fail.
+func TestLeases(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Lease {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	rw := db.New(conn)
+
+	ctx := context.Background()
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	assert.NoError(err)
+	require.NotNil(repo)
+
+	lib, err := repo.LookupCredentialLibrary(ctx, libraryId)
+	assert.NoError(err)
+	require.NotNil(lib)
+
+	store, err := repo.LookupCredentialStore(ctx, lib.GetStoreId())
+	assert.NoError(err)
+	require.NotNil(store)
+
+	token := store.Token()
+	require.NotNil(token)
+
+	var leases []*Lease
+	for i := 0; i < count; i++ {
+		lease, err := newLease(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/lease/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		assert.NoError(err)
+		require.NotNil(lease)
+
+		id, err := newCredentialId()
+		assert.NoError(err)
+		require.NotNil(id)
+		lease.PublicId = id
+
+		query, queryValues := lease.insertQuery()
+		rows, err2 := rw.Exec(ctx, query, queryValues)
+		assert.Equal(1, rows)
+		assert.NoError(err2)
+
+		leases = append(leases, lease)
+	}
+	return leases
+}
+
 func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
