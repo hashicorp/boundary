@@ -209,15 +209,16 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	}
 
 	j := regJob.(Job)
-	jobContext, jobCancel := context.WithCancel(ctx)
-	_, loaded := s.runningJobs.LoadOrStore(r.JobName, runningJob{runId: r.PrivateId, cancelCtx: jobCancel, status: j.Status})
+	rj := &runningJob{runId: r.PrivateId, status: j.Status}
+	_, loaded := s.runningJobs.LoadOrStore(r.JobName, rj)
 	if loaded {
-		jobCancel()
 		return fmt.Errorf("job %q is already running", r.JobName)
 	}
+	var jobContext context.Context
+	jobContext, rj.cancelCtx = context.WithCancel(ctx)
 
 	go func() {
-		defer jobCancel()
+		defer rj.cancelCtx()
 		runErr := j.Run(jobContext)
 		switch runErr {
 		case nil:
@@ -250,7 +251,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 		case <-timer.C:
 			// Update progress of all running jobs
 			s.runningJobs.Range(func(_, v interface{}) bool {
-				err := s.updateRunningJobProgress(ctx, v.(runningJob))
+				err := s.updateRunningJobProgress(ctx, v.(*runningJob))
 				if err != nil {
 					s.logger.Error("error updating job progress", "error", err)
 				}
@@ -273,7 +274,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j runningJob) error {
+func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob) error {
 	repo, err := s.jobRepoFn()
 	if err != nil {
 		return fmt.Errorf("error creating job repo %w", err)

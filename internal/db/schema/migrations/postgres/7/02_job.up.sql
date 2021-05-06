@@ -1,20 +1,28 @@
 begin;
 
-    create table job_plugin (
-        public_id wt_public_id primary key
+    create domain wt_plugin_id as text
+        not null
+        check(
+                length(trim(value)) > 10 or value = 'pi_system'
+            );
+    comment on domain wt_plugin_id is
+         '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+    create table plugin (
+        public_id wt_plugin_id primary key
     );
 
-    insert into job_plugin (public_id)
+    insert into plugin (public_id)
     values
-        ('jpi_internal');
+        ('pi_system');
 
-    comment on table job_plugin is
-        'job_plugin is a table where each row represents a unique plugin that can register jobs.';
+    comment on table plugin is
+        'plugin is a table where each row represents a unique plugin registered with Boundary.';
 
     create table job (
-         plugin_id wt_public_id not null
-             constraint job_plugin_fk
-                 references job_plugin(public_id)
+         plugin_id wt_plugin_id not null
+             constraint plugin_fk
+                 references plugin(public_id)
                  on delete cascade
                  on update cascade,
          name wt_name not null,
@@ -45,7 +53,7 @@ begin;
     create table job_run (
          private_id wh_dim_id primary key
              default wh_dim_id(),
-         job_plugin_id wt_public_id not null,
+         job_plugin_id wt_plugin_id not null,
          job_name wt_name not null,
          server_id wt_private_id
              constraint server_fkey

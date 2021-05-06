@@ -6,7 +6,7 @@ import (
 
 const (
 	defaultRunJobsLimit = 1
-	defaultPluginId     = "jpi_internal"
+	defaultPluginId     = "pi_system"
 )
 
 // getOpts - iterate the inbound Options and return a struct

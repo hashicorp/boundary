@@ -150,10 +150,10 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	require.Equal(mapLen(sched.runningJobs), 2)
 	runJob, ok := sched.runningJobs.Load(tj1.name)
 	require.True(ok)
-	run1Id := runJob.(runningJob).runId
+	run1Id := runJob.(*runningJob).runId
 	runJob, ok = sched.runningJobs.Load(tj2.name)
 	require.True(ok)
-	run2Id := runJob.(runningJob).runId
+	run2Id := runJob.(*runningJob).runId
 
 	// Yield processor
 	runtime.Gosched()
@@ -248,7 +248,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	require.Equal(mapLen(sched.runningJobs), 1)
 	runJob, ok := sched.runningJobs.Load(tj.name)
 	require.True(ok)
-	runId := runJob.(runningJob).runId
+	runId := runJob.(*runningJob).runId
 
 	// Wait for scheduler to query for job status
 	<-statusRequest
@@ -332,7 +332,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	require.Equal(mapLen(sched.runningJobs), 1)
 	runJob, ok := sched.runningJobs.Load(tj.name)
 	require.True(ok)
-	runId := runJob.(runningJob).runId
+	runId := runJob.(*runningJob).runId
 
 	// Wait for scheduler to interrupt job
 	<-jobDone

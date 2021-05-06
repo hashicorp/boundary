@@ -119,8 +119,8 @@ func TestJobPluginUnique(t *testing.T) {
 	assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
 
 	// Create test plugin id
-	testPluginId := "jpi_test1234"
-	numRows, err := rw.Exec(context.Background(), "insert into job_plugin(public_id) values (?)", []interface{}{testPluginId})
+	testPluginId := "pi_test1234"
+	numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
 	require.NoError(err)
 	assert.Equal(1, numRows)
 
