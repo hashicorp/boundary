@@ -192,9 +192,12 @@ type VaultCredentialStoreAttributes struct {
 	TlsSkipVerify bool `protobuf:"varint,50,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty"`
 	// Write only field. The vault token used by this credential store.
 	VaultToken string `protobuf:"bytes,60,opt,name=vault_token,proto3" json:"vault_token,omitempty"`
-	// A PEM encoded client_certificate for vault.  When set certificate_key should also be set.
+	// Write only field. A PEM encoded client certificate for vault with an
+	// optional private key included in the bundle.  It is an error to include
+	// the private key in this bundle as well as setting the certificate_key
+	// field.
 	ClientCertificate string `protobuf:"bytes,70,opt,name=client_certificate,proto3" json:"client_certificate,omitempty"`
-	// Write only field. PEM encoded client certificate private key. When set client_certificate should also be set.
+	// Write only field. A client certificate private key.
 	CertificateKey string `protobuf:"bytes,80,opt,name=certificate_key,proto3" json:"certificate_key,omitempty"`
 }
 
