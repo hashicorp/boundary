@@ -649,3 +649,15 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	}
 	return currentHostSets, totalRowsAffected, nil
 }
+
+func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*CredentialLibrary, error) {
+	const op = "target.fetchLibraries"
+	var libraries []*CredentialLibrary
+	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	if len(libraries) == 0 {
+		return nil, nil
+	}
+	return libraries, nil
+}

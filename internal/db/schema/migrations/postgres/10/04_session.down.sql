@@ -1,5 +1,5 @@
 begin;
 
-  drop table session_credential_library;
+  drop table session_credential_dynamic;
 
 commit;
