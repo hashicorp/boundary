@@ -6213,12 +6213,30 @@ create domain wt_plugin_id as text
         public_id wt_plugin_id primary key
     );
 
+    comment on table plugin is
+        'plugin is a table where each row represents a unique plugin registered with Boundary.';
+
     insert into plugin (public_id)
     values
         ('pi_system');
 
-    comment on table plugin is
-        'plugin is a table where each row represents a unique plugin registered with Boundary.';
+    create trigger immutable_columns before update on plugin
+        for each row execute procedure immutable_columns('public_id');
+
+    create or replace function
+        disallow_system_plugin_deletion()
+        returns trigger
+    as $$
+    begin
+        if old.public_id = 'pi_system' then
+            raise exception 'deletion of system plugin not allowed';
+        end if;
+        return old;
+    end;
+    $$ language plpgsql;
+
+    create trigger plugin_disallow_system_deletion before delete on plugin
+        for each row execute procedure disallow_system_plugin_deletion();
 
     create table job (
          plugin_id wt_plugin_id not null
@@ -6234,6 +6252,9 @@ create domain wt_plugin_id as text
 
     comment on table job is
         'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
+
+    create trigger immutable_columns before update on job
+        for each row execute procedure immutable_columns('plugin_id', 'name');
 
     create table job_run_status_enm (
         name text not null primary key

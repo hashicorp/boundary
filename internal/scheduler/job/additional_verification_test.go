@@ -91,57 +91,98 @@ func TestJobWorkflow(t *testing.T) {
 }
 
 // TODO (LCR): This test can be dropped once plugin support is plumbed through job repo and scheduler
-func TestJobPluginUnique(t *testing.T) {
+func TestPlugin(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
+	t.Run("plugin-unique", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
 
-	rows, err := rw.Query(context.Background(), createJobQuery, []interface{}{
-		defaultPluginId,
-		"same-job-name",
-		"description",
-		0,
+		rows, err := rw.Query(context.Background(), createJobQuery, []interface{}{
+			defaultPluginId,
+			"same-job-name",
+			"description",
+			0,
+		})
+		require.NoError(err)
+		_ = rows.Close()
+
+		// Creating a job with same name and pluginId should return a unique constraint error
+		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+			defaultPluginId,
+			"same-job-name",
+			"description",
+			0,
+		})
+		require.Error(err)
+		assert.Nil(rows)
+		assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
+
+		// Create test plugin id
+		testPluginId := "pi_test1234"
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		require.NoError(err)
+		assert.Equal(1, numRows)
+
+		// Creating the a job with the same name and different pluginId should succeed
+		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+			testPluginId,
+			"same-job-name",
+			"description",
+			0,
+		})
+		assert.NoError(err)
+		_ = rows.Close()
+
+		// Creating a job with same name and pluginId should again return a unique constraint error
+		rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
+			testPluginId,
+			"same-job-name",
+			"description",
+			0,
+		})
+		require.Error(err)
+		assert.Nil(rows)
+		assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
 	})
-	require.NoError(err)
-	_ = rows.Close()
+	t.Run("plugin-id-immutable", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 
-	// Creating a job with same name and pluginId should return a unique constraint error
-	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-		defaultPluginId,
-		"same-job-name",
-		"description",
-		0,
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
+
+		// Create test plugin id
+		testPluginId := "pi_test1234"
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		assert.NoError(err)
+		assert.Equal(1, numRows)
+
+		newPluginId := "pi_newtest1234"
+		numUpdated, err := rw.Exec(context.Background(), "update plugin set public_id = ? where public_id = ?", []interface{}{newPluginId, testPluginId})
+		require.Error(err)
+		assert.Equal("db.Exec: immutable column: plugin.public_id: integrity violation: error #1003", err.Error())
+		assert.Equal(0, numUpdated)
 	})
-	require.Error(err)
-	assert.Nil(rows)
-	assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
+	t.Run("default-plugin-deletion-disallowed", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 
-	// Create test plugin id
-	testPluginId := "pi_test1234"
-	numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
-	require.NoError(err)
-	assert.Equal(1, numRows)
+		conn, _ := db.TestSetup(t, "postgres")
+		rw := db.New(conn)
 
-	// Creating the a job with the same name and different pluginId should succeed
-	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-		testPluginId,
-		"same-job-name",
-		"description",
-		0,
+		numDeleted, err := rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{defaultPluginId})
+		require.Error(err)
+		assert.Equal("db.Exec: deletion of system plugin not allowed: integrity violation: error #1104", err.Error())
+		assert.Equal(0, numDeleted)
+
+		// Create test plugin id
+		testPluginId := "pi_test1234"
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id) values (?)", []interface{}{testPluginId})
+		assert.NoError(err)
+		assert.Equal(1, numRows)
+
+		numDeleted, err = rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{testPluginId})
+		assert.NoError(err)
+		assert.Equal(1, numDeleted)
 	})
-	assert.NoError(err)
-	_ = rows.Close()
-
-	// Creating a job with same name and pluginId should again return a unique constraint error
-	rows, err = rw.Query(context.Background(), createJobQuery, []interface{}{
-		testPluginId,
-		"same-job-name",
-		"description",
-		0,
-	})
-	require.Error(err)
-	assert.Nil(rows)
-	assert.Equal("pq: duplicate key value violates unique constraint \"job_pkey\"", err.Error())
 }
