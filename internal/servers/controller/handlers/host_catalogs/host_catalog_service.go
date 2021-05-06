@@ -53,7 +53,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.HostCatalog{}, &pb.HostCatalog{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
 }

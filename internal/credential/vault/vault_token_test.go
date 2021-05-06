@@ -29,14 +29,14 @@ func TestToken_New(t *testing.T) {
 
 	type args struct {
 		storeId         string
-		token, accessor string
+		token, accessor []byte
 		expiration      time.Duration
 	}
 
-	hmac := func(t, a string) []byte {
-		key := blake2b.Sum256([]byte(a))
+	hmac := func(t, a []byte) []byte {
+		key := blake2b.Sum256(a)
 		mac := hmac.New(sha256.New, key[:])
-		_, _ = mac.Write([]byte(t))
+		_, _ = mac.Write(t)
 		return mac.Sum(nil)
 	}
 
@@ -50,8 +50,8 @@ func TestToken_New(t *testing.T) {
 			name: "blank-store-id",
 			args: args{
 				storeId:    "",
-				token:      "token",
-				accessor:   "accessor",
+				token:      []byte("token"),
+				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -61,7 +61,7 @@ func TestToken_New(t *testing.T) {
 			name: "missing-token",
 			args: args{
 				storeId:    cs.PublicId,
-				accessor:   "accessor",
+				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -71,7 +71,7 @@ func TestToken_New(t *testing.T) {
 			name: "missing-accessor",
 			args: args{
 				storeId:    cs.PublicId,
-				token:      "token",
+				token:      []byte("token"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -81,8 +81,8 @@ func TestToken_New(t *testing.T) {
 			name: "missing-expiration",
 			args: args{
 				storeId:  cs.PublicId,
-				token:    "token",
-				accessor: "accessor",
+				token:    []byte("token"),
+				accessor: []byte("accessor"),
 			},
 			want:    nil,
 			wantErr: true,
@@ -91,15 +91,15 @@ func TestToken_New(t *testing.T) {
 			name: "valid",
 			args: args{
 				storeId:    cs.PublicId,
-				token:      "token",
-				accessor:   "accessor",
+				token:      []byte("token"),
+				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
 			want: &Token{
 				Token: &store.Token{
 					StoreId:   cs.PublicId,
 					Token:     []byte("token"),
-					TokenHmac: hmac("token", "accessor"),
+					TokenHmac: hmac([]byte("token"), []byte("accessor")),
 					Status:    string(StatusCurrent),
 				},
 				expiration: 5 * time.Minute,

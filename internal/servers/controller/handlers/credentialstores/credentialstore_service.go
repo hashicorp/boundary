@@ -29,7 +29,8 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.CredentialStore{}, &pb.CredentialStore{}, &pb.VaultCredentialStoreAttributes{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.CredentialStore{}, &store.Token{}, &store.ClientCertificate{}},
+		handlers.MaskSource{&pb.CredentialStore{}, &pb.VaultCredentialStoreAttributes{}}); err != nil {
 		panic(err)
 	}
 }

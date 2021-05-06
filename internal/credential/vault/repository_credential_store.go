@@ -111,7 +111,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
 	}
 
-	token, err := newToken(id, cs.inputToken, accessor, tokenExpires)
+	token, err := newToken(id, cs.inputToken, []byte(accessor), tokenExpires)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, newToken.oplogMessage(db.CreateOp))
 
-			newCredentialStore.inputToken = ""
+			newCredentialStore.inputToken = nil
 			newToken.Token.Token = nil
 			newToken.Token.CtToken = nil
 			newCredentialStore.outputToken = newToken
@@ -359,7 +359,7 @@ type privateCredentialStore struct {
 	TlsSkipVerify        bool
 	StoreId              string
 	TokenHmac            []byte
-	Token                string
+	Token                []byte
 	CtToken              []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
@@ -420,7 +420,7 @@ func (pcs *privateCredentialStore) decrypt(ctx context.Context, cipher wrapping.
 
 	if pcs.CtToken != nil {
 		type ptk struct {
-			Token   string `wrapping:"pt,token_data"`
+			Token   []byte `wrapping:"pt,token_data"`
 			CtToken []byte `wrapping:"ct,token_data"`
 		}
 		ptkv := &ptk{
@@ -452,7 +452,7 @@ func (pcs *privateCredentialStore) client() (*client, error) {
 	const op = "vault.(privateCredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          pcs.VaultAddress,
-		Token:         pcs.Token,
+		Token:         string(pcs.Token),
 		CaCert:        pcs.CaCert,
 		TlsServerName: pcs.TlsServerName,
 		TlsSkipVerify: pcs.TlsSkipVerify,
@@ -627,7 +627,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
 		}
 
-		token, err = newToken(cs.GetPublicId(), cs.inputToken, accessor, tokenExpires)
+		token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires)
 		if err != nil {
 			return nil, db.NoRowsAffected, err
 		}
@@ -702,7 +702,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				}
 				msgs = append(msgs, returnedToken.oplogMessage(db.CreateOp))
 
-				returnedCredentialStore.inputToken = ""
+				returnedCredentialStore.inputToken = nil
 				returnedToken.Token.Token = nil
 				returnedToken.Token.CtToken = nil
 				returnedCredentialStore.outputToken = returnedToken

@@ -13,7 +13,7 @@ type CredentialStore struct {
 	tableName string `gorm:"-"`
 
 	clientCert  *ClientCertificate `gorm:"-"`
-	inputToken  string             `gorm:"-"`
+	inputToken  []byte             `gorm:"-"`
 	outputToken *Token             `gorm:"-"`
 
 	privateClientCert *ClientCertificate `gorm:"-"`
@@ -24,7 +24,7 @@ type CredentialStore struct {
 // server at vaultAddress assigned to scopeId. Name, description, CA cert,
 // client cert, namespace, TLS server name, and TLS skip verify are the
 // only valid options. All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress, token string, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
 	const op = "vault.NewCredentialStore"
 	if scopeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
@@ -61,13 +61,15 @@ func allocCredentialStore() *CredentialStore {
 }
 
 func (cs *CredentialStore) clone() *CredentialStore {
+	tokenCopy := make([]byte, len(cs.inputToken))
+	copy(tokenCopy, cs.inputToken)
 	var clientCertCopy *ClientCertificate
 	if cs.clientCert != nil {
 		clientCertCopy = cs.clientCert.clone()
 	}
 	cp := proto.Clone(cs.CredentialStore)
 	return &CredentialStore{
-		inputToken:      cs.inputToken,
+		inputToken:      tokenCopy,
 		clientCert:      clientCertCopy,
 		CredentialStore: cp.(*store.CredentialStore),
 	}
