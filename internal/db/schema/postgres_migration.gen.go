@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 7002,
+		binarySchemaVersion: 7003,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6204,10 +6204,10 @@ create function wt_add_seconds(sec integer, ts timestamp with time zone)
 create domain wt_plugin_id as text
         not null
         check(
-                length(trim(value)) > 10 or value = 'pi_system'
+                    length(trim(value)) > 10 or value = 'pi_system'
             );
     comment on domain wt_plugin_id is
-         '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+        '"pi_system", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
     create table plugin (
         public_id wt_plugin_id primary key
@@ -6217,7 +6217,7 @@ create domain wt_plugin_id as text
         'plugin is a table where each row represents a unique plugin registered with Boundary.';
 
     insert into plugin (public_id)
-    values
+        values
         ('pi_system');
 
     create trigger immutable_columns before update on plugin
@@ -6237,8 +6237,9 @@ create domain wt_plugin_id as text
 
     create trigger plugin_disallow_system_deletion before delete on plugin
         for each row execute procedure disallow_system_plugin_deletion();
-
-    create table job (
+`),
+			7003: []byte(`
+create table job (
          plugin_id wt_plugin_id not null
              constraint plugin_fk
                  references plugin(public_id)
