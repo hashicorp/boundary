@@ -1,7 +1,6 @@
 package credentialstores
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -454,16 +453,6 @@ func TestGet(t *testing.T) {
 			}
 			require.NoError(t, gErr)
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()))
-
-			rows, err := rw.Query(context.Background(), "SELECT token_hmac, status FROM credential_vault_token", nil)
-			require.NoError(t, err)
-
-			var hmac []byte
-			var status string
-			for rows.Next() {
-				require.NoError(t, rows.Scan(&hmac, &status))
-				t.Logf("hmac: %q, status: %q", base64.RawURLEncoding.EncodeToString(hmac), status)
-			}
 
 			// Test anonymous get
 			got, gErr = s.GetCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), req)
