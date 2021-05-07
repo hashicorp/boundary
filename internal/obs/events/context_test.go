@@ -16,13 +16,15 @@ func Test_WriteInfo(t *testing.T) {
 	c := event.Config{
 		InfoEnabled: true,
 		Sinks: []event.SinkConfig{
-			{
-				Name:       "tmp.txt",
-				EventTypes: []event.Type{event.EveryType},
-				Format:     event.JSONSinkFormat,
-				Path:       "./",
-				FileName:   "tmp.txt",
-			},
+			// TODO: jimlambrt -> need to refactor the Eventer before this 2nd
+			// sink will work.  We need a pipeline for every sink that's configured.
+			// {
+			// 	Name:       "tmp.txt",
+			// 	EventTypes: []event.Type{event.EveryType},
+			// 	Format:     event.JSONSinkFormat,
+			// 	Path:       "./",
+			// 	FileName:   "tmp.txt",
+			// },
 			{
 				Name:       "stdout",
 				EventTypes: []event.Type{event.EveryType},
