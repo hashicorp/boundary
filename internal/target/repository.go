@@ -311,15 +311,3 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	}
 	return returnedTarget.(Target), hostSets, rowsUpdated, nil
 }
-
-func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*CredentialLibrary, error) {
-	const op = "target.fetchLibraries"
-	var libraries []*CredentialLibrary
-	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	if len(libraries) == 0 {
-		return nil, nil
-	}
-	return libraries, nil
-}
