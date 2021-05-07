@@ -30,6 +30,8 @@ const (
 	vaultTokenField     = "attributes.vault_token"
 	vaultTokenHmacField = "attributes.vault_token_hmac"
 	caCertsField        = "attributes.vault_ca_cert"
+	clientCertField        = "attributes.client_certificate"
+	clientCertKeyField        = "attributes.certificate_key"
 )
 
 var (
@@ -156,6 +158,45 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	return &pbs.ListCredentialStoresResponse{Items: finalItems}, nil
 }
 
+// GetCredentialStore implements the interface pbs.CredentialStoreServiceServer.
+func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialStoreRequest) (*pbs.GetCredentialStoreResponse, error) {
+	const op = "credentialstores.(Service).GetCredentialStore"
+
+	if err := validateGetRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	cs, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(cs, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.GetCredentialStoreResponse{Item: item}, nil
+
+}
+
 // CreateCredentialStore implements the interface pbs.CredentialStoreServiceServer.
 func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCredentialStoreRequest) (*pbs.CreateCredentialStoreResponse, error) {
 	const op = "credentialstores.(Service).CreateCredentialStore"
@@ -211,6 +252,22 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.
 	return csl, nil
 }
 
+func (s Service) getFromRepo(ctx context.Context, id string) (credential.CredentialStore, error) {
+	const op = "credentialstores.(Service).getFromRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	cs, err := repo.LookupCredentialStore(ctx, id)
+	if err != nil && !errors.IsNotFoundError(err) {
+		return nil, errors.Wrap(err, op)
+	}
+	if cs == nil {
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("credential store %q not found", id))
+	}
+	return cs, err
+}
+
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.CredentialStore, error) {
 	const op = "credentialstores.(Servivce).createInRepo"
 	var opts []vault.Option
@@ -228,19 +285,21 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 	if attrs.GetTlsServerName() != nil {
 		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
 	}
-	if attrs.GetTlsSkipVerify() != nil {
+	if attrs.GetTlsSkipVerify().GetValue() {
 		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetTlsSkipVerify().GetValue()))
 	}
-	if attrs.GetNamespace() != nil {
+	if attrs.GetNamespace().GetValue() != "" {
 		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
 	}
 
-	// TODO: Update the vault's interface around ca cert to match oidc's,
+	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
 	//  accepting x509.Certificate instead of []byte
-	if attrs.GetVaultCaCert() != nil {
+	if attrs.GetVaultCaCert().GetValue() != "" {
 		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
 	}
-	if attrs.GetClientCertificate() != nil {
+	if attrs.GetClientCertificate().GetValue() != "" {
+	}
+	if attrs.GetCertificateKey().GetValue() != "" {
 	}
 
 	cs, err := vault.NewCredentialStore(projId, attrs.GetAddress(), []byte(attrs.GetVaultToken()), opts...)
@@ -413,7 +472,16 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 				badFields[vaultTokenHmacField] = "This is a read only field."
 			}
 
-			// TODO: validate client certificate payload
+			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
+			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
+				badFields[clientCertField] = "Incorrectly formatted value."
+			}
+			if attrs.GetCertificateKey() != nil && attrs.GetCertificateKey().GetValue() == "" {
+				badFields[clientCertKeyField] = "Incorrectly formatted value."
+			}
+			if attrs.GetVaultCaCert() != nil && attrs.GetVaultCaCert().GetValue() == "" {
+				badFields[caCertsField] = "Incorrectly formatted value."
+			}
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
 		}
