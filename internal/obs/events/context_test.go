@@ -23,6 +23,12 @@ func Test_WriteInfo(t *testing.T) {
 				Path:       "./",
 				FileName:   "tmp.txt",
 			},
+			{
+				Name:       "stdout",
+				EventTypes: []event.Type{event.EveryType},
+				Format:     event.JSONSinkFormat,
+				SinkType:   event.StdoutSink,
+			},
 		},
 	}
 	e, err := event.NewEventer(logger, c)
