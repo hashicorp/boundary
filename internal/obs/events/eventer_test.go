@@ -17,6 +17,7 @@ func Test_NewEventer(t *testing.T) {
 	c := Config{
 		InfoEnabled: true,
 	}
+	// with no defined config, it will default to a stdout sink
 	e, err := NewEventer(logger, c)
 	require.NoError(err)
 
