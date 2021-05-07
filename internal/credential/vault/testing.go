@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -624,7 +625,7 @@ func testClientCert(t *testing.T, ca *testCert) *testCertBundle {
 	}
 }
 
-func getTestTokenOpts(t *testing.T, opt ...TestOption) testOptions {
+func getTestOpts(t *testing.T, opt ...TestOption) testOptions {
 	t.Helper()
 	opts := getDefaultTestOptions(t)
 	for _, o := range opt {
@@ -642,6 +643,8 @@ type testOptions struct {
 	periodic  bool
 	renewable bool
 	policies  []string
+	mountPath string
+	roleName  string
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -651,6 +654,33 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		periodic:  true,
 		renewable: true,
 		policies:  []string{"default"},
+		mountPath: "",
+		roleName:  "boundary",
+	}
+}
+
+// WithTestMountPath sets the mount path option to p.
+func WithTestMountPath(p string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		p = strings.TrimSpace(p)
+		if p != "" {
+			p = strings.TrimRight(p, "/") + "/"
+		}
+		o.mountPath = p
+	}
+}
+
+// WithTestRoleName sets the roleName name to n.
+// The default role name is boundary.
+func WithTestRoleName(n string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		n = strings.TrimSpace(n)
+		if n == "" {
+			n = "boundary"
+		}
+		o.roleName = n
 	}
 }
 
@@ -705,7 +735,7 @@ func (v *TestVaultServer) client(t *testing.T) *client {
 func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
-	opts := getTestTokenOpts(t, opt...)
+	opts := getTestOpts(t, opt...)
 
 	var period string
 	if opts.periodic {
@@ -739,4 +769,61 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 	require.NoError(err)
 	require.NotNil(secret)
 	return secret
+}
+
+// MountPKI mounts the Vault PKI secret engine and initializes it by
+// generating a root certificate authority and creating a default role on
+// the mount. The root CA is returned.
+//
+// The default mount path is pki and the default role name is boundary.
+// WithTestMountPath and WithTestRoleName are the only test options
+// supported.
+func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secret {
+	t.Helper()
+	require := require.New(t)
+	opts := getTestOpts(t, opt...)
+	vc := v.client(t).cl
+
+	// Mount PKI
+	maxTTL := 24 * time.Hour
+	if deadline, ok := t.Deadline(); ok {
+		maxTTL = time.Until(deadline) * 2
+	}
+
+	defaultTTL := maxTTL / 2
+	t.Logf("maxTTL: %s, defaultTTL: %s", maxTTL, defaultTTL)
+	mountInput := &vault.MountInput{
+		Type:        "pki",
+		Description: t.Name(),
+		Config: vault.MountConfigInput{
+			DefaultLeaseTTL: defaultTTL.String(),
+			MaxLeaseTTL:     maxTTL.String(),
+		},
+	}
+	mountPath := opts.mountPath
+	if mountPath == "" {
+		mountPath = "pki/"
+	}
+	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+
+	// Generate a root CA
+	caPath := path.Join(mountPath, "root/generate/internal")
+	caOptions := map[string]interface{}{
+		"common_name": t.Name(),
+		"ttl":         maxTTL.String(),
+	}
+	s, err := vc.Logical().Write(caPath, caOptions)
+	require.NoError(err)
+	require.NotEmpty(s)
+
+	// Create default role
+	rolePath := path.Join(mountPath, "roles", opts.roleName)
+	roleOptions := map[string]interface{}{
+		"allow_any_name": true,
+		"ttl":            defaultTTL.String(),
+	}
+	_, err = vc.Logical().Write(rolePath, roleOptions)
+	require.NoError(err)
+
+	return s
 }

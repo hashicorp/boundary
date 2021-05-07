@@ -2,6 +2,7 @@ package vault
 
 import (
 	"encoding/json"
+	"path"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -290,5 +291,92 @@ func TestNewVaultServer(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(client)
 		require.NoError(client.Ping())
+	})
+}
+
+func TestTestVaultServer_MountPKI(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, TestNoTLS)
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t)
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		certPath := path.Join("pki", "issue", "boundary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
+	})
+	t.Run("with-mount-path", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, TestNoTLS)
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t, WithTestMountPath("gary"))
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		certPath := path.Join("gary", "issue", "boundary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
+	})
+	t.Run("with-role-name", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, TestNoTLS)
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t, WithTestRoleName("gary"))
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		certPath := path.Join("pki", "issue", "gary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
 	})
 }
