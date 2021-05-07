@@ -239,6 +239,22 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 	}, nil
 }
 
+// DeleteCredentialStore implements the interface pbs.CredentialStoreServiceServer.
+func (s Service) DeleteCredentialStore(ctx context.Context, req *pbs.DeleteCredentialStoreRequest) (*pbs.DeleteCredentialStoreResponse, error) {
+	if err := validateDeleteRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	_, err := s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.CredentialStore, error) {
 	const op = "credentialstores.(Service).listFromRepo"
 	repo, err := s.repoFn()
@@ -320,6 +336,22 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 	return out, nil
 }
 
+func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "credentialstores.(Service).deleteFromRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteCredentialStore(ctx, id)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete credential store"))
+	}
+	return rows > 0, nil
+}
+
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	iamRepo, err := s.iamRepoFn()
@@ -369,7 +401,7 @@ func toProto(in credential.CredentialStore, opt ...handlers.Option) (*pb.Credent
 
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building group proto")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building credential store proto")
 	}
 	outputFields := *opts.WithOutputFields
 

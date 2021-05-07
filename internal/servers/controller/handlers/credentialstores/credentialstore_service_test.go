@@ -448,7 +448,7 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(t, gErr)
-				assert.True(t, errors.Is(gErr, tc.err), "ListCredentialStore(%q) got error %v, wanted %v", req, gErr, tc.err)
+				assert.True(t, errors.Is(gErr, tc.err))
 				return
 			}
 			require.NoError(t, gErr)
@@ -460,6 +460,63 @@ func TestGet(t *testing.T) {
 			require.Nil(t, got.Item.CreatedTime)
 			require.Nil(t, got.Item.UpdatedTime)
 			require.Zero(t, got.Item.Version)
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms)
+	}
+
+	_, prj := iam.TestScopes(t, iamRepo)
+
+	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
+	s, err := NewService(repoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	cases := []struct{
+		name string
+		id string
+		err error
+	} {
+		{
+			name: "success",
+			id: store.GetPublicId(),
+		},
+		{
+			name: "not found error",
+			id: fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			err: handlers.NotFoundError(),
+		},
+		{
+			name: "bad prefix",
+			id: fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, gErr := s.DeleteCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.DeleteCredentialStoreRequest{Id: tc.id})
+			assert.Nil(t, got)
+			if tc.err != nil {
+				require.Error(t, gErr)
+				assert.True(t, errors.Is(gErr, tc.err))
+				return
+			}
+			require.NoError(t, gErr)
+			g, err := s.GetCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.GetCredentialStoreRequest{Id: tc.id})
+			assert.Nil(t, g)
+			assert.True(t, errors.Is(err, handlers.NotFoundError()))
 		})
 	}
 }
