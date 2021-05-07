@@ -36,7 +36,7 @@ type CredentialStoreServiceClient interface {
 	// Credential Store must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the Credential Store id is missing
+	// in the provided store. An error is returned if the Credential Store id is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
 	// another Credential Store in the parent scope.
@@ -121,7 +121,7 @@ type CredentialStoreServiceServer interface {
 	// Credential Store must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if the Credential Store id is missing
+	// in the provided store. An error is returned if the Credential Store id is missing
 	// or reference a non existing resource.  An error is also returned if the
 	// request attempts to update the name to one that is already in use by
 	// another Credential Store in the parent scope.
