@@ -132,11 +132,12 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 				assert.Equal(projTarget.PublicId, s.TargetId)
 			}
 
-			target, _, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			target, _, lookupCredLibs, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 			require.NoError(err)
 			assert.Equal(tt.args.targetVersion+1, target.GetVersion())
 			assert.Equal(projTarget.GetVersion(), target.GetVersion()-1)
 			assert.True(proto.Equal(gotTarget.(*TcpTarget), target.(*TcpTarget)))
+			assert.Equal(gotCredLibs, lookupCredLibs)
 		})
 	}
 	t.Run("target-not-found", func(t *testing.T) {
@@ -424,8 +425,9 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 				tt.args.clIds = append(tt.args.clIds, origIds...)
 			}
 
-			origTarget, _, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			origTarget, _, lookupCredLibs, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			require.NoError(err)
+			assert.Equal(origCredLibs, lookupCredLibs)
 
 			got, affectedRows, err := repo.SetTargetCredentialLibraries(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
 			if tt.wantErr {
@@ -453,7 +455,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
 
-			foundTarget, _, err := repo.LookupTarget(context.Background(), target.GetPublicId())
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), target.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

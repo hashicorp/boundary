@@ -95,7 +95,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "static-proj")
 
 			var hostSetIds []string
-			origTarget, origHostSet, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			origTarget, origHostSet, _, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 			require.NoError(err)
 			require.Equal(0, len(origHostSet))
 
@@ -147,7 +147,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				assert.NotEmpty(gotHostSet[s.PublicId])
 			}
 
-			target, ths, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
+			target, ths, _, err := repo.LookupTarget(context.Background(), projTarget.PublicId)
 			require.NoError(err)
 			assert.Equal(tt.args.targetVersion+1, target.GetVersion())
 			assert.Equal(origTarget.GetVersion(), target.GetVersion()-1)
@@ -452,7 +452,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 				}
 				tt.args.hostSetIds = append(tt.args.hostSetIds, origIds...)
 			}
-			origTarget, lookedUpHs, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
+			origTarget, lookedUpHs, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			require.NoError(err)
 			assert.Equal(len(origHostSets), len(lookedUpHs))
 
@@ -481,7 +481,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
 
-			foundTarget, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
+			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tt.args.target.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

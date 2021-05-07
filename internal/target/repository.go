@@ -53,14 +53,15 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // LookupTarget will look up a target in the repository and return the target
-// with its host set ids.  If the target is not found, it will return nil, nil, nil.
+// with its host set ids and credential library ids.  If the target is not found,
+// it will return nil, nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := getOpts(opt...)
 
 	if publicIdOrName == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 
 	var where []string
@@ -70,33 +71,34 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	scopeNameEmpty := opts.withScopeName == ""
 	if !nameEmpty {
 		if opts.withName != publicIdOrName {
-			return nil, nil, errors.New(errors.InvalidParameter, op, "name passed in but does not match publicId")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "name passed in but does not match publicId")
 		}
 		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.withName)
 		switch {
 		case scopeIdEmpty && scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
 		case !scopeIdEmpty && !scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
 		case !scopeIdEmpty:
 			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.withScopeId)
 		case !scopeNameEmpty:
 			where, whereArgs = append(where, "scope_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.withScopeName)
 		default:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "unknown combination of parameters")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "unknown combination of parameters")
 		}
 	} else {
 		switch {
 		case !scopeIdEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
 		case !scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
 		}
 	}
 
 	target := allocTargetView()
 	target.PublicId = publicIdOrName
 	var hostSets []*TargetSet
+	var credLibs []*CredentialLibrary
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -117,20 +119,23 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(err, op)
 			}
+			if credLibs, err = fetchLibraries(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(err, op)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, nil
+			return nil, nil, nil, nil
 		}
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
 	subType, err := target.targetSubType()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return subType, hostSets, nil
+	return subType, hostSets, credLibs, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -245,17 +250,17 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 // update a target in the db repository with an oplog entry.
 // It currently supports no options.
-func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, int, error) {
+func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, int, error) {
 	const op = "target.(Repository).update"
 	if version == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	if target == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil target")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil target")
 	}
 	cloner, ok := target.(Cloneable)
 	if !ok {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "target is not cloneable")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "target is not cloneable")
 	}
 	dbOpts := []db.Option{
 		db.WithVersion(&version),
@@ -265,13 +270,13 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 		t := allocTargetView()
 		t.PublicId = target.GetPublicId()
 		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
 		}
 		scopeId = t.ScopeId
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := target.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
@@ -279,6 +284,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	var rowsUpdated int
 	var returnedTarget interface{}
 	var hostSets []*TargetSet
+	var credLibs []*CredentialLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -303,11 +309,15 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {
 				return errors.Wrap(err, op)
 			}
+
+			if credLibs, err = fetchLibraries(ctx, reader, target.GetPublicId()); err != nil {
+				return errors.Wrap(err, op)
+			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return returnedTarget.(Target), hostSets, rowsUpdated, nil
+	return returnedTarget.(Target), hostSets, credLibs, rowsUpdated, nil
 }
