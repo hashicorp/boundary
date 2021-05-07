@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ type SinkFormat string
 type DeliveryGuarantee string
 
 const (
+	StdoutSink     SinkType          = "stdout"
 	FileSink       SinkType          = "file"
 	JSONSinkFormat SinkFormat        = "json"
 	Enforced       DeliveryGuarantee = "enforced"
@@ -75,32 +77,48 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	infoNodeIds = append(infoNodeIds, jsonfmtID)
 	errNodeIds = append(errNodeIds, jsonfmtID)
 
+	// if there are no sinks in config, then we'll default to just one stdout
+	// sink.
 	if len(c.Sinks) == 0 {
 		c.Sinks = append(c.Sinks, SinkConfig{
 			Name:       "default",
 			EventTypes: []Type{EveryType},
 			Format:     JSONSinkFormat,
-			Path:       "./",
-			FileName:   "foo.txt",
+			SinkType:   StdoutSink,
 		})
 	}
 
 	for _, s := range c.Sinks {
-		fileSinkNode := eventlogger.FileSink{
-			Format:      string(s.Format),
-			Path:        s.Path,
-			FileName:    s.FileName,
-			MaxBytes:    s.RotateBytes,
-			MaxDuration: s.RotateDuration,
-			MaxFiles:    s.RotateMaxFiles,
+		var sinkID eventlogger.NodeID
+		var sinkNode eventlogger.Node
+		switch s.SinkType {
+		case StdoutSink:
+			sinkNode = &eventlogger.WriterSink{
+				Format: string(s.Format),
+				Writer: os.Stdout,
+			}
+			id, err = newId("stdout")
+			if err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+			sinkID = eventlogger.NodeID(id)
+		default:
+			sinkNode = &eventlogger.FileSink{
+				Format:      string(s.Format),
+				Path:        s.Path,
+				FileName:    s.FileName,
+				MaxBytes:    s.RotateBytes,
+				MaxDuration: s.RotateDuration,
+				MaxFiles:    s.RotateMaxFiles,
+			}
+			id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
+			if err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+			sinkID = eventlogger.NodeID(id)
 		}
+		err = broker.RegisterNode(sinkID, sinkNode)
 
-		id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
-		if err != nil {
-			return nil, errors.Wrap(err, op)
-		}
-		sinkID := eventlogger.NodeID(id)
-		err = broker.RegisterNode(sinkID, &fileSinkNode)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to register json node")
 		}
