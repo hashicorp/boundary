@@ -2,6 +2,7 @@ package credentialstores
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
@@ -13,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -21,6 +23,13 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	addressField        = "attributes.address"
+	vaultTokenField     = "attributes.vault_token"
+	vaultTokenHmacField = "attributes.vault_token_hmac"
+	caCertsField        = "attributes.vault_ca_cert"
 )
 
 var (
@@ -73,6 +82,7 @@ func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFa
 
 var _ pbs.CredentialStoreServiceServer = Service{}
 
+// ListCredentialStores implements the interface pbs.CredentialStoreServiceServer
 func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredentialStoresRequest) (*pbs.ListCredentialStoresResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -146,6 +156,48 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	return &pbs.ListCredentialStoresResponse{Items: finalItems}, nil
 }
 
+// CreateCredentialStore implements the interface pbs.CredentialStoreServiceServer.
+func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCredentialStoreRequest) (*pbs.CreateCredentialStoreResponse, error) {
+	const op = "credentialstores.(Service).CreateCredentialStore"
+
+	if err := validateCreateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	cs, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
+	}
+	// TODO: Add collection actions field when we add credential libraries
+
+	item, err := toProto(cs, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.CreateCredentialStoreResponse{
+		Item: item,
+		Uri:  fmt.Sprintf("credential-stores/%s", item.GetId()),
+	}, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.CredentialStore, error) {
 	const op = "credentialstores.(Service).listFromRepo"
 	repo, err := s.repoFn()
@@ -157,6 +209,56 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.
 		return nil, errors.Wrap(err, op)
 	}
 	return csl, nil
+}
+
+func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.CredentialStore, error) {
+	const op = "credentialstores.(Servivce).createInRepo"
+	var opts []vault.Option
+	if item.GetName() != nil {
+		opts = append(opts, vault.WithName(item.GetName().GetValue()))
+	}
+	if item.GetDescription() != nil {
+		opts = append(opts, vault.WithDescription(item.GetDescription().GetValue()))
+	}
+
+	attrs := &pb.VaultCredentialStoreAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse the attributes"))
+	}
+	if attrs.GetTlsServerName() != nil {
+		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
+	}
+	if attrs.GetTlsSkipVerify() != nil {
+		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetTlsSkipVerify().GetValue()))
+	}
+	if attrs.GetNamespace() != nil {
+		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
+	}
+
+	// TODO: Update the vault's interface around ca cert to match oidc's,
+	//  accepting x509.Certificate instead of []byte
+	if attrs.GetVaultCaCert() != nil {
+		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
+	}
+	if attrs.GetClientCertificate() != nil {
+	}
+
+	cs, err := vault.NewCredentialStore(projId, attrs.GetAddress(), []byte(attrs.GetVaultToken()), opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential store for creation"))
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	out, err := repo.CreateCredentialStore(ctx, cs)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create credential store"))
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential store but no error returned from repository.")
+	}
+	return out, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -265,7 +367,10 @@ func toProto(in credential.CredentialStore, opt ...handlers.Option) (*pb.Credent
 			if vaultIn.GetTlsSkipVerify() {
 				attrs.TlsSkipVerify = wrapperspb.Bool(vaultIn.GetTlsSkipVerify())
 			}
-			// TODO: Add vault token hmac and client cert read only fields.
+			if vaultIn.Token() != nil {
+				attrs.VaultTokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
+			}
+			// TODO: Add vault token hmac and client cert related read only fields.
 
 			var err error
 			if out.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
@@ -293,8 +398,24 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 		}
 		switch credential.SubtypeFromType(req.GetItem().GetType()) {
 		case credential.VaultSubtype:
+			attrs := &pb.VaultCredentialStoreAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+				break
+			}
+			if attrs.GetAddress() == "" {
+				badFields[addressField] = "Field required for creating a vault credential store."
+			}
+			if attrs.GetVaultToken() == "" {
+				badFields[vaultTokenField] = "Field required for creating a vault credential store."
+			}
+			if attrs.GetVaultTokenHmac() != "" {
+				badFields[vaultTokenHmacField] = "This is a read only field."
+			}
+
+			// TODO: validate client certificate payload
 		default:
-			badFields["type"] = "This is a required field and must be a known credential store type."
+			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
 		}
 		return badFields
 	})
@@ -321,7 +442,7 @@ func validateListRequest(req *pbs.ListCredentialStoresRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
-		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
+		badFields[globals.ScopeIdField] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
