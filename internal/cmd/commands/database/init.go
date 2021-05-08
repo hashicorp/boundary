@@ -73,7 +73,7 @@ func (c *InitCommand) Help() string {
 }
 
 func (c *InitCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP)
+	set := c.FlagSet(base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -239,7 +239,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
 	defer clean()
 	switch errCode {
 	case 0:
@@ -371,7 +371,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	case "table":
 		c.UI.Output(generateInitialScopeTableOutput(projScopeInfo))
 	case "json":
-		jsonMap["proj_scope"] = projScopeInfo
+		jsonMap["project_scope"] = projScopeInfo
 	}
 
 	if c.flagSkipHostResourcesCreation {

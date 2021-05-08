@@ -88,8 +88,9 @@ type Server struct {
 	DevTargetSessionMaxSeconds      int
 	DevTargetSessionConnectionLimit int
 
-	DatabaseUrl            string
-	DevDatabaseCleanupFunc func() error
+	DatabaseUrl                string
+	DatabaseMaxOpenConnections int
+	DevDatabaseCleanupFunc     func() error
 
 	Database *gorm.DB
 }
@@ -453,7 +454,11 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-
+	if b.DatabaseMaxOpenConnections == 1 {
+		return fmt.Errorf("unable to create db object with dialect %s: %s", dialect, "max_open_connections must be unlimited by setting 0 or at least 2")
+	} else {
+		dbase.DB().SetMaxOpenConns(b.DatabaseMaxOpenConnections)
+	}
 	b.Database = dbase
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
@@ -462,16 +467,24 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 	return nil
 }
 
-func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...Option) error {
-	opts := getOpts(opt...)
-
-	var container, url string
+func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
+	var container, url, dialect string
 	var err error
 	var c func() error
 
+	opts := getOpts(opt...)
+
+	// We should only get back postgres for now, but laying the foundation for non-postgres
+	switch opts.withDialect {
+	case "":
+		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
+	default:
+		dialect = opts.withDialect
+	}
+
 	switch b.DatabaseUrl {
 	case "":
-		c, url, container, err = docker.StartDbInDocker(dialect)
+		c, url, container, err = docker.StartDbInDocker(dialect, docker.WithContainerImage(opts.withContainerImage))
 		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 		// function before returning from this method
 		defer func() {
@@ -502,7 +515,6 @@ func (b *Server) CreateDevDatabase(ctx context.Context, dialect string, opt ...O
 
 		b.DevDatabaseCleanupFunc = c
 		b.DatabaseUrl = url
-
 	default:
 		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
 		if _, err := schema.MigrateStore(ctx, dialect, b.DatabaseUrl); err != nil {

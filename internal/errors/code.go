@@ -36,6 +36,7 @@ const (
 	TokenMismatch            Code = 112 // TokenMismatch represents that there was a token mismatch
 	TooShort                 Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
 	AccountAlreadyAssociated Code = 114 // AccountAlreadyAssociated represents an attempt to associate an account failed since it was already associated.
+	InvalidJobRunState       Code = 115 // InvalidJobRunState represents that a JobRun was in an invalid state
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

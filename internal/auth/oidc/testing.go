@@ -108,7 +108,16 @@ func TestAuthMethod(
 		require.NoError(err)
 		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
 	}
-
+	if len(opts.withAccountClaimMap) > 0 {
+		newAccountClaimMaps := make([]interface{}, 0, len(opts.withAccountClaimMap))
+		for k, v := range opts.withAccountClaimMap {
+			acm, err := NewAccountClaimMap(authMethod.PublicId, k, v)
+			require.NoError(err)
+			newAccountClaimMaps = append(newAccountClaimMaps, acm)
+		}
+		require.NoError(rw.CreateItems(ctx, newAccountClaimMaps))
+		require.Equal(len(opts.withAccountClaimMap), len(authMethod.AccountClaimMaps))
+	}
 	authMethod.OperationalState = string(state)
 	rowsUpdated, err := rw.Update(ctx, authMethod, []string{OperationalStateField}, nil)
 	require.NoError(err)
@@ -139,6 +148,9 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 		})
 		sort.Slice(am.ClaimsScopes, func(a, b int) bool {
 			return am.ClaimsScopes[a] < am.ClaimsScopes[b]
+		})
+		sort.Slice(am.AccountClaimMaps, func(a, b int) bool {
+			return am.AccountClaimMaps[a] < am.AccountClaimMaps[b]
 		})
 	}
 }

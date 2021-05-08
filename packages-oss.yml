@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.2.0
+    PRODUCT_VERSION: 0.2.1
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -95,9 +95,9 @@ layers:
 build-command: VERSION_PKG_PATH=github.com/hashicorp/boundary/version;
   unset GOPATH;
   go build -v -tags '{{.BUILD_TAGS}}'
-    -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
-              -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
-              -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
-    -o $OUTPUT_DIR/{{.BINARY_NAME}}
-    ./cmd/boundary
+  -ldflags "-X $VERSION_PKG_PATH.GitCommit=$PACKAGE_SOURCE_ID
+  -X $VERSION_PKG_PATH.Version={{.PRODUCT_VERSION_MMP}}
+  -X $VERSION_PKG_PATH.VersionPrerelease={{.PRODUCT_VERSION_PRE}}"
+  -o $OUTPUT_DIR/{{.BINARY_NAME}}
+  ./cmd/boundary
   && cd $OUTPUT_DIR && zip $PACKAGE_ZIP_NAME {{.BINARY_NAME}}

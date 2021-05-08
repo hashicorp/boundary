@@ -353,7 +353,7 @@ func TestList(t *testing.T) {
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
-			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_auth")), tc.req)
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -370,8 +370,9 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
-			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			got, gErr = s.ListAuthMethods(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
 				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
@@ -572,6 +573,10 @@ func TestCreate(t *testing.T) {
 						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
 						return structpb.NewListValue(lv)
 					}(),
+					"account_claim_maps": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+						return structpb.NewListValue(lv)
+					}(),
 				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
@@ -598,6 +603,10 @@ func TestCreate(t *testing.T) {
 						}(),
 						"claims_scopes": func() *structpb.Value {
 							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+							return structpb.NewListValue(lv)
+						}(),
+						"account_claim_maps": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
 							return structpb.NewListValue(lv)
 						}(),
 					}},
@@ -989,7 +998,7 @@ func TestCreate(t *testing.T) {
 					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
