@@ -59,7 +59,13 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	if log == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
 	}
-	var auditNodeIds, infoNodeIds, errNodeIds []eventlogger.NodeID
+
+	type pipeline struct {
+		eventType Type
+		fmtId     eventlogger.NodeID
+		sinkId    eventlogger.NodeID
+	}
+	var auditPipelines, infoPipelines, errPipelines []pipeline
 	broker := eventlogger.NewBroker()
 
 	// Create JSONFormatter node
@@ -67,15 +73,12 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	jsonfmtID := eventlogger.NodeID(id)
+	jsonfmtId := eventlogger.NodeID(id)
 	fmtNode := &eventlogger.JSONFormatter{}
-	err = broker.RegisterNode(jsonfmtID, fmtNode)
+	err = broker.RegisterNode(jsonfmtId, fmtNode)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to register json node")
 	}
-	auditNodeIds = append(auditNodeIds, jsonfmtID)
-	infoNodeIds = append(infoNodeIds, jsonfmtID)
-	errNodeIds = append(errNodeIds, jsonfmtID)
 
 	// if there are no sinks in config, then we'll default to just one stdout
 	// sink.
@@ -89,7 +92,7 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	}
 
 	for _, s := range c.Sinks {
-		var sinkID eventlogger.NodeID
+		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
 		switch s.SinkType {
 		case StdoutSink:
@@ -101,7 +104,7 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, op)
 			}
-			sinkID = eventlogger.NodeID(id)
+			sinkId = eventlogger.NodeID(id)
 		default:
 			sinkNode = &eventlogger.FileSink{
 				Format:      string(s.Format),
@@ -115,12 +118,11 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, op)
 			}
-			sinkID = eventlogger.NodeID(id)
+			sinkId = eventlogger.NodeID(id)
 		}
-		err = broker.RegisterNode(sinkID, sinkNode)
-
+		err = broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to register json node")
+			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to register sink node %s", sinkId)))
 		}
 		var addToAudit, addToInfo, addToErr bool
 		for _, t := range s.EventTypes {
@@ -138,63 +140,94 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 			}
 		}
 		if addToAudit {
-			auditNodeIds = append(auditNodeIds, sinkID)
+			auditPipelines = append(auditPipelines, pipeline{
+				eventType: AuditType,
+				fmtId:     jsonfmtId,
+				sinkId:    sinkId,
+			})
 		}
 		if addToInfo {
-			infoNodeIds = append(infoNodeIds, sinkID)
+			infoPipelines = append(infoPipelines, pipeline{
+				eventType: InfoType,
+				fmtId:     jsonfmtId,
+				sinkId:    sinkId,
+			})
 		}
 		if addToErr {
-			errNodeIds = append(errNodeIds, sinkID)
+			errPipelines = append(errPipelines, pipeline{
+				eventType: ErrorType,
+				fmtId:     jsonfmtId,
+				sinkId:    sinkId,
+			})
 		}
 	}
 
-	// Register pipeline to broker for audit events
-	err = broker.RegisterPipeline(eventlogger.Pipeline{
-		EventType:  eventlogger.EventType(AuditType),
-		PipelineID: AuditPipeline,
-		NodeIDs:    auditNodeIds,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to register audit pipeline")
+	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
+	for _, p := range auditPipelines {
+		id, err = newId("audit-pipeline")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		err = broker.RegisterPipeline(eventlogger.Pipeline{
+			EventType:  eventlogger.EventType(p.eventType),
+			PipelineID: eventlogger.PipelineID(id),
+			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to register audit pipeline")
+		}
+		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
-
-	// Register pipeline to broker for info events
-	err = broker.RegisterPipeline(eventlogger.Pipeline{
-		EventType:  eventlogger.EventType(InfoType),
-		PipelineID: InfoPipeline,
-		NodeIDs:    infoNodeIds,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to register info pipeline")
+	infoNodeIds := make([]eventlogger.NodeID, 0, len(infoPipelines))
+	for _, p := range infoPipelines {
+		id, err = newId("info-pipeline")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		err = broker.RegisterPipeline(eventlogger.Pipeline{
+			EventType:  eventlogger.EventType(p.eventType),
+			PipelineID: eventlogger.PipelineID(id),
+			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to register info pipeline")
+		}
+		infoNodeIds = append(infoNodeIds, p.sinkId)
 	}
-
-	// Register pipeline to broker for err events
-	err = broker.RegisterPipeline(eventlogger.Pipeline{
-		EventType:  eventlogger.EventType(ErrorType),
-		PipelineID: ErrPipeline,
-		NodeIDs:    errNodeIds,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to register error pipeline")
+	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
+	for _, p := range errPipelines {
+		id, err = newId("err-pipeline")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		err = broker.RegisterPipeline(eventlogger.Pipeline{
+			EventType:  eventlogger.EventType(p.eventType),
+			PipelineID: eventlogger.PipelineID(id),
+			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to register err pipeline")
+		}
+		errNodeIds = append(errNodeIds, p.sinkId)
 	}
 
 	// TODO(jimlambrt) go-eventlogger SetSuccessThreshold currently does not
 	// specify which sink passed and which hasn't so we are unable to
 	// support multiple sinks with different delivery guarantees
 	if c.AuditDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
+		err = broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds)+1) // add 1 for the json fmt node.
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
 		}
 	}
 	if c.InfoDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(InfoType), len(infoNodeIds))
+		err = broker.SetSuccessThreshold(eventlogger.EventType(InfoType), len(infoNodeIds)+1) // add 1 for the json fmt node.
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for info events")
 		}
 	}
 	// always enforce delivery of errors
-	err = broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
+	err = broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds)+1) // add 1 for the json fmt node.
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set success threshold for error events")
 	}
