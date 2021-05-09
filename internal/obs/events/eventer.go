@@ -27,15 +27,21 @@ const (
 	ErrPipeline                      = "err-pipeline"
 )
 
+// Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
 	broker *eventlogger.Broker
-	conf   Config
+	conf   EventerConfig
 	logger hclog.Logger
 	l      sync.Mutex
 }
 
+// SinkConfig defines the configuration for a Eventer sink
 type SinkConfig struct {
-	Name           string
+	// Name defines a name for the sink.
+	Name string
+
+	// EventTypes defines a list of event types that will be sent to the sink.
+	// See the docs for EventTypes for a list of accepted values.
 	EventTypes     []Type
 	SinkType       SinkType
 	Format         SinkFormat
@@ -46,7 +52,8 @@ type SinkConfig struct {
 	RotateMaxFiles int
 }
 
-type Config struct {
+// EventerConfig supplies all the configuration needed to create/config an Eventer.
+type EventerConfig struct {
 	AuditDelivery DeliveryGuarantee
 	InfoDelivery  DeliveryGuarantee
 	AuditEnabled  bool
@@ -54,7 +61,33 @@ type Config struct {
 	Sinks         []SinkConfig
 }
 
-func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
+var sysEventer *Eventer
+var sysEventerOnce sync.Once
+
+// InitSysEventer provides a mechanism to initialize a "system wide" eventer
+// singleton for Boundary
+func InitSysEventer(log hclog.Logger, c EventerConfig) error {
+	const op = "event.InitSysEventer"
+	var err error
+	sysEventerOnce.Do(func() {
+		sysEventer, err = NewEventer(log, c)
+		if err != nil {
+			return
+		}
+	})
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
+// SysEventer returns the "system wide" eventer for Boundary.
+func SysEventer() *Eventer {
+	return sysEventer
+}
+
+// NewEventer creates a new Eventer using the config
+func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
@@ -239,6 +272,7 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	}, nil
 }
 
+// Info sends an Info event.
 func (e *Eventer) Info(ctx context.Context, event *Info, opt ...Option) error {
 	const op = "event.(Eventer).Info"
 	if !e.conf.InfoEnabled {
@@ -255,6 +289,7 @@ func (e *Eventer) Info(ctx context.Context, event *Info, opt ...Option) error {
 	return nil
 }
 
+// Error sends an Err event
 func (e *Eventer) Error(ctx context.Context, event *Err, opt ...Option) error {
 	const op = "event.(Eventer).Error"
 	status, err := e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
@@ -268,6 +303,7 @@ func (e *Eventer) Error(ctx context.Context, event *Err, opt ...Option) error {
 	return nil
 }
 
+// Audit sends and Audit event
 func (e *Eventer) Audit(ctx context.Context, event *Audit, opt ...Option) error {
 	const op = "event.(Eventer).Audit"
 	if !e.conf.AuditEnabled {
