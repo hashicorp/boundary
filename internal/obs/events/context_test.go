@@ -24,7 +24,7 @@ func Test_WriteInfo(t *testing.T) {
 	require.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-	c := event.Config{
+	c := event.EventerConfig{
 		InfoEnabled:  true,
 		InfoDelivery: event.Enforced,
 		Sinks: []event.SinkConfig{

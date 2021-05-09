@@ -14,7 +14,7 @@ func Test_NewEventer(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name: "test",
 	})
-	c := Config{
+	c := EventerConfig{
 		InfoEnabled: true,
 	}
 	// with no defined config, it will default to a stdout sink
