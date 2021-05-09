@@ -55,6 +55,9 @@ func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
 	return newErr, nil
 }
 
+// EventType is required for all event types by the eventlogger broker
+func (e *Err) EventType() string { return string(ErrorType) }
+
 func (e *Err) validate() error {
 	const op = "event.(Info).validate"
 	if e.Id == "" {
@@ -99,6 +102,7 @@ func NewInfo(fromOperation Op, opt ...Option) (*Info, error) {
 	return i, nil
 }
 
+// EventType is required for all event types by the eventlogger broker
 func (i *Info) EventType() string { return string(InfoType) }
 
 func (i *Info) validate() error {
