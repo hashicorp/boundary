@@ -14,8 +14,9 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withDetails map[string]interface{}
-	withHeader  map[string]interface{}
+	withDetails     map[string]interface{}
+	withHeader      map[string]interface{}
+	withRequestInfo *RequestInfo
 }
 
 func getDefaultOptions() options {
@@ -31,5 +32,11 @@ func WithDetails(d map[string]interface{}) Option {
 func WithHeader(d map[string]interface{}) Option {
 	return func(o *options) {
 		o.withHeader = d
+	}
+}
+
+func WithRequestInfo(i *RequestInfo) Option {
+	return func(o *options) {
+		o.withRequestInfo = i
 	}
 }
