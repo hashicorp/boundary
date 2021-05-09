@@ -27,8 +27,6 @@ func Test_WriteInfo(t *testing.T) {
 	c := event.Config{
 		InfoEnabled: true,
 		Sinks: []event.SinkConfig{
-			// TODO: jimlambrt -> need to refactor the Eventer before this 2nd
-			// sink will work.  We need a pipeline for every sink that's configured.
 			{
 				Name:       "tmp.txt",
 				EventTypes: []event.Type{event.EveryType},
@@ -87,8 +85,8 @@ func Test_WriteInfo(t *testing.T) {
 				gotInfo := &eventJson{}
 				err = json.Unmarshal(b, gotInfo)
 				require.NoError(err)
-				wantJson := testInfoJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotInfo.CreatedAt, tt.header, tt.details)
-				assert.Equal(strings.TrimSuffix(string(b), "\n"), string(wantJson))
+				wantJson := testInfoJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotInfo.Payload["id"].(string), gotInfo.CreatedAt, tt.header, tt.details)
+				assert.Equal(string(wantJson), strings.TrimSuffix(string(b), "\n"))
 				os.Remove(tt.sinkFileName)
 			}
 		})
@@ -96,18 +94,20 @@ func Test_WriteInfo(t *testing.T) {
 
 }
 
-func testInfoJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, createdAt string, hdr, details map[string]interface{}) []byte {
+func testInfoJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, Id, createdAt string, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	require := require.New(t)
 
 	reqInfo, ok := ctx.Value(event.RequestInfoKey).(*event.RequestInfo)
 	require.Truef(ok, "missing reqInfo in ctx")
+
 	j := eventJson{
 		CreatedAt: createdAt,
 		EventType: string(event.InfoType),
 		Payload: map[string]interface{}{
-			"ID": reqInfo.Id,
-			"Op": string(caller),
+			"id":           Id,
+			"op":           string(caller),
+			"request_info": reqInfo,
 		},
 	}
 	if hdr != nil {
