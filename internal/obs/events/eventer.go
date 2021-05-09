@@ -284,38 +284,10 @@ func (e *Eventer) Audit(ctx context.Context, event *Audit, opt ...Option) error 
 	return nil
 }
 
-// Reopen is used during a SIGHUP to reopen nodes, most importantly the underlying
+// Reopen can used during a SIGHUP to reopen nodes, most importantly the underlying
 // file sinks.
 func (e *Eventer) Reopen() error {
 	e.l.Lock()
 	defer e.l.Unlock()
 	return e.broker.Reopen(context.Background())
-}
-
-// SetAuditEnabled sets the auditor to enabled or disabled
-func (e *Eventer) SetAuditEnabled(enabled bool) {
-	e.l.Lock()
-	defer e.l.Unlock()
-
-	e.conf.AuditEnabled = enabled
-}
-
-// SetInfoEnabled sets the info to enabled or disabled
-func (e *Eventer) SetInfoEnabled(enabled bool) {
-	e.l.Lock()
-	defer e.l.Unlock()
-
-	e.conf.InfoEnabled = enabled
-}
-
-// AuditDeliveryGuaranteed allows callers to determine the guarantee of audit
-// event delivery.
-func (e *Eventer) AuditDeliveryGuaranteed() bool {
-	return e.conf.AuditDelivery == Enforced
-}
-
-// InfoDeliveryGuaranteed allows callers to determine the guarantee of info
-// event delivery.
-func (e *Eventer) InfoDeliveryGuaranteed() bool {
-	return e.conf.InfoDelivery == Enforced
 }
