@@ -215,19 +215,19 @@ func NewEventer(log hclog.Logger, c Config) (*Eventer, error) {
 	// specify which sink passed and which hasn't so we are unable to
 	// support multiple sinks with different delivery guarantees
 	if c.AuditDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds)+1) // add 1 for the json fmt node.
+		err = broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
 		}
 	}
 	if c.InfoDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(InfoType), len(infoNodeIds)+1) // add 1 for the json fmt node.
+		err = broker.SetSuccessThreshold(eventlogger.EventType(InfoType), len(infoNodeIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for info events")
 		}
 	}
 	// always enforce delivery of errors
-	err = broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds)+1) // add 1 for the json fmt node.
+	err = broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set success threshold for error events")
 	}
