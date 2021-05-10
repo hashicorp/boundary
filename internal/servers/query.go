@@ -5,7 +5,7 @@ const (
 		insert into server
 			(private_id, type, description, address, update_time)
 		values
-			($1, $2, $3, $4)
+			($1, $2, $3, $4, now())
 		on conflict on constraint server_pkey
 		do update set
 			type = $2,
