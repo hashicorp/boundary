@@ -30,8 +30,8 @@ const (
 	vaultTokenField     = "attributes.vault_token"
 	vaultTokenHmacField = "attributes.vault_token_hmac"
 	caCertsField        = "attributes.vault_ca_cert"
-	clientCertField        = "attributes.client_certificate"
-	clientCertKeyField        = "attributes.certificate_key"
+	clientCertField     = "attributes.client_certificate"
+	clientCertKeyField  = "attributes.certificate_key"
 )
 
 var (
@@ -194,7 +194,6 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 	}
 
 	return &pbs.GetCredentialStoreResponse{Item: item}, nil
-
 }
 
 // CreateCredentialStore implements the interface pbs.CredentialStoreServiceServer.
