@@ -20,16 +20,22 @@ func Test_WriteInfo(t *testing.T) {
 		Name: "test",
 	})
 
-	tmpFile, err := ioutil.TempFile("./", "test_writeinfo")
+	tmpFile, err := ioutil.TempFile("./", "test_writeinfo-info")
 	require.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
+
+	tmpErrFile, err := ioutil.TempFile("./", "test_writeinfo-err")
+	require.NoError(t, err)
+	tmpErrFile.Close()
+	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
+
 	c := event.EventerConfig{
 		InfoEnabled:  true,
 		InfoDelivery: event.Enforced,
 		Sinks: []event.SinkConfig{
 			{
-				Name:       "tmp.txt",
+				Name:       "info-file-sink",
 				EventTypes: []event.Type{event.EveryType},
 				Format:     event.JSONSinkFormat,
 				Path:       "./",
@@ -40,6 +46,13 @@ func Test_WriteInfo(t *testing.T) {
 				EventTypes: []event.Type{event.EveryType},
 				Format:     event.JSONSinkFormat,
 				SinkType:   event.StdoutSink,
+			},
+			{
+				Name:       "err-file-sink",
+				EventTypes: []event.Type{event.ErrorType},
+				Format:     event.JSONSinkFormat,
+				Path:       "./",
+				FileName:   tmpErrFile.Name(),
 			},
 		},
 	}
@@ -59,19 +72,21 @@ func Test_WriteInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		header       map[string]interface{}
-		details      map[string]interface{}
-		ctx          context.Context
-		sinkFileName string
-		wantFileSink string
+		name             string
+		header           map[string]interface{}
+		details          map[string]interface{}
+		ctx              context.Context
+		errSinkFileName  string
+		infoSinkFileName string
+		wantFileSink     string
 	}{
 		{
-			name:         "simple",
-			ctx:          ctx,
-			header:       testHdr,
-			sinkFileName: tmpFile.Name(),
-			wantFileSink: "first",
+			name:             "simple",
+			ctx:              ctx,
+			header:           testHdr,
+			errSinkFileName:  tmpErrFile.Name(),
+			infoSinkFileName: tmpFile.Name(),
+			wantFileSink:     "first",
 		},
 	}
 	for _, tt := range tests {
@@ -80,15 +95,22 @@ func Test_WriteInfo(t *testing.T) {
 			err := event.WriteInfo(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header))
 			require.NoError(err)
 
-			if tt.sinkFileName != "" {
-				b, err := ioutil.ReadFile(tt.sinkFileName)
+			if tt.infoSinkFileName != "" {
+				defer os.Remove(tt.infoSinkFileName)
+				b, err := ioutil.ReadFile(tt.infoSinkFileName)
 				require.NoError(err)
 				gotInfo := &eventJson{}
 				err = json.Unmarshal(b, gotInfo)
 				require.NoError(err)
 				wantJson := testInfoJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotInfo.Payload["id"].(string), gotInfo.CreatedAt, tt.header, tt.details)
 				assert.Equal(string(wantJson), strings.TrimSuffix(string(b), "\n"))
-				os.Remove(tt.sinkFileName)
+			}
+
+			if tt.errSinkFileName != "" {
+				defer os.Remove(tt.errSinkFileName)
+				b, err := ioutil.ReadFile(tt.errSinkFileName)
+				require.NoError(err)
+				assert.Equal(0, len(b))
 			}
 		})
 	}
