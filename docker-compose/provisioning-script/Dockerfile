@@ -1,4 +1,4 @@
-From  hashicorp/boundary
+From  hashicorp/boundary:0.2.1
 
 USER root
 

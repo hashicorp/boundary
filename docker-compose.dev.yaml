@@ -18,7 +18,7 @@ services:
       - "boundary-db"
 
   boundary-db:
-    image: postgres
+    image: postgres:13.2-alpine
     ports:
       - 5432:5432
     environment:
@@ -45,7 +45,7 @@ services:
       - "boundary"
 
   keycloak:
-    image: jboss/keycloak
+    image: jboss/keycloak:12.0.4
     ports:
       - 8080:8080
     environment:
@@ -60,7 +60,7 @@ services:
       - "-Dkeycloak.profile.feature.upload_scripts=enabled"
 
   ssh-testserver-01:
-    image: ghcr.io/linuxserver/openssh-server
+    image: ghcr.io/linuxserver/openssh-server:version-8.4_p1-r3
     environment:
       - PUID=1000
       - PGID=1000

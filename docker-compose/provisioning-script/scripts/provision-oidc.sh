@@ -1,12 +1,12 @@
 #!/bin/ash
 
-/bin/sleep 5
+/bin/sleep 10
 
 export BOUNDARY_ADDR="http://boundary:9200"
 export CLIENT_FACING_BOUNDARY_URL="http://localhost:9200"
 
 # Authenticate
-export BOUNDARY_TOKEN=`boundary authenticate password -auth-method-id=ampw_1234567890 -login-name=admin -password=admin123456 -keyring-type=none -format=json | jq -r '.item.token'`
+export BOUNDARY_TOKEN=`boundary authenticate password -auth-method-id=ampw_1234567890 -login-name=admin -password=admin123456 -keyring-type=none -format=json | jq -r '.item.attributes.token'`
 
 echo "TOKEN: ${BOUNDARY_TOKEN}"
 
