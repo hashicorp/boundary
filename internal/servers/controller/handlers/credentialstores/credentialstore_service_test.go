@@ -23,7 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -190,7 +192,7 @@ func TestCreate(t *testing.T) {
 					Type:        credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address:    v.Addr,
+							Address:        v.Addr,
 							VaultTokenHmac: "<hmac>",
 						})
 						require.NoError(t, err)
@@ -311,7 +313,7 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
+						Address: v.Addr,
 					})
 					require.NoError(t, err)
 					return attrs
@@ -400,28 +402,28 @@ func TestGet(t *testing.T) {
 	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 
-	cases := []struct{
+	cases := []struct {
 		name string
-		id string
-		res *pbs.GetCredentialStoreResponse
-		err error
-	} {
+		id   string
+		res  *pbs.GetCredentialStoreResponse
+		err  error
+	}{
 		{
 			name: "success",
-			id: store.GetPublicId(),
+			id:   store.GetPublicId(),
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
-					Id:                          store.GetPublicId(),
-					ScopeId:                     store.GetScopeId(),
-					Scope:       &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:                        credential.VaultSubtype.String(),
-					AuthorizedActions:           testAuthorizedActions,
-					CreatedTime: store.CreateTime.GetTimestamp(),
-					UpdatedTime: store.UpdateTime.GetTimestamp(),
-					Version: 1,
+					Id:                store.GetPublicId(),
+					ScopeId:           store.GetScopeId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              credential.VaultSubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       store.CreateTime.GetTimestamp(),
+					UpdatedTime:       store.UpdateTime.GetTimestamp(),
+					Version:           1,
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address: store.GetVaultAddress(),
+							Address:        store.GetVaultAddress(),
 							VaultTokenHmac: base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
 						})
 						require.NoError(t, err)
@@ -432,13 +434,13 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id: fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
-			err: handlers.NotFoundError(),
+			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "bad prefix",
-			id: fmt.Sprintf("%s_1234567890", static.HostPrefix),
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -484,24 +486,24 @@ func TestDelete(t *testing.T) {
 	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 
-	cases := []struct{
+	cases := []struct {
 		name string
-		id string
-		err error
-	} {
+		id   string
+		err  error
+	}{
 		{
 			name: "success",
-			id: store.GetPublicId(),
+			id:   store.GetPublicId(),
 		},
 		{
 			name: "not found error",
-			id: fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
-			err: handlers.NotFoundError(),
+			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "bad prefix",
-			id: fmt.Sprintf("%s_1234567890", static.HostPrefix),
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
 	for _, tc := range cases {
@@ -517,6 +519,284 @@ func TestDelete(t *testing.T) {
 			g, err := s.GetCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), &pbs.GetCredentialStoreRequest{Id: tc.id})
 			assert.Nil(t, g)
 			assert.True(t, errors.Is(err, handlers.NotFoundError()))
+		})
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms)
+	}
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
+
+	s, err := NewService(repoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	freshStore := func() (*vault.CredentialStore, func()) {
+		t.Helper()
+		st := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		clean := func() {
+			_, err := s.DeleteCredentialStore(ctx, &pbs.DeleteCredentialStoreRequest{Id: st.GetPublicId()})
+			require.NoError(t, err)
+		}
+		return st, clean
+	}
+
+	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
+		return &fieldmaskpb.FieldMask{Paths: paths}
+	}
+
+	v := vault.NewTestVaultServer(t, vault.TestClientTLS)
+	secret := v.CreateToken(t)
+	token := secret.Auth.ClientToken
+	_ = token
+
+	successCases := []struct {
+		name string
+		req  *pbs.UpdateCredentialStoreRequest
+		res  func(*pb.CredentialStore) *pb.CredentialStore
+	}{
+		{
+			name: "name and description",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("name", "description"),
+				Item: &pb.CredentialStore{
+					Name:        wrapperspb.String("basic"),
+					Description: wrapperspb.String("basic"),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Name = wrapperspb.String("basic")
+				out.Description = wrapperspb.String("basic")
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		{
+			name: "update address",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.address"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							Address: v.Addr,
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["address"] = structpb.NewStringValue(v.Addr)
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		{
+			name: "update namespace",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.namespace"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							Namespace: wrapperspb.String("update namespace"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["namespace"] = structpb.NewStringValue("update namespace")
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		{
+			name: "update tls server name",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.tls_server_name"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							TlsServerName: wrapperspb.String("UpdateTlsServerName"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["tls_server_name"] = structpb.NewStringValue("UpdateTlsServerName")
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		{
+			name: "update TlsSkipVerify",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.tls_skip_verify"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							TlsSkipVerify: wrapperspb.Bool(true),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["tls_skip_verify"] = structpb.NewBoolValue(true)
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		{
+			name: "update ca cert",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.vault_ca_cert"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v.CaCert))
+				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+				delete(out.GetAttributes().Fields, "vault_token_hmac")
+				return out
+			},
+		},
+		// TODO(ICU-1488): Fix field masks to treat certificate and key as a single value
+		// {
+		// 	name: "update client cert",
+		// 	req: &pbs.UpdateCredentialStoreRequest{
+		// 		UpdateMask: fieldmask("attributes.client_certificate", "attributes.certificate_key"),
+		// 		Item: &pb.CredentialStore{
+		// 			Attributes: func() *structpb.Struct {
+		// 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+		// 					ClientCertificate: wrapperspb.String(string(v.ClientCert)),
+		// 					CertificateKey: wrapperspb.String(string(v.ClientKey)),
+		// 				})
+		// 				require.NoError(t, err)
+		// 				return attrs
+		// 			}(),
+		// 		},
+		// 	},
+		// 	res: func(in *pb.CredentialStore) *pb.CredentialStore {
+		// 		out := proto.Clone(in).(*pb.CredentialStore)
+		// 		out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v.ClientCert))
+		// 		out.Attributes.Fields["certificate_key"] = structpb.NewStringValue(string(v.ClientKey))
+		// 		// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
+		// 		delete(out.GetAttributes().Fields, "vault_token_hmac")
+		// 		return out
+		// 	},
+		// },
+	}
+
+	for _, tc := range successCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			st, cleanup := freshStore()
+			defer cleanup()
+
+			if tc.req.Item.GetVersion() == 0 {
+				tc.req.Item.Version = 1
+			}
+			if tc.req.GetId() == "" {
+				tc.req.Id = st.GetPublicId()
+			}
+			resToChange, err := s.GetCredentialStore(ctx, &pbs.GetCredentialStoreRequest{Id: st.GetPublicId()})
+			require.NoError(err)
+			want := &pbs.UpdateCredentialStoreResponse{Item: tc.res(resToChange.GetItem())}
+
+			got, gErr := s.UpdateCredentialStore(ctx, tc.req)
+			require.NoError(gErr)
+			require.NotNil(got)
+
+			gotUpdateTime := got.GetItem().GetUpdatedTime()
+			created := st.GetCreateTime().GetTimestamp()
+			assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+			want.Item.UpdatedTime = got.Item.UpdatedTime
+
+			assert.EqualValues(2, got.Item.Version)
+			want.Item.Version = 2
+
+			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+		})
+	}
+
+	// cant update read only fields
+	st, cleanup := freshStore()
+	defer cleanup()
+
+	roCases := []struct {
+		path string
+		item *pb.CredentialStore
+	} {
+		{
+			path: "type",
+			item: &pb.CredentialStore{Type: "something"},
+		},
+		{
+			path: "scope_id",
+			item: &pb.CredentialStore{ScopeId: "global"},
+		},
+		{
+			path: "updated_time",
+			item: &pb.CredentialStore{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "created_time",
+			item: &pb.CredentialStore{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "authorized actions",
+			item: &pb.CredentialStore{AuthorizedActions: append(testAuthorizedActions, "another")},
+		},
+	}
+	for _, tc := range roCases {
+		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
+			req := &pbs.UpdateCredentialStoreRequest{
+				Id:         st.GetPublicId(),
+				Item:       tc.item,
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
+			}
+			req.Item.Version = st.Version
+
+			got, gErr := s.UpdateCredentialStore(ctx, req)
+			assert.Error(t, gErr)
+			assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)
+			assert.Nil(t, got)
 		})
 	}
 }

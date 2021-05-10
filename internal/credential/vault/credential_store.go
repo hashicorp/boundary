@@ -2,7 +2,6 @@ package vault
 
 import (
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -25,17 +24,6 @@ type CredentialStore struct {
 // client cert, namespace, TLS server name, and TLS skip verify are the
 // only valid options. All other options are ignored.
 func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
-	const op = "vault.NewCredentialStore"
-	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
-	}
-	if vaultAddress == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault address")
-	}
-	if len(token) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
-	}
-
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
 		inputToken: token,

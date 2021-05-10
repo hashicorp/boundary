@@ -239,6 +239,44 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 	}, nil
 }
 
+// UpdateCredentialStore implements the interface pbs.CredentialStoreServiceServer.
+func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) (*pbs.UpdateCredentialStoreResponse, error) {
+	const op = "credentialstore.(Service).UpdateCredentialStore"
+
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	cs, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(cs, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateCredentialStoreResponse{Item: item}, nil
+}
+
 // DeleteCredentialStore implements the interface pbs.CredentialStoreServiceServer.
 func (s Service) DeleteCredentialStore(ctx context.Context, req *pbs.DeleteCredentialStoreRequest) (*pbs.DeleteCredentialStoreResponse, error) {
 	if err := validateDeleteRequest(req); err != nil {
@@ -286,41 +324,9 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Credent
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.CredentialStore, error) {
 	const op = "credentialstores.(Servivce).createInRepo"
-	var opts []vault.Option
-	if item.GetName() != nil {
-		opts = append(opts, vault.WithName(item.GetName().GetValue()))
-	}
-	if item.GetDescription() != nil {
-		opts = append(opts, vault.WithDescription(item.GetDescription().GetValue()))
-	}
-
-	attrs := &pb.VaultCredentialStoreAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse the attributes"))
-	}
-	if attrs.GetTlsServerName() != nil {
-		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
-	}
-	if attrs.GetTlsSkipVerify().GetValue() {
-		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetTlsSkipVerify().GetValue()))
-	}
-	if attrs.GetNamespace().GetValue() != "" {
-		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
-	}
-
-	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
-	//  accepting x509.Certificate instead of []byte
-	if attrs.GetVaultCaCert().GetValue() != "" {
-		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
-	}
-	if attrs.GetClientCertificate().GetValue() != "" {
-	}
-	if attrs.GetCertificateKey().GetValue() != "" {
-	}
-
-	cs, err := vault.NewCredentialStore(projId, attrs.GetAddress(), []byte(attrs.GetVaultToken()), opts...)
+	cs, err := toStorageVaultStore(projId, item)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential store for creation"))
+		return nil, errors.Wrap(err, op)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -332,6 +338,32 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential store but no error returned from repository.")
+	}
+	return out, nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialStore) (credential.CredentialStore, error) {
+	const op = "credentialstore.(Service).updateInRepo"
+	cs, err := toStorageVaultStore(projId, item)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	cs.PublicId = id
+
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	out, rowsUpdated, err := repo.UpdateCredentialStore(ctx, cs, item.GetVersion(), dbMask)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Credential Store %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
 }
@@ -472,6 +504,47 @@ func toProto(in credential.CredentialStore, opt ...handlers.Option) (*pb.Credent
 	return &out, nil
 }
 
+func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.CredentialStore, err error) {
+	const op = "credentialstores.toStorageVaultStore"
+	var opts []vault.Option
+	if in.GetName() != nil {
+		opts = append(opts, vault.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := &pb.VaultCredentialStoreAttributes{}
+	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse the attributes"))
+	}
+	if attrs.GetTlsServerName() != nil {
+		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
+	}
+	if attrs.GetTlsSkipVerify().GetValue() {
+		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetTlsSkipVerify().GetValue()))
+	}
+	if attrs.GetNamespace().GetValue() != "" {
+		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
+	}
+
+	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
+	//  accepting x509.Certificate instead of []byte
+	if attrs.GetVaultCaCert().GetValue() != "" {
+		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
+	}
+	if attrs.GetClientCertificate().GetValue() != "" {
+	}
+	if attrs.GetCertificateKey().GetValue() != "" {
+	}
+
+	cs, err := vault.NewCredentialStore(scopeId, attrs.GetAddress(), []byte(attrs.GetVaultToken()), opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential store for creation"))
+	}
+	return cs, err
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted
@@ -528,6 +601,33 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 		case credential.VaultSubtype:
 			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != credential.VaultSubtype {
 				badFields["type"] = "Cannot modify resource type."
+			}
+			attrs := &pb.VaultCredentialStoreAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+				break
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), addressField) &&
+				attrs.GetAddress() == "" {
+				badFields[addressField] = "This is a required field and cannot be unset."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultTokenField) &&
+				attrs.GetVaultToken() == "" {
+				badFields[vaultTokenField] = "This is a required field and cannot be unset."
+			}
+			if attrs.GetVaultTokenHmac() != "" {
+				badFields[vaultTokenHmacField] = "This is a read only field."
+			}
+
+			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
+			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
+				badFields[clientCertField] = "Incorrectly formatted value."
+			}
+			if attrs.GetCertificateKey() != nil && attrs.GetCertificateKey().GetValue() == "" {
+				badFields[clientCertKeyField] = "Incorrectly formatted value."
+			}
+			if attrs.GetVaultCaCert() != nil && attrs.GetVaultCaCert().GetValue() == "" {
+				badFields[caCertsField] = "Incorrectly formatted value."
 			}
 		}
 		return badFields
