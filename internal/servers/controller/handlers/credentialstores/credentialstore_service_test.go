@@ -150,7 +150,7 @@ func TestCreate(t *testing.T) {
 	defaultCs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	defaultCreated := defaultCs.GetCreateTime().GetTimestamp()
 
-	v := vault.NewTestVaultServer(t, vault.TestNoTLS)
+	v := vault.NewTestVaultServer(t, vault.TestClientTLS)
 	secret := v.CreateToken(t)
 	token := secret.Auth.ClientToken
 
@@ -160,47 +160,84 @@ func TestCreate(t *testing.T) {
 		res      *pbs.CreateCredentialStoreResponse
 		idPrefix string
 		err      error
+		wantErr bool
 	}{
 		{
-			name: "Create a valid vault CredentialStore",
+			name: "missing ca certificate",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId:     prj.GetPublicId(),
-				Name:        &wrapperspb.StringValue{Value: "name"},
-				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
 						Address:    v.Addr,
 						VaultToken: token,
+						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
+						CertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
 				}(),
 			}},
 			idPrefix: vault.CredentialStorePrefix + "_",
-			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
-				Item: &pb.CredentialStore{
-					Id:          defaultCs.GetPublicId(),
-					ScopeId:     prj.GetPublicId(),
-					CreatedTime: defaultCs.GetCreateTime().GetTimestamp(),
-					UpdatedTime: defaultCs.GetUpdateTime().GetTimestamp(),
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
-					Version:     1,
-					Type:        credential.VaultSubtype.String(),
-					Attributes: func() *structpb.Struct {
-						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address:        v.Addr,
-							VaultTokenHmac: "<hmac>",
-						})
-						require.NoError(t, err)
-						return attrs
-					}(),
-					AuthorizedActions: testAuthorizedActions,
-				},
-			},
+			wantErr: true,
+		},
+		{
+			name: "Bad token",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Type:        credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:    v.Addr,
+						VaultToken: "madeup",
+						VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
+						CertificateKey: wrapperspb.String(string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			wantErr: true,
+		},
+		{
+			name: "Define only client cert",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Type:        credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:    v.Addr,
+						VaultToken: token,
+						VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Define only client cert key",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Type:        credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:    v.Addr,
+						VaultToken: token,
+						VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						CertificateKey: wrapperspb.String(string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
@@ -340,6 +377,52 @@ func TestCreate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		// This must be executed last
+		{
+			name: "Create a valid vault CredentialStore",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+				Type:        credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:    v.Addr,
+						VaultToken: token,
+						VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
+						CertificateKey: wrapperspb.String(string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			res: &pbs.CreateCredentialStoreResponse{
+				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Item: &pb.CredentialStore{
+					Id:          defaultCs.GetPublicId(),
+					ScopeId:     prj.GetPublicId(),
+					CreatedTime: defaultCs.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultCs.GetUpdateTime().GetTimestamp(),
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:     1,
+					Type:        credential.VaultSubtype.String(),
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							VaultCaCert: wrapperspb.String(string(v.CaCert)),
+							Address:        v.Addr,
+							VaultTokenHmac: "<hmac>",
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -349,9 +432,11 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
-			if tc.err != nil {
+			if tc.wantErr || tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "CreateCredentialStore(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.err != nil {
+					assert.True(errors.Is(gErr, tc.err), "CreateCredentialStore(...) got error %v, wanted %v", gErr, tc.err)
+				}
 				return
 			}
 			require.NoError(gErr)
