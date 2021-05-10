@@ -165,7 +165,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithSessionIds options.
+// ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -198,6 +198,10 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
+	}
+	if opts.withServerId != "" {
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("server_id = $%d", inClauseCnt)), append(args, opts.withServerId)
 	}
 
 	var limit string

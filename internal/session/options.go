@@ -27,6 +27,8 @@ type options struct {
 	withTestTofu          []byte
 	withListingConvert    bool
 	withSessionIds        []string
+	withServerId          string
+	withDbOpts            []db.Option
 }
 
 func getDefaultOptions() options {
@@ -89,5 +91,20 @@ func WithSessionIds(ids ...string) Option {
 func withListingConvert(withListingConvert bool) Option {
 	return func(o *options) {
 		o.withListingConvert = withListingConvert
+	}
+}
+
+// WithServerId allows the specification of the server id to use for the
+// operation.
+func WithServerId(id string) Option {
+	return func(o *options) {
+		o.withServerId = id
+	}
+}
+
+// WithDbOpts passes through given DB options to the DB layer
+func WithDbOpts(opts ...db.Option) Option {
+	return func(o *options) {
+		o.withDbOpts = opts
 	}
 }

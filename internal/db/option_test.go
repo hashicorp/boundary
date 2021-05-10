@@ -138,13 +138,13 @@ func Test_getOpts(t *testing.T) {
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.withSkipVetForWrite = false
+		testOpts.WithSkipVetForWrite = false
 		assert.Equal(opts, testOpts)
 
 		// try setting to false
 		opts = GetOpts(WithSkipVetForWrite(true))
 		testOpts = getDefaultOptions()
-		testOpts.withSkipVetForWrite = true
+		testOpts.WithSkipVetForWrite = true
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithWhere", func(t *testing.T) {

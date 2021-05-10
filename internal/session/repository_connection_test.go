@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -120,10 +119,8 @@ func TestRepository_ListConnection(t *testing.T) {
 		assert.Equal(wantCnt, len(got))
 
 		for i := 0; i < len(got)-1; i++ {
-			first, err := ptypes.Timestamp(got[i].CreateTime.Timestamp)
-			require.NoError(err)
-			second, err := ptypes.Timestamp(got[i+1].CreateTime.Timestamp)
-			require.NoError(err)
+			first := got[i].CreateTime.Timestamp.AsTime()
+			second := got[i+1].CreateTime.Timestamp.AsTime()
 			assert.True(first.Before(second))
 		}
 	})

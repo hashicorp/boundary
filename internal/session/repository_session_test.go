@@ -2,10 +2,10 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
 	"github.com/lib/pq"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -129,10 +130,8 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(wantCnt, len(got))
 
 		for i := 0; i < len(got)-1; i++ {
-			first, err := ptypes.Timestamp(got[i].CreateTime.Timestamp)
-			require.NoError(err)
-			second, err := ptypes.Timestamp(got[i+1].CreateTime.Timestamp)
-			require.NoError(err)
+			first := got[i].CreateTime.Timestamp.AsTime()
+			second := got[i+1].CreateTime.Timestamp.AsTime()
 			assert.True(first.Before(second))
 		}
 	})
@@ -188,6 +187,32 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(2, len(got))
 		assert.Equal(StatusActive, got[0].States[0].Status)
 		assert.Equal(StatusPending, got[0].States[1].Status)
+	})
+	t.Run("withServerId", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		require.NoError(conn.Where("1=1").Delete(AllocSession()).Error)
+		for i := 0; i < 6; i++ {
+			if i%2 == 0 {
+				TestWorker(t, conn, wrapper, WithServerId(fmt.Sprintf("server-%d", i/2)))
+			}
+			_ = TestSession(t, conn, wrapper, composedOf,
+				WithServerId(fmt.Sprintf("server-%d", i/2)),
+				WithDbOpts(db.WithSkipVetForWrite(true)),
+			)
+		}
+		got, err := repo.ListSessions(context.Background())
+		require.NoError(err)
+		assert.Equal(6, len(got))
+
+		for i := 0; i < 3; i++ {
+			serverId := fmt.Sprintf("server-%d", i)
+			got, err = repo.ListSessions(context.Background(), WithServerId(serverId))
+			require.NoError(err)
+			assert.Equal(2, len(got))
+			for _, item := range got {
+				assert.Equal(serverId, item.ServerId)
+			}
+		}
 	})
 }
 
@@ -537,7 +562,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		},
 		{
 			name:    "expired-session",
-			session: setupFn(&timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}),
+			session: setupFn(&timestamp.Timestamp{Timestamp: timestamppb.Now()}),
 			wantErr: true,
 		},
 	}
@@ -770,8 +795,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 
 	setupFn := func(limit int32, expireIn time.Duration, leaveOpen bool) *Session {
 		require.NotEqualf(t, int32(0), limit, "setupFn: limit cannot be zero")
-		exp, err := ptypes.TimestampProto(time.Now().Add(expireIn))
-		require.NoError(t, err)
+		exp := timestamppb.New(time.Now().Add(expireIn))
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		composedOf.ConnectionLimit = limit
 		composedOf.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
