@@ -22,6 +22,7 @@ export default function HomePage() {
             title: 'Download macOS Client',
             url: '/downloads#desktop',
             linkType: 'inbound',
+            theme: { variant: 'tertiary' },
           },
         ]}
         uiVideo={{
