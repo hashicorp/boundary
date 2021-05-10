@@ -1,0 +1,73 @@
+version: "3.8"
+services:
+  boundary: 
+    build:
+      context: ./
+      dockerfile: docker/Dev.dockerfile
+    ports:
+      - 9200:9200
+      - 9201:9201
+      - 9202:9202 
+    volumes:
+      - ./docker-compose/wait-for.sh:/wait-for.sh
+    environment:
+      BOUNDARY_POSTGRES_URL: postgresql://postgres:postgres@boundary-db:5432/postgres?sslmode=disable
+    entrypoint: []
+    command: /bin/sh -c "/wait-for.sh boundary-db:5432 -- /bin/boundary dev -log-level='info' -recovery-key='evxLxhixAwXp+jayjvuSNPbyak4keFw34XMtrt7l5Mo=' -host-address='0.0.0.0' -api-listen-address='0.0.0.0' -proxy-listen-address='0.0.0.0' -worker-public-address='0.0.0.0' -controller-public-cluster-address='0.0.0.0' -cluster-listen-address='0.0.0.0' -login-name='admin' -password='admin123456' -database-url='postgresql://postgres:postgres@boundary-db:5432/postgres?sslmode=disable'"
+    depends_on:
+      - "boundary-db"
+
+  boundary-db:
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  boundary-terraform-provisioning:
+    build:
+      context: ./docker-compose/provisioning-terraform
+    entrypoint: []
+    command: /bin/sh -c '/wait-for.sh boundary:9200 -- terraform -chdir=/scripts apply -auto-approve'
+    depends_on:      
+      - "boundary"
+
+  ## Necessary unitl Terraform implements new OIDC Auth Method!
+  boundary-script-provisioning:
+    build:
+      context: ./docker-compose/provisioning-script
+    entrypoint: []
+    command: /bin/sh -c '/wait-for.sh boundary:9200 -- /scripts/provision-oidc.sh'
+    depends_on:
+      - "boundary-terraform-provisioning"
+      - "boundary"
+
+  keycloak:
+    image: jboss/keycloak
+    ports:
+      - 8080:8080
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_IMPORT: /tmp/realm.json
+    volumes:
+      - ./docker-compose/keycloak/realm.json:/tmp/realm.json
+    command:
+      - "-b 0.0.0.0"
+      - "-Dkeycloak.profile.feature.scripts=enabled"
+      - "-Dkeycloak.profile.feature.upload_scripts=enabled"
+
+  ssh-testserver-01:
+    image: ghcr.io/linuxserver/openssh-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London     
+      - USER_PASSWORD=password #optional     
+      - USER_NAME=admin #optional    
+      - PASSWORD_ACCESS=true
+    ports:
+      - 2222:2222
+

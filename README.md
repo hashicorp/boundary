@@ -188,6 +188,10 @@ number of connections per session or setting a maximum time limit; try canceling
 an active session from the sessions page or via `boundary sessions`, make your
 own commands with `boundary connect -exec`, and so on.
 
+### Quickstart with Docker-Compose
+
+Start a preprovisioned Boundary environment with an IdentityProvider for OIDC Flow and a ssh server for testing the connect feature ([more](./docker-compose/README.md)). 
+
 ### Going Further
 
 This example is a simple way to get started but omits several key steps that
