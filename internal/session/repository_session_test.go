@@ -513,6 +513,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
+	var testServer string
 	setupFn := func(exp *timestamp.Timestamp) *Session {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 		if exp != nil {
@@ -520,6 +521,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		}
 		s := TestSession(t, conn, wrapper, composedOf)
 		srv := TestWorker(t, conn, wrapper)
+		testServer = srv.PrivateId
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
 		require.NoError(t, err)
@@ -570,7 +572,7 @@ func TestRepository_AuthorizeConnect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId)
+			c, cs, authzInfo, err := repo.AuthorizeConnection(context.Background(), tt.session.PublicId, testServer)
 			if tt.wantErr {
 				require.Error(err)
 				// TODO (jimlambrt 9/2020): add in tests for errorsIs once we
