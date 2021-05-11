@@ -52,15 +52,22 @@ var (
 )
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	// TODO: on the worker, if we get errors back from this repeatedly, do we
+	// terminate all sessions since we can't know if they were canceled?
 	ws.logger.Trace("got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
-	repo, err := ws.serversRepoFn()
+	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		ws.logger.Error("error getting sessions repo", "error", err)
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to query session status: %v", err)
+	}
 	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := repo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
+	controllers, _, err := serverRepo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
@@ -69,14 +76,21 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 
-	// Happy path
-	if len(req.GetJobs()) == 0 {
-		return ret, nil
+	sess, err := sessRepo.ListSessions(ctx, session.WithServerId(req.GetWorker().GetPrivateId()))
+	if err != nil {
+		// TODO: Should we error here? I think we should continue on so we can
+		// be sure to send down cancelation information.
+		ws.logger.Error("error looking up worker session status; continuing with sending job status back", "error", err)
+	}
+	// notFoundSessions stores session IDs that we expect to find reported by the
+	// worker but were not; we need to mark them as terminated/closed
+	notFoundSessions := make(map[string]struct{}, len(sess))
+	for _, ses := range sess {
+		notFoundSessions[ses.GetPublicId()] = struct{}{}
 	}
 
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
+	if len(notFoundSessions) == 0 && len(req.GetJobs()) == 0 {
+		return ret, nil
 	}
 
 	for _, jobStatus := range req.GetJobs() {
@@ -87,13 +101,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			if si == nil {
 				return nil, status.Error(codes.Internal, "Error getting session info at status time")
 			}
+			sessionId := si.GetSessionId()
+			delete(notFoundSessions, sessionId)
 			switch si.Status {
 			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
 				// No need to see about canceling anything
 				continue
 			}
-			sessionId := si.GetSessionId()
 			sessionInfo, _, err := sessRepo.LookupSession(ctx, sessionId)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
@@ -131,6 +146,11 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			}
 		}
 	}
+
+	if len(notFoundSessions) > 0 {
+		// FIXME: Mark these sessions as done -- ensure their connections are closed, etc.
+	}
+
 	return ret, nil
 }
 
