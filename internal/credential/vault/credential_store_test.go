@@ -35,10 +35,10 @@ func TestCredentialStore_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *CredentialStore
-		wantErr bool
+		name          string
+		args          args
+		want          *CredentialStore
+		wantErr       bool
 		wantCreateErr bool
 	}{
 		{
@@ -47,7 +47,7 @@ func TestCredentialStore_New(t *testing.T) {
 				vaultAddress: "https://vault.consul.service",
 				token:        []byte("token"),
 			},
-			want:    &CredentialStore{
+			want: &CredentialStore{
 				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
 					VaultAddress: "https://vault.consul.service",
@@ -64,7 +64,7 @@ func TestCredentialStore_New(t *testing.T) {
 			want: &CredentialStore{
 				inputToken: []byte("token"),
 				CredentialStore: &store.CredentialStore{
-					ScopeId:      scope.PublicId,
+					ScopeId: scope.PublicId,
 				},
 			},
 			wantCreateErr: true,

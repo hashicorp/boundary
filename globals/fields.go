@@ -53,4 +53,5 @@ const (
 	FullNameField                    = "full_name"
 	PrimaryAccountIdField            = "primary_account_id"
 	EmailField                       = "email"
+	CredentialStoreIdField           = "credential_store_id"
 )

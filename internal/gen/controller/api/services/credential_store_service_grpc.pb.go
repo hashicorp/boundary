@@ -41,7 +41,7 @@ type CredentialStoreServiceClient interface {
 	// request attempts to update the name to one that is already in use by
 	// another Credential Store in the parent scope.
 	UpdateCredentialStore(ctx context.Context, in *UpdateCredentialStoreRequest, opts ...grpc.CallOption) (*UpdateCredentialStoreResponse, error)
-	// DeleteCredentialStore removes an Credential Store from Boundary. If the Credential Store id
+	// DeleteCredentialStore removes a Credential Store from Boundary. If the Credential Store id
 	// is malformed or not provided an error is returned.
 	DeleteCredentialStore(ctx context.Context, in *DeleteCredentialStoreRequest, opts ...grpc.CallOption) (*DeleteCredentialStoreResponse, error)
 }
@@ -126,7 +126,7 @@ type CredentialStoreServiceServer interface {
 	// request attempts to update the name to one that is already in use by
 	// another Credential Store in the parent scope.
 	UpdateCredentialStore(context.Context, *UpdateCredentialStoreRequest) (*UpdateCredentialStoreResponse, error)
-	// DeleteCredentialStore removes an Credential Store from Boundary. If the Credential Store id
+	// DeleteCredentialStore removes a Credential Store from Boundary. If the Credential Store id
 	// is malformed or not provided an error is returned.
 	DeleteCredentialStore(context.Context, *DeleteCredentialStoreRequest) (*DeleteCredentialStoreResponse, error)
 	mustEmbedUnimplementedCredentialStoreServiceServer()

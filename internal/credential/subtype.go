@@ -22,7 +22,7 @@ func (t SubType) String() string {
 	return "unknown"
 }
 
-// AuthMethod contains the common methods across all the different types of auth methods.
+// CredentialStore contains the common methods across all the different types of credential store.
 type CredentialStore interface {
 	GetPublicId() string
 	GetCreateTime() *timestamp.Timestamp
@@ -30,6 +30,17 @@ type CredentialStore interface {
 	GetName() string
 	GetDescription() string
 	GetScopeId() string
+	GetVersion() uint32
+}
+
+// CredentialLibrary contains the common methods across all the different types of credential libraries.
+type CredentialLibrary interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetStoreId() string
 	GetVersion() uint32
 }
 
