@@ -21,7 +21,7 @@ const (
 	Worker            Type = 14
 	Session           Type = 15
 	CredentialStore   Type = 16
-	CredentialLibrary Type = 16
+	CredentialLibrary Type = 17
 )
 
 func (r Type) String() string {
