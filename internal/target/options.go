@@ -125,7 +125,7 @@ func WithHostSets(hs []string) Option {
 	}
 }
 
-// WithCredentialLibraries provides an option for providing a list of host set ids
+// WithCredentialLibraries provides an option for providing a list of credential library ids
 func WithCredentialLibraries(cl []string) Option {
 	return func(o *options) {
 		o.withCredentialLibraries = cl
