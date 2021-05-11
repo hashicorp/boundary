@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,7 +12,7 @@ import (
 )
 
 // AddTargetCredentialLibraries adds the clIds to the targetId in the repository. The target
-// and the list pf credential libraries attached to the target, after clIds are added,
+// and the list of credential libraries attached to the target, after clIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
 func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*CredentialLibrary, error) {
@@ -213,37 +214,31 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 
-	currentCredLibs, err := fetchLibraries(ctx, r.reader, targetId)
+	changes, err := r.changes(ctx, targetId, clIds)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing credential libraries"))
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	found := map[string]*CredentialLibrary{}
-	for _, cl := range currentCredLibs {
-		found[cl.CredentialLibraryId] = cl
+	if len(changes) == 0 {
+		// Nothing needs to be changed, return early
+		credLibs, err := fetchLibraries(ctx, r.reader, targetId)
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+		return credLibs, db.NoRowsAffected, nil
 	}
 
-	addCredLibs := make([]interface{}, 0, len(clIds))
-	for _, id := range clIds {
-		if _, ok := found[id]; ok {
-			// already exists so there is no need to add, but remove id from found so it is not deleted below
-			delete(found, id)
-			continue
-		}
-		cl, err := NewCredentialLibrary(targetId, id)
+	var deleteCredLibs, addCredLibs []interface{}
+	for _, c := range changes {
+		cl, err := NewCredentialLibrary(targetId, c.LibraryId)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
 		}
-		addCredLibs = append(addCredLibs, cl)
-	}
-
-	// credential libraries remaining in found map must be deleted
-	deleteCredLibs := make([]interface{}, 0, len(found))
-	for _, cl := range found {
-		deleteCredLibs = append(deleteCredLibs, cl)
-	}
-	if len(addCredLibs) == 0 && len(deleteCredLibs) == 0 {
-		// Nothing needs to be changed, return early
-		return currentCredLibs, db.NoRowsAffected, nil
+		switch c.Action {
+		case "delete":
+			deleteCredLibs = append(deleteCredLibs, cl)
+		case "add":
+			addCredLibs = append(addCredLibs, cl)
+		}
 	}
 
 	t := allocTargetView()
@@ -334,6 +329,46 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	return credLibs, rowsAffected, nil
+}
+
+type change struct {
+	Action    string
+	LibraryId string
+}
+
+func (r *Repository) changes(ctx context.Context, targetId string, clIds []string) ([]*change, error) {
+	const op = "target.(Repository).changes"
+	var inClauseSpots []string
+	// starts at 2 because there is already a $1 in the query
+	for i := 2; i < len(clIds)+2; i++ {
+		inClauseSpots = append(inClauseSpots, fmt.Sprintf("$%d", i))
+	}
+	inClause := strings.Join(inClauseSpots, ",")
+	if inClause == "" {
+		inClause = "''"
+	}
+	query := fmt.Sprintf(setChangesQuery, inClause)
+
+	var params []interface{}
+	params = append(params, targetId)
+	for _, id := range clIds {
+		params = append(params, id)
+	}
+	rows, err := r.reader.Query(ctx, query, params)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("query failed"))
+	}
+	defer rows.Close()
+
+	var changes []*change
+	for rows.Next() {
+		var chg change
+		if err := r.reader.ScanRows(rows, &chg); err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
+		}
+		changes = append(changes, &chg)
+	}
+	return changes, nil
 }
 
 func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*CredentialLibrary, error) {
