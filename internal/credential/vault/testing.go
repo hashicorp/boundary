@@ -241,7 +241,11 @@ type TestVaultServer struct {
 
 // NewTestVaultServer creates and returns a TestVaultServer.
 func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
+func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 	t.Helper()
+
+	opts := getTestOpts(t, opt...)
+	testTls := opts.vaultTLS
 
 	switch testTls {
 	case TestServerTLS, TestClientTLS:
@@ -645,6 +649,7 @@ type testOptions struct {
 	policies  []string
 	mountPath string
 	roleName  string
+	vaultTLS  TestVaultTLS
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -656,6 +661,16 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		policies:  []string{"default"},
 		mountPath: "",
 		roleName:  "boundary",
+		vaultTLS:  TestNoTLS,
+	}
+}
+
+// WithTestVaultTLS sets the Vault TLS option.
+// TestNoTLS is the default TLS option.
+func WithTestVaultTLS(s TestVaultTLS) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.vaultTLS = s
 	}
 }
 

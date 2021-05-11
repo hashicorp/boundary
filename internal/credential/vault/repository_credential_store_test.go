@@ -32,7 +32,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t)
 		secret := v.CreateToken(t)
 		token := secret.Auth.ClientToken
 
@@ -65,7 +65,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t)
 
 		secret1 := v.CreateToken(t)
 		token1 := secret1.Auth.ClientToken
@@ -161,7 +161,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v := NewTestVaultServer(t, tt.tls)
+			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 			secret := v.CreateToken(t, tt.tokenOpts...)
 			token := secret.Auth.ClientToken
 
@@ -328,7 +328,7 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v := NewTestVaultServer(t, tt.tls)
+			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 
 			var opts []Option
 			if tt.tls == TestServerTLS {
@@ -816,7 +816,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			tt.orig.ScopeId = prj.GetPublicId()
 
-			vs := NewTestVaultServer(t, TestNoTLS)
+			vs := NewTestVaultServer(t)
 
 			tt.orig.VaultAddress = vs.Addr
 			if tt.want != nil && tt.want.VaultAddress == "" {
@@ -893,7 +893,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		vs := NewTestVaultServer(t, TestServerTLS)
+		vs := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 
 		secret := vs.CreateToken(t)
 		token, err := secret.TokenID()
@@ -972,7 +972,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 
-		vs := NewTestVaultServer(t, TestNoTLS)
+		vs := NewTestVaultServer(t)
 
 		token1, err := vs.CreateToken(t).TokenID()
 		require.NoError(err)
@@ -1089,7 +1089,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v := NewTestVaultServer(t, TestNoTLS)
+			v := NewTestVaultServer(t)
 			origSecret := v.CreateToken(t)
 			origToken := origSecret.Auth.ClientToken
 
@@ -1221,7 +1221,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-			v := NewTestVaultServer(t, tt.tls)
+			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 
 			var opts []Option
 			if tt.tls == TestServerTLS {

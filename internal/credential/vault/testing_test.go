@@ -201,7 +201,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			v := NewTestVaultServer(t, TestNoTLS)
+			v := NewTestVaultServer(t)
 			require.NotNil(v)
 			secret := v.CreateToken(t, tt.opts...)
 			require.NotNil(secret)
@@ -232,7 +232,7 @@ func TestNewVaultServer(t *testing.T) {
 	t.Parallel()
 	t.Run("TestNoTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -250,7 +250,7 @@ func TestNewVaultServer(t *testing.T) {
 	})
 	t.Run("TestServerTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestServerTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -270,7 +270,7 @@ func TestNewVaultServer(t *testing.T) {
 	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestClientTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -298,7 +298,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t)
 		require.NotNil(v)
 
 		vc := v.client(t).cl
@@ -326,7 +326,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("with-mount-path", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t)
 		require.NotNil(v)
 
 		vc := v.client(t).cl
@@ -354,7 +354,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("with-role-name", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t)
 		require.NotNil(v)
 
 		vc := v.client(t).cl

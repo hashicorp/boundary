@@ -23,7 +23,7 @@ func Test_newClient(t *testing.T) {
 func TestClient_RenewToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)
@@ -79,7 +79,7 @@ func tokenExpirationTime(t *testing.T, s *vault.Secret) time.Time {
 func TestClient_LookupToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)
