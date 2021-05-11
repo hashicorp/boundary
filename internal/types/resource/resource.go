@@ -4,24 +4,24 @@ package resource
 type Type uint
 
 const (
-	Unknown           Type = 0
-	All               Type = 1
-	Scope             Type = 2
-	User              Type = 3
-	Group             Type = 4
-	Role              Type = 5
-	AuthMethod        Type = 6
-	Account           Type = 7
-	AuthToken         Type = 8
-	HostCatalog       Type = 9
-	HostSet           Type = 10
-	Host              Type = 11
-	Target            Type = 12
-	Controller        Type = 13
-	Worker            Type = 14
-	Session           Type = 15
-	CredentialStore   Type = 16
-	CredentialLibrary Type = 17
+	Unknown Type = iota
+	All
+	Scope
+	User
+	Group
+	Role
+	AuthMethod
+	Account
+	AuthToken
+	HostCatalog
+	HostSet
+	Host
+	Target
+	Controller
+	Worker
+	Session
+	CredentialStore
+	CredentialLibrary
 )
 
 func (r Type) String() string {
