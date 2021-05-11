@@ -536,8 +536,8 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	if attrs.GetClientCertificate() != nil {
 		cert = []byte(attrs.GetClientCertificate().GetValue())
 	}
-	if attrs.GetCertificateKey() != nil {
-		certKey = []byte(attrs.GetCertificateKey().GetValue())
+	if attrs.GetClientCertificateKey() != nil {
+		certKey = []byte(attrs.GetClientCertificateKey().GetValue())
 	}
 	if len(cert) != 0 && len(certKey) != 0 {
 		cc, err := vault.NewClientCertificate(cert, certKey)
@@ -590,13 +590,13 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
 				badFields[clientCertField] = "Incorrectly formatted value."
 			}
-			if attrs.GetCertificateKey() != nil && attrs.GetCertificateKey().GetValue() == "" {
+			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificateKey().GetValue() == "" {
 				badFields[clientCertKeyField] = "Incorrectly formatted value."
 			}
-			if attrs.GetClientCertificate() != nil && attrs.GetCertificateKey() == nil {
+			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificateKey() == nil {
 				badFields[clientCertField] = fmt.Sprintf("This field can only be set when %q is also set.", clientCertKeyField)
 			}
-			if attrs.GetCertificateKey() != nil && attrs.GetClientCertificate() == nil {
+			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificate() == nil {
 				badFields[clientCertKeyField] = fmt.Sprintf("This field can only be set along with the %q field.", clientCertField)
 			}
 			if attrs.GetVaultCaCert() != nil && attrs.GetVaultCaCert().GetValue() == "" {
@@ -638,13 +638,13 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
 				badFields[clientCertField] = "Incorrectly formatted value."
 			}
-			if attrs.GetCertificateKey() != nil && attrs.GetCertificateKey().GetValue() == "" {
+			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificateKey().GetValue() == "" {
 				badFields[clientCertKeyField] = "Incorrectly formatted value."
 			}
-			if attrs.GetClientCertificate() != nil && attrs.GetCertificateKey() == nil {
+			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificateKey() == nil {
 				badFields[clientCertField] = fmt.Sprintf("This field can only be set when %q is also set.", clientCertKeyField)
 			}
-			if attrs.GetCertificateKey() != nil && attrs.GetClientCertificate() == nil {
+			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificate() == nil {
 				badFields[clientCertKeyField] = fmt.Sprintf("This field can only be set along with the %q field.", clientCertField)
 			}
 

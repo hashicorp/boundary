@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
-// OidcRepoFactory is used by "service functions" to create a new oidc repo
-type CredentialRepoFactory func() (*Repository, error)
+// RepositoryFactory is used by "service functions" to create a new oidc repo
+type RepositoryFactory func() (*Repository, error)
 
 // A Repository stores and retrieves the persistent types in the vault
 // package. It is not safe to use a repository concurrently.

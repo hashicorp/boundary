@@ -13,7 +13,7 @@ import (
 
 type (
 	AuthTokenRepoFactory       = oidc.AuthTokenRepoFactory
-	VaultCredentialRepoFactory = vault.CredentialRepoFactory
+	VaultCredentialRepoFactory = vault.RepositoryFactory
 	IamRepoFactory             func() (*iam.Repository, error)
 	OidcAuthRepoFactory        = oidc.OidcRepoFactory
 	PasswordAuthRepoFactory    func() (*password.Repository, error)

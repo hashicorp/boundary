@@ -169,10 +169,10 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:           v.Addr,
-						VaultToken:        token,
-						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
-						CertificateKey:    wrapperspb.String(string(v.ClientKey)),
+						Address:              v.Addr,
+						VaultToken:           token,
+						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
+						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -188,11 +188,11 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:           v.Addr,
-						VaultToken:        "madeup",
-						VaultCaCert:       wrapperspb.String(string(v.CaCert)),
-						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
-						CertificateKey:    wrapperspb.String(string(v.ClientKey)),
+						Address:              v.Addr,
+						VaultToken:           "madeup",
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
+						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -227,10 +227,10 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:        v.Addr,
-						VaultToken:     token,
-						VaultCaCert:    wrapperspb.String(string(v.CaCert)),
-						CertificateKey: wrapperspb.String(string(v.ClientKey)),
+						Address:              v.Addr,
+						VaultToken:           token,
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -387,11 +387,11 @@ func TestCreate(t *testing.T) {
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:           v.Addr,
-						VaultToken:        token,
-						VaultCaCert:       wrapperspb.String(string(v.CaCert)),
-						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
-						CertificateKey:    wrapperspb.String(string(v.ClientKey)),
+						Address:              v.Addr,
+						VaultToken:           token,
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
+						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -784,7 +784,7 @@ func TestUpdate(t *testing.T) {
 		// {
 		// 	name: "update client cert",
 		// 	req: &pbs.UpdateCredentialStoreRequest{
-		// 		UpdateMask: fieldmask("attributes.client_certificate", "attributes.certificate_key"),
+		// 		UpdateMask: fieldmask("attributes.client_certificate", "attributes.client_certificate_key"),
 		// 		Item: &pb.CredentialStore{
 		// 			Attributes: func() *structpb.Struct {
 		// 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
@@ -799,7 +799,7 @@ func TestUpdate(t *testing.T) {
 		// 	res: func(in *pb.CredentialStore) *pb.CredentialStore {
 		// 		out := proto.Clone(in).(*pb.CredentialStore)
 		// 		out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v.ClientCert))
-		// 		out.Attributes.Fields["certificate_key"] = structpb.NewStringValue(string(v.ClientKey))
+		// 		out.Attributes.Fields["client_certificate_key"] = structpb.NewStringValue(string(v.ClientKey))
 		// 		// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
 		// 		delete(out.GetAttributes().Fields, "vault_token_hmac")
 		// 		return out
