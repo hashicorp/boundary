@@ -380,3 +380,31 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		require.NotEmpty(certSecret)
 	})
 }
+
+func TestTestVaultServer_MountDatabase(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithDockerNetwork(true))
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountDatabase(t)
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		dbCredPath := path.Join("database", "creds", "opened")
+		dbSecret, err := vc.Logical().Read(dbCredPath)
+		assert.NoError(err)
+		require.NotEmpty(dbSecret)
+	})
+}
