@@ -392,9 +392,9 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 // * the hasn't expired based on the session.Expiration
 // * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
-// and returns it, along with it's states.  If the authorization fails, it
+// and returns it, along with its states.  If the authorization fails, it
 // an error with Code InvalidSessionState.
-func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
+func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId, workerId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).AuthorizeConnection"
 	if sessionId == "" {
 		return nil, nil, nil, errors.Wrap(status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
@@ -412,7 +412,7 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId})
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId, workerId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
 			}

@@ -89,12 +89,14 @@ select * from terminated;
 	authorizeConnectionCte = `
 insert into session_connection (
 	session_id, 
-	public_id
+	public_id,
+	server_id
 )
 with active_session as ( 
 	select 
 		$1 as session_id,
-		$2 as public_id
+		$2 as public_id,
+		$3 as server_id
 	from
 		session s
 	where
@@ -232,4 +234,38 @@ where
     )
 )
 `
+
+	// connectionsToCloseCte finds connections that are:
+	//
+	// * not closed
+	// * not announced by a given server in its latest update
+	//
+	// and marks them as closed.
+	connectionsToCloseCte = `
+with
+  -- Find connections that are not closed so we can reference those IDs
+  unclosed_connections as (
+    select connection_id
+      from session_connection_state
+    where
+      end_time is null
+        and
+      state != 'closed'
+  ),
+  connections_to_close as (
+    select public_id
+      from session_connection
+    where
+      -- Related to the worker that just reported to us
+      server_id = '$1'
+        and
+      -- These are connection IDs that just got reported to us by the given
+      -- worker, so they should not be considered closed
+      public_id not in ($2)
+        and
+      -- Only unclosed ones
+      public_id in (select connection_id from unclosed_connections)
+  )
+  select * from connections_to_close;
+  `
 )
