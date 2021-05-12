@@ -104,4 +104,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithCredentialLibraries", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithCredentialLibraries([]string{"alice", "bob"}))
+		testOpts := getDefaultOptions()
+		testOpts.withCredentialLibraries = []string{"alice", "bob"}
+		assert.Equal(opts, testOpts)
+	})
 }

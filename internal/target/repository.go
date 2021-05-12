@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// Clonable provides a cloning interface
+// Cloneable provides a cloning interface
 type Cloneable interface {
 	Clone() interface{}
 }
@@ -53,14 +53,15 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 }
 
 // LookupTarget will look up a target in the repository and return the target
-// with its host set ids.  If the target is not found, it will return nil, nil, nil.
+// with its host set ids and credential library ids.  If the target is not found,
+// it will return nil, nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := getOpts(opt...)
 
 	if publicIdOrName == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
 
 	var where []string
@@ -70,33 +71,34 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	scopeNameEmpty := opts.withScopeName == ""
 	if !nameEmpty {
 		if opts.withName != publicIdOrName {
-			return nil, nil, errors.New(errors.InvalidParameter, op, "name passed in but does not match publicId")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "name passed in but does not match publicId")
 		}
 		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.withName)
 		switch {
 		case scopeIdEmpty && scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
 		case !scopeIdEmpty && !scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
 		case !scopeIdEmpty:
 			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.withScopeId)
 		case !scopeNameEmpty:
 			where, whereArgs = append(where, "scope_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.withScopeName)
 		default:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "unknown combination of parameters")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "unknown combination of parameters")
 		}
 	} else {
 		switch {
 		case !scopeIdEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
 		case !scopeNameEmpty:
-			return nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
 		}
 	}
 
 	target := allocTargetView()
 	target.PublicId = publicIdOrName
 	var hostSets []*TargetSet
+	var credLibs []*CredentialLibrary
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -117,32 +119,23 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(err, op)
 			}
+			if credLibs, err = fetchLibraries(ctx, read, target.PublicId); err != nil {
+				return errors.Wrap(err, op)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, nil
+			return nil, nil, nil, nil
 		}
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
 	subType, err := target.targetSubType()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return subType, hostSets, nil
-}
-
-func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet, error) {
-	const op = "target.fetchSets"
-	var hostSets []*TargetSet
-	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []interface{}{targetId}); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	if len(hostSets) == 0 {
-		return nil, nil
-	}
-	return hostSets, nil
+	return subType, hostSets, credLibs, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -257,17 +250,17 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 // update a target in the db repository with an oplog entry.
 // It currently supports no options.
-func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, int, error) {
+func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, int, error) {
 	const op = "target.(Repository).update"
 	if version == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	if target == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil target")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil target")
 	}
 	cloner, ok := target.(Cloneable)
 	if !ok {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "target is not cloneable")
+		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "target is not cloneable")
 	}
 	dbOpts := []db.Option{
 		db.WithVersion(&version),
@@ -277,13 +270,13 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 		t := allocTargetView()
 		t.PublicId = target.GetPublicId()
 		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
+			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
 		}
 		scopeId = t.ScopeId
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := target.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
@@ -291,6 +284,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	var rowsUpdated int
 	var returnedTarget interface{}
 	var hostSets []*TargetSet
+	var credLibs []*CredentialLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -315,349 +309,15 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {
 				return errors.Wrap(err, op)
 			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
-	}
-	return returnedTarget.(Target), hostSets, rowsUpdated, nil
-}
 
-// AddTargetHostSets provides the ability to add host sets (hostSetIds) to a
-// target (targetId).  The target's current db version must match the
-// targetVersion or an error will be returned.   The target and a list of
-// current host set ids will be returned on success. Zero is not a valid value
-// for the WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, error) {
-	const op = "target.(Repository).AddTargetHostSets"
-	if targetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
-	}
-	if targetVersion == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
-	}
-	if len(hostSetIds) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing host set ids")
-	}
-	newHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
-		ths, err := NewTargetHostSet(targetId, id)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
-		}
-		newHostSets = append(newHostSets, ths)
-	}
-	t := allocTargetView()
-	t.PublicId = targetId
-	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
-	}
-	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
-	default:
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
-	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-	var currentHostSets []*TargetSet
-	var updatedTarget interface{}
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-			}
-			updatedTarget = target.(Cloneable).Clone()
-			var targetOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
-			}
-			msgs = append(msgs, &targetOplogMsg)
-
-			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
-			if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to add target host sets"))
-			}
-			msgs = append(msgs, hostSetsOplogMsgs...)
-
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
-			}
-			currentHostSets, err = fetchSets(ctx, reader, targetId)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current host sets after adds"))
+			if credLibs, err = fetchLibraries(ctx, reader, target.GetPublicId()); err != nil {
+				return errors.Wrap(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("error creating sets"))
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return updatedTarget.(Target), currentHostSets, nil
-}
-
-// DeleteTargeHostSets deletes host sets from a target (targetId). The target's
-// current db version must match the targetVersion or an error will be returned.
-// Zero is not a valid value for the WithVersion option and will return an
-// error.
-func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (int, error) {
-	const op = "target.(Repository).DeleteTargeHostSets"
-	if targetId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
-	}
-	if targetVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
-	}
-	if len(hostSetIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing host set ids")
-	}
-	deleteTargeHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
-		ths, err := NewTargetHostSet(targetId, id)
-		if err != nil {
-			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
-		}
-		deleteTargeHostSets = append(deleteTargeHostSets, ths)
-	}
-
-	t := allocTargetView()
-	t.PublicId = targetId
-	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
-	}
-
-	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
-	default:
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
-	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
-	var totalRowsDeleted int
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-			}
-			updatedTarget := target.(Cloneable).Clone()
-			var targetOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
-			}
-			msgs = append(msgs, &targetOplogMsg)
-
-			hostSetsOplogMsgs := make([]*oplog.Message, 0, len(deleteTargeHostSets))
-			rowsDeleted, err := w.DeleteItems(ctx, deleteTargeHostSets, db.NewOplogMsgs(&hostSetsOplogMsgs))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete target host sets"))
-			}
-			if rowsDeleted != len(deleteTargeHostSets) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteTargeHostSets)))
-			}
-			totalRowsDeleted += rowsDeleted
-			msgs = append(msgs, hostSetsOplogMsgs...)
-
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
-	}
-	return totalRowsDeleted, nil
-}
-
-// SetTargetHostSets will set the target's host sets. Set add and/or delete
-// target host sets as need to reconcile the existing sets with the sets
-// requested. If hostSetIds is empty, the target host sets will be cleared. Zero
-// is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, int, error) {
-	const op = "target.(Repository).SetTargetHostSets"
-	if targetId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
-	}
-	if targetVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
-	}
-	t := allocTargetView()
-	t.PublicId = targetId
-	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
-	}
-
-	// NOTE: calculating that to set can safely happen outside of the write
-	// transaction since we're using targetVersion to ensure that the only
-	// operate on the same set of data from these queries that calculate the
-	// set.
-
-	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
-	foundThs, err := fetchSets(ctx, r.reader, targetId)
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing target host sets"))
-	}
-	found := map[string]*TargetSet{}
-	for _, s := range foundThs {
-		found[s.PublicId] = s
-	}
-	addHostSets := make([]interface{}, 0, len(hostSetIds))
-	for _, id := range hostSetIds {
-		if _, ok := found[id]; ok {
-			// found a match, so do nothing (we want to keep it), but remove it
-			// from found
-			delete(found, id)
-			continue
-		}
-		hs, err := NewTargetHostSet(targetId, id)
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
-		}
-		addHostSets = append(addHostSets, hs)
-	}
-	deleteHostSets := make([]interface{}, 0, len(hostSetIds))
-	if len(found) > 0 {
-		for _, s := range found {
-			hs, err := NewTargetHostSet(targetId, s.PublicId)
-			if err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(" unable to create in memory target host set"))
-			}
-			deleteHostSets = append(deleteHostSets, hs)
-		}
-	}
-	if len(addHostSets) == 0 && len(deleteHostSets) == 0 {
-		return foundThs, db.NoRowsAffected, nil
-	}
-
-	var metadata oplog.Metadata
-	var target interface{}
-	switch t.Type {
-	case TcpTargetType.String():
-		tcpT := allocTcpTarget()
-		tcpT.PublicId = t.PublicId
-		tcpT.Version = targetVersion + 1
-		target = &tcpT
-		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
-	default:
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
-	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-
-	var totalRowsAffected int
-	var currentHostSets []*TargetSet
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 2)
-			targetTicket, err := w.GetTicket(target)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
-			}
-			updatedTarget := target.(Cloneable).Clone()
-			var targetOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
-			}
-			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("set target host sets: updated target and %d rows updated", rowsUpdated))
-			}
-			msgs = append(msgs, &targetOplogMsg)
-
-			// Write the new ones in
-			if len(addHostSets) > 0 {
-				hostSetOplogMsgs := make([]*oplog.Message, 0, len(addHostSets))
-				if err := w.CreateItems(ctx, addHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add target host sets"))
-				}
-				totalRowsAffected += len(addHostSets)
-				msgs = append(msgs, hostSetOplogMsgs...)
-				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
-			}
-
-			// Anything we didn't take out of found needs to be removed
-			if len(deleteHostSets) > 0 {
-				hostSetOplogMsgs := make([]*oplog.Message, 0, len(deleteHostSets))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteHostSets, db.NewOplogMsgs(&hostSetOplogMsgs))
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete target host set"))
-				}
-				if rowsDeleted != len(deleteHostSets) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteHostSets)))
-				}
-				totalRowsAffected += rowsDeleted
-				msgs = append(msgs, hostSetOplogMsgs...)
-				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
-			}
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
-			}
-
-			currentHostSets, err = fetchSets(ctx, reader, targetId)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after set"))
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
-	}
-	return currentHostSets, totalRowsAffected, nil
-}
-
-func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*CredentialLibrary, error) {
-	const op = "target.fetchLibraries"
-	var libraries []*CredentialLibrary
-	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	if len(libraries) == 0 {
-		return nil, nil
-	}
-	return libraries, nil
+	return returnedTarget.(Target), hostSets, credLibs, rowsUpdated, nil
 }

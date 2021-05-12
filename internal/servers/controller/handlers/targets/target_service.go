@@ -204,7 +204,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.getFromRepo(ctx, req.GetId())
+	t, ts, _, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.createInRepo(ctx, req.GetItem())
+	t, ts, _, err := s.createInRepo(ctx, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	t, ts, _, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, _, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, _, err := s.setInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +410,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, _, err := s.removeInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +485,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSets, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, hostSets, _, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -715,25 +715,25 @@ HostSetIterationLoop:
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*target.TargetSet, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	u, m, err := repo.LookupTarget(ctx, id)
+	u, hs, cl, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+			return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if u == nil {
-		return nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
+		return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
-	return u, m, nil
+	return u, hs, cl, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []*target.TargetSet, error) {
+func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	const op = "targets.(Service).createInRepo"
 	opts := []target.Option{target.WithName(item.GetName().GetValue())}
 	if item.GetDescription() != nil {
@@ -750,30 +750,30 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
 	}
 	u, err := target.NewTcpTarget(item.GetScopeId(), opts...)
 	if err != nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	out, m, err := repo.CreateTcpTarget(ctx, u)
+	out, hs, cl, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []*target.TargetSet, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	const op = "targets.(Service).updateInRepo"
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -793,7 +793,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	tcpAttrs := &pb.TcpTargetAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), tcpAttrs); err != nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if tcpAttrs.GetDefaultPort().GetValue() != 0 {
 		opts = append(opts, target.WithDefaultPort(tcpAttrs.GetDefaultPort().GetValue()))
@@ -801,25 +801,25 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	version := item.GetVersion()
 	u, err := target.NewTcpTarget(scopeId, opts...)
 	if err != nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
-		return nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
+		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
+	out, hs, cl, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
-		return nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
+		return nil, nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -850,63 +850,63 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.
 	return ul, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, error) {
+func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
+	out, hs, cl, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
 	if out == nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, error) {
+func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	const op = "targets.(Service).setInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
+	_, _, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)
 	}
 
-	out, m, err := repo.LookupTarget(ctx, targetId)
+	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, error) {
+func (s Service) removeInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	const op = "targets.(Service).removeInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	_, err = repo.DeleteTargeHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sets from target: %v.", err)
 	}
-	out, m, err := repo.LookupTarget(ctx, targetId)
+	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type, lookupOpt ...target.Option) auth.VerifyResults {
@@ -938,7 +938,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 			res.Error = err
 			return res
 		}
-		t, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
+		t, _, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
 			// TODO: Fix this with new/better error handling
 			if strings.Contains(err.Error(), "more than one row returned by a subquery") {

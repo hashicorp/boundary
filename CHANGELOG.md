@@ -52,11 +52,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   to top-level fields in the response.
 * cli/api/sdk: Add support to request additional OIDC claims scope values from
   the OIDC provider when making an authentication request.
-  ([PR](https://github.com/hashicorp/boundary/pull/1175)). 
+  ([PR](https://github.com/hashicorp/boundary/pull/1175)).
 
   By default, Boundary only requests the "openid" claims scope value. Many
   providers, like Okta and Auth0 for example, will not return the standard claims
-  of email and name when you request the default claims scope (openid). 
+  of email and name when you request the default claims scope (openid).
 
   Boundary uses the standard email and name claims to populate an OIDC
   account's `Email` and `FullName` attributes. If you'd like these account
