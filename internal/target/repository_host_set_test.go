@@ -155,6 +155,37 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			assert.True(proto.Equal(gotTarget.(*TcpTarget), target.(*TcpTarget)))
 		})
 	}
+	t.Run("add-existing", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		cats := static.TestCatalogs(t, conn, staticProj.PublicId, 1)
+		hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 3)
+		hs1 := hsets[0]
+		hs2 := hsets[1]
+		hs3 := hsets[2]
+
+		projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "add-existing")
+		_, gotHostSets, _, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hs1.PublicId})
+		require.NoError(err)
+		assert.Len(gotHostSets, 1)
+		assert.Equal(hs1.PublicId, gotHostSets[0].PublicId)
+
+		// Adding hs1 again should error
+		_, _, _, err = repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 2, []string{hs1.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.NotUnique), err))
+
+		// Adding multiple with hs1 in set should error
+		_, _, _, err = repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 2, []string{hs3.PublicId, hs2.PublicId, hs1.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.NotUnique), err))
+
+		// Previous transactions should have been rolled back and only hs1 should be associated
+		gotHostSets, err = fetchSets(context.Background(), rw, projTarget.PublicId)
+		require.NoError(err)
+		assert.Len(gotHostSets, 1)
+		assert.Equal(hs1.PublicId, gotHostSets[0].PublicId)
+	})
 }
 
 func TestRepository_DeleteTargetHosts(t *testing.T) {
@@ -327,6 +358,38 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+	t.Run("delete-unassociated", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+		hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 3)
+		hs1 := hsets[0]
+		hs2 := hsets[1]
+		hs3 := hsets[2]
+
+		projTarget := TestTcpTarget(t, conn, proj.PublicId, "delete-unassociated")
+		_, gotHostSets, _, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, 1, []string{hs1.PublicId, hs2.PublicId})
+		require.NoError(err)
+		assert.Len(gotHostSets, 2)
+		assert.Equal(hs1.PublicId, gotHostSets[0].PublicId)
+
+		// Deleting an unassociated host set should return an error
+		delCount, err := repo.DeleteTargeHostSets(context.Background(), projTarget.PublicId, 2, []string{hs3.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
+		assert.Equal(0, delCount)
+
+		// Deleting host sets which includes an unassociated host set should return an error
+		delCount, err = repo.DeleteTargeHostSets(context.Background(), projTarget.PublicId, 2, []string{hs1.PublicId, hs2.PublicId, hs3.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
+		assert.Equal(0, delCount)
+
+		// Previous transactions should have been rolled back
+		gotHostSets, err = fetchSets(context.Background(), rw, projTarget.PublicId)
+		require.NoError(err)
+		assert.Len(gotHostSets, 2)
+	})
 }
 
 func TestRepository_SetTargetHostSets(t *testing.T) {
@@ -429,7 +492,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			name:  "remove existing and add users and grps",
 			setup: setupFn,
 			args: args{
-				target:            TestTcpTarget(t, conn, proj.PublicId, "remove existing and add users and grps"),
+				target:            TestTcpTarget(t, conn, proj.PublicId, "remove existing and add host sets"),
 				targetVersion:     2, // yep, since setupFn will increment it to 2
 				hostSetIds:        []string{testHostSetIds[0], testHostSetIds[1]},
 				addToOrigHostSets: false,

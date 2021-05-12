@@ -140,6 +140,31 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			assert.Equal(gotCredLibs, lookupCredLibs)
 		})
 	}
+	t.Run("add-existing", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		projTarget := TestTcpTarget(t, conn, staticProj.PublicId, "add-existing")
+		_, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId})
+		require.NoError(err)
+		assert.Len(gotCredLibs, 1)
+		assert.Equal(lib1.PublicId, gotCredLibs[0].CredentialLibraryId)
+
+		// Adding lib1 again should error
+		_, _, _, err = repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.NotUnique), err))
+
+		// Adding multiple with lib1 in set should error
+		_, _, _, err = repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId, lib2.PublicId, lib1.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.NotUnique), err))
+
+		// Previous transactions should have been rolled back and only lib1 should be associated
+		gotCredLibs, err = fetchLibraries(context.Background(), rw, projTarget.PublicId)
+		require.NoError(err)
+		assert.Len(gotCredLibs, 1)
+		assert.Equal(lib1.PublicId, gotCredLibs[0].CredentialLibraryId)
+	})
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
@@ -297,6 +322,38 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+	t.Run("delete-unassociated", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+		libs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 3)
+		require.Len(libs, 3)
+		lib1 := libs[0]
+		lib2 := libs[1]
+		lib3 := libs[2]
+
+		projTarget := TestTcpTarget(t, conn, proj.PublicId, "add-existing")
+		_, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, 1, []string{lib1.PublicId, lib2.PublicId})
+		require.NoError(err)
+		assert.Len(gotCredLibs, 2)
+
+		// Deleting an unassociated library should return an error
+		delCount, err := repo.DeleteTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib3.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
+		assert.Equal(0, delCount)
+
+		// Deleting libraries which includes an unassociated libary should return an error
+		delCount, err = repo.DeleteTargetCredentialLibraries(context.Background(), projTarget.PublicId, 2, []string{lib1.PublicId, lib2.PublicId, lib3.PublicId})
+		require.Error(err)
+		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
+		assert.Equal(0, delCount)
+
+		// Previous transactions should have been rolled back and only lib1 should be associated
+		gotCredLibs, err = fetchLibraries(context.Background(), rw, projTarget.PublicId)
+		require.NoError(err)
+		assert.Len(gotCredLibs, 2)
+	})
 }
 
 func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
@@ -363,7 +420,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			wantAffectedRows: 0,
 		},
 		{
-			name:  "add-sets",
+			name:  "add-cred-libs",
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
@@ -396,7 +453,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			wantErrCode: errors.VersionMismatch,
 		},
 		{
-			name:  "remove existing and add users and grps",
+			name:  "remove existing and add cred libs",
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
