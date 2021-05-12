@@ -283,7 +283,7 @@ func (s Service) listFromRepo(ctx context.Context, storeId string) ([]*vault.Cre
 	return csl, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (credential.CredentialLibrary, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library, error) {
 	const op = "credentiallibraries.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -299,7 +299,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Credent
 	return cs, err
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.CredentialLibrary) (credential.CredentialLibrary, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.CredentialLibrary) (credential.Library, error) {
 	const op = "credentiallibraries.(Servivce).createInRepo"
 	cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
 	if err != nil {
@@ -319,7 +319,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialLibrary) (credential.CredentialLibrary, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialLibrary) (credential.Library, error) {
 	const op = "credentiallibraries.(Service).updateInRepo"
 	cl, err := toStorageVaultLibrary(projId, item)
 	if err != nil {
@@ -403,10 +403,9 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 	opts = append(opts, auth.WithPin(parentId))
 
-	var cs credential.CredentialStore
 	switch credential.SubtypeFromId(parentId) {
 	case credential.VaultSubtype:
-		cs, err = repo.LookupCredentialStore(ctx, parentId)
+		cs, err := repo.LookupCredentialStore(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return res
@@ -424,7 +423,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in credential.CredentialLibrary, opt ...handlers.Option) (*pb.CredentialLibrary, error) {
+func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibrary, error) {
 	const op = "credentiallibraries.toProto"
 
 	opts := handlers.GetOpts(opt...)

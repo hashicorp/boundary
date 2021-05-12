@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
 type SubType int
@@ -20,18 +19,6 @@ func (t SubType) String() string {
 		return "vault"
 	}
 	return "unknown"
-}
-
-
-// CredentialLibrary contains the common methods across all the different types of credential libraries.
-type CredentialLibrary interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
-	GetStoreId() string
-	GetVersion() uint32
 }
 
 // Subtype uses the provided subtype
