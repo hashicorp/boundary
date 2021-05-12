@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
 type SubType int
@@ -21,19 +20,6 @@ func (t SubType) String() string {
 	}
 	return "unknown"
 }
-
-// AuthMethod contains the common methods across all the different types of auth methods.
-type CredentialStore interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
-	GetScopeId() string
-	GetVersion() uint32
-}
-
-var _ CredentialStore = (*vault.CredentialStore)(nil)
 
 // Subtype uses the provided subtype
 func SubtypeFromType(t string) SubType {

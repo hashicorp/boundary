@@ -305,7 +305,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.
 	return csl, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (credential.CredentialStore, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, error) {
 	const op = "credentialstores.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -321,7 +321,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Credent
 	return cs, err
 }
 
-func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.CredentialStore, error) {
+func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.Store, error) {
 	const op = "credentialstores.(Servivce).createInRepo"
 	cs, err := toStorageVaultStore(projId, item)
 	if err != nil {
@@ -341,7 +341,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialStore) (credential.CredentialStore, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialStore) (credential.Store, error) {
 	const op = "credentialstore.(Service).updateInRepo"
 	cs, err := toStorageVaultStore(projId, item)
 	if err != nil {
@@ -427,7 +427,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in credential.CredentialStore, opt ...handlers.Option) (*pb.CredentialStore, error) {
+func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, error) {
 	const op = "credentialstores.toProto"
 
 	opts := handlers.GetOpts(opt...)
