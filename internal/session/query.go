@@ -248,9 +248,16 @@ with
     select connection_id
       from session_connection_state
     where
+      -- It's the current state
       end_time is null
         and
-      state != 'closed'
+      -- Current state isn't closed state
+      state = 'connected'
+        and
+      -- It's not in limbo between when it moved into this state and when
+      -- it started being reported by the worker, which is roughly every
+      -- 2-3 seconds
+      start_time < now() - interval '10 seconds'
   ),
   connections_to_close as (
     select public_id
