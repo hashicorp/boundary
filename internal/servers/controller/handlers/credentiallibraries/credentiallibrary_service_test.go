@@ -802,4 +802,51 @@ func TestUpdate(t *testing.T) {
 			assert.Nil(t, got)
 		})
 	}
+
+	t.Run("Unsetting request method sets to default", func(t *testing.T) {
+		vl, cleanup := freshLibrary()
+		defer cleanup()
+		require.Equal(t, "GET", vl.GetHttpMethod())
+
+		cl, err := s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
+			Id:         vl.GetPublicId(),
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField, httpRequestBodyField}},
+			Item:       &pb.CredentialLibrary{
+				Version: vl.GetVersion(),
+				Attributes: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"http_method": structpb.NewStringValue("POST"),
+						"http_request_body": structpb.NewStringValue("body"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, cl)
+		require.Equal(t, "POST", cl.GetItem().GetAttributes().GetFields()["http_method"].GetStringValue())
+		require.Equal(t, "body", cl.GetItem().GetAttributes().GetFields()["http_request_body"].GetStringValue())
+
+		// Unsetting method should default to GET but fail because request body is set
+		_, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
+			Id:         vl.GetPublicId(),
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField}},
+			Item:       &pb.CredentialLibrary{
+				Version: cl.GetItem().GetVersion(),
+			},
+		})
+		require.Error(t, err)
+
+		// Unsetting method should default to GET and clear body
+		cl, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
+			Id:         vl.GetPublicId(),
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField, httpRequestBodyField}},
+			Item:       &pb.CredentialLibrary{
+				Version: cl.GetItem().GetVersion(),
+			},
+		})
+		assert.NoError(t, err)
+		require.NotNil(t, cl)
+		assert.Equal(t, "GET", cl.GetItem().GetAttributes().GetFields()["http_method"].GetStringValue())
+		assert.Nil(t, cl.GetItem().GetAttributes().GetFields()["http_request_body"])
+	})
 }
