@@ -264,12 +264,11 @@ with
       from session_connection
     where
       -- Related to the worker that just reported to us
-      server_id = '$1'
+      server_id = $1
         and
       -- These are connection IDs that just got reported to us by the given
-      -- worker, so they should not be considered closed
-      public_id not in ($2)
-        and
+      -- worker, so they should not be considered closed.
+        %s
       -- Only unclosed ones
       public_id in (select connection_id from unclosed_connections)
   )

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -110,6 +111,20 @@ func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, ser
 	if serverId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing server id")
 	}
+
+	args := make([]interface{}, 0, len(foundConns)+1)
+	args = append(args, serverId)
+
+	var publicIdStr string
+	if len(foundConns) > 0 {
+		publicIdStr = `public_id not in (%s) and`
+		params := make([]string, len(foundConns))
+		for i, connId := range foundConns {
+			params[i] = fmt.Sprintf("$%d", i+2) // Add one for server ID, and offsets start at 1
+			args = append(args, connId)
+		}
+		publicIdStr = fmt.Sprintf(publicIdStr, strings.Join(params, ","))
+	}
 	var rowsAffected int
 	_, err := r.writer.DoTx(
 		ctx,
@@ -117,7 +132,7 @@ func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, ser
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			rowsAffected, err = w.Exec(ctx, connectionsToCloseCte, []interface{}{serverId, foundConns})
+			rowsAffected, err = w.Exec(ctx, fmt.Sprintf(connectionsToCloseCte, publicIdStr), args)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
