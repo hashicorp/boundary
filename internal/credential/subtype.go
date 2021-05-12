@@ -22,16 +22,6 @@ func (t SubType) String() string {
 	return "unknown"
 }
 
-// CredentialStore contains the common methods across all the different types of credential store.
-type CredentialStore interface {
-	GetPublicId() string
-	GetCreateTime() *timestamp.Timestamp
-	GetUpdateTime() *timestamp.Timestamp
-	GetName() string
-	GetDescription() string
-	GetScopeId() string
-	GetVersion() uint32
-}
 
 // CredentialLibrary contains the common methods across all the different types of credential libraries.
 type CredentialLibrary interface {
@@ -43,8 +33,6 @@ type CredentialLibrary interface {
 	GetStoreId() string
 	GetVersion() uint32
 }
-
-var _ CredentialStore = (*vault.CredentialStore)(nil)
 
 // Subtype uses the provided subtype
 func SubtypeFromType(t string) SubType {
