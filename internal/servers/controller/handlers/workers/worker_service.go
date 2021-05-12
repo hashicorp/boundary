@@ -76,22 +76,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 
-	sess, err := sessRepo.ListSessions(ctx, session.WithServerId(req.GetWorker().GetPrivateId()))
-	if err != nil {
-		// TODO: Should we error here? I think we should continue on so we can
-		// be sure to send down cancelation information.
-		ws.logger.Error("error looking up worker session status; continuing with sending job status back", "error", err)
-	}
-	// notFoundSessions stores session IDs that we expect to find reported by the
-	// worker but were not; we need to mark them as terminated/closed
-	notFoundSessions := make(map[string]struct{}, len(sess))
-	for _, ses := range sess {
-		notFoundSessions[ses.GetPublicId()] = struct{}{}
-	}
-
-	if len(notFoundSessions) == 0 && len(req.GetJobs()) == 0 {
-		return ret, nil
-	}
+	var foundConns []string
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
@@ -101,14 +86,30 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			if si == nil {
 				return nil, status.Error(codes.Internal, "Error getting session info at status time")
 			}
-			sessionId := si.GetSessionId()
-			delete(notFoundSessions, sessionId)
+
+			// Check connections before potentially bypassing the rest of the
+			// logic in the switch on si.Status.
+			sessConns := si.GetConnections()
+			for _, conn := range sessConns {
+				switch conn.Status {
+				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+					// If it's active, report it as found. Otherwise don't
+					// report as found, so that we should attempt to close it.
+					// Note that unspecified is the default state for the enum
+					// but it's not ever explicitly set by us.
+					foundConns = append(foundConns, conn.GetConnectionId())
+				}
+			}
+
 			switch si.Status {
 			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
 				// No need to see about canceling anything
 				continue
 			}
+
+			sessionId := si.GetSessionId()
 			sessionInfo, _, err := sessRepo.LookupSession(ctx, sessionId)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "Error looking up session with id %s: %v", sessionId, err)
@@ -147,6 +148,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
+	//
 	if len(notFoundSessions) > 0 {
 		// FIXME: Mark these sessions as done -- ensure their connections are closed, etc.
 	}
