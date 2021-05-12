@@ -641,6 +641,50 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "update method",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(httpMethodField),
+				Item: &pb.CredentialLibrary{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+							HttpMethod: wrapperspb.String("pOsT"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.Attributes.Fields["vault_path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
+				return out
+			},
+		},
+		{
+			name: "update request body and method",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(httpRequestBodyField, httpMethodField),
+				Item: &pb.CredentialLibrary{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+							HttpMethod: wrapperspb.String("pOsT"),
+							HttpRequestBody: wrapperspb.String("body"),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.Attributes.Fields["vault_path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
+				out.Attributes.Fields["http_request_body"] = structpb.NewStringValue("body")
+				return out
+			},
+		},
+		{
 			name: "update path",
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(vaultPathField),
@@ -695,38 +739,55 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 
-	// cant update read only fields
 	vl, cleanup := freshLibrary()
 	defer cleanup()
 
-
 	diffStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	roCases := []struct {
+	errCases := []struct {
+		name string
 		path string
 		item *pb.CredentialLibrary
 	}{
 		{
+			name: "request body on get",
+			path: httpRequestBodyField,
+			item: &pb.CredentialLibrary{
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						HttpRequestBody: wrapperspb.String("something"),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			},
+		},
+		{
+			name: "read only type",
 			path: "type",
 			item: &pb.CredentialLibrary{Type: "something"},
 		},
 		{
+			name: "read only store_id",
 			path: "store_id",
 			item: &pb.CredentialLibrary{CredentialStoreId: diffStore.GetPublicId()},
 		},
 		{
+			name: "read only updated_time",
 			path: "updated_time",
 			item: &pb.CredentialLibrary{UpdatedTime: timestamppb.Now()},
 		},
 		{
+			name: "read only created_time",
 			path: "created_time",
 			item: &pb.CredentialLibrary{UpdatedTime: timestamppb.Now()},
 		},
 		{
+			name: "read only authorized actions",
 			path: "authorized actions",
 			item: &pb.CredentialLibrary{AuthorizedActions: append(testAuthorizedActions, "another")},
 		},
 	}
-	for _, tc := range roCases {
+	for _, tc := range errCases {
 		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
 			req := &pbs.UpdateCredentialLibraryRequest{
 				Id:         vl.GetPublicId(),
