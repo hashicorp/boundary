@@ -104,7 +104,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			projTarget := TestTcpTarget(t, conn, staticProj.PublicId, tt.name)
-			gotTarget, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.credLibIds)
+			gotTarget, _, gotCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), projTarget.PublicId, tt.args.targetVersion, tt.args.credLibIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err.Error())
@@ -143,7 +143,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, err := repo.AddTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.AddTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())
@@ -260,7 +260,7 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 					clIds = append(clIds, cl.PublicId)
 				}
 			}
-			_, addedCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
+			_, _, addedCredLibs, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
 			require.NoError(err)
 			assert.Equal(tt.args.createCnt, len(addedCredLibs))
 
@@ -323,7 +323,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			clIds = append(clIds, cl.PublicId)
 		}
 
-		_, created, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
+		_, _, created, err := repo.AddTargetCredentialLibraries(context.Background(), target.GetPublicId(), 1, clIds)
 		require.NoError(t, err)
 		require.Equal(t, 10, len(created))
 		return created
@@ -429,7 +429,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(origCredLibs, lookupCredLibs)
 
-			got, affectedRows, err := repo.SetTargetCredentialLibraries(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
+			_, got, affectedRows, err := repo.SetTargetCredentialLibraries(context.Background(), target.GetPublicId(), tt.args.targetVersion, tt.args.clIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, affectedRows)
@@ -466,7 +466,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	t.Run("missing-target-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, err := repo.SetTargetCredentialLibraries(context.Background(), "", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.SetTargetCredentialLibraries(context.Background(), "", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
@@ -474,7 +474,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	t.Run("target-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		_, _, err := repo.SetTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
+		_, _, _, err := repo.SetTargetCredentialLibraries(context.Background(), "fake-target-id", 1, []string{lib1.PublicId})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())

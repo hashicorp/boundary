@@ -334,7 +334,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
+	t, ts, _, err := s.addInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -850,20 +850,20 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.
 	return ul, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, error) {
+func (s Service) addInRepo(ctx context.Context, targetId string, hostSetId []string, version uint32) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	out, m, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
+	out, hs, cl, err := repo.AddTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetId, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sets to target: %v.", err)
 	}
 	if out == nil {
-		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sets to it.")
 	}
-	return out, m, nil
+	return out, hs, cl, nil
 }
 
 func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.CredentialLibrary, error) {
@@ -872,7 +872,7 @@ func (s Service) setInRepo(ctx context.Context, targetId string, hostSetIds []st
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
+	_, _, _, err = repo.SetTargetHostSets(ctx, targetId, version, strutil.RemoveDuplicates(hostSetIds, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sets in target: %v.", err)

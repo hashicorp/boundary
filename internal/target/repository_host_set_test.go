@@ -103,7 +103,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				hostSetIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
 			}
 
-			gotTarget, gotHostSets, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
+			gotTarget, gotHostSets, _, err := repo.AddTargetHostSets(context.Background(), projTarget.PublicId, tt.args.targetVersion, hostSetIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -271,7 +271,7 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 					hsIds = append(hsIds, hsets[0].PublicId)
 				}
 			}
-			_, addedHostSets, err := repo.AddTargetHostSets(context.Background(), tt.args.target.GetPublicId(), 1, hsIds, tt.args.opt...)
+			_, addedHostSets, _, err := repo.AddTargetHostSets(context.Background(), tt.args.target.GetPublicId(), 1, hsIds, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.args.createCnt, len(addedHostSets))
 
@@ -360,7 +360,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 
 	setupFn := func(target Target) []*TargetSet {
 		hs := createHostSetsFn()
-		_, created, err := repo.AddTargetHostSets(context.Background(), target.GetPublicId(), 1, hs)
+		_, created, _, err := repo.AddTargetHostSets(context.Background(), target.GetPublicId(), 1, hs)
 		require.NoError(t, err)
 		require.Equal(t, 10, len(created))
 		return created
@@ -456,7 +456,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(len(origHostSets), len(lookedUpHs))
 
-			got, affectedRows, err := repo.SetTargetHostSets(context.Background(), tt.args.target.GetPublicId(), tt.args.targetVersion, tt.args.hostSetIds, tt.args.opt...)
+			got, _, affectedRows, err := repo.SetTargetHostSets(context.Background(), tt.args.target.GetPublicId(), tt.args.targetVersion, tt.args.hostSetIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				t.Log(err)

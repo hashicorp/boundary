@@ -15,29 +15,29 @@ import (
 // targetVersion or an error will be returned.   The target and a list of
 // current host set ids will be returned on success. Zero is not a valid value
 // for the WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, error) {
+func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
 	const op = "target.(Repository).AddTargetHostSets"
 	if targetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	if len(hostSetIds) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing host set ids")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing host set ids")
 	}
 	newHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
+			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
 		newHostSets = append(newHostSets, ths)
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -50,13 +50,14 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 	default:
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	var currentHostSets []*TargetSet
+	var currentCredLibs []*CredentialLibrary
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -92,13 +93,17 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current host sets after adds"))
 			}
+			currentCredLibs, err = fetchLibraries(ctx, reader, targetId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current credential libraries after adds"))
+			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("error creating sets"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("error creating sets"))
 	}
-	return updatedTarget.(Target), currentHostSets, nil
+	return updatedTarget.(Target), currentHostSets, currentCredLibs, nil
 }
 
 // DeleteTargeHostSets deletes host sets from a target (targetId). The target's
@@ -198,18 +203,18 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // target host sets as need to reconcile the existing sets with the sets
 // requested. If hostSetIds is empty, the target host sets will be cleared. Zero
 // is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, int, error) {
+func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []*CredentialLibrary, int, error) {
 	const op = "target.(Repository).SetTargetHostSets"
 	if targetId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 
 	// NOTE: calculating that to set can safely happen outside of the write
@@ -220,7 +225,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	foundThs, err := fetchSets(ctx, r.reader, targetId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing target host sets"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for existing target host sets"))
 	}
 	found := map[string]*TargetSet{}
 	for _, s := range foundThs {
@@ -236,7 +241,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 		}
 		hs, err := NewTargetHostSet(targetId, id)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
+			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
 		addHostSets = append(addHostSets, hs)
 	}
@@ -245,13 +250,13 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 		for _, s := range found {
 			hs, err := NewTargetHostSet(targetId, s.PublicId)
 			if err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(" unable to create in memory target host set"))
+				return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(" unable to create in memory target host set"))
 			}
 			deleteHostSets = append(deleteHostSets, hs)
 		}
 	}
 	if len(addHostSets) == 0 && len(deleteHostSets) == 0 {
-		return foundThs, db.NoRowsAffected, nil
+		return foundThs, nil, db.NoRowsAffected, nil
 	}
 
 	var metadata oplog.Metadata
@@ -264,15 +269,16 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 		target = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	default:
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var totalRowsAffected int
 	var currentHostSets []*TargetSet
+	var currentCredLibs []*CredentialLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -327,13 +333,18 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after set"))
 			}
+			currentCredLibs, err = fetchLibraries(ctx, reader, targetId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential libraries after set"))
+			}
+
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return currentHostSets, totalRowsAffected, nil
+	return currentHostSets, currentCredLibs, totalRowsAffected, nil
 }
 
 func fetchSets(ctx context.Context, r db.Reader, targetId string) ([]*TargetSet, error) {

@@ -15,23 +15,23 @@ import (
 // and the list of credential libraries attached to the target, after clIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*CredentialLibrary, error) {
+func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
 	const op = "target.(Repository).AddTargetCredentialLibraries"
 	if targetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 	if len(clIds) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing credential library ids")
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing credential library ids")
 	}
 
 	addCredLibs := make([]interface{}, 0, len(clIds))
 	for _, id := range clIds {
 		cl, err := NewCredentialLibrary(targetId, id)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
+			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory credential library"))
 		}
 		addCredLibs = append(addCredLibs, cl)
 	}
@@ -39,7 +39,7 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -52,14 +52,15 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 	default:
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
+	var hostSets []*TargetSet
 	var credLibs []*CredentialLibrary
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
@@ -95,6 +96,10 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
+			hostSets, err = fetchSets(ctx, reader, targetId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
+			}
 			credLibs, err = fetchLibraries(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve credential libraries after adding"))
@@ -103,9 +108,9 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return updatedTarget.(Target), credLibs, nil
+	return updatedTarget.(Target), hostSets, credLibs, nil
 }
 
 // DeleteTargetCredentialLibraries deletes credential libraries from a target in the repository.
@@ -205,33 +210,33 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 // SetTargetCredentialLibraries will set the target's credential libraries. Set will add
 // and/or delete credential libraries as need to reconcile the existing credential libraries
 // with the request. If clIds is empty, all the credential libraries will be cleared from the target.
-func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*CredentialLibrary, int, error) {
+func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*TargetSet, []*CredentialLibrary, int, error) {
 	const op = "target.(Repository).SetTargetCredentialLibraries"
 	if targetId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
 	}
 
 	changes, err := r.changes(ctx, targetId, clIds)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	if len(changes) == 0 {
 		// Nothing needs to be changed, return early
 		credLibs, err := fetchLibraries(ctx, r.reader, targetId)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		return credLibs, db.NoRowsAffected, nil
+		return nil, credLibs, db.NoRowsAffected, nil
 	}
 
 	var deleteCredLibs, addCredLibs []interface{}
 	for _, c := range changes {
 		cl, err := NewCredentialLibrary(targetId, c.LibraryId)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
+			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
 		}
 		switch c.Action {
 		case "delete":
@@ -244,7 +249,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 	var target interface{}
@@ -256,14 +261,15 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		target = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	default:
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsAffected int
+	var hostSets []*TargetSet
 	var credLibs []*CredentialLibrary
 	_, err = r.writer.DoTx(
 		ctx,
@@ -318,6 +324,10 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
+			hostSets, err = fetchSets(ctx, reader, targetId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
+			}
 			credLibs, err = fetchLibraries(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current target credential libraries after add/delete"))
@@ -326,9 +336,9 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		},
 	)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return credLibs, rowsAffected, nil
+	return hostSets, credLibs, rowsAffected, nil
 }
 
 type change struct {
