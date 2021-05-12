@@ -14,27 +14,6 @@
     background: none;
     padding: 0;
 
-    & :global(.g-btn:nth-of-type(1)) {
-      border-color: var(--boundary);
-      background-color: var(--boundary);
-    }
-
-    /* Asana ticket to address this debt: https://app.asana.com/0/1100423001970639/1200214305924669/f */
-    & :global(.g-btn:nth-of-type(2)) {
-      border: unset;
-
-      &::after {
-        display: inline-block;
-        margin-left: 5px;
-        vertical-align: middle;
-        content: ' ';
-        background-image: url('/img/icon-right-arrow.svg');
-        background-size: 20px 20px;
-        height: 20px;
-        width: 20px;
-      }
-    }
-
     & :global(.carousel) {
       display: flex;
       flex-direction: column-reverse;
