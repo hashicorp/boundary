@@ -273,6 +273,11 @@ with
       -- Only unclosed ones
       public_id in (select connection_id from unclosed_connections)
   )
-  select * from connections_to_close;
+  update session_connection
+    set
+      closed_reason = 'system error'
+    where
+      public_id in (select public_id from connections_to_close)
+  returning public_id
   `
 )

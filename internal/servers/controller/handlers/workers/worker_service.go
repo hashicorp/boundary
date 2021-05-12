@@ -76,6 +76,11 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 
+	// TODO (jeff, 05-2021): We should possibly list all connections here with
+	// their statuses, and check those against the found connections below. If
+	// any we think should be closed are marked open by the worker, the worker
+	// should be told to close them.
+
 	var foundConns []string
 
 	for _, jobStatus := range req.GetJobs() {
@@ -148,9 +153,13 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	//
-	if len(notFoundSessions) > 0 {
-		// FIXME: Mark these sessions as done -- ensure their connections are closed, etc.
+	// Run our connection cleanup function
+	closedConns, err := sessRepo.CloseDeadConnectionsOnWorkerReport(ctx, req.Worker.PrivateId, foundConns)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
+	}
+	if closedConns > 0 {
+		ws.logger.Info("marked unclaimed connections as closed", "server_id", req.Worker.PrivateId, "count", closedConns)
 	}
 
 	return ret, nil

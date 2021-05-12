@@ -95,6 +95,41 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 	return rowsDeleted, nil
 }
 
+// CloseDeadConnectionsOnWorkerReport will run the connectionsToClose CTE to
+// look for connections that should be marked closed because they are no longer
+// claimed by a server. This does notdetect connections where the server is no
+// longer reporting status; that's for a different CTE to be called by a
+// heartbeat detector.
+//
+// The foundConns input should be the currently-claimed connections; the CTE
+// uses a NOT IN clause to ensure these are excluded. It is not an error for
+// this to be empty as the worker could claim no connections; in that case all
+// connections will immediately transition to closed.
+func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, serverId string, foundConns []string) (int, error) {
+	const op = "session.(Repository).CloseDeadConnectionsOnWorkerReport"
+	if serverId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing server id")
+	}
+	var rowsAffected int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(ctx, connectionsToCloseCte, []interface{}{serverId, foundConns})
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op)
+	}
+	return rowsAffected, nil
+}
+
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
 	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState
