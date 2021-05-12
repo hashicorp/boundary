@@ -225,11 +225,15 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 	}
 	if len(changes) == 0 {
 		// Nothing needs to be changed, return early
+		hostSets, err := fetchSets(ctx, r.reader, targetId)
+		if err != nil {
+			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
 		credLibs, err := fetchLibraries(ctx, r.reader, targetId)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		return nil, credLibs, db.NoRowsAffected, nil
+		return hostSets, credLibs, db.NoRowsAffected, nil
 	}
 
 	var deleteCredLibs, addCredLibs []interface{}
