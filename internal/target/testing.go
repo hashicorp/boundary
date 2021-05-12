@@ -35,6 +35,16 @@ func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Opt
 		err := rw.CreateItems(context.Background(), newHostSets)
 		require.NoError(err)
 	}
+	if len(opts.withCredentialLibraries) > 0 {
+		newCredLibs := make([]interface{}, 0, len(opts.withCredentialLibraries))
+		for _, cl := range opts.withCredentialLibraries {
+			newCl, err := NewCredentialLibrary(target.PublicId, cl)
+			require.NoError(err)
+			newCredLibs = append(newCredLibs, newCl)
+		}
+		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
 	return target
 }
 

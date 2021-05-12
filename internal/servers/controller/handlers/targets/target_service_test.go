@@ -534,7 +534,7 @@ func TestUpdate(t *testing.T) {
 	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar, target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
+	gtar, _, _, err := repo.CreateTcpTarget(context.Background(), tar, target.WithHostSets([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 	require.NoError(t, err)
 	tar = gtar.(*target.TcpTarget)
 
@@ -542,7 +542,7 @@ func TestUpdate(t *testing.T) {
 
 	resetTarget := func() {
 		version++
-		_, _, _, err = repo.UpdateTcpTarget(context.Background(), tar, version, []string{"Name", "Description"})
+		_, _, _, _, err = repo.UpdateTcpTarget(context.Background(), tar, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset target.")
 		version++
 	}
@@ -892,7 +892,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	tar, err := target.NewTcpTarget(proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar.DefaultPort = 2
 	require.NoError(t, err)
-	gtar, _, err := repo.CreateTcpTarget(context.Background(), tar)
+	gtar, _, _, err := repo.CreateTcpTarget(context.Background(), tar)
 	require.NoError(t, err)
 
 	tested, err := testService(t, conn, kms, wrapper)
