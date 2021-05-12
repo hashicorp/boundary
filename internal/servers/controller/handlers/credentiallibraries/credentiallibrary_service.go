@@ -3,6 +3,7 @@ package credentiallibraries
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
@@ -18,18 +19,15 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
-	addressField        = "attributes.address"
-	vaultTokenField     = "attributes.vault_token"
-	vaultTokenHmacField = "attributes.vault_token_hmac"
-	caCertsField        = "attributes.vault_ca_cert"
-	clientCertField     = "attributes.client_certificate"
-	clientCertKeyField  = "attributes.certificate_key"
+	vaultPathField       = "attributes.vault_path"
+	httpMethodField      = "attributes.http_method"
+	httpRequestBodyField = "attributes.http_request_body"
 )
 
 var (
@@ -60,7 +58,7 @@ func init() {
 	}
 }
 
-// Service handles request as described by the pbs.CredentialStoreServiceServer interface.
+// Service handles request as described by the pbs.CredentialLibraryServiceServer interface.
 type Service struct {
 	pbs.UnimplementedCredentialLibraryServiceServer
 
@@ -68,7 +66,7 @@ type Service struct {
 	repoFn    common.VaultCredentialRepoFactory
 }
 
-// NewService returns a credential store service which handles credential store related requests to boundary.
+// NewService returns a credential library service which handles credential library related requests to boundary.
 func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
 	const op = "credentiallibraries.NewService"
 	if iamRepo == nil {
@@ -214,13 +212,13 @@ func (s Service) CreateCredentialLibrary(ctx context.Context, req *pbs.CreateCre
 
 	return &pbs.CreateCredentialLibraryResponse{
 		Item: item,
-		Uri:  fmt.Sprintf("credential-stores/%s", item.GetId()),
+		Uri:  fmt.Sprintf("credential-libraries/%s", item.GetId()),
 	}, nil
 }
 
 // UpdateCredentialLibrary implements the interface pbs.CredentialLibraryServiceServer.
 func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCredentialLibraryRequest) (*pbs.UpdateCredentialLibraryResponse, error) {
-	const op = "credentialstore.(Service).UpdateCredentialLibrary"
+	const op = "credentiallibraries.(Service).UpdateCredentialLibrary"
 
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -296,7 +294,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Credent
 		return nil, errors.Wrap(err, op)
 	}
 	if cs == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("credential store %q not found", id))
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
 	}
 	return cs, err
 }
@@ -313,16 +311,16 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	}
 	out, err := repo.CreateCredentialLibrary(ctx, scopeId, cl)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create credential store"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create credential library"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential store but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential library but no error returned from repository.")
 	}
 	return out, nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialLibrary) (credential.CredentialLibrary, error) {
-	const op = "credentialstore.(Service).updateInRepo"
+	const op = "credentiallibraries.(Service).updateInRepo"
 	cl, err := toStorageVaultLibrary(projId, item)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
@@ -339,10 +337,10 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	out, rowsUpdated, err := repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update credential library"))
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Credential Store %q doesn't exist or incorrect version provided.", id)
+		return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
 }
@@ -358,7 +356,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete credential store"))
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete credential library"))
 	}
 	return rows > 0, nil
 }
@@ -380,44 +378,49 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	default:
 		opts = append(opts, auth.WithId(id))
 
-		var cl credential.CredentialLibrary
-		var err error
 		switch credential.SubtypeFromId(id) {
 		case credential.VaultSubtype:
-			cl, err = repo.LookupCredentialLibrary(ctx, id)
+			cl, err := repo.LookupCredentialLibrary(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cl == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cl.GetStoreId()
 		default:
 			res.Error = errors.New(errors.InvalidParameter, op, "unrecognized credential library subtype from id")
 			return res
 		}
-		if err != nil {
-			res.Error = err
-			return res
-		}
-		if cl == nil {
-			res.Error = handlers.NotFoundError()
-			return res
-		}
-		parentId = cl.GetStoreId()
 	}
+
+	if parentId == "" {
+		res.Error = errors.New(errors.RecordNotFound, op, "unable to find credential store for provided library")
+		return res
+	}
+
+	opts = append(opts, auth.WithPin(parentId))
 
 	var cs credential.CredentialStore
 	switch credential.SubtypeFromId(parentId) {
 	case credential.VaultSubtype:
 		cs, err = repo.LookupCredentialStore(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if cs == nil {
+			res.Error = handlers.NotFoundError()
+			return res
+		}
+		opts = append(opts, auth.WithScopeId(cs.GetScopeId()))
 	default:
 		res.Error = errors.New(errors.InvalidParameter, op, "unrecognized credential store subtype from id")
 		return res
 	}
-	if err != nil {
-		res.Error = err
-		return res
-	}
-	if cs == nil {
-		res.Error = handlers.NotFoundError()
-		return res
-	}
 
-	opts = append(opts, auth.WithScopeId(cs.GetScopeId()), auth.WithScopeId(parentId))
 	return auth.Verify(ctx, opts...)
 }
 
@@ -426,7 +429,7 @@ func toProto(in credential.CredentialLibrary, opt ...handlers.Option) (*pb.Crede
 
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building credential store proto")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building credential library proto")
 	}
 	outputFields := *opts.WithOutputFields
 
@@ -466,11 +469,22 @@ func toProto(in credential.CredentialLibrary, opt ...handlers.Option) (*pb.Crede
 		case credential.VaultSubtype:
 			vaultIn, ok := in.(*vault.CredentialLibrary)
 			if !ok {
-				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential store")
+				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential library")
 			}
-
-			// TODO: Populate the vault specific attributes
-			_ = vaultIn
+			attrs := &pb.VaultCredentialLibraryAttributes{
+				VaultPath: vaultIn.GetVaultPath(),
+			}
+			if vaultIn.GetHttpMethod() != "" {
+				attrs.HttpMethod = wrapperspb.String(vaultIn.GetHttpMethod())
+			}
+			if vaultIn.GetHttpRequestBody() != "" {
+				attrs.HttpRequestBody = wrapperspb.String(vaultIn.GetHttpRequestBody())
+			}
+			var err error
+			out.Attributes, err = handlers.ProtoToStruct(attrs)
+			if err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("failed to convert resource from storage to api"))
+			}
 		}
 	}
 	return &out, nil
@@ -491,9 +505,16 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse the attributes"))
 	}
 
+	if attrs.GetHttpMethod() != nil {
+		opts = append(opts, vault.WithMethod(vault.Method(strings.ToUpper(attrs.GetHttpMethod().GetValue()))))
+	}
+	if attrs.GetHttpRequestBody() != nil {
+		opts = append(opts, vault.WithRequestBody(attrs.GetHttpRequestBody().GetValue()))
+	}
+
 	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetVaultPath(), opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential store for creation"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential library"))
 	}
 	return cs, err
 }
@@ -510,8 +531,8 @@ func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
-			badFields["scope_id"] = "This field must be a valid project scope id."
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetCredentialStoreId()), vault.CredentialStorePrefix) {
+			badFields[globals.CredentialStoreIdField] = "This field must be a valid project scope id."
 		}
 		switch credential.SubtypeFromType(req.GetItem().GetType()) {
 		case credential.VaultSubtype:
@@ -520,8 +541,17 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 				break
 			}
+			if attrs.VaultPath == "" {
+				badFields[vaultPathField] = "This is a required field."
+			}
+			if m := attrs.GetHttpMethod(); m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
+				badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
+			}
+			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
+				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
+			}
 		default:
-			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
+			badFields[globals.TypeField] = "This is a required field and must be a known credential library type."
 		}
 		return badFields
 	})
@@ -533,12 +563,21 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 		switch credential.SubtypeFromId(req.GetId()) {
 		case credential.VaultSubtype:
 			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != credential.VaultSubtype {
-				badFields["type"] = "Cannot modify resource type."
+				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 				break
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.VaultPath == "" {
+				badFields[vaultPathField] = "This is a required field and cannot be set to empty."
+			}
+			if m := attrs.GetHttpMethod(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), httpMethodField) && m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
+				badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
+			}
+			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
+				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
 		}
 		return badFields
@@ -551,9 +590,8 @@ func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
 
 func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
-		!req.GetRecursive() {
-		badFields[globals.ScopeIdField] = "This field must be a valid project scope ID or the list operation must be recursive."
+	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), vault.CredentialStorePrefix) {
+		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)

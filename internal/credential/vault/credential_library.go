@@ -29,13 +29,6 @@ type CredentialLibrary struct {
 // All other options are ignored.
 func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*CredentialLibrary, error) {
 	const op = "vault.NewCredentialLibrary"
-	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
-	}
-	if vaultPath == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault path")
-	}
-
 	opts := getOpts(opt...)
 	if opts.withRequestBody != "" && opts.withMethod != MethodPost {
 		return nil, errors.New(errors.InvalidParameter, op, "a request body is only allowed with an HTTP POST method")
