@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Scan implements sql.Scanner for protobuf Timestamp.
