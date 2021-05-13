@@ -321,7 +321,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialLibrary) (credential.Library, error) {
 	const op = "credentiallibraries.(Service).updateInRepo"
-	cl, err := toStorageVaultLibrary(projId, item)
+	cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -575,7 +575,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 			if m := attrs.GetHttpMethod(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), httpMethodField) && m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
 				badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
 			}
-			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
+			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) == "GET" {
 				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
 		}

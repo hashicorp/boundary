@@ -10,6 +10,15 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/strutil"
+)
+
+const (
+	nameField = "Name"
+	descriptionField = "Description"
+	vaultPathField = "VaultPath"
+	httpMethodField = "HttpMethod"
+	httpRequestBodyField = "HttpRequestBody"
 )
 
 // CreateCredentialLibrary inserts l into the repository and returns a new
@@ -42,6 +51,10 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
 	l = l.clone()
+
+	if l.HttpMethod == "" {
+		l.HttpMethod = string(MethodGet)
+	}
 
 	id, err := newCredentialLibraryId()
 	if err != nil {
@@ -85,7 +98,10 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 // non-empty string, it must be unique within l.StoreId.
 //
 // An attribute of l will be set to NULL in the database if the attribute
-// in l is the zero value and it is included in fieldMaskPaths.
+// in l is the zero value and it is included in fieldMaskPaths except for
+// HttpMethod.  If HttpMethod is in the fieldMaskPath but l.HttpMethod
+// is not set it will be set to the value "GET".  If storage has a value
+// for HttpRequestBody when l.HttpMethod is set to GET the update will fail.
 func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialLibrary, int, error) {
 	const op = "vault.(Repository).UpdateCredentialLibrary"
 	if l == nil {
@@ -103,14 +119,15 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	if scopeId == "" {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
+	l = l.clone()
 
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("Name", f):
-		case strings.EqualFold("Description", f):
-		case strings.EqualFold("VaultPath", f):
-		case strings.EqualFold("HttpMethod", f):
-		case strings.EqualFold("HttpRequestBody", f):
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descriptionField, f):
+		case strings.EqualFold(vaultPathField, f):
+		case strings.EqualFold(httpMethodField, f):
+		case strings.EqualFold(httpRequestBodyField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
 		}
@@ -118,15 +135,22 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":            l.Name,
-			"Description":     l.Description,
-			"VaultPath":       l.VaultPath,
-			"HttpMethod":      l.HttpMethod,
-			"HttpRequestBody": l.HttpRequestBody,
+			nameField:            l.Name,
+			descriptionField:     l.Description,
+			vaultPathField:       l.VaultPath,
+			httpMethodField:      l.HttpMethod,
+			httpRequestBodyField: l.HttpRequestBody,
 		},
 		fieldMaskPaths,
 		nil,
 	)
+
+	if strutil.StrListContains(nullFields, httpMethodField) {
+		dbMask = append(dbMask, httpMethodField)
+		nullFields = strutil.StrListDelete(nullFields, httpMethodField)
+		l.HttpMethod = string(MethodGet)
+	}
+
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
 	}

@@ -601,7 +601,6 @@ func TestUpdate(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 
 	freshLibrary := func() (*vault.CredentialLibrary, func()) {
-		t.Helper()
 		vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 		clean := func() {
 			_, err := s.DeleteCredentialLibrary(ctx, &pbs.DeleteCredentialLibraryRequest{Id: vl.GetPublicId()})
@@ -749,19 +748,6 @@ func TestUpdate(t *testing.T) {
 		item *pb.CredentialLibrary
 	}{
 		{
-			name: "request body on get",
-			path: httpRequestBodyField,
-			item: &pb.CredentialLibrary{
-				Attributes: func() *structpb.Struct {
-					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						HttpRequestBody: wrapperspb.String("something"),
-					})
-					require.NoError(t, err)
-					return attrs
-				}(),
-			},
-		},
-		{
 			name: "read only type",
 			path: "type",
 			item: &pb.CredentialLibrary{Type: "something"},
@@ -788,7 +774,7 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 	for _, tc := range errCases {
-		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.UpdateCredentialLibraryRequest{
 				Id:         vl.GetPublicId(),
 				Item:       tc.item,
@@ -803,19 +789,52 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 
-	t.Run("Unsetting request method sets to default", func(t *testing.T) {
+	t.Run("request body and method interactions", func(t *testing.T) {
 		vl, cleanup := freshLibrary()
 		defer cleanup()
 		require.Equal(t, "GET", vl.GetHttpMethod())
 
+		// Cannot set request body on GET request
 		cl, err := s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
 			Id:         vl.GetPublicId(),
-			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField, httpRequestBodyField}},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpRequestBodyField}},
+			Item:       &pb.CredentialLibrary{
+				Version: vl.GetVersion(),
+				Attributes: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"http_request_body": structpb.NewStringValue("body"),
+					},
+				},
+			},
+		})
+		require.Error(t, err)
+		require.Nil(t, cl)
+
+		// Can set POST when there is no request body
+		cl, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
+			Id:         vl.GetPublicId(),
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField}},
 			Item:       &pb.CredentialLibrary{
 				Version: vl.GetVersion(),
 				Attributes: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"http_method": structpb.NewStringValue("POST"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, cl)
+		require.Equal(t, "POST", cl.GetItem().GetAttributes().GetFields()["http_method"].GetStringValue())
+
+		// Can set request body on POST
+		cl, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
+			Id:         vl.GetPublicId(),
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpRequestBodyField}},
+			Item:       &pb.CredentialLibrary{
+				Version: cl.Item.GetVersion(),
+				Attributes: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
 						"http_request_body": structpb.NewStringValue("body"),
 					},
 				},
@@ -826,7 +845,7 @@ func TestUpdate(t *testing.T) {
 		require.Equal(t, "POST", cl.GetItem().GetAttributes().GetFields()["http_method"].GetStringValue())
 		require.Equal(t, "body", cl.GetItem().GetAttributes().GetFields()["http_request_body"].GetStringValue())
 
-		// Unsetting method should default to GET but fail because request body is set
+		// Cannot unset POST method (defaulting to GET) when request body is set
 		_, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
 			Id:         vl.GetPublicId(),
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField}},
@@ -836,7 +855,7 @@ func TestUpdate(t *testing.T) {
 		})
 		require.Error(t, err)
 
-		// Unsetting method should default to GET and clear body
+		// Can clear request body and method (defaulting to GET) in the same request
 		cl, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
 			Id:         vl.GetPublicId(),
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField, httpRequestBodyField}},
