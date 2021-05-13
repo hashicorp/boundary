@@ -994,7 +994,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 					}
 					assert.Equal(args.wantTermed[found.PublicId].String(), found.TerminationReason)
 					t.Logf("terminated %s has a connection limit of %d", found.PublicId, found.ConnectionLimit)
-					conn, err := repo.ListConnections(context.Background(), found.PublicId)
+					conn, err := repo.ListConnectionsBySessionId(context.Background(), found.PublicId)
 					require.NoError(err)
 					for _, sc := range conn {
 						c, cs, err := repo.LookupConnection(context.Background(), sc.PublicId)
@@ -1007,7 +1007,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 				} else {
 					t.Logf("not terminated %s has a connection limit of %d", found.PublicId, found.ConnectionLimit)
 					assert.Equal("", found.TerminationReason)
-					conn, err := repo.ListConnections(context.Background(), found.PublicId)
+					conn, err := repo.ListConnectionsBySessionId(context.Background(), found.PublicId)
 					require.NoError(err)
 					for _, sc := range conn {
 						cs, err := fetchConnectionStates(context.Background(), rw, sc.PublicId)
