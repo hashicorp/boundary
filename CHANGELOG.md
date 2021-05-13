@@ -4,6 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* sessions: Clean up connections that are dangling after a worker dies (is
+  restarted, powered off, etc.) This fixes some cases where a session never goes
+  to `terminated` state because connections are not properly marked closed.
+  ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
+  2](https://github.com/hashicorp/boundary/issues/1055), [PR]())
+
 ## 0.2.1 (2021/05/05)
 
 ### Deprecations/Changes

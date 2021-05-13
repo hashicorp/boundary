@@ -49,7 +49,13 @@ func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt 
 	const op = "session.(Repository).ListConnections"
 	opts := getOpts(opt...)
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opts) // pass options, so WithLimit and WithOrder are supported
+	var args []interface{}
+	if sessionId != "" {
+		args = append(args, sessionId)
+	}
+	// The where clause will be ignored if args is empty, if we don't want to
+	// scope to a specific session ID
+	err := r.list(ctx, &connections, "session_id = ?", args, opts) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}

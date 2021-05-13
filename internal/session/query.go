@@ -252,7 +252,7 @@ with
       end_time is null
         and
       -- Current state isn't closed state
-      state = 'connected'
+      (state = 'authorized' or state = 'connected')
         and
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
@@ -277,6 +277,6 @@ with
       closed_reason = 'system error'
     where
       public_id in (select public_id from connections_to_close)
-  returning public_id
+    returning public_id
   `
 )
