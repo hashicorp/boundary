@@ -7,29 +7,28 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_TimestampValue(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		ts := Timestamp{Timestamp: &timestamp.Timestamp{Seconds: 0, Nanos: 0}}
 		v, err := ts.Value()
-		assert.Nil(err)
-		assert.Equal(v, utcDate(1970, 1, 1))
+		require.Nil(t, err)
+		assert.Equal(t, v, utcDate(1970, 1, 1))
 	})
 	t.Run("valid nil ts", func(t *testing.T) {
 		var ts *Timestamp
 		v, err := ts.Value()
-		assert.Nil(err)
-		assert.Equal(v, nil)
+		require.Nil(t, err)
+		assert.Equal(t, v, nil)
 	})
 	t.Run("invalid ts", func(t *testing.T) {
 		ts := Timestamp{Timestamp: &timestamp.Timestamp{Seconds: maxValidSeconds, Nanos: 0}}
 		v, err := ts.Value()
-		assert.True(err != nil)
-		assert.Equal("timestamp: seconds:253402300800 after 10000-01-01", err.Error())
-		assert.Equal(v, utcDate(10000, 1, 1))
+		require.NoError(t, err)
+		assert.Equal(t, v, utcDate(10000, 1, 1))
 	})
 }
 
