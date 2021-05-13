@@ -52,7 +52,7 @@ func WithOrderByCreateTime(orderBy db.OrderBy) Option {
 	}
 }
 
-// WithScopeId allows specifying a scope ID criteria for the function.
+// WithScopeIds allows specifying a scope ID criteria for the function.
 func WithScopeIds(scopeIds []string) Option {
 	return func(o *options) {
 		o.withScopeIds = scopeIds

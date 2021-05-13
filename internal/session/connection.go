@@ -52,7 +52,7 @@ var (
 	_ db.VetForWriter = (*Connection)(nil)
 )
 
-// New creates a new in memory session.  No options
+// NewConnection creates a new in memory connection.  No options
 // are currently supported.
 func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, _ ...Option) (*Connection, error) {
 	const op = "session.NewConnection"
@@ -69,12 +69,12 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 	return &c, nil
 }
 
-// AllocConnection will allocate a Connection
+// AllocConnection will allocate a Connection.
 func AllocConnection() Connection {
 	return Connection{}
 }
 
-// Clone creates a clone of the Connection
+// Clone creates a clone of the Connection.
 func (c *Connection) Clone() interface{} {
 	clone := &Connection{
 		PublicId:           c.PublicId,
