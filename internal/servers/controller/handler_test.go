@@ -106,6 +106,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/auth-methods/someid:authenticate:callback",
 			"v1/auth-tokens",
 			"v1/auth-tokens/someid",
+			"v1/credential-stores",
+			"v1/credential-stores/someid",
 			"v1/groups",
 			"v1/groups/someid",
 			"v1/host-catalogs",
@@ -130,6 +132,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			// Creation end points
 			"v1/accounts",
 			"v1/auth-methods",
+			"v1/credential-stores",
 			"v1/groups",
 			"v1/host-catalogs",
 			"v1/host-sets",
@@ -169,6 +172,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/accounts/someid",
 			"v1/auth-methods/someid",
 			"v1/auth-tokens/someid",
+			"v1/credential-stores/someid",
 			"v1/groups/someid",
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",
@@ -181,6 +185,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 		"PATCH": {
 			"v1/accounts/someid",
 			"v1/auth-methods/someid",
+			"v1/credential-stores/someid",
 			"v1/groups/someid",
 			"v1/host-catalogs/someid",
 			"v1/host-sets/someid",

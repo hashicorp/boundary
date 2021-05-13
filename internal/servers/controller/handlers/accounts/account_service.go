@@ -79,10 +79,10 @@ var (
 
 func init() {
 	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(&pwstore.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pwstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.PasswordAccountAttributes{}}); err != nil {
 		panic(err)
 	}
-	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.Account{}, &pb.Account{}, &pb.OidcAccountAttributes{}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.OidcAccountAttributes{}}); err != nil {
 		panic(err)
 	}
 }

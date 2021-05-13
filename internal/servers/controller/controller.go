@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -41,14 +42,15 @@ type Controller struct {
 	workerStatusUpdateTimes *sync.Map
 
 	// Repo factory methods
-	AuthTokenRepoFn    common.AuthTokenRepoFactory
-	IamRepoFn          common.IamRepoFactory
-	OidcRepoFn         common.OidcAuthRepoFactory
-	PasswordAuthRepoFn common.PasswordAuthRepoFactory
-	ServersRepoFn      common.ServersRepoFactory
-	SessionRepoFn      common.SessionRepoFactory
-	StaticHostRepoFn   common.StaticRepoFactory
-	TargetRepoFn       common.TargetRepoFactory
+	AuthTokenRepoFn       common.AuthTokenRepoFactory
+	VaultCredentialRepoFn common.VaultCredentialRepoFactory
+	IamRepoFn             common.IamRepoFactory
+	OidcRepoFn            common.OidcAuthRepoFactory
+	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
+	ServersRepoFn         common.ServersRepoFactory
+	SessionRepoFn         common.SessionRepoFactory
+	StaticHostRepoFn      common.StaticRepoFactory
+	TargetRepoFn          common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -122,6 +124,9 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
+	}
+	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
+		return vault.NewRepository(dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)

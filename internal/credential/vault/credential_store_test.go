@@ -35,10 +35,11 @@ func TestCredentialStore_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *CredentialStore
-		wantErr bool
+		name          string
+		args          args
+		want          *CredentialStore
+		wantErr       bool
+		wantCreateErr bool
 	}{
 		{
 			name: "missing-scope-id",
@@ -46,8 +47,13 @@ func TestCredentialStore_New(t *testing.T) {
 				vaultAddress: "https://vault.consul.service",
 				token:        []byte("token"),
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CredentialStore{
+				inputToken: []byte("token"),
+				CredentialStore: &store.CredentialStore{
+					VaultAddress: "https://vault.consul.service",
+				},
+			},
+			wantCreateErr: true,
 		},
 		{
 			name: "missing-vault-address",
@@ -55,8 +61,13 @@ func TestCredentialStore_New(t *testing.T) {
 				scopeId: scope.PublicId,
 				token:   []byte("token"),
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CredentialStore{
+				inputToken: []byte("token"),
+				CredentialStore: &store.CredentialStore{
+					ScopeId: scope.PublicId,
+				},
+			},
+			wantCreateErr: true,
 		},
 		{
 			name: "missing-vault-token",
@@ -64,8 +75,14 @@ func TestCredentialStore_New(t *testing.T) {
 				scopeId:      scope.PublicId,
 				vaultAddress: "https://vault.consul.service",
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					ScopeId:      scope.PublicId,
+					VaultAddress: "https://vault.consul.service",
+				},
+			},
+			// The DB does not require there be at least 1 token for a store.
+			wantCreateErr: false,
 		},
 		{
 			name: "valid-no-options",
@@ -241,7 +258,11 @@ func TestCredentialStore_New(t *testing.T) {
 			got.PublicId = id
 
 			err2 := rw.Create(context.Background(), got)
-			assert.NoError(err2)
+			if tt.wantCreateErr {
+				assert.Error(err2)
+			} else {
+				assert.NoError(err2)
+			}
 		})
 	}
 }
