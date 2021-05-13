@@ -252,7 +252,7 @@ with
       end_time is null
         and
       -- Current state isn't closed state
-      (state = 'authorized' or state = 'connected')
+      state in ('authorized', 'connected')
         and
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
