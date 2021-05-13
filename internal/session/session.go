@@ -213,9 +213,6 @@ func (s *Session) Clone() interface{} {
 func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "session.(Session).VetForWrite"
 	opts := db.GetOpts(opt...)
-	if opts.WithSkipVetForWrite {
-		return nil
-	}
 	if s.PublicId == "" {
 		return errors.New(errors.InvalidParameter, op, "missing public id")
 	}

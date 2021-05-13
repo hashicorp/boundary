@@ -285,7 +285,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	// db to manage them
 	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
 
-	if !opts.WithSkipVetForWrite {
+	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
 				return errors.Wrap(err, op)
@@ -455,7 +455,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
-	if !opts.WithSkipVetForWrite {
+	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
 				return NoRowsAffected, errors.Wrap(err, op)

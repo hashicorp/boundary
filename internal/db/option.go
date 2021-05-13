@@ -35,7 +35,7 @@ type Options struct {
 	// WithVersion must be accessible from other packages.
 	WithVersion *uint32
 
-	WithSkipVetForWrite bool
+	withSkipVetForWrite bool
 
 	withWhereClause     string
 	withWhereClauseArgs []interface{}
@@ -138,7 +138,7 @@ func WithVersion(version *uint32) Option {
 // testing lower-level SQL triggers and constraints
 func WithSkipVetForWrite(enable bool) Option {
 	return func(o *Options) {
-		o.WithSkipVetForWrite = enable
+		o.withSkipVetForWrite = enable
 	}
 }
 
