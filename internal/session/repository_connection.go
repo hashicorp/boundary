@@ -10,7 +10,7 @@ import (
 )
 
 // LookupConnection will look up a connection in the repository and return the connection
-// with its states.  If the connection is not found, it will return nil, nil, nil.
+// with its states. If the connection is not found, it will return nil, nil, nil.
 // No options are currently supported.
 func (r *Repository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, []*ConnectionState, error) {
 	const op = "session.(Repository).LookupConnection"
@@ -44,7 +44,7 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 	return &connection, states, nil
 }
 
-// ListConnections will sessions.  Supports the WithLimit and WithOrder options.
+// ListConnections will connections. Supports the WithLimit and WithOrder options.
 func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
 	const op = "session.(Repository).ListConnections"
 	opts := getOpts(opt...)
