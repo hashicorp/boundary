@@ -7,7 +7,7 @@ alter table session_connection
 -- if server_id goes to null, we mark connections as closed. See
 -- https://hashicorp.atlassian.net/browse/ICU-1495
 alter table session_connection
-  add constraint session_connection_server_id_fkey
+  add constraint server_fkey
     foreign key (server_id)
     references server (private_id)
     on delete set null
