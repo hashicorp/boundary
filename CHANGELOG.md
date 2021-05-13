@@ -10,7 +10,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   restarted, powered off, etc.) This fixes some cases where a session never goes
   to `terminated` state because connections are not properly marked closed.
   ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
-  2](https://github.com/hashicorp/boundary/issues/1055), [PR]())
+  2](https://github.com/hashicorp/boundary/issues/1055),
+  [PR](https://github.com/hashicorp/boundary/pull/1220))
 
 ## 0.2.1 (2021/05/05)
 
