@@ -440,7 +440,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 
 // AddTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddTargetCredentialLibrariesRequest) (*pbs.AddTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).AddTargetHostSets"
+	const op = "targets.(Service).AddTargetCredentialLibraries"
 
 	if err := validateAddLibrariesRequest(req); err != nil {
 		return nil, err
@@ -478,7 +478,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 
 // SetTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
 func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetTargetCredentialLibrariesRequest) (*pbs.SetTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).SetTargetHostSets"
+	const op = "targets.(Service).SetTargetCredentialLibraries"
 
 	if err := validateSetLibrariesRequest(req); err != nil {
 		return nil, err
@@ -516,7 +516,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 
 // RemoveTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.RemoveTargetCredentialLibrariesRequest) (*pbs.RemoveTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).RemoveTargetHostSets"
+	const op = "targets.(Service).RemoveTargetCredentialLibraries"
 
 	if err := validateRemoveLibrariesRequest(req); err != nil {
 		return nil, err

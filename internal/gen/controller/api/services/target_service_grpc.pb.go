@@ -71,28 +71,29 @@ type TargetServiceClient interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error)
-	// AddTargetCredentialLibraries adds Credential Libraries to this Target. The provided request must
-	// include the Target ID to which the Credential Libraries will be added.
-	// All Credential Libraries added to the provided Target must be a child of a Catalog that
-	// is a child of the same scope as this Target. If the scope or Target IDs are
-	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Credential Library is attempted to be added
-	// to a target that is already present on the Target.
+	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
+	// The provided request must include the Target ID to which the Credential
+	// Libraries will be added. All Credential Libraries added to the provided
+	// Target must be a child of a Store that is in the same scope as this
+	// Target. If the scope or Target IDs are missing, malformed, or reference
+	// non-existing resources, an error is returned. An error is returned if a
+	// Credential Library is attempted to be added to a target that is already
+	// present on the Target.
 	AddTargetCredentialLibraries(ctx context.Context, in *AddTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*AddTargetCredentialLibrariesResponse, error)
 	// SetTargetCredentialLibraries sets the Target's Credential Libraries.
 	// Any existing Credential Libraries on the Target are deleted if they are
 	// not included in this request. The provided request must include the scope,
 	// and the Target ID on which the Credential Libraries will be set.  All
-	// Credential Libraries in the request must be a child of a Catalog that is
+	// Credential Libraries in the request must be a child of a Store that is
 	// in the same scope as the provided Target. If any IDs are missing,
 	// malformed, or references a non-existing resource, an error is returned.
 	SetTargetCredentialLibraries(ctx context.Context, in *SetTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*SetTargetCredentialLibrariesResponse, error)
 	// RemoveTargetCredentialLibraries removes the Credential Libraries from the
 	// specified Target. The provided request must include the Target ID for the
-	// Target from which the Credential Libraries will be removed. If the ID is missing,
-	// malformed, or references a non-existing scope or Catalog, an error is
-	// returned.  An error is returned if a Credential Library is attempted to be
-	// removed from the Target when the Target does not have the Credential Library.
+	// Target from which the Credential Libraries will be removed. If the ID is
+	// missing, or malformed, an error is returned.  An error is returned if a
+	// Credential Library is attempted to be removed from the Target when the
+	// Target does not have the Credential Library.
 	RemoveTargetCredentialLibraries(ctx context.Context, in *RemoveTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialLibrariesResponse, error)
 }
 
@@ -269,28 +270,29 @@ type TargetServiceServer interface {
 	// returned.  An error is returned if a Host Set is attempted to be
 	// removed from the Target when the Target does not have the Host Set.
 	RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error)
-	// AddTargetCredentialLibraries adds Credential Libraries to this Target. The provided request must
-	// include the Target ID to which the Credential Libraries will be added.
-	// All Credential Libraries added to the provided Target must be a child of a Catalog that
-	// is a child of the same scope as this Target. If the scope or Target IDs are
-	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Credential Library is attempted to be added
-	// to a target that is already present on the Target.
+	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
+	// The provided request must include the Target ID to which the Credential
+	// Libraries will be added. All Credential Libraries added to the provided
+	// Target must be a child of a Store that is in the same scope as this
+	// Target. If the scope or Target IDs are missing, malformed, or reference
+	// non-existing resources, an error is returned. An error is returned if a
+	// Credential Library is attempted to be added to a target that is already
+	// present on the Target.
 	AddTargetCredentialLibraries(context.Context, *AddTargetCredentialLibrariesRequest) (*AddTargetCredentialLibrariesResponse, error)
 	// SetTargetCredentialLibraries sets the Target's Credential Libraries.
 	// Any existing Credential Libraries on the Target are deleted if they are
 	// not included in this request. The provided request must include the scope,
 	// and the Target ID on which the Credential Libraries will be set.  All
-	// Credential Libraries in the request must be a child of a Catalog that is
+	// Credential Libraries in the request must be a child of a Store that is
 	// in the same scope as the provided Target. If any IDs are missing,
 	// malformed, or references a non-existing resource, an error is returned.
 	SetTargetCredentialLibraries(context.Context, *SetTargetCredentialLibrariesRequest) (*SetTargetCredentialLibrariesResponse, error)
 	// RemoveTargetCredentialLibraries removes the Credential Libraries from the
 	// specified Target. The provided request must include the Target ID for the
-	// Target from which the Credential Libraries will be removed. If the ID is missing,
-	// malformed, or references a non-existing scope or Catalog, an error is
-	// returned.  An error is returned if a Credential Library is attempted to be
-	// removed from the Target when the Target does not have the Credential Library.
+	// Target from which the Credential Libraries will be removed. If the ID is
+	// missing, or malformed, an error is returned.  An error is returned if a
+	// Credential Library is attempted to be removed from the Target when the
+	// Target does not have the Credential Library.
 	RemoveTargetCredentialLibraries(context.Context, *RemoveTargetCredentialLibrariesRequest) (*RemoveTargetCredentialLibrariesResponse, error)
 	mustEmbedUnimplementedTargetServiceServer()
 }

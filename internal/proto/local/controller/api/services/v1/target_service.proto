@@ -149,13 +149,14 @@ service TargetService {
     };
   }
 
-  // AddTargetCredentialLibraries adds Credential Libraries to this Target. The provided request must
-  // include the Target ID to which the Credential Libraries will be added.
-  // All Credential Libraries added to the provided Target must be a child of a Catalog that
-  // is a child of the same scope as this Target. If the scope or Target IDs are
-  // missing, malformed, or reference non-existing resources, an error is
-  // returned. An error is returned if a Credential Library is attempted to be added
-  // to a target that is already present on the Target.
+  // AddTargetCredentialLibraries adds Credential Libraries to this Target.
+  // The provided request must include the Target ID to which the Credential
+  // Libraries will be added. All Credential Libraries added to the provided
+  // Target must be a child of a Store that is in the same scope as this
+  // Target. If the scope or Target IDs are missing, malformed, or reference
+  // non-existing resources, an error is returned. An error is returned if a
+  // Credential Library is attempted to be added to a target that is already
+  // present on the Target.
   rpc AddTargetCredentialLibraries(AddTargetCredentialLibrariesRequest) returns (AddTargetCredentialLibrariesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:add-credential-libraries"
@@ -171,7 +172,7 @@ service TargetService {
   // Any existing Credential Libraries on the Target are deleted if they are
   // not included in this request. The provided request must include the scope,
   // and the Target ID on which the Credential Libraries will be set.  All
-  // Credential Libraries in the request must be a child of a Catalog that is
+  // Credential Libraries in the request must be a child of a Store that is
   // in the same scope as the provided Target. If any IDs are missing,
   // malformed, or references a non-existing resource, an error is returned.
   rpc SetTargetCredentialLibraries(SetTargetCredentialLibrariesRequest) returns (SetTargetCredentialLibrariesResponse) {
@@ -187,10 +188,10 @@ service TargetService {
 
   // RemoveTargetCredentialLibraries removes the Credential Libraries from the
   // specified Target. The provided request must include the Target ID for the
-  // Target from which the Credential Libraries will be removed. If the ID is missing,
-  // malformed, or references a non-existing scope or Catalog, an error is
-  // returned.  An error is returned if a Credential Library is attempted to be
-  // removed from the Target when the Target does not have the Credential Library.
+  // Target from which the Credential Libraries will be removed. If the ID is
+  // missing, or malformed, an error is returned.  An error is returned if a
+  // Credential Library is attempted to be removed from the Target when the
+  // Target does not have the Credential Library.
   rpc RemoveTargetCredentialLibraries(RemoveTargetCredentialLibrariesRequest) returns (RemoveTargetCredentialLibrariesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:remove-credential-libraries"
