@@ -165,7 +165,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId and WithSessionIds options.
+// ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -198,6 +198,10 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			idsInClause, args = append(idsInClause, fmt.Sprintf("$%d", inClauseCnt)), append(args, id)
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
+	}
+	if opts.withServerId != "" {
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("server_id = $%d", inClauseCnt)), append(args, opts.withServerId)
 	}
 
 	var limit string
@@ -388,9 +392,9 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 // * the hasn't expired based on the session.Expiration
 // * number of connections already created is less than session.ConnectionLimit
 // If authorization is success, it creates/stores a new connection in the repo
-// and returns it, along with it's states.  If the authorization fails, it
+// and returns it, along with its states.  If the authorization fails, it
 // an error with Code InvalidSessionState.
-func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
+func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId, workerId string) (*Connection, []*ConnectionState, *ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).AuthorizeConnection"
 	if sessionId == "" {
 		return nil, nil, nil, errors.Wrap(status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
@@ -408,7 +412,7 @@ func (r *Repository) AuthorizeConnection(ctx context.Context, sessionId string) 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId})
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{sessionId, connectionId, workerId})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to authorize connection %s", sessionId)))
 			}

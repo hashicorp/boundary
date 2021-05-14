@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 7003,
+		binarySchemaVersion: 8001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -2975,6 +2975,9 @@ values
     ('connection limit'),
     ('canceled');
 
+-- Note: here, and in the session_connection table, we should add a trigger
+-- ensuring that if server_id goes to null, we mark connections as closed. See
+-- https://hashicorp.atlassian.net/browse/ICU-1495
   create table session (
     public_id wt_public_id primary key,
     -- the user of the session
@@ -3452,6 +3455,7 @@ values
   -- a endpoint for a session. The client initiates the connection to the worker
   -- and the worker initiates the connection to the endpoint.
   -- A session can have zero or more session connections.
+  -- Note: Updated to add server_id, server_type in 801
   create table session_connection (
     public_id wt_public_id primary key,
     session_id wt_public_id not null
@@ -6346,6 +6350,29 @@ create table job (
 		       )
 	  )
 	  select job_plugin_id, job_name, next_scheduled_run from final;
+`),
+			8001: []byte(`
+alter table session_connection
+  add column server_id text;
+
+-- Note: here, and in the session table, we should add a trigger ensuring that
+-- if server_id goes to null, we mark connections as closed. See
+-- https://hashicorp.atlassian.net/browse/ICU-1495
+alter table session_connection
+  add constraint server_fkey
+    foreign key (server_id)
+    references server (private_id)
+    on delete set null
+    on update cascade;
+
+-- We now populate the connection information from existing session information
+update session_connection sc
+set
+  server_id = s.server_id
+from
+  session s
+where
+  sc.session_id = s.public_id;
 `),
 		},
 	}

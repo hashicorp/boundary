@@ -52,15 +52,22 @@ var (
 )
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
+	// TODO: on the worker, if we get errors back from this repeatedly, do we
+	// terminate all sessions since we can't know if they were canceled?
 	ws.logger.Trace("got status request from worker", "name", req.Worker.PrivateId, "address", req.Worker.Address, "jobs", req.GetJobs())
 	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
-	repo, err := ws.serversRepoFn()
+	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
+	sessRepo, err := ws.sessionRepoFn()
+	if err != nil {
+		ws.logger.Error("error getting sessions repo", "error", err)
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to query session status: %v", err)
+	}
 	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := repo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
+	controllers, _, err := serverRepo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
@@ -69,15 +76,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		Controllers: controllers,
 	}
 
-	// Happy path
-	if len(req.GetJobs()) == 0 {
-		return ret, nil
-	}
+	// TODO (jeff, 05-2021): We should possibly list all connections here with
+	// their statuses, and check those against the found connections below. If
+	// any we think should be closed are marked open by the worker, the worker
+	// should be told to close them.
 
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
-	}
+	var foundConns []string
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
@@ -87,12 +91,29 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			if si == nil {
 				return nil, status.Error(codes.Internal, "Error getting session info at status time")
 			}
+
+			// Check connections before potentially bypassing the rest of the
+			// logic in the switch on si.Status.
+			sessConns := si.GetConnections()
+			for _, conn := range sessConns {
+				switch conn.Status {
+				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+					// If it's active, report it as found. Otherwise don't
+					// report as found, so that we should attempt to close it.
+					// Note that unspecified is the default state for the enum
+					// but it's not ever explicitly set by us.
+					foundConns = append(foundConns, conn.GetConnectionId())
+				}
+			}
+
 			switch si.Status {
 			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
 				// No need to see about canceling anything
 				continue
 			}
+
 			sessionId := si.GetSessionId()
 			sessionInfo, _, err := sessRepo.LookupSession(ctx, sessionId)
 			if err != nil {
@@ -131,6 +152,16 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 			}
 		}
 	}
+
+	// Run our connection cleanup function
+	closedConns, err := sessRepo.CloseDeadConnectionsOnWorkerReport(ctx, req.Worker.PrivateId, foundConns)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
+	}
+	if closedConns > 0 {
+		ws.logger.Info("marked unclaimed connections as closed", "server_id", req.Worker.PrivateId, "count", closedConns)
+	}
+
 	return ret, nil
 }
 
@@ -302,7 +333,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, authzSummary, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId())
+	connectionInfo, connStates, authzSummary, err := sessRepo.AuthorizeConnection(ctx, req.GetSessionId(), req.GetWorkerId())
 	if err != nil {
 		return nil, err
 	}
