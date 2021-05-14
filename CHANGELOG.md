@@ -12,7 +12,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
   2](https://github.com/hashicorp/boundary/issues/1055),
   [PR](https://github.com/hashicorp/boundary/pull/1220))
-* sessions: Add some missing API-level checks when session cancelation was
+* sessions: Add some missing API-level checks when session cancellation was
   requested. It's much easier than interpreting the domain-level check failures.
   [PR](https://github.com/hashicorp/boundary/pull/1223))
 
@@ -326,7 +326,7 @@ for more details.
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
 * server: When shutting down a controller release the shared advisory lock with
-  a non-cancelled context.
+  a non-canceled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
 * targets: If a worker filter references a key that doesn't exist, treat it as a

@@ -85,7 +85,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
-		// Check for session cancelation
+		// Check for session cancellation
 		case pbs.JOBTYPE_JOBTYPE_SESSION:
 			si := jobStatus.GetJob().GetSessionInfo()
 			if si == nil {
