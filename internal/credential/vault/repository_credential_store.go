@@ -656,7 +656,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	var returnedClientCert *ClientCertificate
 	var returnedCredentialStore *CredentialStore
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
 			ticket, err := w.GetTicket(cs)
 			if err != nil {
@@ -690,6 +690,15 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, &csOplogMsg)
 
+			ir, err := NewRepository(reader, w, r.kms)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to create internal tx repo for lookup"))
+			}
+			existing, err := ir.LookupCredentialStore(ctx, cs.GetPublicId())
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to lookup credential store"))
+			}
+			returnedCredentialStore.outputToken = existing.outputToken
 			if updateToken {
 				returnedToken = token.clone()
 				query, values := returnedToken.insertQuery()
@@ -709,6 +718,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 
 			}
 
+			returnedCredentialStore.clientCert = existing.clientCert
 			switch {
 			case deleteClientCert:
 				returnedClientCert = clientCert.clone()
@@ -769,12 +779,16 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var credentialStores []*CredentialStore
+	var credentialStores []*credentialStoreAggPublic
 	err := r.reader.SearchWhere(ctx, &credentialStores, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return credentialStores, nil
+	var out []*CredentialStore
+	for _, ca := range credentialStores {
+		out = append(out, ca.toCredentialStore())
+	}
+	return out, nil
 }
 
 // DeleteCredentialStore deletes publicId from the repository and returns
