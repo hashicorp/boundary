@@ -12,6 +12,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
   2](https://github.com/hashicorp/boundary/issues/1055),
   [PR](https://github.com/hashicorp/boundary/pull/1220))
+* sessions: Add some missing API-level checks when session cancelation was
+  requested. It's much easier than interpreting the domain-level check failures.
+  [PR](https://github.com/hashicorp/boundary/pull/1223))
 
 ## 0.2.1 (2021/05/05)
 
