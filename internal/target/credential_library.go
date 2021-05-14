@@ -71,3 +71,13 @@ func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+type TargetLibrary struct {
+	*store.CredentialLibrary
+	StoreId string
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (ts *TargetLibrary) TableName() string {
+	return "target_library"
+}

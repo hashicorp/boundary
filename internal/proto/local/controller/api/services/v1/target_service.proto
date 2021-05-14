@@ -149,6 +149,59 @@ service TargetService {
     };
   }
 
+  // AddTargetCredentialLibraries adds Credential Libraries to this Target. The provided request must
+  // include the Target ID to which the Credential Libraries will be added.
+  // All Credential Libraries added to the provided Target must be a child of a Catalog that
+  // is a child of the same scope as this Target. If the scope or Target IDs are
+  // missing, malformed, or reference non-existing resources, an error is
+  // returned. An error is returned if a Credential Library is attempted to be added
+  // to a target that is already present on the Target.
+  rpc AddTargetCredentialLibraries(AddTargetCredentialLibrariesRequest) returns (AddTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:add-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds existing Credential Libraries to a Target."
+    };
+  }
+
+  // SetTargetCredentialLibraries sets the Target's Credential Libraries.
+  // Any existing Credential Libraries on the Target are deleted if they are
+  // not included in this request. The provided request must include the scope,
+  // and the Target ID on which the Credential Libraries will be set.  All
+  // Credential Libraries in the request must be a child of a Catalog that is
+  // in the same scope as the provided Target. If any IDs are missing,
+  // malformed, or references a non-existing resource, an error is returned.
+  rpc SetTargetCredentialLibraries(SetTargetCredentialLibrariesRequest) returns (SetTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the Credential Libraries on the Target."
+    };
+  }
+
+  // RemoveTargetCredentialLibraries removes the Credential Libraries from the
+  // specified Target. The provided request must include the Target ID for the
+  // Target from which the Credential Libraries will be removed. If the ID is missing,
+  // malformed, or references a non-existing scope or Catalog, an error is
+  // returned.  An error is returned if a Credential Library is attempted to be
+  // removed from the Target when the Target does not have the Credential Library.
+  rpc RemoveTargetCredentialLibraries(RemoveTargetCredentialLibrariesRequest) returns (RemoveTargetCredentialLibrariesResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-credential-libraries"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes Credential Libraries from the Target."
+    };
+  }
+
 }
 
 message GetTargetRequest {
@@ -227,6 +280,42 @@ message RemoveTargetHostSetsRequest {
 }
 
 message RemoveTargetHostSetsResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message AddTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
+}
+
+message AddTargetCredentialLibrariesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message SetTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
+}
+
+message SetTargetCredentialLibrariesResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetCredentialLibrariesRequest {
+  string id = 1;
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2;
+  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
+}
+
+message RemoveTargetCredentialLibrariesResponse {
   api.resources.targets.v1.Target item = 1;
 }
 

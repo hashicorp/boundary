@@ -15,7 +15,7 @@ import (
 // CreateTcpTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
 // WithHostSets and WithCredentialLibraries are the only supported option.
-func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
+func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
 	if target == nil {
@@ -75,7 +75,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	metadata := t.oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget interface{}
 	var returnedHostSet []*TargetSet
-	var returnedCredLibs []*CredentialLibrary
+	var returnedCredLibs []*TargetLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -131,7 +131,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 // included in fieldMask. Name, Description, and WorkerFilter are the only
 // updatable fields. If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, int, error) {
+func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target")
@@ -173,7 +173,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	var returnedTarget Target
 	var rowsUpdated int
 	var targetSets []*TargetSet
-	var credLibs []*CredentialLibrary
+	var credLibs []*TargetLibrary
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,

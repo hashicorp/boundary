@@ -375,6 +375,10 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_set.gen.go",
 	},
 	{
+		inProto: &targets.CredentialLibrary{},
+		outFile: "targets/credential_library.gen.go",
+	},
+	{
 		inProto:     &targets.SessionAuthorization{},
 		outFile:     "targets/session_authorization.gen.go",
 		subtypeName: "SessionAuthorization",
