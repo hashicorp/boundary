@@ -292,8 +292,8 @@ func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
 	// expect all others to be open.
 
 	shouldBeClosed := worker2ConnIds[2:]
-	conns, err := repo.ListConnectionsBySessionId(ctx, "*")
-	require.NoError(err)
+	var conns []*Connection
+	require.NoError(repo.list(ctx, &conns, "", nil))
 	for _, conn := range conns {
 		_, states, err := repo.LookupConnection(ctx, conn.PublicId)
 		require.NoError(err)
@@ -315,8 +315,8 @@ func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
 	assert.Equal(6, count)
 
 	// We now expect all but those blessed few to be closed
-	conns, err = repo.ListConnectionsBySessionId(ctx, "*")
-	require.NoError(err)
+	conns = nil
+	require.NoError(repo.list(ctx, &conns, "", nil))
 	for _, conn := range conns {
 		_, states, err := repo.LookupConnection(ctx, conn.PublicId)
 		require.NoError(err)

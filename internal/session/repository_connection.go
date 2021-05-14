@@ -44,21 +44,15 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 	return &connection, states, nil
 }
 
-// ListConnections will connections by session ID. If session ID is *, all
-// connections are returned. Supports the WithLimit and WithOrder options.
+// ListConnectionsBySessionId will list connections by session ID. Supports the
+// WithLimit and WithOrder options.
 func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
-	const op = "session.(Repository).ListConnections"
-	opts := getOpts(opt...)
-	var connections []*Connection
-	var args []interface{}
-	var where string
-	if sessionId != "*" {
-		where = "session_id = ?"
-		args = append(args, sessionId)
+	const op = "session.(Repository).ListConnectionsBySessionId"
+	if sessionId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no session ID supplied")
 	}
-	// The where clause will be ignored if args is empty, if we don't want to
-	// scope to a specific session ID
-	err := r.list(ctx, &connections, where, args, opts) // pass options, so WithLimit and WithOrder are supported
+	var connections []*Connection
+	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
