@@ -20,14 +20,14 @@ type clientConfig struct {
 	Namespace             string
 }
 
-func (c *clientConfig) IsValid() bool {
+func (c *clientConfig) isValid() bool {
 	if c == nil || c.Addr == "" || c.Token == "" {
 		return false
 	}
 	return true
 }
 
-func (c *clientConfig) IsClientTLS() bool {
+func (c *clientConfig) isClientTLS() bool {
 	if len(c.ClientCert) > 0 && len(c.ClientKey) > 0 {
 		return true
 	}
@@ -41,7 +41,7 @@ type client struct {
 
 func newClient(c *clientConfig) (*client, error) {
 	const op = "vault.newClient"
-	if !c.IsValid() {
+	if !c.isValid() {
 		return nil, errors.New(errors.InvalidParameter, op, "invalid configuration")
 	}
 	vc := vault.DefaultConfig()
@@ -57,7 +57,7 @@ func newClient(c *clientConfig) (*client, error) {
 		}
 	}
 
-	if c.IsClientTLS() {
+	if c.isClientTLS() {
 		clientCert, err := tls.X509KeyPair(c.ClientCert, c.ClientKey)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
@@ -80,11 +80,11 @@ func newClient(c *clientConfig) (*client, error) {
 	}, nil
 }
 
-// Ping calls the /sys/health Vault endpoint and returns an error if no
+// ping calls the /sys/health Vault endpoint and returns an error if no
 // response is returned. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
-func (c *client) Ping() error {
+func (c *client) ping() error {
 	const op = "vault.(client).Ping"
 	h, err := c.cl.Sys().Health()
 	switch {
@@ -97,11 +97,11 @@ func (c *client) Ping() error {
 	}
 }
 
-// RenewToken calls the /auth/token/renew-self Vault endpoint and returns
+// renewToken calls the /auth/token/renew-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
-func (c *client) RenewToken() (*vault.Secret, error) {
+func (c *client) renewToken() (*vault.Secret, error) {
 	const op = "vault.(client).RenewToken"
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
@@ -110,11 +110,11 @@ func (c *client) RenewToken() (*vault.Secret, error) {
 	return t, nil
 }
 
-// LookupToken calls the /auth/token/lookup-self Vault endpoint and returns
+// lookupToken calls the /auth/token/lookup-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
-func (c *client) LookupToken() (*vault.Secret, error) {
+func (c *client) lookupToken() (*vault.Secret, error) {
 	const op = "vault.(client).LookupToken"
 	t, err := c.cl.Auth().Token().LookupSelf()
 	if err != nil {
@@ -123,9 +123,9 @@ func (c *client) LookupToken() (*vault.Secret, error) {
 	return t, nil
 }
 
-// SwapToken replaces the token in the Vault client with t and returns the
+// swapToken replaces the token in the Vault client with t and returns the
 // token that was replaced.
-func (c *client) SwapToken(new string) (old string) {
+func (c *client) swapToken(new string) (old string) {
 	old = c.cl.Token()
 	c.cl.SetToken(new)
 	return

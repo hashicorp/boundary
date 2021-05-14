@@ -89,14 +89,14 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
 	}
 
-	tokenLookup, err := client.LookupToken()
+	tokenLookup, err := client.lookupToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
 	}
 	if err := validateTokenLookup(op, tokenLookup); err != nil {
 		return nil, err
 	}
-	renewedToken, err := client.RenewToken()
+	renewedToken, err := client.renewToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
 	}
@@ -602,9 +602,9 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		client.SwapToken(string(cs.inputToken))
+		client.swapToken(string(cs.inputToken))
 
-		tokenLookup, err := client.LookupToken()
+		tokenLookup, err := client.lookupToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
 		}
@@ -612,7 +612,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, err
 		}
 
-		renewedToken, err := client.RenewToken()
+		renewedToken, err := client.renewToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
 		}

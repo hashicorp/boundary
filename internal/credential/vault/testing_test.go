@@ -246,7 +246,7 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
 	})
 	t.Run("TestServerTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -266,7 +266,7 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
 	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -290,7 +290,7 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
 	})
 }
 

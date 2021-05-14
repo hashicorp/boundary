@@ -793,7 +793,7 @@ func (v *TestVaultServer) client(t *testing.T) *client {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 	return client
 }
 

@@ -49,9 +49,9 @@ func TestClient_RenewToken(t *testing.T) {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 
-	renewedToken, err := client.RenewToken()
+	renewedToken, err := client.renewToken()
 	require.NoError(err)
 	require.NotNil(renewedToken)
 	renewedLookup := v.LookupToken(t, token)
@@ -102,9 +102,9 @@ func TestClient_LookupToken(t *testing.T) {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 
-	tokenLookup, err := client.LookupToken()
+	tokenLookup, err := client.lookupToken()
 	require.NoError(err)
 	require.NotNil(tokenLookup)
 
