@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10004,
+		binarySchemaVersion: 10005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5702,6 +5702,33 @@ create table session_credential_dynamic (
 
   create trigger immutable_columns before update on session_credential_dynamic
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
+`),
+			10005: []byte(`
+create function wt_is_sentinel(string text)
+    returns bool
+  as $$
+    select char_length(string) = char_length(concat(u&'\fffe', trim(ltrim(string, u&'\fffe'))));
+  $$ language sql
+     immutable
+     returns null on null input;
+  comment on function wt_is_sentinel is
+    'wt_is_sentinel returns true if string is a sentinel value';
+
+  create domain wt_sentinel as text
+    constraint wt_sentinel_not_valid
+      check(wt_is_sentinel(value));
+  comment on domain wt_sentinel is
+  'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
+
+  create function wt_to_sentinel(string text)
+    returns text
+  as $$
+    select concat(u&'\fffe', trim(ltrim(string, u&'\fffe ')));
+  $$ language sql
+     immutable
+     returns null on null input;
+  comment on function wt_to_sentinel is
+    'wt_to_sentinel takes string and returns it as a wt_sentinel';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

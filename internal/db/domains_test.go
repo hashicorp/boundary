@@ -899,3 +899,101 @@ returning id;
 		})
 	}
 }
+
+func TestDomain_wt_sentinel(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_sentinel (
+  id bigint generated always as identity primary key,
+  sentinel wt_sentinel
+);
+`
+		insert = `
+insert into test_table_wt_sentinel(sentinel)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	tests := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"normal", "\ufffefoo", false},
+		{"trailing sentinel", "\ufffefoo\ufffe", false},
+		{"sentinel with space before word", "\ufffe foo", true},
+		{"no sentinel", "foo", true},
+		{"sentinel with empty string", "\ufffe  ", true},
+		{"multiple sentinels with empty string", "\ufffe\ufffe  ", true},
+		{"multiple sentinels", "\ufffe\ufffefoo", true},
+		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", true},
+		{"empty string", "  ", true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_to_sentinel(t *testing.T) {
+	const (
+		query = `select wt_to_sentinel($1);`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{"V", "foo", "\ufffefoo"},
+		{"space V", " foo", "\ufffefoo"},
+		{"V space", "foo ", "\ufffefoo"},
+		{"space space V", "  foo  ", "\ufffefoo"},
+		{"sentinel V", "\ufffefoo", "\ufffefoo"},
+		{"sentinel space V", "\ufffe foo", "\ufffefoo"},
+		{"sentinel V space", "\ufffefoo ", "\ufffefoo"},
+		{"sentinel sentinel V", "\ufffe\ufffefoo", "\ufffefoo"},
+		{"sentinel sentinel space V", "\ufffe\ufffe foo", "\ufffefoo"},
+		{"sentinel sentinel V space", "\ufffe\ufffefoo ", "\ufffefoo"},
+		{"sentinel space sentinel space V space", "\ufffe \ufffe foo ", "\ufffefoo"},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			t.Logf("query value: %q", tt.value)
+
+			var got string
+			rows, err := db.Query(query, tt.value)
+			require.NoError(err)
+			defer rows.Close()
+
+			require.True(rows.Next())
+			require.NoError(rows.Scan(&got))
+			assert.Equal(tt.want, got)
+
+			require.False(rows.Next())
+			require.NoError(rows.Err())
+		})
+	}
+}
