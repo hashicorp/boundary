@@ -5499,11 +5499,11 @@ create table credential_vault_store (
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    lease_id text not null
-      constraint credential_vault_lease_lease_id_uq
+    external_id text not null
+      constraint credential_vault_lease_external_id_uq
         unique
-      constraint lease_id_must_not_be_empty
-        check(length(trim(lease_id)) > 0),
+      constraint external_id_must_not_be_empty
+        check(length(trim(external_id)) > 0),
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
@@ -5530,7 +5530,7 @@ create table credential_vault_store (
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on credential_vault_lease
-    for each row execute procedure immutable_columns('lease_id', 'library_id','session_id', 'create_time');
+    for each row execute procedure immutable_columns('external_id', 'library_id','session_id', 'create_time');
 
   create trigger insert_credential_dynamic_subtype before insert on credential_vault_lease
     for each row execute procedure insert_credential_dynamic_subtype();

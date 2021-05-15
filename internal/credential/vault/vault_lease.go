@@ -16,7 +16,7 @@ type Lease struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newLease(libraryId, sessionId, leaseId string, tokenHmac []byte, expiration time.Duration) (*Lease, error) {
+func newLease(libraryId, sessionId, externalId string, tokenHmac []byte, expiration time.Duration) (*Lease, error) {
 	const op = "vault.newLease"
 	if libraryId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no library id")
@@ -24,8 +24,8 @@ func newLease(libraryId, sessionId, leaseId string, tokenHmac []byte, expiration
 	if sessionId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no session id")
 	}
-	if leaseId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no lease id")
+	if externalId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no external id")
 	}
 	if len(tokenHmac) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no tokenHmac")
@@ -37,10 +37,10 @@ func newLease(libraryId, sessionId, leaseId string, tokenHmac []byte, expiration
 	l := &Lease{
 		expiration: expiration.Round(time.Second),
 		Lease: &store.Lease{
-			LibraryId: libraryId,
-			SessionId: sessionId,
-			LeaseId:   leaseId,
-			TokenHmac: tokenHmac,
+			LibraryId:  libraryId,
+			SessionId:  sessionId,
+			ExternalId: externalId,
+			TokenHmac:  tokenHmac,
 		},
 	}
 	return l, nil
@@ -94,7 +94,7 @@ func (l *Lease) insertQuery() (query string, queryValues []interface{}) {
 		l.LibraryId,
 		l.SessionId,
 		l.TokenHmac,
-		l.LeaseId,
+		l.ExternalId,
 		l.IsRenewable,
 		"now()",
 		exp,
