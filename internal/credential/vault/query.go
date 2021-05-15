@@ -20,7 +20,7 @@ insert into credential_vault_token (
   wt_add_seconds_to_now($7)  -- expiration_time
 );
 `
-	insertLeaseQuery = `
+	insertCredentialQuery = `
 insert into credential_vault_credential (
   public_id, -- $1
   library_id, -- $2

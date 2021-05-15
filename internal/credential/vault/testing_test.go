@@ -55,7 +55,7 @@ func Test_TestCredentialLibraries(t *testing.T) {
 	}
 }
 
-func Test_TestLeases(t *testing.T) {
+func Test_TestCredentials(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -90,10 +90,10 @@ func Test_TestLeases(t *testing.T) {
 	})
 
 	count := 4
-	leases := TestLeases(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
-	assert.Len(leases, count)
-	for _, lease := range leases {
-		assert.NotEmpty(lease.GetPublicId())
+	credentials := TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
+	assert.Len(credentials, count)
+	for _, credential := range credentials {
+		assert.NotEmpty(credential.GetPublicId())
 	}
 }
 

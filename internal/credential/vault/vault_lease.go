@@ -9,15 +9,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A Lease contains a vault lease. It is owned by a credential library.
-type Lease struct {
-	*store.Lease
+// A Credential contains the data for a Vault lease. It is owned by a credential library.
+type Credential struct {
+	*store.Credential
 	tableName  string        `gorm:"-"`
 	expiration time.Duration `gorm:"-"`
 }
 
-func newLease(libraryId, sessionId, externalId string, tokenHmac []byte, expiration time.Duration) (*Lease, error) {
-	const op = "vault.newLease"
+func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
+	const op = "vault.newCredential"
 	if libraryId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no library id")
 	}
@@ -34,9 +34,9 @@ func newLease(libraryId, sessionId, externalId string, tokenHmac []byte, expirat
 		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
 	}
 
-	l := &Lease{
+	l := &Credential{
 		expiration: expiration.Round(time.Second),
-		Lease: &store.Lease{
+		Credential: &store.Credential{
 			LibraryId:  libraryId,
 			SessionId:  sessionId,
 			ExternalId: externalId,
@@ -46,22 +46,22 @@ func newLease(libraryId, sessionId, externalId string, tokenHmac []byte, expirat
 	return l, nil
 }
 
-func allocLease() *Lease {
-	return &Lease{
-		Lease: &store.Lease{},
+func allocCredential() *Credential {
+	return &Credential{
+		Credential: &store.Credential{},
 	}
 }
 
-func (l *Lease) clone() *Lease {
-	cp := proto.Clone(l.Lease)
-	return &Lease{
+func (l *Credential) clone() *Credential {
+	cp := proto.Clone(l.Credential)
+	return &Credential{
 		expiration: l.expiration,
-		Lease:      cp.(*store.Lease),
+		Credential: cp.(*store.Credential),
 	}
 }
 
 // TableName returns the table name.
-func (l *Lease) TableName() string {
+func (l *Credential) TableName() string {
 	if l.tableName != "" {
 		return l.tableName
 	}
@@ -69,14 +69,14 @@ func (l *Lease) TableName() string {
 }
 
 // SetTableName sets the table name.
-func (l *Lease) SetTableName(n string) {
+func (l *Credential) SetTableName(n string) {
 	l.tableName = n
 }
 
-func (l *Lease) oplog(op oplog.OpType) oplog.Metadata {
+func (l *Credential) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{l.PublicId},
-		"resource-type":      []string{"credential-vault-lease"},
+		"resource-type":      []string{"credential-vault-credential"},
 		"op-type":            []string{op.String()},
 	}
 	if l.LibraryId != "" {
@@ -85,8 +85,8 @@ func (l *Lease) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (l *Lease) insertQuery() (query string, queryValues []interface{}) {
-	query = insertLeaseQuery
+func (l *Credential) insertQuery() (query string, queryValues []interface{}) {
+	query = insertCredentialQuery
 
 	exp := int(l.expiration.Round(time.Second).Seconds())
 	queryValues = []interface{}{

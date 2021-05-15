@@ -122,10 +122,10 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 	return libs
 }
 
-// TestLeases creates count number of vault leases in the provided DB with
+// TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
-// during the creation of the leases , the test will fail.
-func TestLeases(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Lease {
+// during the creation of the credentials , the test will fail.
+func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
@@ -147,25 +147,25 @@ func TestLeases(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId
 	token := store.Token()
 	require.NotNil(token)
 
-	var leases []*Lease
+	var credentials []*Credential
 	for i := 0; i < count; i++ {
-		lease, err := newLease(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/lease/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		credential, err := newCredential(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
 		assert.NoError(err)
-		require.NotNil(lease)
+		require.NotNil(credential)
 
 		id, err := newCredentialId()
 		assert.NoError(err)
 		require.NotNil(id)
-		lease.PublicId = id
+		credential.PublicId = id
 
-		query, queryValues := lease.insertQuery()
+		query, queryValues := credential.insertQuery()
 		rows, err2 := rw.Exec(ctx, query, queryValues)
 		assert.Equal(1, rows)
 		assert.NoError(err2)
 
-		leases = append(leases, lease)
+		credentials = append(credentials, credential)
 	}
-	return leases
+	return credentials
 }
 
 func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {

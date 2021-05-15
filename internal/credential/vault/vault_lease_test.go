@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLease_New(t *testing.T) {
+func TestCredential_New(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -38,14 +38,14 @@ func TestLease_New(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *Lease
+		want    *Credential
 		wantErr bool
 	}{
 		{
 			name: "missing-library-id",
 			args: args{
 				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/lease",
+				externalId: "some/vault/credential",
 				tokenHmac:  token.GetTokenHmac(),
 				expiration: 5 * time.Minute,
 			},
@@ -56,7 +56,7 @@ func TestLease_New(t *testing.T) {
 			name: "missing-session-id",
 			args: args{
 				libraryId:  lib.GetPublicId(),
-				externalId: "some/vault/lease",
+				externalId: "some/vault/credential",
 				tokenHmac:  token.GetTokenHmac(),
 				expiration: 5 * time.Minute,
 			},
@@ -64,7 +64,7 @@ func TestLease_New(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing-lease-id",
+			name: "missing-credential-id",
 			args: args{
 				libraryId:  lib.GetPublicId(),
 				sessionId:  session.GetPublicId(),
@@ -79,7 +79,7 @@ func TestLease_New(t *testing.T) {
 			args: args{
 				libraryId:  lib.GetPublicId(),
 				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/lease",
+				externalId: "some/vault/credential",
 				tokenHmac:  []byte{},
 				expiration: 5 * time.Minute,
 			},
@@ -91,7 +91,7 @@ func TestLease_New(t *testing.T) {
 			args: args{
 				libraryId:  lib.GetPublicId(),
 				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/lease",
+				externalId: "some/vault/credential",
 				tokenHmac:  token.GetTokenHmac(),
 			},
 			want:    nil,
@@ -102,15 +102,15 @@ func TestLease_New(t *testing.T) {
 			args: args{
 				libraryId:  lib.GetPublicId(),
 				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/lease",
+				externalId: "some/vault/credential",
 				tokenHmac:  token.GetTokenHmac(),
 				expiration: 5 * time.Minute,
 			},
-			want: &Lease{
-				Lease: &store.Lease{
+			want: &Credential{
+				Credential: &store.Credential{
 					LibraryId:  lib.GetPublicId(),
 					SessionId:  session.GetPublicId(),
-					ExternalId: "some/vault/lease",
+					ExternalId: "some/vault/credential",
 					TokenHmac:  token.GetTokenHmac(),
 				},
 			},
@@ -122,7 +122,7 @@ func TestLease_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := newLease(tt.args.libraryId, tt.args.sessionId,
+			got, err := newCredential(tt.args.libraryId, tt.args.sessionId,
 				tt.args.externalId, tt.args.tokenHmac, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
@@ -146,10 +146,10 @@ func TestLease_New(t *testing.T) {
 			assert.Equal(1, rows)
 			assert.NoError(err2)
 
-			insertedLease := allocLease()
-			insertedLease.PublicId = id
-			assert.Equal(id, insertedLease.GetPublicId())
-			require.NoError(rw.LookupById(ctx, insertedLease))
+			insertedCredential := allocCredential()
+			insertedCredential.PublicId = id
+			assert.Equal(id, insertedCredential.GetPublicId())
+			require.NoError(rw.LookupById(ctx, insertedCredential))
 		})
 	}
 }
