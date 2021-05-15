@@ -249,7 +249,7 @@ begin;
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
 
-  create table credential_vault_lease (
+  create table credential_vault_credential (
     public_id wt_public_id primary key,
     library_id wt_public_id not null
       constraint credential_vault_library_fkey
@@ -270,7 +270,7 @@ begin;
     update_time wt_timestamp,
     version wt_version,
     external_id text not null
-      constraint credential_vault_lease_external_id_uq
+      constraint credential_vault_credential_external_id_uq
         unique
       constraint external_id_must_not_be_empty
         check(length(trim(external_id)) > 0),
@@ -284,35 +284,35 @@ begin;
       references credential_dynamic (library_id, public_id)
       on delete cascade
       on update cascade,
-    constraint credential_vault_lease_library_id_public_id_uq
+    constraint credential_vault_credential_library_id_public_id_uq
       unique(library_id, public_id)
   );
-  comment on table credential_vault_lease is
-    'credential_vault_lease is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
+  comment on table credential_vault_credential is
+    'credential_vault_credential is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
 
-  create trigger update_version_column after update on credential_vault_lease
+  create trigger update_version_column after update on credential_vault_credential
     for each row execute procedure update_version_column();
 
-  create trigger update_time_column before update on credential_vault_lease
+  create trigger update_time_column before update on credential_vault_credential
     for each row execute procedure update_time_column();
 
-  create trigger default_create_time_column before insert on credential_vault_lease
+  create trigger default_create_time_column before insert on credential_vault_credential
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on credential_vault_lease
+  create trigger immutable_columns before update on credential_vault_credential
     for each row execute procedure immutable_columns('external_id', 'library_id','session_id', 'create_time');
 
-  create trigger insert_credential_dynamic_subtype before insert on credential_vault_lease
+  create trigger insert_credential_dynamic_subtype before insert on credential_vault_credential
     for each row execute procedure insert_credential_dynamic_subtype();
 
-  create trigger delete_credential_dynamic_subtype after delete on credential_vault_lease
+  create trigger delete_credential_dynamic_subtype after delete on credential_vault_credential
     for each row execute procedure delete_credential_dynamic_subtype();
 
   insert into oplog_ticket (name, version)
   values
     ('credential_vault_store', 1),
     ('credential_vault_library', 1),
-    ('credential_vault_lease', 1) ;
+    ('credential_vault_credential', 1) ;
 
      create view credential_vault_store_client_private as
      with

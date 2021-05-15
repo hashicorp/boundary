@@ -21,7 +21,7 @@ insert into credential_vault_token (
 );
 `
 	insertLeaseQuery = `
-insert into credential_vault_lease (
+insert into credential_vault_credential (
   public_id, -- $1
   library_id, -- $2
   session_id, -- $3

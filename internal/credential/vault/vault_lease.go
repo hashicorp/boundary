@@ -65,7 +65,7 @@ func (l *Lease) TableName() string {
 	if l.tableName != "" {
 		return l.tableName
 	}
-	return "credential_vault_lease"
+	return "credential_vault_credential"
 }
 
 // SetTableName sets the table name.
