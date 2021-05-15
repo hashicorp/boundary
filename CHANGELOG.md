@@ -4,6 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* sessions: Clean up connections that are dangling after a worker dies (is
+  restarted, powered off, etc.) This fixes some cases where a session never goes
+  to `terminated` state because connections are not properly marked closed.
+  ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
+  2](https://github.com/hashicorp/boundary/issues/1055),
+  [PR](https://github.com/hashicorp/boundary/pull/1220))
+* sessions: Add some missing API-level checks when session cancellation was
+  requested. It's much easier than interpreting the domain-level check failures.
+  [PR](https://github.com/hashicorp/boundary/pull/1223))
+
 ## 0.2.1 (2021/05/05)
 
 ### Deprecations/Changes
@@ -314,7 +326,7 @@ for more details.
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
 * server: When shutting down a controller release the shared advisory lock with
-  a non-cancelled context.
+  a non-canceled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
 * targets: If a worker filter references a key that doesn't exist, treat it as a
