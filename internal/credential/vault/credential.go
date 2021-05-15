@@ -52,50 +52,50 @@ func allocCredential() *Credential {
 	}
 }
 
-func (l *Credential) clone() *Credential {
-	cp := proto.Clone(l.Credential)
+func (c *Credential) clone() *Credential {
+	cp := proto.Clone(c.Credential)
 	return &Credential{
-		expiration: l.expiration,
+		expiration: c.expiration,
 		Credential: cp.(*store.Credential),
 	}
 }
 
 // TableName returns the table name.
-func (l *Credential) TableName() string {
-	if l.tableName != "" {
-		return l.tableName
+func (c *Credential) TableName() string {
+	if c.tableName != "" {
+		return c.tableName
 	}
 	return "credential_vault_credential"
 }
 
 // SetTableName sets the table name.
-func (l *Credential) SetTableName(n string) {
-	l.tableName = n
+func (c *Credential) SetTableName(n string) {
+	c.tableName = n
 }
 
-func (l *Credential) oplog(op oplog.OpType) oplog.Metadata {
+func (c *Credential) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{l.PublicId},
+		"resource-public-id": []string{c.PublicId},
 		"resource-type":      []string{"credential-vault-credential"},
 		"op-type":            []string{op.String()},
 	}
-	if l.LibraryId != "" {
-		metadata["library-id"] = []string{l.LibraryId}
+	if c.LibraryId != "" {
+		metadata["library-id"] = []string{c.LibraryId}
 	}
 	return metadata
 }
 
-func (l *Credential) insertQuery() (query string, queryValues []interface{}) {
+func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 	query = insertCredentialQuery
 
-	exp := int(l.expiration.Round(time.Second).Seconds())
+	exp := int(c.expiration.Round(time.Second).Seconds())
 	queryValues = []interface{}{
-		l.PublicId,
-		l.LibraryId,
-		l.SessionId,
-		l.TokenHmac,
-		l.ExternalId,
-		l.IsRenewable,
+		c.PublicId,
+		c.LibraryId,
+		c.SessionId,
+		c.TokenHmac,
+		c.ExternalId,
+		c.IsRenewable,
 		"now()",
 		exp,
 	}
