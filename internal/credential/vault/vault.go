@@ -85,7 +85,7 @@ func newClient(c *clientConfig) (*client, error) {
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
 func (c *client) ping() error {
-	const op = "vault.(client).Ping"
+	const op = "vault.(client).ping"
 	h, err := c.cl.Sys().Health()
 	switch {
 	case err != nil:
@@ -102,7 +102,7 @@ func (c *client) ping() error {
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
 func (c *client) renewToken() (*vault.Secret, error) {
-	const op = "vault.(client).RenewToken"
+	const op = "vault.(client).renewToken"
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
@@ -115,7 +115,7 @@ func (c *client) renewToken() (*vault.Secret, error) {
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
 func (c *client) lookupToken() (*vault.Secret, error) {
-	const op = "vault.(client).LookupToken"
+	const op = "vault.(client).lookupToken"
 	t, err := c.cl.Auth().Token().LookupSelf()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
@@ -129,4 +129,22 @@ func (c *client) swapToken(new string) (old string) {
 	old = c.cl.Token()
 	c.cl.SetToken(new)
 	return
+}
+
+func (c *client) get(path string) (*vault.Secret, error) {
+	const op = "vault.(client).get"
+	s, err := c.cl.Logical().Read(path)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return s, nil
+}
+
+func (c *client) post(path string, data []byte) (*vault.Secret, error) {
+	const op = "vault.(client).post"
+	s, err := c.cl.Logical().WriteBytes(path, data)
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return s, nil
 }
