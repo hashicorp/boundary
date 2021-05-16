@@ -37,7 +37,7 @@ func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*Cre
 	}
 
 	opts := getOpts(opt...)
-	if opts.withRequestBody != "" && opts.withMethod != MethodPost {
+	if len(opts.withRequestBody) > 0 && opts.withMethod != MethodPost {
 		return nil, errors.New(errors.InvalidParameter, op, "a request body is only allowed with an HTTP POST method")
 	}
 

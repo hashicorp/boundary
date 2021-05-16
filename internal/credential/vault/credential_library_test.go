@@ -130,7 +130,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodPost),
-					WithRequestBody("body"),
+					WithRequestBody([]byte("body")),
 				},
 			},
 			want: &CredentialLibrary{
@@ -138,7 +138,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:         cs.PublicId,
 					HttpMethod:      "POST",
 					VaultPath:       "vault/path",
-					HttpRequestBody: "body",
+					HttpRequestBody: []byte("body"),
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				storeId:   cs.PublicId,
 				vaultPath: "vault/path",
 				opts: []Option{
-					WithRequestBody("body"),
+					WithRequestBody([]byte("body")),
 				},
 			},
 			wantErr: true,

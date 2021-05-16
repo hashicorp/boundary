@@ -5463,7 +5463,7 @@ create table credential_vault_store (
         references credential_vault_http_method_enm (name)
         on delete restrict
         on update cascade,
-    http_request_body text
+    http_request_body bytea
       constraint http_request_body_only_allowed_with_post_method
         check(
           http_request_body is null
@@ -5471,7 +5471,7 @@ create table credential_vault_store (
           (
             http_method = 'POST'
             and
-            length(trim(http_request_body)) > 0
+            length(http_request_body) > 0
           )
         ),
     constraint credential_vault_library_store_id_name_uq
