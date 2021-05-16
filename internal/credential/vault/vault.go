@@ -142,6 +142,12 @@ func (c *client) get(path string) (*vault.Secret, error) {
 
 func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 	const op = "vault.(client).post"
+
+	if len(data) == 0 {
+		// For POST and PUT methods, Vault requires a valid JSON object be
+		// sent even if the JSON object is empty
+		data = []byte(`{}`)
+	}
 	s, err := c.cl.Logical().WriteBytes(path, data)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))

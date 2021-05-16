@@ -160,9 +160,16 @@ func TestClient_Post(t *testing.T) {
 	require.NoError(client.ping())
 
 	credPath := path.Join("pki", "issue", "boundary")
-	credData := []byte(`{"common_name":"boundary.com"}`)
-	t.Log(credData)
-	cred, err := client.post(credPath, credData)
-	assert.NoError(err)
-	require.NotNil(cred)
+	t.Run("post-body", func(t *testing.T) {
+		credData := []byte(`{"common_name":"boundary.com"}`)
+		cred, err := client.post(credPath, credData)
+		assert.NoError(err)
+		require.NotNil(cred)
+	})
+	t.Run("nil-body", func(t *testing.T) {
+		cred, err := client.post(credPath, nil)
+		assert.Error(err)
+		assert.Contains(err.Error(), "common_name field is required")
+		assert.Nil(cred)
+	})
 }
