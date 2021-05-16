@@ -2,8 +2,7 @@ package credential
 
 import (
 	"strings"
-
-	"github.com/hashicorp/boundary/internal/credential/vault"
+	"sync"
 )
 
 type SubType int
@@ -31,11 +30,36 @@ func SubtypeFromType(t string) SubType {
 }
 
 func SubtypeFromId(id string) SubType {
-	switch {
-	case strings.HasPrefix(strings.TrimSpace(id), vault.CredentialStorePrefix),
-		strings.HasPrefix(strings.TrimSpace(id), vault.CredentialLibraryPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), vault.DynamicCredentialPrefix):
-		return VaultSubtype
+	prefix := id[:strings.Index(id, "_")]
+
+	subtypeMu.RLock()
+	subtype, ok := subtypes[prefix]
+	subtypeMu.RUnlock()
+	if !ok {
+		return UnknownSubtype
 	}
-	return UnknownSubtype
+	return subtype
+}
+
+var (
+	subtypeMu sync.RWMutex
+	subtypes  = make(map[string]SubType)
+)
+
+// Register registers the prefixes for a Subtype. Register panics if the
+// subtype is unknown.
+func Register(subtype SubType, prefixes ...string) {
+	subtypeMu.Lock()
+	defer subtypeMu.Unlock()
+
+	switch subtype {
+	case VaultSubtype:
+	default:
+		panic("credential.Register: subtype is unknown ")
+	}
+
+	for _, prefix := range prefixes {
+		prefix = strings.TrimSpace(prefix)
+		subtypes[prefix] = subtype
+	}
 }
