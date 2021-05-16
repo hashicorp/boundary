@@ -386,4 +386,30 @@ begin;
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
+     create view credential_vault_library_private as
+     select library.public_id         as public_id,
+            library.store_id          as store_id,
+            library.name              as name,
+            library.description       as description,
+            library.vault_path        as vault_path,
+            library.http_method       as http_method,
+            library.http_request_body as http_request_body,
+            store.vault_address       as vault_address,
+            store.namespace           as namespace,
+            store.ca_cert             as ca_cert,
+            store.tls_server_name     as tls_server_name,
+            store.tls_skip_verify     as tls_skip_verify,
+            store.token_hmac          as token_hmac,
+            store.ct_token            as ct_token, -- encrypted
+            store.token_key_id        as token_key_id,
+            store.client_cert         as client_cert,
+            store.ct_client_key       as ct_client_key, -- encrypted
+            store.client_key_id       as client_key_id
+       from credential_vault_library library
+       join credential_vault_store_client_private store
+         on library.store_id = store.public_id;
+  comment on view credential_vault_library_private is
+    'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
 commit;
