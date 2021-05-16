@@ -4992,6 +4992,33 @@ before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
 			10001: []byte(`
+create function wt_is_sentinel(string text)
+    returns bool
+  as $$
+    select char_length(string) = char_length(concat(u&'\fffe', trim(ltrim(string, u&'\fffe'))));
+  $$ language sql
+     immutable
+     returns null on null input;
+  comment on function wt_is_sentinel is
+    'wt_is_sentinel returns true if string is a sentinel value';
+
+  create domain wt_sentinel as text
+    constraint wt_sentinel_not_valid
+      check(wt_is_sentinel(value));
+  comment on domain wt_sentinel is
+  'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
+
+  create function wt_to_sentinel(string text)
+    returns text
+  as $$
+    select concat(u&'\fffe', trim(ltrim(string, u&'\fffe ')));
+  $$ language sql
+     immutable
+     returns null on null input;
+  comment on function wt_to_sentinel is
+    'wt_to_sentinel takes string and returns it as a wt_sentinel';
+`),
+			10002: []byte(`
 -- credential_store
   create table credential_store (
     public_id wt_public_id primary key,
@@ -5229,7 +5256,7 @@ before insert on kms_oidc_key_version
   end;
   $$ language plpgsql;
 `),
-			10002: []byte(`
+			10003: []byte(`
 create table credential_vault_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -5615,8 +5642,34 @@ create table credential_vault_store (
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_library_private as
+     select library.public_id         as public_id,
+            library.store_id          as store_id,
+            library.name              as name,
+            library.description       as description,
+            library.vault_path        as vault_path,
+            library.http_method       as http_method,
+            library.http_request_body as http_request_body,
+            store.vault_address       as vault_address,
+            store.namespace           as namespace,
+            store.ca_cert             as ca_cert,
+            store.tls_server_name     as tls_server_name,
+            store.tls_skip_verify     as tls_skip_verify,
+            store.token_hmac          as token_hmac,
+            store.ct_token            as ct_token, -- encrypted
+            store.token_key_id        as token_key_id,
+            store.client_cert         as client_cert,
+            store.ct_client_key       as ct_client_key, -- encrypted
+            store.client_key_id       as client_key_id
+       from credential_vault_library library
+       join credential_vault_store_client_private store
+         on library.store_id = store.public_id;
+  comment on view credential_vault_library_private is
+    'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 `),
-			10003: []byte(`
+			10004: []byte(`
 create table target_credential_purpose_enm (
     name text primary key
       constraint only_predefined_credential_purposes_allowed
@@ -5667,7 +5720,7 @@ create table target_credential_purpose_enm (
   create trigger immutable_columns before update on target_credential_library
     for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'credential_purpose', 'create_time');
 `),
-			10004: []byte(`
+			10005: []byte(`
 create table session_credential_dynamic (
     credential_id wt_public_id not null,
     library_id wt_public_id not null,
@@ -5702,33 +5755,6 @@ create table session_credential_dynamic (
 
   create trigger immutable_columns before update on session_credential_dynamic
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
-`),
-			10005: []byte(`
-create function wt_is_sentinel(string text)
-    returns bool
-  as $$
-    select char_length(string) = char_length(concat(u&'\fffe', trim(ltrim(string, u&'\fffe'))));
-  $$ language sql
-     immutable
-     returns null on null input;
-  comment on function wt_is_sentinel is
-    'wt_is_sentinel returns true if string is a sentinel value';
-
-  create domain wt_sentinel as text
-    constraint wt_sentinel_not_valid
-      check(wt_is_sentinel(value));
-  comment on domain wt_sentinel is
-  'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
-
-  create function wt_to_sentinel(string text)
-    returns text
-  as $$
-    select concat(u&'\fffe', trim(ltrim(string, u&'\fffe ')));
-  $$ language sql
-     immutable
-     returns null on null input;
-  comment on function wt_to_sentinel is
-    'wt_to_sentinel takes string and returns it as a wt_sentinel';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
