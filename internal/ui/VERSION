@@ -1,4 +1,4 @@
-4a5e72d77b777403777d3f2dc57c767800cc93bf Merge pull request #533 from hashicorp/fix-authenticate-read
+b79d573db9149bd5eb26a32a7504cc300fb019c2 Force node v12.0+
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
