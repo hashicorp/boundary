@@ -81,7 +81,7 @@ layers:
           && ( cd "$DIR" \
           && git fetch origin "$SHA" \
           && git checkout "$SHA" \
-          && yarn install --ignore-engines \
+          && yarn install \
           && yarn build:ui:admin; )
 
   - name: go-modules
