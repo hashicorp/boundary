@@ -394,6 +394,7 @@ begin;
             library.vault_path        as vault_path,
             library.http_method       as http_method,
             library.http_request_body as http_request_body,
+            store.scope_id            as scope_id,
             store.vault_address       as vault_address,
             store.namespace           as namespace,
             store.ca_cert             as ca_cert,
