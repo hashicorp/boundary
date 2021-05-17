@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,7 +93,7 @@ func TestRepository_ListConnection(t *testing.T) {
 				testConnections = append(testConnections, c)
 			}
 			assert.Equal(tt.createCnt, len(testConnections))
-			got, err := repo.ListConnections(context.Background(), tt.args.searchForSessionId, tt.args.opt...)
+			got, err := repo.ListConnectionsBySessionId(context.Background(), tt.args.searchForSessionId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -115,15 +115,13 @@ func TestRepository_ListConnection(t *testing.T) {
 				2222,
 			)
 		}
-		got, err := repo.ListConnections(context.Background(), session.PublicId, WithOrderByCreateTime(db.AscendingOrderBy))
+		got, err := repo.ListConnectionsBySessionId(context.Background(), session.PublicId, WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(wantCnt, len(got))
 
 		for i := 0; i < len(got)-1; i++ {
-			first, err := ptypes.Timestamp(got[i].CreateTime.Timestamp)
-			require.NoError(err)
-			second, err := ptypes.Timestamp(got[i+1].CreateTime.Timestamp)
-			require.NoError(err)
+			first := got[i].CreateTime.Timestamp.AsTime()
+			second := got[i+1].CreateTime.Timestamp.AsTime()
 			assert.True(first.Before(second))
 		}
 	})
@@ -209,5 +207,126 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, tt.args.connection.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 		})
+	}
+}
+
+func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
+	ctx := context.Background()
+	numConns := 12
+
+	// Create two "workers". One will remain untouched while the other "goes
+	// away and comes back" (worker 2).
+	worker1 := TestWorker(t, conn, wrapper, WithServerId("worker1"))
+	worker2 := TestWorker(t, conn, wrapper, WithServerId("worker2"))
+
+	// Create a few sessions on each, activate, and authorize a connection
+	var connIds []string
+	var worker2ConnIds []string
+	for i := 0; i < numConns; i++ {
+		serverId := worker1.PrivateId
+		if i%2 == 0 {
+			serverId = worker2.PrivateId
+		}
+		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithServerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, "worker", []byte("foo"))
+		require.NoError(err)
+		c, cs, _, err := repo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
+		require.NoError(err)
+		require.Len(cs, 1)
+		require.Equal(StatusAuthorized, cs[0].Status)
+		connIds = append(connIds, c.GetPublicId())
+		if i%2 == 0 {
+			worker2ConnIds = append(worker2ConnIds, c.GetPublicId())
+		}
+	}
+
+	// Mark half of the connections connected and leave the others authorized.
+	// This is just to ensure we have a spread when we test it out.
+	for i, connId := range connIds {
+		if i%2 == 0 {
+			_, cs, err := repo.ConnectConnection(ctx, ConnectWith{
+				ConnectionId:       connId,
+				ClientTcpAddress:   "127.0.0.1",
+				ClientTcpPort:      22,
+				EndpointTcpAddress: "127.0.0.1",
+				EndpointTcpPort:    22,
+			})
+			require.NoError(err)
+			require.Len(cs, 2)
+			var foundAuthorized, foundConnected bool
+			for _, status := range cs {
+				if status.Status == StatusAuthorized {
+					foundAuthorized = true
+				}
+				if status.Status == StatusConnected {
+					foundConnected = true
+				}
+			}
+			require.True(foundAuthorized)
+			require.True(foundConnected)
+		}
+	}
+
+	// There is a 10 second delay to account for time for the connections to
+	// transition
+	time.Sleep(15 * time.Second)
+
+	// Now, advertise only some of the connection IDs for worker 2. After,
+	// all connection IDs for worker 1 should be showing as non-closed, and
+	// the ones for worker 2 not advertised should be closed.
+	shouldStayOpen := worker2ConnIds[0:2]
+	count, err := repo.CloseDeadConnectionsOnWorkerReport(ctx, worker2.GetPrivateId(), shouldStayOpen)
+	require.NoError(err)
+	assert.Equal(4, count)
+
+	// For the ones we didn't specify, we expect those to now be closed. We
+	// expect all others to be open.
+
+	shouldBeClosed := worker2ConnIds[2:]
+	var conns []*Connection
+	require.NoError(repo.list(ctx, &conns, "", nil))
+	for _, conn := range conns {
+		_, states, err := repo.LookupConnection(ctx, conn.PublicId)
+		require.NoError(err)
+		var foundClosed bool
+		for _, state := range states {
+			if state.Status == StatusClosed {
+				foundClosed = true
+				break
+			}
+		}
+		assert.True(foundClosed == strutil.StrListContains(shouldBeClosed, conn.PublicId))
+	}
+
+	// Now, advertise none of the connection IDs for worker 2. This is mainly to
+	// test that handling the case where we do not include IDs works properly as
+	// it changes the where clause.
+	count, err = repo.CloseDeadConnectionsOnWorkerReport(ctx, worker1.GetPrivateId(), nil)
+	require.NoError(err)
+	assert.Equal(6, count)
+
+	// We now expect all but those blessed few to be closed
+	conns = nil
+	require.NoError(repo.list(ctx, &conns, "", nil))
+	for _, conn := range conns {
+		_, states, err := repo.LookupConnection(ctx, conn.PublicId)
+		require.NoError(err)
+		var foundClosed bool
+		for _, state := range states {
+			if state.Status == StatusClosed {
+				foundClosed = true
+				break
+			}
+		}
+		assert.True(foundClosed != strutil.StrListContains(shouldStayOpen, conn.PublicId))
 	}
 }

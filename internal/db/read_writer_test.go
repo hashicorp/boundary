@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestDb_UpdateUnsetField(t *testing.T) {
@@ -50,7 +50,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 
 func TestDb_Update(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
-	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
@@ -623,7 +623,7 @@ func TestDb_Create(t *testing.T) {
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
-		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id

@@ -2,7 +2,6 @@ package sessions_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -518,6 +518,13 @@ func TestCancel(t *testing.T) {
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
 		},
 		{
+			name:    "Already canceled",
+			scopeId: sess.ScopeId,
+			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
+			res:     nil,
+			err:     errors.New(errors.InvalidSessionState, "sessions.(Service).CancelSession", "session already in canceling state"),
+		},
+		{
 			name: "Cancel a non existing Session",
 			req:  &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
 			res:  nil,
@@ -548,7 +555,14 @@ func TestCancel(t *testing.T) {
 			got, gErr := s.CancelSession(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				// It's hard to mix and match api/error package errors right now
+				// so use old/new behavior depending on the type. If validate
+				// gets updated this can be standardized.
+				if errors.Match(errors.T(errors.InvalidSessionState), gErr) {
+					assert.True(errors.Match(errors.T(tc.err), gErr), "GetSession(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.err)
+				} else {
+					assert.True(errors.Is(gErr, tc.err), "GetSession(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				}
 			}
 
 			if tc.res == nil {

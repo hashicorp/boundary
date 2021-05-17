@@ -384,7 +384,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 		defer func() {
-			// The base context has already been cancelled so we shouldn't use it here.
+			// The base context has already been canceled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.

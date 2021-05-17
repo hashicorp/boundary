@@ -181,7 +181,7 @@ type rollbacker interface {
 }
 
 // runMigrations passes migration queries to a database driver and manages
-// the version and dirty bit.  Cancelation or deadline/timeout is managed
+// the version and dirty bit. Cancellation or deadline/timeout is managed
 // through the passed in context.
 func (b *Manager) runMigrations(ctx context.Context, qp *statementProvider) error {
 	const op = "schema.(Manager).runMigrations"
