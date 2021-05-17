@@ -88,7 +88,7 @@ type AnyOperation struct {
 
 	// type_name defines type of operation.
 	TypeName string `protobuf:"bytes,1,opt,name=type_name,json=typeName,proto3" json:"type_name,omitempty"`
-	// value are the bytes of a marshalled proto buff.
+	// value are the bytes of a marshaled proto buff.
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// operation_type defines the type of database operation.
 	OperationType OpType `protobuf:"varint,3,opt,name=operation_type,json=operationType,proto3,enum=controller.storage.oplog.v1.OpType" json:"operation_type,omitempty"`

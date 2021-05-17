@@ -3,13 +3,14 @@ package session
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // LookupConnection will look up a connection in the repository and return the connection
-// with its states.  If the connection is not found, it will return nil, nil, nil.
+// with its states. If the connection is not found, it will return nil, nil, nil.
 // No options are currently supported.
 func (r *Repository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, []*ConnectionState, error) {
 	const op = "session.(Repository).LookupConnection"
@@ -43,12 +44,15 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 	return &connection, states, nil
 }
 
-// ListConnections will sessions.  Supports the WithLimit and WithOrder options.
-func (r *Repository) ListConnections(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
-	const op = "session.(Repository).ListConnections"
-	opts := getOpts(opt...)
+// ListConnectionsBySessionId will list connections by session ID. Supports the
+// WithLimit and WithOrder options.
+func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
+	const op = "session.(Repository).ListConnectionsBySessionId"
+	if sessionId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no session ID supplied")
+	}
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opts) // pass options, so WithLimit and WithOrder are supported
+	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -93,6 +97,55 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return rowsDeleted, nil
+}
+
+// CloseDeadConnectionsOnWorkerReport will run the connectionsToClose CTE to
+// look for connections that should be marked closed because they are no longer
+// claimed by a server. This does notdetect connections where the server is no
+// longer reporting status; that's for a different CTE to be called by a
+// heartbeat detector.
+//
+// The foundConns input should be the currently-claimed connections; the CTE
+// uses a NOT IN clause to ensure these are excluded. It is not an error for
+// this to be empty as the worker could claim no connections; in that case all
+// connections will immediately transition to closed.
+func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, serverId string, foundConns []string) (int, error) {
+	const op = "session.(Repository).CloseDeadConnectionsOnWorkerReport"
+	if serverId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing server id")
+	}
+
+	args := make([]interface{}, 0, len(foundConns)+1)
+	args = append(args, serverId)
+
+	var publicIdStr string
+	if len(foundConns) > 0 {
+		publicIdStr = `public_id not in (%s) and`
+		params := make([]string, len(foundConns))
+		for i, connId := range foundConns {
+			params[i] = fmt.Sprintf("$%d", i+2) // Add one for server ID, and offsets start at 1
+			args = append(args, connId)
+		}
+		publicIdStr = fmt.Sprintf(publicIdStr, strings.Join(params, ","))
+	}
+	var rowsAffected int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			rowsAffected, err = w.Exec(ctx, fmt.Sprintf(connectionsToCloseCte, publicIdStr), args)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(err, op)
+	}
+	return rowsAffected, nil
 }
 
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {

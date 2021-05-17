@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -68,13 +67,14 @@ func TestState(t *testing.T, conn *gorm.DB, sessionId string, state Status) *Sta
 	return s
 }
 
-// TestSession creates a test session composed of c in the repository.
+// TestSession creates a test session composed of c in the repository. Options
+// are passed into New, and withServerId is handled locally.
 func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
+	opts := getOpts(opt...)
 	require := require.New(t)
 	if c.ExpirationTime == nil {
-		future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-		require.NoError(err)
+		future := timestamppb.New(time.Now().Add(time.Hour))
 		c.ExpirationTime = &timestamp.Timestamp{Timestamp: future}
 	}
 	rw := db.New(conn)
@@ -86,14 +86,15 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	_, certBytes, err := newCert(wrapper, c.UserId, id, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
+	s.ServerId = opts.withServerId
 
 	if len(s.TofuToken) != 0 {
 		err = s.encrypt(context.Background(), wrapper)
 	}
 	require.NoError(err)
-	err = rw.Create(context.Background(), s)
+	err = rw.Create(context.Background(), s, opts.withDbOpts...)
 	require.NoError(err)
-	ss, err := fetchStates(context.Background(), rw, s.PublicId, db.WithOrder("start_time desc"))
+	ss, err := fetchStates(context.Background(), rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
 
@@ -103,12 +104,10 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 // TestDefaultSession creates a test session in the repository using defaults.
 func TestDefaultSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
-	require := require.New(t)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(err)
+	future := timestamppb.New(time.Now().Add(time.Hour))
 	exp := &timestamp.Timestamp{Timestamp: future}
-	return TestSession(t, conn, wrapper, composedOf, WithExpirationTime(exp))
+	return TestSession(t, conn, wrapper, composedOf, append(opt, WithExpirationTime(exp))...)
 }
 
 // TestSessionParams returns an initialized ComposedOf which can be used to
@@ -169,17 +168,24 @@ func TestTofu(t *testing.T) []byte {
 	return []byte(tofu)
 }
 
-func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
+// TestWorker inserts a worker into the db to satisfy foreign key constraints.
+// Supports the WithServerId option.
+func TestWorker(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	id, err := uuid.GenerateUUID()
-	require.NoError(t, err)
+	opts := getOpts(opt...)
+	id := opts.withServerId
+	if id == "" {
+		id, err = uuid.GenerateUUID()
+		require.NoError(t, err)
+		id = "test-session-worker-" + id
+	}
 	worker := &servers.Server{
-		PrivateId:   "test-session-worker-" + id,
+		PrivateId:   id,
 		Type:        servers.ServerTypeWorker.String(),
 		Description: "Test Session Worker",
 		Address:     "127.0.0.1",

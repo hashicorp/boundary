@@ -172,7 +172,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 				if v.closeTime.IsZero() {
 					toClose++
 					v.connCancel()
-					w.logger.Info("terminated connection due to cancelation or expiration", "session_id", si.id, "connection_id", k)
+					w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
 					closeInfo[k] = si.id
 				}
 			}

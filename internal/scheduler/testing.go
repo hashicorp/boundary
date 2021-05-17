@@ -60,7 +60,7 @@ func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{})
 	fn := func(ctx context.Context) error {
 		jobReady <- struct{}{}
 
-		// Block until context is cancelled
+		// Block until context is canceled
 		<-ctx.Done()
 
 		jobDone <- struct{}{}
