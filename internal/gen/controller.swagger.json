@@ -3736,7 +3736,9 @@
           "readOnly": true
         },
         "purpose": {
-          "type": "string"
+          "type": "string",
+          "description": "Output only.  The Credential Store's purpose for being attached to this target.  This to \"Application\".",
+          "readOnly": true
         }
       }
     },
@@ -4146,8 +4148,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "credential_libraries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.services.v1.CredentialLibrary"
+          }
         }
-      }
+      },
+      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
     },
     "controller.api.services.v1.AddTargetCredentialLibrariesResponse": {
       "type": "object",
@@ -4500,6 +4509,19 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.CredentialLibrary": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the credential library."
+        },
+        "purpose": {
+          "type": "string",
+          "description": "The purpose of the credential library for this target. Currently this can\nonly be \"application\" or left empty (which defaults the value to\n\"application\")."
         }
       }
     },
@@ -5125,8 +5147,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "credential_libraries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.services.v1.CredentialLibrary"
+          }
         }
-      }
+      },
+      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
     },
     "controller.api.services.v1.SetTargetCredentialLibrariesResponse": {
       "type": "object",

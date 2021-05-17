@@ -449,7 +449,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.addLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.addLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetCredentialLibraries(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +487,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.setLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.setLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetCredentialLibraries(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -1024,12 +1024,17 @@ func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetI
 	return out, hs, cl, nil
 }
 
-func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, libraries []*pbs.CredentialLibrary, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, cl, err := repo.AddTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(libraryIds, false))
+	lids := make([]string, 0, len(libraryIds)+len(libraries))
+	lids = append(lids, libraryIds...)
+	for _, l := range libraries {
+		lids = append(lids, l.GetId())
+	}
+	out, hs, cl, err := repo.AddTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(lids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential libraries to target: %v.", err)
@@ -1040,13 +1045,18 @@ func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, librar
 	return out, hs, cl, nil
 }
 
-func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, libraries []*pbs.CredentialLibrary, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
 	const op = "targets.(Service).setLibrariesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, _, _, err = repo.SetTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(libraryIds, false))
+	lids := make([]string, 0, len(libraryIds)+len(libraries))
+	lids = append(lids, libraryIds...)
+	for _, l := range libraries {
+		lids = append(lids, l.GetId())
+	}
+	_, _, _, err = repo.SetTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(lids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential libraries in target: %v.", err)
@@ -1413,12 +1423,22 @@ func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) e
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetCredentialLibraryIds()) == 0 {
+	if len(req.GetCredentialLibraryIds())+len(req.GetCredentialLibraries()) == 0 {
 		badFields[globals.CredentialLibraryIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetCredentialLibraryIds() {
 		if !handlers.ValidId(handlers.Id(id), vault.CredentialLibraryPrefix) {
 			badFields[globals.CredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", id)
+			break
+		}
+	}
+	for _, cl := range req.GetCredentialLibraries() {
+		if !handlers.ValidId(handlers.Id(cl.GetId()), vault.CredentialLibraryPrefix) {
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
+			break
+		}
+		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose  %q for credential library.", cl.GetPurpose())
 			break
 		}
 	}
@@ -1439,6 +1459,16 @@ func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) e
 	for _, id := range req.GetCredentialLibraryIds() {
 		if !handlers.ValidId(handlers.Id(id), vault.CredentialLibraryPrefix) {
 			badFields[globals.CredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", id)
+			break
+		}
+	}
+	for _, cl := range req.GetCredentialLibraries() {
+		if !handlers.ValidId(handlers.Id(cl.GetId()), vault.CredentialLibraryPrefix) {
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
+			break
+		}
+		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose  %q for credential library.", cl.GetPurpose())
 			break
 		}
 	}

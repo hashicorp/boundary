@@ -91,7 +91,8 @@ type CredentialLibrary struct {
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	// Output only. The Credential Store to which this Credential Library belongs.
 	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"`
-	Purpose           string `protobuf:"bytes,30,opt,name=purpose,proto3" json:"purpose,omitempty"`
+	// Output only.  The Credential Store's purpose for being attached to this target.  This to "Application".
+	Purpose string `protobuf:"bytes,30,opt,name=purpose,proto3" json:"purpose,omitempty"`
 }
 
 func (x *CredentialLibrary) Reset() {

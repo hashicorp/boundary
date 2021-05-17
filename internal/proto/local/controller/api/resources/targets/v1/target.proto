@@ -25,6 +25,7 @@ message CredentialLibrary{
 	// Output only. The Credential Store to which this Credential Library belongs.
 	string credential_store_id = 20 [json_name="credential_store_id"];
 
+	// Output only.  The Credential Store's purpose for being attached to this target.  This to "Application".
 	string purpose = 30;
 }
 
