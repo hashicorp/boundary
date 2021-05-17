@@ -295,7 +295,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	}
 }
 
-func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
+func TestRepository_lookupPrivateStore(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -357,7 +357,7 @@ func TestRepository_lookupPrivateCredentialStore(t *testing.T) {
 			assert.NotNil(origLookup.Token())
 			assert.Equal(orig.GetPublicId(), origLookup.GetPublicId())
 
-			got, err := repo.lookupPrivateCredentialStore(ctx, orig.GetPublicId())
+			got, err := repo.lookupPrivateStore(ctx, orig.GetPublicId())
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
@@ -1164,16 +1164,16 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		return nil
 	}
 
-	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore) {
-		assert.Equal(t, updated.Certificate, pcs.ClientCert, "updated certificate")
-		assert.Equal(t, updated.CertificateKey, pcs.ClientKey, "updated certificate key")
+	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
+		assert.Equal(t, updated.Certificate, ps.ClientCert, "updated certificate")
+		assert.Equal(t, updated.CertificateKey, ps.ClientKey, "updated certificate key")
 	}
 
-	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore) {
+	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
 		assert.Nil(t, updated, "updated certificate")
-		assert.Nil(t, pcs.ClientCert, "pcs ClientCert")
-		assert.Nil(t, pcs.ClientKey, "pcs ClientKey")
-		assert.Nil(t, pcs.CtClientKey, "pcs CtClientKey")
+		assert.Nil(t, ps.ClientCert, "ps ClientCert")
+		assert.Nil(t, ps.ClientKey, "ps ClientKey")
+		assert.Nil(t, ps.CtClientKey, "ps CtClientKey")
 	}
 
 	tests := []struct {
@@ -1181,7 +1181,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		tls       TestVaultTLS
 		origFn    func(t *testing.T, v *TestVaultServer) *ClientCertificate
 		updateFn  func(t *testing.T, v *TestVaultServer) *ClientCertificate
-		wantFn    func(t *testing.T, org, updated *ClientCertificate, pcs *privateCredentialStore)
+		wantFn    func(t *testing.T, org, updated *ClientCertificate, ps *privateStore)
 		wantCount int
 		wantErr   errors.Code
 	}{
@@ -1265,9 +1265,9 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(got)
 
-			pcs, err := repo.lookupPrivateCredentialStore(ctx, orig.GetPublicId())
+			ps, err := repo.lookupPrivateStore(ctx, orig.GetPublicId())
 			require.NoError(err)
-			tt.wantFn(t, origClientCert, updateClientCert, pcs)
+			tt.wantFn(t, origClientCert, updateClientCert, ps)
 		})
 	}
 }
