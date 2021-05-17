@@ -1067,7 +1067,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			badFields["session_max_seconds"] = "This must be greater than zero."
 		}
 		switch target.SubtypeFromType(req.GetItem().GetType()) {
-		case target.TcpSubType:
+		case target.TcpSubtype:
 			tcpAttrs := &pb.TcpTargetAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), tcpAttrs); err != nil {
 				badFields["attributes"] = "Attribute fields do not match the expected format."
@@ -1111,8 +1111,8 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			badFields["session_max_seconds"] = "This must be greater than zero."
 		}
 		switch target.SubtypeFromId(req.GetItem().GetType()) {
-		case target.TcpSubType:
-			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != target.TcpSubType {
+		case target.TcpSubtype:
+			if req.GetItem().GetType() != "" && target.SubtypeFromType(req.GetItem().GetType()) != target.TcpSubtype {
 				badFields["type"] = "Cannot modify the resource type."
 			}
 			tcpAttrs := &pb.TcpTargetAttributes{}

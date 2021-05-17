@@ -87,7 +87,7 @@ func TestGetSession(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		States:            []*pb.SessionState{{Status: session.StatusPending.String(), StartTime: sess.CreateTime.GetTimestamp()}},
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubType.String(),
+		Type:              target.TcpSubtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
@@ -300,7 +300,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubType.String(),
+			Type:              target.TcpSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 
@@ -335,7 +335,7 @@ func TestList(t *testing.T) {
 			Status:            status,
 			States:            states,
 			Certificate:       sess.Certificate,
-			Type:              target.TcpSubType.String(),
+			Type:              target.TcpSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 		})
 	}
@@ -498,7 +498,7 @@ func TestCancel(t *testing.T) {
 		Scope:             &scopes.ScopeInfo{Id: p.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
 		Status:            session.StatusCanceling.String(),
 		Certificate:       sess.Certificate,
-		Type:              target.TcpSubType.String(),
+		Type:              target.TcpSubtype.String(),
 		AuthorizedActions: testAuthorizedActions,
 	}
 
