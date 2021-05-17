@@ -87,11 +87,11 @@ type CredentialLibrary struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Output only. The ID of the Credential Library.
+	// The ID of the Credential Library.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	// Output only. The Credential Store to which this Credential Library belongs.
 	CredentialStoreId string `protobuf:"bytes,20,opt,name=credential_store_id,proto3" json:"credential_store_id,omitempty"`
-	// Output only.  The Credential Store's purpose for being attached to this target.  This to "Application".
+	// The library's purpose for this target.
 	Purpose string `protobuf:"bytes,30,opt,name=purpose,proto3" json:"purpose,omitempty"`
 }
 

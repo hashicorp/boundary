@@ -19,13 +19,13 @@ message HostSet{
 }
 
 message CredentialLibrary{
-	// Output only. The ID of the Credential Library.
+	// The ID of the Credential Library.
 	string id = 10;
 
 	// Output only. The Credential Store to which this Credential Library belongs.
 	string credential_store_id = 20 [json_name="credential_store_id"];
 
-	// Output only.  The Credential Store's purpose for being attached to this target.  This to "Application".
+	// The library's purpose for this target.
 	string purpose = 30;
 }
 

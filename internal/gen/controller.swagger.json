@@ -3727,8 +3727,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Credential Library.",
-          "readOnly": true
+          "description": "The ID of the Credential Library."
         },
         "credential_store_id": {
           "type": "string",
@@ -3737,8 +3736,7 @@
         },
         "purpose": {
           "type": "string",
-          "description": "Output only.  The Credential Store's purpose for being attached to this target.  This to \"Application\".",
-          "readOnly": true
+          "description": "The library's purpose for this target."
         }
       }
     },
