@@ -5667,15 +5667,19 @@ create table target_credential_purpose_enm (
   create trigger immutable_columns before update on target_credential_library
     for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'credential_purpose', 'create_time');
 
-create view target_library
-as
-select
-    tcl.*,
+  -- target_library provides the store id along with the other data stored in
+  -- target_credential_library
+  create view target_library
+  as
+  select
+    tcl.target_id,
+    tcl.credential_library_id,
+    tcl.credential_purpose,
     cl.store_id
-from
+  from
     target_credential_library tcl,
     credential_library cl
-where
+  where
     cl.public_id = tcl.credential_library_id;
 `),
 			10004: []byte(`
