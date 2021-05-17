@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Inline OIDC authentication flow:  when the OIDC authentication flow succeeds,
+  the third-party provider browser window is automatically closed and the user
+  is returned to the admin UI.
+
 ### Bug Fixes
 
 * sessions: Clean up connections that are dangling after a worker dies (is
@@ -336,7 +342,7 @@ for more details.
 * targets: If a worker filter references a key that doesn't exist, treat it as a
   non-match rather than an error
   ([PR](https://github.com/hashicorp/boundary/pull/900))
-  
+
 ## 0.1.5 (2021/01/29)
 
 *NOTE*: This version requires a database migration via the new `boundary
