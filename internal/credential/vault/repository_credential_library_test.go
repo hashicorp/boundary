@@ -125,6 +125,46 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-POST-method",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "POST",
+					Description: "test-description-repo",
+					VaultPath:   "/some/path",
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "POST",
+					Description: "test-description-repo",
+					VaultPath:   "/some/path",
+				},
+			},
+		},
+		{
+			name: "valid-POST-http-body",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					HttpMethod:      "POST",
+					Description:     "test-description-repo",
+					VaultPath:       "/some/path",
+					HttpRequestBody: []byte(`{"common_name":"boundary.com"}`),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					HttpMethod:      "POST",
+					Description:     "test-description-repo",
+					VaultPath:       "/some/path",
+					HttpRequestBody: []byte(`{"common_name":"boundary.com"}`),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
