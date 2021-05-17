@@ -57,4 +57,10 @@ returning *;
 delete from credential_vault_client_certificate
  where store_id = $1;
 `
+
+	selectPrivateLibrariesQuery = `
+select *
+  from credential_vault_library_private
+ where public_id in (%s);
+`
 )
