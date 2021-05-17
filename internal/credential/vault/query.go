@@ -43,12 +43,13 @@ insert into credential_vault_lease (
 `
 	upsertClientCertQuery = `
 insert into credential_vault_client_certificate
-  (store_id, certificate, certificate_key, key_id)
+  (store_id, certificate, certificate_key, certificate_key_hmac, key_id)
 values
-  ($1, $2, $3, $4)
+  ($1, $2, $3, $4, $5)
 on conflict (store_id) do update
   set certificate     = excluded.certificate,
       certificate_key = excluded.certificate_key,
+      certificate_key_hmac = excluded.certificate_key_hmac,
       key_id          = excluded.key_id
 returning *;
 `

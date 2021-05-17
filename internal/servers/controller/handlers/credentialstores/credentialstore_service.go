@@ -492,7 +492,12 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 			if vaultIn.Token() != nil {
 				attrs.VaultTokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
 			}
-			// TODO: Add vault token hmac and client cert related read only fields.
+			if cc := vaultIn.ClientCertificate(); cc != nil {
+				if len(cc.GetCertificate()) != 0 {
+					attrs.ClientCertificate = wrapperspb.String(string(cc.GetCertificate()))
+				}
+				attrs.ClientCertificateKeyHmac = base64.RawURLEncoding.EncodeToString(cc.GetCertificateKeyHmac())
+			}
 
 			var err error
 			if out.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
