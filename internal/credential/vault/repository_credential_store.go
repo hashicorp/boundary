@@ -736,13 +736,11 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				msgs = append(msgs, returnedClientCert.oplogMessage(db.CreateOp))
 			}
 
-			ir, err := NewRepository(reader, w, r.kms)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create internal tx repo for lookup"))
-			}
-			returnedCredentialStore, err = ir.LookupCredentialStore(ctx, cs.GetPublicId())
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup credential store"))
+			publicId := cs.PublicId
+			agg := allocCredentialStoreAggPublic()
+			agg.PublicId = publicId
+			if err := reader.LookupByPublicId(ctx, agg); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup credential store: %s", publicId)))
 			}
 
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
