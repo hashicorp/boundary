@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -26,6 +27,9 @@ type privateLibrary struct {
 	StoreId     string
 	Name        string
 	Description string
+	CreateTime  *timestamp.Timestamp
+	UpdateTime  *timestamp.Timestamp
+	Version     uint32
 
 	ScopeId         string
 	VaultPath       string
@@ -48,6 +52,15 @@ type privateLibrary struct {
 	CtClientKey []byte
 	ClientKeyId string
 }
+
+var _ credential.Library = (*privateLibrary)(nil)
+
+func (pl *privateLibrary) GetVersion() uint32                  { return pl.Version }
+func (pl *privateLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
+func (pl *privateLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
+func (pl *privateLibrary) GetName() string                     { return pl.Name }
+func (pl *privateLibrary) GetDescription() string              { return pl.Description }
+func (pl *privateLibrary) GetStoreId() string                  { return pl.StoreId }
 
 func allocPrivateLibrary() *privateLibrary {
 	return &privateLibrary{}
