@@ -1438,7 +1438,7 @@ func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) e
 			break
 		}
 		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose  %q for credential library.", cl.GetPurpose())
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
 			break
 		}
 	}
@@ -1468,7 +1468,7 @@ func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) e
 			break
 		}
 		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose  %q for credential library.", cl.GetPurpose())
+			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
 			break
 		}
 	}
