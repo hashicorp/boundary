@@ -709,6 +709,15 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 	}
 }
 
+// WithPolicies sets the polices to attach to a token. The default policy
+// attached to tokens is 'default'.
+func WithPolicies(p []string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.policies = p
+	}
+}
+
 // WithDockerNetwork sets the option to create docker network when creating
 // a Vault test server. The default is to not create a docker network.
 func WithDockerNetwork(b bool) TestOption {
@@ -839,6 +848,19 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 	return secret
 }
 
+func (v *TestVaultServer) addPolicy(t *testing.T, name string, mountPath string) {
+	const template = `
+		path "%s*" {
+			capabilities = ["create", "read", "update", "delete", "list"]
+		}`
+
+	t.Helper()
+	require := require.New(t)
+	policy := fmt.Sprintf(template, mountPath)
+	vc := v.client(t).cl
+	require.NoError(vc.Sys().PutPolicy(name, policy))
+}
+
 // MountPKI mounts the Vault PKI secret engine and initializes it by
 // generating a root certificate authority and creating a default role on
 // the mount. The root CA is returned.
@@ -846,6 +868,14 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 // The default mount path is pki and the default role name is boundary.
 // WithTestMountPath and WithTestRoleName are the only test options
 // supported.
+//
+// MountPKI also adds a Vault policy named 'pki' to v and adds it to the
+// standard set of polices attached to tokens created with v.CreateToken.
+// The policy is defined as:
+//
+//   path "mountPath/*" {
+//     capabilities = ["create", "read", "update", "delete", "list"]
+//   }
 func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
@@ -873,6 +903,7 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 		mountPath = "pki/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+	v.addPolicy(t, "pki", mountPath)
 
 	// Generate a root CA
 	caPath := path.Join(mountPath, "root/generate/internal")
@@ -899,6 +930,14 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 // MountDatabase starts a PostgreSQL database in a docker container then
 // mounts the Vault database secrets engine and configures it to issue
 // credentials for the database.
+//
+// MountDatabase also adds a Vault policy named 'database' to v and adds it
+// to the standard set of polices attached to tokens created with
+// v.CreateToken. The policy is defined as:
+//
+//   path "mountPath/*" {
+//     capabilities = ["create", "read", "update", "delete", "list"]
+//   }
 func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
 	t.Helper()
 	require := require.New(t)
@@ -985,6 +1024,7 @@ func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
 		mountPath = "database/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+	v.addPolicy(t, "database", mountPath)
 
 	t.Log(v.vaultContainer.GetIPInNetwork(network))
 

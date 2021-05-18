@@ -315,6 +315,9 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
+
 		certPath := path.Join("pki", "issue", "boundary")
 		certOptions := map[string]interface{}{
 			"common_name": "boundary.com",
@@ -343,6 +346,9 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
+
 		certPath := path.Join("gary", "issue", "boundary")
 		certOptions := map[string]interface{}{
 			"common_name": "boundary.com",
@@ -370,6 +376,9 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		require.NotEmpty(mounts)
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
 
 		certPath := path.Join("pki", "issue", "gary")
 		certOptions := map[string]interface{}{
@@ -401,6 +410,9 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 		require.NotEmpty(mounts)
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+		vc.SetToken(token.Auth.ClientToken)
 
 		dbCredPath := path.Join("database", "creds", "opened")
 		dbSecret, err := vc.Logical().Read(dbCredPath)
