@@ -19,7 +19,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.10
 	github.com/hashicorp/boundary/sdk v0.0.4
-	github.com/hashicorp/cap v0.0.0-20210517201257-8ce007dee2fc
+	github.com/hashicorp/cap v0.0.0-20210518163718-e72205e8eaae
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-bexpr v0.1.7
@@ -55,8 +55,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.7.0
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	golang.org/x/tools v0.1.1
 	google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6
