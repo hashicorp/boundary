@@ -131,11 +131,11 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		}
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	subType, err := target.targetSubType()
+	subtype, err := target.targetSubtype()
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return subType, hostSets, credLibs, nil
+	return subtype, hostSets, credLibs, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -164,11 +164,11 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	targets := make([]Target, 0, len(foundTargets))
 
 	for _, t := range foundTargets {
-		subType, err := t.targetSubType()
+		subtype, err := t.targetSubtype()
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		targets = append(targets, subType)
+		targets = append(targets, subtype)
 	}
 	return targets, nil
 }

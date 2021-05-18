@@ -9,45 +9,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSubType(t *testing.T) {
+func TestSubtype(t *testing.T) {
 	tests := []struct {
-		subType     SubType
+		subtype     Subtype
 		id          string
 		wantString  string
-		wantSubtype SubType
+		wantSubtype Subtype
 	}{
 		{
-			subType:     UnknownSubtype,
+			subtype:     UnknownSubtype,
 			id:          "unknownPrefix" + "1234567890",
 			wantString:  "unknown",
 			wantSubtype: UnknownSubtype,
 		},
 		{
-			subType:     PasswordSubtype,
+			subtype:     PasswordSubtype,
 			id:          password.AuthMethodPrefix + "1234567890",
 			wantString:  "password",
 			wantSubtype: PasswordSubtype,
 		},
 		{
-			subType:     PasswordSubtype,
+			subtype:     PasswordSubtype,
 			id:          password.AccountPrefix + "1234567890",
 			wantString:  "password",
 			wantSubtype: PasswordSubtype,
 		},
 		{
-			subType:     OidcSubtype,
+			subtype:     OidcSubtype,
 			id:          oidc.AuthMethodPrefix + "1234567890",
 			wantString:  "oidc",
 			wantSubtype: OidcSubtype,
 		},
 		{
-			subType:     OidcSubtype,
+			subtype:     OidcSubtype,
 			id:          oidc.AccountPrefix + "1234567890",
 			wantString:  "oidc",
 			wantSubtype: OidcSubtype,
 		},
 		{
-			subType:     SubType(1000),
+			subtype:     Subtype(1000),
 			id:          "unknownPrefix" + "1234567890",
 			wantString:  "unknown",
 			wantSubtype: UnknownSubtype,
@@ -56,7 +56,7 @@ func TestSubType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.wantString, func(t *testing.T) {
 			assert, _ := assert.New(t), require.New(t)
-			s := tt.subType.String()
+			s := tt.subtype.String()
 			assert.Equal(tt.wantString, s)
 			assert.Equal(tt.wantSubtype, SubtypeFromType(s))
 
