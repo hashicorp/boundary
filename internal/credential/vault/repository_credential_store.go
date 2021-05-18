@@ -690,15 +690,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, &csOplogMsg)
 
-			ir, err := NewRepository(reader, w, r.kms)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create internal tx repo for lookup"))
-			}
-			existing, err := ir.LookupCredentialStore(ctx, cs.GetPublicId())
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup credential store"))
-			}
-			returnedCredentialStore.outputToken = existing.outputToken
 			if updateToken {
 				returnedToken = token.clone()
 				query, values := returnedToken.insertQuery()
@@ -715,10 +706,8 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				returnedToken.Token.Token = nil
 				returnedToken.Token.CtToken = nil
 				returnedCredentialStore.outputToken = returnedToken
-
 			}
 
-			returnedCredentialStore.clientCert = existing.clientCert
 			switch {
 			case deleteClientCert:
 				returnedClientCert = clientCert.clone()
@@ -745,6 +734,15 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				returnedClientCert.CtCertificateKey = nil
 				returnedCredentialStore.clientCert = returnedClientCert
 				msgs = append(msgs, returnedClientCert.oplogMessage(db.CreateOp))
+			}
+
+			ir, err := NewRepository(reader, w, r.kms)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to create internal tx repo for lookup"))
+			}
+			returnedCredentialStore, err = ir.LookupCredentialStore(ctx, cs.GetPublicId())
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to lookup credential store"))
 			}
 
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
