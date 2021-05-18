@@ -10,7 +10,7 @@ config:
 inputs:
   defaults:
     PRODUCT_NAME: boundary
-    PRODUCT_VERSION: 0.2.1
+    PRODUCT_VERSION: 0.2.2
     BUILD_TAGS: ui
     CGO_ENABLED: 0
 
@@ -50,8 +50,8 @@ package-aliases:
     template: >-
       boundary/{{.BUNDLE_NAME}}/{{.BUNDLE_NAME}}_{{.GOOS}}_{{.GOARCH}}.zip
 
-# golang:1.16.3-buster
-base-image: "docker.mirror.hashicorp.services/golang@sha256:2ff1a0d92edf6c2d4a2dd0d6bfa43e512c8b2f3aac738ffbb6195caf7cb38164"
+# golang:1.16.4-buster
+base-image: "docker.mirror.hashicorp.services/golang@sha256:f7a5c5872d4bb68e152be72e4a4bf9a142a47ec2dcbb4074798d4feb6197abd7"
 
 layers:
   - name: base
@@ -64,10 +64,12 @@ layers:
       RUN \
           curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
            | apt-key add - \
-          && echo "deb https://dl.yarnpkg.com/debian/ stable main" \
-           | tee /etc/apt/sources.list.d/yarn.list \
+          && curl -sS https://deb.nodesource.com/gpgkey/nodesource.gpg.key \
+           | apt-key add - \
+          && echo "deb https://deb.nodesource.com/node_14.x buster main" | tee /etc/apt/sources.list.d/nodesource.list \
+          && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
           && apt-get update \
-          && apt-get install -yq yarn zip \
+          && apt-get install -yq yarn zip nodejs \
           && rm -rf /var/lib/apt/lists/*
 
   - name: ui

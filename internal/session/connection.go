@@ -69,12 +69,12 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 	return &c, nil
 }
 
-// AllocConnection will allocate a connection.
+// AllocConnection will allocate a Connection.
 func AllocConnection() Connection {
 	return Connection{}
 }
 
-// Clone creates a clone of the connection.
+// Clone creates a clone of the Connection.
 func (c *Connection) Clone() interface{} {
 	clone := &Connection{
 		PublicId:           c.PublicId,

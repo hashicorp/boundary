@@ -190,6 +190,7 @@ func (w *Worker) authorizeConnection(ctx context.Context, sessionId string) (*co
 
 	resp, err := conn.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
 		SessionId: sessionId,
+		WorkerId:  w.conf.RawConfig.Worker.Name,
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("error authorizing connection: %w", err)

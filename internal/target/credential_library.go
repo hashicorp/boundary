@@ -71,3 +71,16 @@ func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+// A TargetLibrary represents the relationship between a target and a
+// credential library and includes the id of the credential store that the
+// library is a part of.
+type TargetLibrary struct {
+	*store.CredentialLibrary
+	StoreId string
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (ts *TargetLibrary) TableName() string {
+	return "target_library"
+}

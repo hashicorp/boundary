@@ -2975,6 +2975,9 @@ values
     ('connection limit'),
     ('canceled');
 
+-- Note: here, and in the session_connection table, we should add a trigger
+-- ensuring that if server_id goes to null, we mark connections as closed. See
+-- https://hashicorp.atlassian.net/browse/ICU-1495
   create table session (
     public_id wt_public_id primary key,
     -- the user of the session
@@ -3452,6 +3455,7 @@ values
   -- a endpoint for a session. The client initiates the connection to the worker
   -- and the worker initiates the connection to the endpoint.
   -- A session can have zero or more session connections.
+  -- Note: Updated to add server_id, server_type in 801
   create table session_connection (
     public_id wt_public_id primary key,
     session_id wt_public_id not null
@@ -5662,6 +5666,21 @@ create table target_credential_purpose_enm (
 
   create trigger immutable_columns before update on target_credential_library
     for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'credential_purpose', 'create_time');
+
+  -- target_library provides the store id along with the other data stored in
+  -- target_credential_library
+  create view target_library
+  as
+  select
+    tcl.target_id,
+    tcl.credential_library_id,
+    tcl.credential_purpose,
+    cl.store_id
+  from
+    target_credential_library tcl,
+    credential_library cl
+  where
+    cl.public_id = tcl.credential_library_id;
 `),
 			10004: []byte(`
 create table session_credential_dynamic (
@@ -7058,6 +7077,29 @@ create table job (
 		       )
 	  )
 	  select job_plugin_id, job_name, next_scheduled_run from final;
+`),
+			8001: []byte(`
+alter table session_connection
+  add column server_id text;
+
+-- Note: here, and in the session table, we should add a trigger ensuring that
+-- if server_id goes to null, we mark connections as closed. See
+-- https://hashicorp.atlassian.net/browse/ICU-1495
+alter table session_connection
+  add constraint server_fkey
+    foreign key (server_id)
+    references server (private_id)
+    on delete set null
+    on update cascade;
+
+-- We now populate the connection information from existing session information
+update session_connection sc
+set
+  server_id = s.server_id
+from
+  session s
+where
+  sc.session_id = s.public_id;
 `),
 		},
 	}

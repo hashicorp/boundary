@@ -77,6 +77,7 @@ message CancelSessionResponse {
 
 message AuthorizeConnectionRequest {
 	string session_id = 10;
+	string worker_id = 20;
 }
 
 message AuthorizeConnectionResponse {

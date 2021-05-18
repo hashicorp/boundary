@@ -209,6 +209,8 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, authResults.Error
 	}
 
+	// We'll verify it's not already canceled, but after checking auth so as not
+	// to leak that information.
 	ses, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -232,6 +234,15 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
 			return nil, errors.New(errors.Internal, op, "no request context found")
+		}
+	}
+
+	for _, state := range ses.States {
+		switch state.Status {
+		case session.StatusCanceling:
+			return nil, errors.New(errors.InvalidSessionState, op, "session already in canceling state")
+		case session.StatusTerminated:
+			return nil, errors.New(errors.InvalidSessionState, op, "session already terminated")
 		}
 	}
 
