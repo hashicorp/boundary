@@ -43,7 +43,7 @@ type templateInput struct {
 	CollectionPath        string
 	ResourcePath          string
 	ParentTypeName        string
-	SliceSubTypes         map[string]string
+	SliceSubtypes         map[string]string
 	ExtraOptions          []fieldInfo
 	VersionEnabled        bool
 	TypeOnCreate          bool
@@ -79,9 +79,9 @@ func fillTemplates() {
 			os.Exit(1)
 		}
 
-		if len(in.sliceSubTypes) > 0 {
-			input.SliceSubTypes = in.sliceSubTypes
-			in.templates = append(in.templates, sliceSubTypeTemplate)
+		if len(in.sliceSubtypes) > 0 {
+			input.SliceSubtypes = in.sliceSubtypes
+			in.templates = append(in.templates, sliceSubtypeTemplate)
 		}
 
 		for _, t := range in.templates {
@@ -439,7 +439,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 }
 `))
 
-var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
+var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 	template.FuncMap{
 		"makeSlice":         makeSlice,
 		"snakeCase":         snakeCase,
@@ -449,7 +449,7 @@ var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
 ).Parse(`
 {{ $input := . }}
 {{ range $index, $op := makeSlice "Add" "Set" "Remove" }}
-{{ range $key, $value := $input.SliceSubTypes }}
+{{ range $key, $value := $input.SliceSubtypes }}
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}

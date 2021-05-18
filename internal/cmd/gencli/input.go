@@ -59,9 +59,9 @@ type cmdInfo struct {
 	// commands (e.g. "targets update tcp")
 	SubActionPrefix string
 
-	// NeedsSubTypeInCreate controls whether the sub-type must be passed in as
+	// NeedsSubtypeInCreate controls whether the sub-type must be passed in as
 	// an argument to a create call. Targets need this, accounts do not, etc.
-	NeedsSubTypeInCreate bool
+	NeedsSubtypeInCreate bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -131,7 +131,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:       true,
 			Container:            "Scope",
 			VersionedActions:     []string{"update"},
-			NeedsSubTypeInCreate: true,
+			NeedsSubtypeInCreate: true,
 		},
 		{
 			ResourceType:         resource.AuthMethod.String(),
@@ -146,7 +146,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:       true,
 			Container:            "Scope",
 			VersionedActions:     []string{"update", "change-state"},
-			NeedsSubTypeInCreate: true,
+			NeedsSubtypeInCreate: true,
 		},
 	},
 	"authtokens": {
@@ -193,7 +193,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:       true,
 			Container:            "Scope",
 			VersionedActions:     []string{"update"},
-			NeedsSubTypeInCreate: true,
+			NeedsSubtypeInCreate: true,
 		},
 	},
 	"hostsets": {
@@ -316,7 +316,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:            "Scope",
 			HasDescription:       true,
 			VersionedActions:     []string{"update"},
-			NeedsSubTypeInCreate: true,
+			NeedsSubtypeInCreate: true,
 		},
 	},
 	"users": {
