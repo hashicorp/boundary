@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-type SubType int
+type Subtype int
 
 const (
-	UnknownSubtype SubType = iota
+	UnknownSubtype Subtype = iota
 	VaultSubtype
 )
 
-func (t SubType) String() string {
+func (t Subtype) String() string {
 	switch t {
 	case VaultSubtype:
 		return "vault"
@@ -21,7 +21,7 @@ func (t SubType) String() string {
 }
 
 // Subtype uses the provided subtype
-func SubtypeFromType(t string) SubType {
+func SubtypeFromType(t string) Subtype {
 	switch {
 	case strings.EqualFold(strings.TrimSpace(t), VaultSubtype.String()):
 		return VaultSubtype
@@ -29,7 +29,7 @@ func SubtypeFromType(t string) SubType {
 	return UnknownSubtype
 }
 
-func SubtypeFromId(id string) SubType {
+func SubtypeFromId(id string) Subtype {
 	prefix := id[:strings.Index(id, "_")]
 
 	subtypeMu.RLock()
@@ -43,12 +43,12 @@ func SubtypeFromId(id string) SubType {
 
 var (
 	subtypeMu sync.RWMutex
-	subtypes  = make(map[string]SubType)
+	subtypes  = make(map[string]Subtype)
 )
 
 // Register registers the prefixes for a Subtype. Register panics if the
 // subtype is unknown.
-func Register(subtype SubType, prefixes ...string) {
+func Register(subtype Subtype, prefixes ...string) {
 	subtypeMu.Lock()
 	defer subtypeMu.Unlock()
 
