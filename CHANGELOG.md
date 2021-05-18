@@ -4,6 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.2 (2021/05/17)
+
+### New and Improved
+
+* Inline OIDC authentication flow:  when the OIDC authentication flow succeeds,
+  the third-party provider browser window is automatically closed and the user
+  is returned to the admin UI.
+
 ### Bug Fixes
 
 * sessions: Clean up connections that are dangling after a worker dies (is
@@ -14,7 +22,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/1220))
 * sessions: Add some missing API-level checks when session cancellation was
   requested. It's much easier than interpreting the domain-level check failures.
-  [PR](https://github.com/hashicorp/boundary/pull/1223))
+  ([PR](https://github.com/hashicorp/boundary/pull/1223))
+* authenticate: When authenticating with OIDC and `json` format output, the
+  command will no longer print out a notice that it's opening your web browser
+  ([Issue](https://github.com/hashicorp/boundary/issues/1193),
+  [PR](https://github.com/hashicorp/boundary/pull/1213))
 
 ## 0.2.1 (2021/05/05)
 

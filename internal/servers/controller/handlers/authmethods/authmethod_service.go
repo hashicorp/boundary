@@ -49,7 +49,7 @@ const (
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = make(map[auth.SubType]action.ActionSet)
+	IdActions = make(map[auth.Subtype]action.ActionSet)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection

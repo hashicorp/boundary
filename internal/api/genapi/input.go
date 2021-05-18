@@ -55,7 +55,7 @@ type structInfo struct {
 
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
-	sliceSubTypes map[string]string
+	sliceSubtypes map[string]string
 
 	// outputOnly indicates that we shouldn't create options for setting members
 	// for mapping src field struct
@@ -169,7 +169,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
+		sliceSubtypes: map[string]string{
 			"Accounts": "accountIds",
 		},
 		pathArgs:            []string{"user"},
@@ -194,7 +194,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
+		sliceSubtypes: map[string]string{
 			"Members": "memberIds",
 		},
 		pathArgs:            []string{"group"},
@@ -229,7 +229,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubTypes: map[string]string{
+		sliceSubtypes: map[string]string{
 			"Principals": "principalIds",
 			"Grants":     "grantStrings",
 		},
@@ -364,7 +364,7 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs:       []string{"host-set"},
 		parentTypeName: "host-catalog",
-		sliceSubTypes: map[string]string{
+		sliceSubtypes: map[string]string{
 			"Hosts": "hostIds",
 		},
 		versionEnabled:      true,
@@ -405,7 +405,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs: []string{"target"},
-		sliceSubTypes: map[string]string{
+		sliceSubtypes: map[string]string{
 			"HostSets": "hostSetIds",
 		},
 		extraOptions: []fieldInfo{

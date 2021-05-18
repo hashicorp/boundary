@@ -574,7 +574,7 @@ func TestUpdate(t *testing.T) {
 					Description:            wrapperspb.String("desc"),
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
-					Type:                   target.TcpSubType.String(),
+					Type:                   target.TcpSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
@@ -606,7 +606,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Type:        target.TcpSubType.String(),
+					Type:        target.TcpSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateTargetResponse{
