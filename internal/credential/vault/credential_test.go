@@ -64,17 +64,6 @@ func TestCredential_New(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing-credential-id",
-			args: args{
-				libraryId:  lib.GetPublicId(),
-				sessionId:  session.GetPublicId(),
-				tokenHmac:  token.GetTokenHmac(),
-				expiration: 5 * time.Minute,
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
 			name: "missing-tokenHmac",
 			args: args{
 				libraryId:  lib.GetPublicId(),
@@ -111,6 +100,24 @@ func TestCredential_New(t *testing.T) {
 					LibraryId:  lib.GetPublicId(),
 					SessionId:  session.GetPublicId(),
 					ExternalId: "some/vault/credential",
+					TokenHmac:  token.GetTokenHmac(),
+				},
+			},
+		},
+		{
+			name: "valid-no-external-id",
+			args: args{
+				libraryId:  lib.GetPublicId(),
+				sessionId:  session.GetPublicId(),
+				externalId: "",
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 5 * time.Minute,
+			},
+			want: &Credential{
+				Credential: &store.Credential{
+					LibraryId:  lib.GetPublicId(),
+					SessionId:  session.GetPublicId(),
+					ExternalId: "\ufffenone",
 					TokenHmac:  token.GetTokenHmac(),
 				},
 			},

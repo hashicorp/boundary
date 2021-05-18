@@ -269,11 +269,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    external_id text not null
-      constraint credential_vault_credential_external_id_uq
-        unique
-      constraint external_id_must_not_be_empty
-        check(length(trim(external_id)) > 0),
+    external_id wt_sentinel not null,
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time

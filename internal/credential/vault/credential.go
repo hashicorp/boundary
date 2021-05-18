@@ -9,6 +9,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const externalIdSentinel = "\ufffenone"
+
 // A Credential contains the data for a Vault lease. It is owned by a credential library.
 type Credential struct {
 	*store.Credential
@@ -24,11 +26,12 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	if sessionId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no session id")
 	}
-	if externalId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no external id")
-	}
 	if len(tokenHmac) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no tokenHmac")
+	}
+
+	if externalId == "" {
+		externalId = externalIdSentinel
 	}
 	if expiration == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
