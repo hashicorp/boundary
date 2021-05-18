@@ -1291,7 +1291,6 @@ func TestAddTargetLibraries(t *testing.T) {
 		addLibraryIds    []string
 		addLibraries     []*pbs.CredentialLibrary
 		resultLibraryIds []string
-		resultLibraries  []*pb.CredentialLibrary
 	}{
 		{
 			name:             "Add set on empty target",
@@ -1352,25 +1351,15 @@ func TestAddTargetLibraries(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.resultLibraryIds, got.GetItem().GetCredentialLibraryIds())
 
-			if len(tc.resultLibraries) != 0 {
-				sort.Slice(tc.resultLibraries, func(i, j int) bool {
-					return tc.resultLibraries[i].GetId() < tc.resultLibraries[j].GetId()
-				})
-				sort.Slice(got.GetItem().CredentialLibraries, func(i, j int) bool {
-					return got.GetItem().CredentialLibraries[i].GetId() < got.GetItem().CredentialLibraries[j].GetId()
-				})
-				assert.Empty(t, cmp.Diff(tc.resultLibraries, got.GetItem().GetCredentialLibraries(), protocmp.Transform()))
-			} else {
-				assert.Equal(t, len(tc.resultLibraryIds), len(got.GetItem().GetCredentialLibraries()))
+			assert.Equal(t, len(tc.resultLibraryIds), len(got.GetItem().GetCredentialLibraries()))
 
-				wantTemplate := &pb.CredentialLibrary{
-					CredentialStoreId: store.GetPublicId(),
-					Purpose:           "application",
-				}
-				for _, cl := range got.GetItem().GetCredentialLibraries() {
-					cl.Id = ""
-					assert.Empty(t, cmp.Diff(wantTemplate, cl, protocmp.Transform()))
-				}
+			wantTemplate := &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Purpose:           "application",
+			}
+			for _, cl := range got.GetItem().GetCredentialLibraries() {
+				cl.Id = ""
+				assert.Empty(t, cmp.Diff(wantTemplate, cl, protocmp.Transform()))
 			}
 		})
 	}
