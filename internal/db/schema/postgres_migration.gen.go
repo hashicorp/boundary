@@ -4995,7 +4995,7 @@ before insert on kms_oidc_key_version
 create function wt_is_sentinel(string text)
     returns bool
   as $$
-    select char_length(string) = char_length(concat(u&'\fffe', trim(ltrim(string, u&'\fffe'))));
+    select length(trim(leading u&'\fffe ' from string)) > 1 AND starts_with(string, u&'\fffe');
   $$ language sql
      immutable
      returns null on null input;
@@ -5004,7 +5004,11 @@ create function wt_is_sentinel(string text)
 
   create domain wt_sentinel as text
     constraint wt_sentinel_not_valid
-      check(wt_is_sentinel(value));
+      check(
+        wt_is_sentinel(value)
+        or
+        length(trim(u&'\fffe ' from value)) > 1
+      );
   comment on domain wt_sentinel is
   'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
 

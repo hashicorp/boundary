@@ -928,13 +928,13 @@ returning id;
 		wantErr bool
 	}{
 		{"normal", "\ufffefoo", false},
+		{"normal non-sentinel", "foo", false},
 		{"trailing sentinel", "\ufffefoo\ufffe", false},
-		{"sentinel with space before word", "\ufffe foo", true},
-		{"no sentinel", "foo", true},
+		{"sentinel with space before word", "\ufffe foo", false},
 		{"sentinel with empty string", "\ufffe  ", true},
 		{"multiple sentinels with empty string", "\ufffe\ufffe  ", true},
-		{"multiple sentinels", "\ufffe\ufffefoo", true},
-		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", true},
+		{"multiple sentinels", "\ufffe\ufffefoo", false},
+		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", false},
 		{"empty string", "  ", true},
 	}
 	for _, tt := range tests {
@@ -952,9 +952,57 @@ returning id;
 	}
 }
 
+func TestDomain_wt_is_sentinel(t *testing.T) {
+	const (
+		query = `
+select wt_is_sentinel($1);
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	tests := []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{"normal", "\ufffefoo", true},
+		{"non-sentinel", "foo", false},
+		{"trailing sentinel", "\ufffefoo\ufffe", true},
+		{"sentinel with space before word", "\ufffe foo", true},
+		{"sentinel with empty string", "\ufffe  ", false},
+		{"multiple sentinels with empty string", "\ufffe\ufffe  ", false},
+		{"multiple sentinels", "\ufffe\ufffefoo", true},
+		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", true},
+		{"empty string", "  ", false},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			t.Logf("query value: %q", tt.value)
+
+			var got bool
+			rows, err := db.Query(query, tt.value)
+			require.NoError(err)
+			defer rows.Close()
+
+			require.True(rows.Next())
+			require.NoError(rows.Scan(&got))
+			assert.Equal(tt.want, got)
+
+			require.False(rows.Next())
+			require.NoError(rows.Err())
+		})
+	}
+}
+
 func TestDomain_wt_to_sentinel(t *testing.T) {
 	const (
-		query = `select wt_to_sentinel($1);`
+		query = `
+select wt_to_sentinel($1);
+`
 	)
 
 	conn, _ := TestSetup(t, "postgres")
