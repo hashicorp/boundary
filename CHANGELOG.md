@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+
+## 0.2.2 (2021/05/17)
+
 ### New and Improved
 
 * Inline OIDC authentication flow:  when the OIDC authentication flow succeeds,
