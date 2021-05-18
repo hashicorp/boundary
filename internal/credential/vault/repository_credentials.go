@@ -4,13 +4,16 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	vault "github.com/hashicorp/vault/api"
 )
 
 // IssueCredentials issues and returns dynamic credentials for sessionId. A
@@ -19,8 +22,100 @@ import (
 // a credential cannot be retrieved for the one of the libraryIds, and
 // error is returned with no credentials.
 func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, libraryIds []string, _ ...Option) ([]credential.Dynamic, error) {
-	panic("not implemented")
+	const op = "vault.(Repository).IssueCredentials"
+	if sessionId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no session id")
+	}
+	if len(libraryIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "no library ids")
+	}
+	libs, err := r.getPrivateLibraries(ctx, libraryIds)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
+	var creds []credential.Dynamic
+	for _, lib := range libs {
+		// Get the credential ID early. No need to get a secret from Vault
+		// if there is no way to save it in the database.
+		credId, err := newCredentialId()
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+
+		client, err := lib.client()
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+
+		var secret *vault.Secret
+		switch Method(lib.HttpMethod) {
+		case MethodGet:
+			secret, err = client.get(lib.VaultPath)
+		case MethodPost:
+			secret, err = client.post(lib.VaultPath, lib.HttpRequestBody)
+		default:
+			return nil, errors.New(errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", lib.PublicId))
+		}
+		if err != nil {
+			// TODO(mgaffney) 05/2021: detect if the error is because of an
+			// expired or invalid token
+			return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest))
+		}
+
+		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, time.Duration(secret.LeaseDuration)*time.Second)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		cred.PublicId = credId
+		cred.IsRenewable = secret.Renewable
+
+		query, queryValues := cred.insertQuery()
+		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, w db.Writer) error {
+				rowsInserted, err := r.writer.Exec(ctx, query, queryValues)
+				switch {
+				case err == nil && rowsInserted > 1:
+					return errors.New(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
+				case err != nil:
+					return errors.Wrap(err, op)
+				default:
+					return nil
+				}
+			},
+		); err != nil {
+			// TODO(mgaffney) 05/2021: mark any credentials already
+			// retrieved for revocation which will be handled by the
+			// revocation job.
+			return nil, errors.Wrap(err, op)
+		}
+
+		creds = append(creds, &privateCredential{
+			id:         cred.PublicId,
+			sessionId:  cred.SessionId,
+			lib:        lib,
+			secretData: secret.Data,
+		})
+	}
+
+	return creds, nil
 }
+
+var _ credential.Dynamic = (*privateCredential)(nil)
+
+type privateCredential struct {
+	id         string
+	sessionId  string
+	lib        *privateLibrary
+	secretData map[string]interface{}
+}
+
+func (pc *privateCredential) GetPublicId() string           { return pc.id }
+func (pc *privateCredential) GetSessionId() string          { return pc.sessionId }
+func (pc *privateCredential) Secret() credential.SecretData { return pc.secretData }
+func (pc *privateCredential) Library() credential.Library   { return pc.lib }
+
+var _ credential.Library = (*privateLibrary)(nil)
 
 type privateLibrary struct {
 	PublicId    string `gorm:"primary_key"`
@@ -53,18 +148,13 @@ type privateLibrary struct {
 	ClientKeyId string
 }
 
-var _ credential.Library = (*privateLibrary)(nil)
-
+func (pl *privateLibrary) GetPublicId() string                 { return pl.PublicId }
+func (pl *privateLibrary) GetStoreId() string                  { return pl.StoreId }
+func (pl *privateLibrary) GetName() string                     { return pl.Name }
+func (pl *privateLibrary) GetDescription() string              { return pl.Description }
 func (pl *privateLibrary) GetVersion() uint32                  { return pl.Version }
 func (pl *privateLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
 func (pl *privateLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
-func (pl *privateLibrary) GetName() string                     { return pl.Name }
-func (pl *privateLibrary) GetDescription() string              { return pl.Description }
-func (pl *privateLibrary) GetStoreId() string                  { return pl.StoreId }
-
-func allocPrivateLibrary() *privateLibrary {
-	return &privateLibrary{}
-}
 
 func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(privateLibrary).decrypt"
@@ -121,9 +211,6 @@ func (pl *privateLibrary) client() (*client, error) {
 	}
 	return client, nil
 }
-
-// GetPublicId returns the public id.
-func (pl *privateLibrary) GetPublicId() string { return pl.PublicId }
 
 // TableName returns the table name for gorm.
 func (pl *privateLibrary) TableName() string {
