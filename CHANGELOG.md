@@ -4,6 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.2 (2021/05/17)
+
+### New and Improved
+
+* Inline OIDC authentication flow:  when the OIDC authentication flow succeeds,
+  the third-party provider browser window is automatically closed and the user
+  is returned to the admin UI.
+
 ### Bug Fixes
 
 * sessions: Clean up connections that are dangling after a worker dies (is
