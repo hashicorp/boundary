@@ -5,12 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	temp "github.com/hashicorp/boundary/internal/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestCredential_New(t *testing.T) {
@@ -76,17 +79,6 @@ func TestCredential_New(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing-expiration",
-			args: args{
-				libraryId:  lib.GetPublicId(),
-				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/credential",
-				tokenHmac:  token.GetTokenHmac(),
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
 			name: "valid",
 			args: args{
 				libraryId:  lib.GetPublicId(),
@@ -122,6 +114,25 @@ func TestCredential_New(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-no-expiration",
+			args: args{
+				libraryId:  lib.GetPublicId(),
+				sessionId:  session.GetPublicId(),
+				externalId: "some/vault/credential",
+				tokenHmac:  token.GetTokenHmac(),
+				expiration: 0,
+			},
+			want: &Credential{
+				Credential: &store.Credential{
+					LibraryId:      lib.GetPublicId(),
+					SessionId:      session.GetPublicId(),
+					ExternalId:     "some/vault/credential",
+					TokenHmac:      token.GetTokenHmac(),
+					ExpirationTime: timestamp.New(db.PositiveInfinityTS),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -153,10 +164,20 @@ func TestCredential_New(t *testing.T) {
 			assert.Equal(1, rows)
 			assert.NoError(err2)
 
-			insertedCredential := allocCredential()
-			insertedCredential.PublicId = id
-			assert.Equal(id, insertedCredential.GetPublicId())
-			require.NoError(rw.LookupById(ctx, insertedCredential))
+			got2 := allocCredential()
+			got2.PublicId = id
+			assert.Equal(id, got2.GetPublicId())
+			require.NoError(rw.LookupById(ctx, got2))
+
+			tt.want.LastRenewalTime = got2.LastRenewalTime
+			tt.want.CreateTime = got2.CreateTime
+			tt.want.UpdateTime = got2.UpdateTime
+			tt.want.Version = got2.Version
+			if tt.want.ExpirationTime == nil {
+				tt.want.ExpirationTime = got2.ExpirationTime
+			}
+
+			assert.Empty(cmp.Diff(tt.want, got2.clone(), protocmp.Transform()))
 		})
 	}
 }

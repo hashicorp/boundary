@@ -33,9 +33,6 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	if externalId == "" {
 		externalId = externalIdSentinel
 	}
-	if expiration == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
-	}
 
 	l := &Credential{
 		expiration: expiration.Round(time.Second),
@@ -89,9 +86,6 @@ func (c *Credential) oplog(op oplog.OpType) oplog.Metadata {
 }
 
 func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
-	query = insertCredentialQuery
-
-	exp := int(c.expiration.Round(time.Second).Seconds())
 	queryValues = []interface{}{
 		c.PublicId,
 		c.LibraryId,
@@ -100,7 +94,13 @@ func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 		c.ExternalId,
 		c.IsRenewable,
 		"now()",
-		exp,
+	}
+	switch {
+	case c.expiration == 0:
+		query = insertCredentialWithInfiniteExpirationQuery
+	default:
+		query = insertCredentialWithExpirationQuery
+		queryValues = append(queryValues, int(c.expiration.Round(time.Second).Seconds()))
 	}
 	return
 }
