@@ -6,14 +6,14 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 )
 
-type SubType int
+type Subtype int
 
 const (
-	UnknownSubtype SubType = iota
+	UnknownSubtype Subtype = iota
 	StaticSubtype
 )
 
-func (t SubType) String() string {
+func (t Subtype) String() string {
 	switch t {
 	case StaticSubtype:
 		return "static"
@@ -22,7 +22,7 @@ func (t SubType) String() string {
 }
 
 // Subtype uses the provided subtype
-func SubtypeFromType(t string) SubType {
+func SubtypeFromType(t string) Subtype {
 	switch {
 	case strings.EqualFold(strings.TrimSpace(t), StaticSubtype.String()):
 		return StaticSubtype
@@ -30,7 +30,7 @@ func SubtypeFromType(t string) SubType {
 	return UnknownSubtype
 }
 
-func SubtypeFromId(id string) SubType {
+func SubtypeFromId(id string) Subtype {
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(id), static.HostPrefix),
 		strings.HasPrefix(strings.TrimSpace(id), static.HostSetPrefix),
