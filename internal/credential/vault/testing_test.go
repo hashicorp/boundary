@@ -298,7 +298,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS))
 		require.NotNil(v)
 
 		vc := v.client(t).cl
@@ -329,7 +329,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("with-mount-path", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 		require.NotNil(v)
 
 		vc := v.client(t).cl
@@ -360,7 +360,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 	t.Run("with-role-name", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
 		require.NotNil(v)
 
 		vc := v.client(t).cl
@@ -394,7 +394,7 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, WithDockerNetwork(true))
+		v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
 		require.NotNil(v)
 
 		vc := v.client(t).cl

@@ -257,33 +257,101 @@ type TestVaultServer struct {
 // amount of time required for a test to run.
 func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 	t.Helper()
+	const (
+		serverTlsTemplate = `{
+  "listener": [
+    {
+      "tcp": {
+        "address": "0.0.0.0:8200",
+        "tls_disable": "false",
+        "tls_cert_file": "/vault/config/certificates/certificate.pem",
+        "tls_key_file": "/vault/config/certificates/key.pem"
+      }
+    }
+  ]
+}
+`
 
-	opts := getTestOpts(t, opt...)
-	testTls := opts.vaultTLS
-
-	switch testTls {
-	case TestServerTLS, TestClientTLS:
-		return newTestVaultServerTLS(t, testTls)
-	default:
-	}
+		clientTlsTemplate = `{
+  "listener": [
+    {
+      "tcp": {
+        "address": "0.0.0.0:8200",
+        "tls_disable": "false",
+        "tls_cert_file": "/vault/config/certificates/certificate.pem",
+        "tls_key_file": "/vault/config/certificates/key.pem",
+		"tls_require_and_verify_client_cert": "true",
+		"tls_client_ca_file": "/vault/config/certificates/client-ca-certificate.pem"
+      }
+    }
+  ]
+}
+`
+	)
 
 	require := require.New(t)
 	pool, err := dockertest.NewPool("")
 	require.NoError(err)
+	opts := getTestOpts(t, opt...)
 
 	server := &TestVaultServer{
 		RootToken: fmt.Sprintf("icu-root-%s", t.Name()),
 		pool:      pool,
 	}
 
-	env := []string{
-		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken),
-	}
-
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
 		Tag:        "1.7.1",
-		Env:        env,
+		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
+	}
+
+	vConfig := vault.DefaultConfig()
+
+	if opts.vaultTLS != TestNoTLS {
+		dockerOptions.Env = append(dockerOptions.Env, "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8300")
+
+		switch opts.vaultTLS {
+		case TestServerTLS:
+			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", serverTlsTemplate))
+		case TestClientTLS:
+			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", clientTlsTemplate))
+		}
+
+		serverCert := testServerCert(t, testCaCert(t), "localhost")
+		server.serverCertBundle = serverCert
+		server.ServerCert = serverCert.Cert.Cert
+		server.CaCert = serverCert.CA.Cert
+
+		clientTLSConfig := vConfig.HttpClient.Transport.(*http.Transport).TLSClientConfig
+		rootConfig := &rootcerts.Config{
+			CACertificate: serverCert.CA.Cert,
+		}
+		require.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig))
+
+		dataSrcDir := t.TempDir()
+		require.NoError(os.Chmod(dataSrcDir, 0o777))
+		caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
+		require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
+		certFn := filepath.Join(dataSrcDir, "certificate.pem")
+		require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
+		keyFn := filepath.Join(dataSrcDir, "key.pem")
+		require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
+		dockerOptions.Mounts = append(dockerOptions.Mounts, fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir))
+
+		if opts.vaultTLS == TestClientTLS {
+			clientCert := testClientCert(t, testCaCert(t))
+			server.clientCertBundle = clientCert
+			server.ClientCert = clientCert.Cert.Cert
+			server.ClientKey = clientCert.Cert.Key
+			clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
+			require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
+
+			vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
+			require.NoError(err)
+			clientTLSConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+				return &vaultClientCert, nil
+			}
+		}
 	}
 
 	// NOTE(mgaffney) 05/2021: creating a docker network is not the default
@@ -318,135 +386,17 @@ func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 		cleanupResource(t, pool, resource)
 	})
 	server.vaultContainer = resource
-	server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
 
-	vConfig := vault.DefaultConfig()
+	switch opts.vaultTLS {
+	case TestNoTLS:
+		server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
+	case TestServerTLS, TestClientTLS:
+		server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
+	default:
+		t.Fatal("unknown TLS option")
+	}
+
 	vConfig.Address = server.Addr
-
-	client, err := vault.NewClient(vConfig)
-	require.NoError(err)
-	client.SetToken(server.RootToken)
-
-	err = pool.Retry(func() error {
-		if _, err := client.Sys().Health(); err != nil {
-			return err
-		}
-		return nil
-	})
-	require.NoError(err)
-	return server
-}
-
-func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
-	t.Helper()
-	const (
-		serverTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem"
-      }
-    }
-  ]
-}
-`
-
-		clientTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem",
-		"tls_require_and_verify_client_cert": "true",
-		"tls_client_ca_file": "/vault/config/certificates/client-ca-certificate.pem"
-      }
-    }
-  ]
-}
-`
-	)
-	template := serverTlsTemplate
-
-	assert, require := assert.New(t), require.New(t)
-	pool, err := dockertest.NewPool("")
-	require.NoError(err)
-
-	server := &TestVaultServer{
-		RootToken: fmt.Sprintf("icu-root-%s", t.Name()),
-	}
-
-	serverCert := testServerCert(t, testCaCert(t), "localhost")
-	server.serverCertBundle = serverCert
-	server.ServerCert = serverCert.Cert.Cert
-	server.CaCert = serverCert.CA.Cert
-
-	dataSrcDir := t.TempDir()
-	require.NoError(os.Chmod(dataSrcDir, 0o777))
-
-	caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-	require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
-	certFn := filepath.Join(dataSrcDir, "certificate.pem")
-	require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
-	keyFn := filepath.Join(dataSrcDir, "key.pem")
-	require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
-
-	var clientCert *testCertBundle
-	if testTls == TestClientTLS {
-		template = clientTlsTemplate
-		clientCert = testClientCert(t, testCaCert(t))
-		server.clientCertBundle = clientCert
-		server.ClientCert = clientCert.Cert.Cert
-		server.ClientKey = clientCert.Cert.Key
-		clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-		require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
-	}
-
-	env := []string{
-		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken),
-		fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", template),
-		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8300",
-	}
-
-	dataMount := fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir)
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
-		Tag:        "1.7.0",
-		Mounts:     []string{dataMount},
-		Env:        env,
-	}
-
-	resource, err := pool.RunWithOptions(dockerOptions)
-	if !assert.NoError(err) {
-		t.FailNow()
-	}
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
-	server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
-
-	vConfig := vault.DefaultConfig()
-	vConfig.Address = server.Addr
-
-	clientTLSConfig := vConfig.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	rootConfig := &rootcerts.Config{
-		CACertificate: serverCert.CA.Cert,
-	}
-
-	require.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig))
-
-	if testTls == TestClientTLS {
-		vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
-		require.NoError(err)
-		clientTLSConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			return &vaultClientCert, nil
-		}
-	}
-
 	client, err := vault.NewClient(vConfig)
 	require.NoError(err)
 	client.SetToken(server.RootToken)
