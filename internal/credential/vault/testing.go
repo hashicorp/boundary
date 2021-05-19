@@ -256,6 +256,7 @@ type TestVaultServer struct {
 // Setting the WithDockerNetwork option can significantly increase the
 // amount of time required for a test to run.
 func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
+	SkipUnlessDocker(t)
 	t.Helper()
 	const (
 		serverTlsTemplate = `{
@@ -889,6 +890,7 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 //     capabilities = ["create", "read", "update", "delete", "list"]
 //   }
 func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
+	SkipUnlessDocker(t)
 	t.Helper()
 	require := require.New(t)
 	require.Nil(v.postgresContainer, "postgres container exists")
