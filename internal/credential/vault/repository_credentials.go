@@ -19,8 +19,8 @@ import (
 // IssueCredentials issues and returns dynamic credentials for sessionId. A
 // dynamic credential is retrieved from Vault for each libraryId. The
 // number of credentials returned is equal to the number of libraryIds. If
-// a credential cannot be retrieved for the one of the libraryIds, and
-// error is returned with no credentials.
+// a credential cannot be retrieved for the one of the libraryIds, an error
+// is returned with no credentials.
 func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, libraryIds []string, _ ...Option) ([]credential.Dynamic, error) {
 	const op = "vault.(Repository).IssueCredentials"
 	if sessionId == "" {
