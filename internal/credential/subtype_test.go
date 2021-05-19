@@ -20,6 +20,7 @@ func TestSubtypeFromId(t *testing.T) {
 		{"unknown-prefix", "kaz_1234", credential.UnknownSubtype},
 		{"prefix-no-id", "csvlt_", credential.VaultSubtype},
 		{"vault-prefix", "csvlt_1234", credential.VaultSubtype},
+		{"prefix-no-delimiter-no-id", "csvlt", credential.UnknownSubtype},
 	}
 	for _, tt := range tests {
 		tt := tt
