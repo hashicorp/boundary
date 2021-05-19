@@ -742,6 +742,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			if err := reader.LookupByPublicId(ctx, agg); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup credential store: %s", publicId)))
 			}
+			returnedCredentialStore = agg.toCredentialStore()
 
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
