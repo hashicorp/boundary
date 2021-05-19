@@ -34,10 +34,10 @@ func TestCredentialLibrary_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *CredentialLibrary
-		wantErr bool
+		name          string
+		args          args
+		want          *CredentialLibrary
+		wantErr       bool
 		wantCreateErr bool
 	}{
 		{
@@ -48,7 +48,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					VaultPath:  "vault/path",
+					VaultPath: "vault/path",
 				},
 			},
 			wantCreateErr: true,
@@ -60,7 +60,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:    cs.PublicId,
+					StoreId: cs.PublicId,
 				},
 			},
 			wantCreateErr: true,
@@ -73,8 +73,8 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:    cs.PublicId,
-					VaultPath:  "vault/path",
+					StoreId:   cs.PublicId,
+					VaultPath: "vault/path",
 				},
 			},
 			wantCreateErr: true,
@@ -90,9 +90,9 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					StoreId:    cs.PublicId,
-					VaultPath:  "vault/path",
-					Name:       "test-name",
+					StoreId:   cs.PublicId,
+					VaultPath: "vault/path",
+					Name:      "test-name",
 				},
 			},
 			wantCreateErr: true,
@@ -185,7 +185,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:         cs.PublicId,
 					VaultPath:       "vault/path",
 					HttpRequestBody: "body",
-					HttpMethod: "GET",
+					HttpMethod:      "GET",
 				},
 			},
 			wantCreateErr: true,

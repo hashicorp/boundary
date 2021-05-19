@@ -63,9 +63,9 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-					Address:        s.GetVaultAddress(),
-					VaultTokenHmac: base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
-					ClientCertificate: wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
+					Address:                  s.GetVaultAddress(),
+					VaultTokenHmac:           base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					ClientCertificate:        wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
 					ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(s.ClientCertificate().GetCertificateKeyHmac()),
 					// TODO: Add all fields including tls related fields, namespace, etc...
 				})
@@ -415,10 +415,10 @@ func TestCreate(t *testing.T) {
 					Type:        credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							VaultCaCert:    wrapperspb.String(string(v.CaCert)),
-							Address:        v.Addr,
-							VaultTokenHmac: "<hmac>",
-							ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
+							VaultCaCert:              wrapperspb.String(string(v.CaCert)),
+							Address:                  v.Addr,
+							VaultTokenHmac:           "<hmac>",
+							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						})
 						require.NoError(t, err)

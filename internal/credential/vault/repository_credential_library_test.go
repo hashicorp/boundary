@@ -613,8 +613,8 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					VaultPath:  "/some/path",
 				},
 			},
-			chgFn:   makeHttpMethodEmptyString(),
-			masks:   []string{httpMethodField},
+			chgFn: makeHttpMethodEmptyString(),
+			masks: []string{httpMethodField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod: "GET",

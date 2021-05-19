@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	nameField = "Name"
-	descriptionField = "Description"
-	vaultPathField = "VaultPath"
-	httpMethodField = "HttpMethod"
+	nameField            = "Name"
+	descriptionField     = "Description"
+	vaultPathField       = "VaultPath"
+	httpMethodField      = "HttpMethod"
 	httpRequestBodyField = "HttpRequestBody"
 )
 
