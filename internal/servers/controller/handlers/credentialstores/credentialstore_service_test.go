@@ -63,9 +63,11 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-					Address:        s.GetVaultAddress(),
-					VaultTokenHmac: base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
-					// TODO: Add all fields including ClientCert, tls related fields, namespace, etc...
+					Address:                  s.GetVaultAddress(),
+					VaultTokenHmac:           base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					ClientCertificate:        wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
+					ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(s.ClientCertificate().GetCertificateKeyHmac()),
+					// TODO: Add all fields including tls related fields, namespace, etc...
 				})
 				require.NoError(t, err)
 				return attrs
@@ -413,9 +415,11 @@ func TestCreate(t *testing.T) {
 					Type:        credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							VaultCaCert:    wrapperspb.String(string(v.CaCert)),
-							Address:        v.Addr,
-							VaultTokenHmac: "<hmac>",
+							VaultCaCert:              wrapperspb.String(string(v.CaCert)),
+							Address:                  v.Addr,
+							VaultTokenHmac:           "<hmac>",
+							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
+							ClientCertificateKeyHmac: "<hmac>",
 						})
 						require.NoError(t, err)
 						return attrs
@@ -461,6 +465,10 @@ func TestCreate(t *testing.T) {
 				if _, ok := got.Item.Attributes.Fields["vault_token_hmac"]; ok {
 					assert.NotEqual(tc.req.Item.Attributes.Fields["vault_token"], got.Item.Attributes.Fields["vault_token_hmac"])
 					got.Item.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["client_certificate_key_hmac"]; ok {
+					assert.NotEqual(tc.req.Item.Attributes.Fields["client_certificate_key_hmac"], got.Item.Attributes.Fields["client_certificate_key_hmac"])
+					got.Item.Attributes.Fields["client_certificate_key_hmac"] = structpb.NewStringValue("<hmac>")
 				}
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateCredentialStore(%q) got response %q, wanted %q", tc.req, got, tc.res)
@@ -509,8 +517,10 @@ func TestGet(t *testing.T) {
 					Version:           1,
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address:        store.GetVaultAddress(),
-							VaultTokenHmac: base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
+							Address:                  store.GetVaultAddress(),
+							VaultTokenHmac:           base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
+							ClientCertificate:        wrapperspb.String(string(store.ClientCertificate().GetCertificate())),
+							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(store.ClientCertificate().GetCertificateKeyHmac()),
 						})
 						require.NoError(t, err)
 						return attrs
