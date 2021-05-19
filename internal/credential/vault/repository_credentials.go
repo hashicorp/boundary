@@ -34,6 +34,10 @@ func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, lib
 		return nil, errors.Wrap(err, op)
 	}
 
+	// TODO(mgaffney) 05/2021: if any error occurs, mark all credentials
+	// retrieved for revocation which will be handled by the revocation
+	// job.
+
 	var creds []credential.Dynamic
 	for _, lib := range libs {
 		// Get the credential ID early. No need to get a secret from Vault
@@ -57,6 +61,7 @@ func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, lib
 		default:
 			return nil, errors.New(errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", lib.PublicId))
 		}
+
 		if err != nil {
 			// TODO(mgaffney) 05/2021: detect if the error is because of an
 			// expired or invalid token
@@ -84,9 +89,6 @@ func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, lib
 				}
 			},
 		); err != nil {
-			// TODO(mgaffney) 05/2021: mark any credentials already
-			// retrieved for revocation which will be handled by the
-			// revocation job.
 			return nil, errors.Wrap(err, op)
 		}
 
