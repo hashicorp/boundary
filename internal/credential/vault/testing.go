@@ -98,7 +98,7 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 	var libs []*CredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i))
+		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), WithMethod(MethodGet))
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newCredentialLibraryId()

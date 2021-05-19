@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -51,6 +52,10 @@ var (
 	CollectionActions = action.ActionSet{
 		action.Create,
 		action.List,
+	}
+
+	collectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.CredentialLibrary: credentiallibraries.CollectionActions,
 	}
 )
 
@@ -145,6 +150,13 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 		if outputFields.Has(globals.AuthorizedActionsField) {
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
+		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetPublicId())
+			if err != nil {
+				return nil, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
 
 		item, err := toProto(item, outputOpts...)
 		if err != nil {
@@ -187,6 +199,13 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
 
 	item, err := toProto(cs, outputOpts...)
 	if err != nil {
@@ -225,7 +244,13 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
-	// TODO: Add collection actions field when we add credential libraries
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
 
 	item, err := toProto(cs, outputOpts...)
 	if err != nil {
@@ -240,7 +265,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 
 // UpdateCredentialStore implements the interface pbs.CredentialStoreServiceServer.
 func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) (*pbs.UpdateCredentialStoreResponse, error) {
-	const op = "credentialstore.(Service).UpdateCredentialStore"
+	const op = "credentialstores.(Service).UpdateCredentialStore"
 
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -266,6 +291,13 @@ func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCrede
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
 	}
 
 	item, err := toProto(cs, outputOpts...)
@@ -342,7 +374,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialStore) (credential.Store, error) {
-	const op = "credentialstore.(Service).updateInRepo"
+	const op = "credentialstores.(Service).updateInRepo"
 	cs, err := toStorageVaultStore(projId, item)
 	if err != nil {
 		return nil, errors.Wrap(err, op)

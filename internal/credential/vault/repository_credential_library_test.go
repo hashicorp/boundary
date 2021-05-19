@@ -331,7 +331,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   makeNil(),
-			masks:   []string{"Name", "Description"},
+			masks:   []string{nameField, descriptionField},
 			wantErr: errors.InvalidParameter,
 		},
 		{
@@ -343,7 +343,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   makeEmbeddedNil(),
-			masks:   []string{"Name", "Description"},
+			masks:   []string{nameField, descriptionField},
 			wantErr: errors.InvalidParameter,
 		},
 		{
@@ -355,7 +355,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   deletePublicId(),
-			masks:   []string{"Name", "Description"},
+			masks:   []string{nameField, descriptionField},
 			wantErr: errors.InvalidPublicId,
 		},
 		{
@@ -368,7 +368,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   combine(nonExistentPublicId(), changeName("test-update-name-repo")),
-			masks:   []string{"Name"},
+			masks:   []string{nameField},
 			wantErr: errors.RecordNotFound,
 		},
 		{
@@ -419,7 +419,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeName("test-update-name-repo"),
-			masks: []string{"Name"},
+			masks: []string{nameField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod: "GET",
@@ -439,7 +439,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeDescription("test-update-description-repo"),
-			masks: []string{"Description"},
+			masks: []string{descriptionField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:  "GET",
@@ -460,7 +460,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
-			masks: []string{"Name", "Description"},
+			masks: []string{nameField, descriptionField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:  "GET",
@@ -481,7 +481,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Name"},
+			masks: []string{nameField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -502,7 +502,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Description"},
+			masks: []string{descriptionField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -523,7 +523,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Description"},
+			masks: []string{descriptionField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -545,7 +545,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
-			masks: []string{"Name"},
+			masks: []string{nameField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -566,7 +566,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeVaultPath("/new/path"),
-			masks: []string{"VaultPath"},
+			masks: []string{vaultPathField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod: "GET",
@@ -584,7 +584,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   changeVaultPath(""),
-			masks:   []string{"VaultPath"},
+			masks:   []string{vaultPathField},
 			wantErr: errors.NotNull,
 		},
 		{
@@ -596,7 +596,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeHttpMethod(MethodPost),
-			masks: []string{"HttpMethod"},
+			masks: []string{httpMethodField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod: "POST",
@@ -609,13 +609,19 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			name: "delete-http-method",
 			orig: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
-					HttpMethod: "GET",
+					HttpMethod: "POST",
 					VaultPath:  "/some/path",
 				},
 			},
 			chgFn:   makeHttpMethodEmptyString(),
-			masks:   []string{"HttpMethod"},
-			wantErr: errors.NotNull,
+			masks:   []string{httpMethodField},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod: "GET",
+					VaultPath:  "/some/path",
+				},
+			},
+			wantCount: 1,
 		},
 		{
 			name: "add-http-request-body",
@@ -626,7 +632,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeHttpRequestBody("new request body"),
-			masks: []string{"HttpRequestBody"},
+			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
@@ -646,7 +652,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeHttpRequestBody(""),
-			masks: []string{"HttpRequestBody"},
+			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod: "POST",
@@ -665,7 +671,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeHttpRequestBody("new request body"),
-			masks: []string{"HttpRequestBody"},
+			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
@@ -685,7 +691,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn:   changeHttpMethod(MethodGet),
-			masks:   []string{"HttpMethod"},
+			masks:   []string{httpMethodField},
 			wantErr: errors.CheckConstraint,
 		},
 		{
@@ -697,7 +703,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: combine(changeHttpRequestBody("new request body"), changeHttpMethod(MethodPost)),
-			masks: []string{"HttpRequestBody", "HttpMethod"},
+			masks: []string{httpRequestBodyField, httpMethodField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
