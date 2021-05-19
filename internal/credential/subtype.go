@@ -30,7 +30,11 @@ func SubtypeFromType(t string) Subtype {
 }
 
 func SubtypeFromId(id string) Subtype {
-	prefix := id[:strings.Index(id, "_")]
+	i := strings.Index(id, "_")
+	if i == -1 {
+		return UnknownSubtype
+	}
+	prefix := id[:i]
 
 	subtypeMu.RLock()
 	subtype, ok := subtypes[prefix]
