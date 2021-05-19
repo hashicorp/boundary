@@ -5,19 +5,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"database/sql"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
-	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,11 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -225,208 +217,6 @@ const (
 	// respectively.
 	TestClientTLS
 )
-
-// TestVaultServer is a vault server running in a docker container suitable
-// for testing.
-type TestVaultServer struct {
-	RootToken string
-	Addr      string
-
-	CaCert     []byte
-	ServerCert []byte
-	ClientCert []byte
-	ClientKey  []byte
-
-	serverCertBundle *testCertBundle
-	clientCertBundle *testCertBundle
-
-	pool           *dockertest.Pool
-	vaultContainer *dockertest.Resource
-	network        *dockertest.Network
-
-	postgresContainer *dockertest.Resource
-}
-
-// NewTestVaultServer creates and returns a TestVaultServer. Some Vault
-// secret engines require the Vault server be created with a docker
-// network. Check the Mount method for the Vault secret engine to see if a
-// docker network is required.
-//
-// WithTestVaultTLS and WithDockerNetwork are the only valid options.
-// Setting the WithDockerNetwork option can significantly increase the
-// amount of time required for a test to run.
-func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
-	t.Helper()
-	const (
-		serverTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem"
-      }
-    }
-  ]
-}
-`
-
-		clientTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem",
-		"tls_require_and_verify_client_cert": "true",
-		"tls_client_ca_file": "/vault/config/certificates/client-ca-certificate.pem"
-      }
-    }
-  ]
-}
-`
-	)
-
-	require := require.New(t)
-	pool, err := dockertest.NewPool("")
-	require.NoError(err)
-	opts := getTestOpts(t, opt...)
-
-	server := &TestVaultServer{
-		RootToken: fmt.Sprintf("icu-root-%s", t.Name()),
-		pool:      pool,
-	}
-
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
-		Tag:        "1.7.1",
-		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
-	}
-
-	vConfig := vault.DefaultConfig()
-
-	if opts.vaultTLS != TestNoTLS {
-		dockerOptions.Env = append(dockerOptions.Env, "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8300")
-
-		switch opts.vaultTLS {
-		case TestServerTLS:
-			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", serverTlsTemplate))
-		case TestClientTLS:
-			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", clientTlsTemplate))
-		}
-
-		serverCert := testServerCert(t, testCaCert(t), "localhost")
-		server.serverCertBundle = serverCert
-		server.ServerCert = serverCert.Cert.Cert
-		server.CaCert = serverCert.CA.Cert
-
-		clientTLSConfig := vConfig.HttpClient.Transport.(*http.Transport).TLSClientConfig
-		rootConfig := &rootcerts.Config{
-			CACertificate: serverCert.CA.Cert,
-		}
-		require.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig))
-
-		dataSrcDir := t.TempDir()
-		require.NoError(os.Chmod(dataSrcDir, 0o777))
-		caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-		require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
-		certFn := filepath.Join(dataSrcDir, "certificate.pem")
-		require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
-		keyFn := filepath.Join(dataSrcDir, "key.pem")
-		require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
-		dockerOptions.Mounts = append(dockerOptions.Mounts, fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir))
-
-		if opts.vaultTLS == TestClientTLS {
-			clientCert := testClientCert(t, testCaCert(t))
-			server.clientCertBundle = clientCert
-			server.ClientCert = clientCert.Cert.Cert
-			server.ClientKey = clientCert.Cert.Key
-			clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-			require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
-
-			vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
-			require.NoError(err)
-			clientTLSConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-				return &vaultClientCert, nil
-			}
-		}
-	}
-
-	// NOTE(mgaffney) 05/2021: creating a docker network is not the default
-	// because it added a significant amount time to the tests.
-	//
-	// For reference, running 'go test .'
-	// - without creating a docker network by default: 259.668s
-	// - with creating a docker network by default: 553.497s
-	//
-	// Machine: MacBook Pro (15-inch, 2018)
-	// Processor: 2.6 GHz 6-Core Intel Core i7
-	// Memory: 16 GB 2400 MHz DDR4
-	// OS: 10.15.7 (Catalina)
-	//
-	// Docker
-	// Desktop: 3.3.3 (64133)
-	// Engine: 20.10.6
-
-	if opts.dockerNetwork {
-		network, err := pool.CreateNetwork(t.Name())
-		require.NoError(err)
-		server.network = network
-		dockerOptions.Networks = []*dockertest.Network{network}
-		t.Cleanup(func() {
-			network.Close()
-		})
-	}
-
-	resource, err := pool.RunWithOptions(dockerOptions)
-	require.NoError(err)
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
-	server.vaultContainer = resource
-
-	switch opts.vaultTLS {
-	case TestNoTLS:
-		server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
-	case TestServerTLS, TestClientTLS:
-		server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
-	default:
-		t.Fatal("unknown TLS option")
-	}
-
-	vConfig.Address = server.Addr
-	client, err := vault.NewClient(vConfig)
-	require.NoError(err)
-	client.SetToken(server.RootToken)
-
-	err = pool.Retry(func() error {
-		if _, err := client.Sys().Health(); err != nil {
-			return err
-		}
-		return nil
-	})
-	require.NoError(err)
-	return server
-}
-
-func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
-	t.Helper()
-	var err error
-	for i := 0; i < 10; i++ {
-		err = pool.Purge(resource)
-		if err == nil {
-			return
-		}
-		time.Sleep(1 * time.Second)
-	}
-
-	if strings.Contains(err.Error(), "No such container") {
-		return
-	}
-	t.Fatalf("Failed to cleanup local container: %s", err)
-}
 
 type testCert struct {
 	Cert []byte
@@ -877,6 +667,39 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 	return s
 }
 
+// TestVaultServer is a vault server running in a docker container suitable
+// for testing.
+type TestVaultServer struct {
+	RootToken string
+	Addr      string
+
+	CaCert     []byte
+	ServerCert []byte
+	ClientCert []byte
+	ClientKey  []byte
+
+	serverCertBundle *testCertBundle
+	clientCertBundle *testCertBundle
+
+	pool              interface{}
+	vaultContainer    interface{}
+	network           interface{}
+	postgresContainer interface{}
+}
+
+// NewTestVaultServer creates and returns a TestVaultServer. Some Vault
+// secret engines require the Vault server be created with a docker
+// network. Check the Mount method for the Vault secret engine to see if a
+// docker network is required.
+//
+// WithTestVaultTLS and WithDockerNetwork are the only valid options.
+// Setting the WithDockerNetwork option can significantly increase the
+// amount of time required for a test to run.
+func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
+	t.Helper()
+	return newVaultServer(t, opt...)
+}
+
 // MountDatabase starts a PostgreSQL database in a docker container then
 // mounts the Vault database secrets engine and configures it to issue
 // credentials for the database.
@@ -890,143 +713,5 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 //   }
 func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
 	t.Helper()
-	require := require.New(t)
-	require.Nil(v.postgresContainer, "postgres container exists")
-	require.NotNil(v.network, "Vault server must be created with docker network")
-
-	pool := v.pool
-	network := v.network
-
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "11",
-		Networks:   []*dockertest.Network{network},
-		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
-	}
-
-	resource, err := pool.RunWithOptions(dockerOptions)
-	require.NoError(err)
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
-	v.postgresContainer = resource
-
-	dburl := fmt.Sprintf("postgres://postgres:password@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
-	err = pool.Retry(func() error {
-		var err error
-		db, err := sql.Open("postgres", dburl)
-		if err != nil {
-			return err
-		}
-		return db.Ping()
-	})
-	require.NoError(err)
-
-	const (
-		createOpened = `create table boundary_opened ( name text primary key )`
-		createClosed = `create table boundary_closed ( name text primary key )`
-
-		createVaultAccount = `create role vault with login createrole password 'vault-password'`
-		createOpenedRole   = `create role opened_role noinherit`
-		createClosedRole   = `create role closed_role noinherit`
-
-		grantOpenedRole = `grant select, insert, update, delete on boundary_opened to opened_role`
-		grantClosedRole = `grant select, insert, update, delete on boundary_closed to closed_role`
-	)
-
-	db, err := sql.Open("postgres", dburl)
-	require.NoError(err)
-	defer db.Close()
-
-	exec := func(q string) {
-		_, err := db.Exec(q)
-		require.NoError(err, q)
-	}
-	exec(createOpened)
-	exec(createClosed)
-	exec(createVaultAccount)
-	exec(createOpenedRole)
-	exec(createClosedRole)
-	exec(grantOpenedRole)
-	exec(grantClosedRole)
-
-	opts := getTestOpts(t, opt...)
-	vc := v.client(t).cl
-
-	// Mount Database
-	maxTTL := 24 * time.Hour
-	if deadline, ok := t.Deadline(); ok {
-		maxTTL = time.Until(deadline) * 2
-	}
-
-	defaultTTL := maxTTL / 2
-	t.Logf("maxTTL: %s, defaultTTL: %s", maxTTL, defaultTTL)
-	mountInput := &vault.MountInput{
-		Type:        "database",
-		Description: t.Name(),
-		Config: vault.MountConfigInput{
-			DefaultLeaseTTL: defaultTTL.String(),
-			MaxLeaseTTL:     maxTTL.String(),
-		},
-	}
-	mountPath := opts.mountPath
-	if mountPath == "" {
-		mountPath = "database/"
-	}
-	require.NoError(vc.Sys().Mount(mountPath, mountInput))
-	v.addPolicy(t, "database", mountPath)
-
-	t.Log(v.vaultContainer.GetIPInNetwork(network))
-
-	// Configure PostgreSQL secrets engine
-	connUrl := fmt.Sprintf("postgresql://{{username}}:{{password}}@%s:5432/boundarytest?sslmode=disable", v.postgresContainer.GetIPInNetwork(network))
-	t.Log(connUrl)
-
-	postgresConfPath := path.Join(mountPath, "config/postgresql")
-	postgresConfOptions := map[string]interface{}{
-		"plugin_name":    "postgresql-database-plugin",
-		"connection_url": connUrl,
-		"allowed_roles":  "opened,closed",
-		"username":       "vault",
-		"password":       "vault-password",
-	}
-	s, err := vc.Logical().Write(postgresConfPath, postgresConfOptions)
-	require.NoError(err)
-	require.NotEmpty(s)
-
-	// Create the role named `warehouse` that creates credentials with
-
-	const (
-		vaultOpenedCreationStatement = `
-create role "{{name}}"
-with login password '{{password}}'
-valid until '{{expiration}}' inherit;
-grant opened_role to "{{name}}";
-`
-
-		vaultClosedCreationStatement = `
-create role "{{name}}"
-with login password '{{password}}'
-valid until '{{expiration}}' inherit;
-grant closed_role to "{{name}}";
-`
-	)
-
-	openedRolePath := path.Join(mountPath, "roles", "opened")
-	openedRoleOptions := map[string]interface{}{
-		"db_name":             "postgresql",
-		"creation_statements": vaultOpenedCreationStatement,
-	}
-	_, err = vc.Logical().Write(openedRolePath, openedRoleOptions)
-	require.NoError(err)
-
-	closedRolePath := path.Join(mountPath, "roles", "closed")
-	closedRoleOptions := map[string]interface{}{
-		"db_name":             "postgresql",
-		"creation_statements": vaultClosedCreationStatement,
-	}
-	_, err = vc.Logical().Write(closedRolePath, closedRoleOptions)
-	require.NoError(err)
-
-	// Add policies to vault?
+	mountDatabase(t, v, opt...)
 }
