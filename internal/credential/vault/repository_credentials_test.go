@@ -133,6 +133,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				return
 			}
 			assert.Len(got, len(tt.libraryIds))
+			assert.NoError(err)
 		})
 	}
 }
