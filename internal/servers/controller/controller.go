@@ -166,6 +166,9 @@ func (c *Controller) Start() error {
 	if err := c.scheduler.Start(c.baseContext); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
+	if err := c.registerJobs(); err != nil {
+		return fmt.Errorf("error registering jobs: %w", err)
+	}
 
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
@@ -176,6 +179,18 @@ func (c *Controller) Start() error {
 	c.startTerminateCompletedSessionsTicking(c.baseContext)
 	c.startCloseExpiredPendingTokens(c.baseContext)
 	c.started.Store(true)
+
+	return nil
+}
+
+func (c *Controller) registerJobs() error {
+	tokenRenewal, err := vault.NewTokenRenewalJob(c.VaultCredentialRepoFn, c.logger)
+	if err != nil {
+		return fmt.Errorf("error creating token renewal job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, tokenRenewal); err != nil {
+		return fmt.Errorf("error registering token renewal job: %w", err)
+	}
 
 	return nil
 }

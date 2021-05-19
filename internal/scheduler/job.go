@@ -22,7 +22,7 @@ type Job interface {
 	// is being persisted by the scheduler.
 	NextRunIn() time.Duration
 
-	// Name is the human readable name of the job.
+	// Name is the unique name of the job.
 	Name() string
 
 	// Description is the human readable description of the job.

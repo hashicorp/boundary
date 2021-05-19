@@ -58,4 +58,24 @@ returning *;
 delete from credential_vault_client_certificate
  where store_id = $1;
 `
+
+	updateTokenExpirationQuery = `
+update credential_vault_token 
+  set last_renewal_time = now(),
+  expiration_time = wt_add_seconds_to_now(?)
+  where token_hmac = ?;
+`
+
+	updateTokenStatusQuery = `
+update credential_vault_token 
+	set status = ? 
+	where token_hmac = ?
+`
+
+	tokenRenewalNextRunInQuery = `
+select now(), renewal_time 
+	from credential_vault_job_renewable_tokens 
+	order by renewal_time asc 
+	limit 1
+`
 )

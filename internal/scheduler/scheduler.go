@@ -137,7 +137,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	}
 
 	if err := ctx.Err(); err != nil {
-		return err
+		return errors.Wrap(err, op)
 	}
 
 	repo, err := s.jobRepoFn()
@@ -227,7 +227,7 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 				s.logger.Error("error updating completed job run", "error", inner)
 			}
 		default:
-			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name())
+			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name(), "error", runErr)
 			if _, inner := repo.FailRun(jobContext, r.PrivateId); inner != nil {
 				s.logger.Error("error updating failed job run", "error", inner)
 			}

@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10004,
+		binarySchemaVersion: 10006,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5722,6 +5722,20 @@ create table session_credential_dynamic (
 
   create trigger immutable_columns before update on session_credential_dynamic
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
+`),
+			10006: []byte(`
+create view credential_vault_job_renewable_tokens as
+        select token_hmac,
+               token, -- encrypted
+               store_id,
+               -- renewal time is the midpoint between the last renewal time and the expiration time
+               last_renewal_time + (expiration_time - last_renewal_time) / 2 renewal_time
+        from credential_vault_token
+        where status in ('current', 'maintaining');
+
+    comment on view credential_vault_job_renewable_tokens is
+        'credential_vault_renewable_tokens is a view where each row contains a token that is current or maintaining and should be renewed in Vault. '
+            'Each row contains encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

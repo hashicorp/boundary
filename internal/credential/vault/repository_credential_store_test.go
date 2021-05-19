@@ -1118,12 +1118,13 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(1, gotCount)
+			assert.Equal(tt.wantCount, gotCount)
 			assert.NotNil(got)
 
 			var tokens []*Token
 			require.NoError(rw.SearchWhere(ctx, &tokens, "store_id = ?", []interface{}{orig.GetPublicId()}))
 			assert.Len(tokens, 2)
+			assert.Equal(string(tt.wantOldTokenStatus), tokens[0].Status)
 
 			lookup, err := repo.LookupCredentialStore(ctx, orig.GetPublicId())
 			assert.NoError(err)
