@@ -273,6 +273,7 @@ type credentialStoreAggPublic struct {
 	TokenLastRenewalTime *timestamp.Timestamp
 	TokenExpirationTime  *timestamp.Timestamp
 	ClientCert           []byte
+	ClientCertKeyHmac    []byte
 }
 
 func allocCredentialStoreAggPublic() *credentialStoreAggPublic {
@@ -307,6 +308,7 @@ func (agg *credentialStoreAggPublic) toCredentialStore() *CredentialStore {
 	if agg.ClientCert != nil {
 		cert := allocClientCertificate()
 		cert.Certificate = agg.ClientCert
+		cert.CertificateKeyHmac = agg.ClientCertKeyHmac
 		cs.clientCert = cert
 	}
 	return cs
@@ -371,6 +373,7 @@ type privateStore struct {
 	ClientKeyId          string
 	ClientKey            []byte
 	CtClientKey          []byte
+	ClientKeyHmac        []byte
 }
 
 func allocPrivateStore() *privateStore {
@@ -409,6 +412,7 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 		cert.StoreId = ps.StoreId
 		cert.Certificate = ps.ClientCert
 		cert.CtCertificateKey = ps.CtClientKey
+		cert.CertificateKeyHmac = ps.ClientKeyHmac
 		cert.KeyId = ps.ClientKeyId
 		cs.privateClientCert = cert
 	}

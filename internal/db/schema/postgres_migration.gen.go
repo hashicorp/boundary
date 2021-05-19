@@ -5415,6 +5415,9 @@ create table credential_vault_store (
     certificate_key bytea not null -- encrypted PEM encoded private key for certificate
       constraint certificate_key_must_not_be_empty
         check(length(certificate_key) > 0),
+    certificate_key_hmac bytea not null
+        constraint certificate_key_hmac_must_not_be_empty
+            check(length(certificate_key_hmac) > 0),
     key_id text not null
       constraint kms_database_key_version_fkey
         references kms_database_key_version (private_id)
@@ -5609,6 +5612,7 @@ create table credential_vault_store (
             token.status            as token_status,
             cert.certificate        as client_cert,
             cert.certificate_key    as ct_client_key, -- encrypted
+            cert.certificate_key_hmac as client_cert_key_hmac,
             cert.key_id             as client_key_id
        from credential_vault_store store
   left join current_tokens token
@@ -5637,7 +5641,8 @@ create table credential_vault_store (
             token_update_time,
             token_last_renewal_time,
             token_expiration_time,
-            client_cert
+            client_cert,
+            client_cert_key_hmac
        from credential_vault_store_client_private;
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
