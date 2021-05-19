@@ -656,7 +656,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	var returnedClientCert *ClientCertificate
 	var returnedCredentialStore *CredentialStore
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 3)
 			ticket, err := w.GetTicket(cs)
 			if err != nil {
@@ -706,7 +706,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				returnedToken.Token.Token = nil
 				returnedToken.Token.CtToken = nil
 				returnedCredentialStore.outputToken = returnedToken
-
 			}
 
 			switch {
@@ -736,6 +735,14 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				returnedCredentialStore.clientCert = returnedClientCert
 				msgs = append(msgs, returnedClientCert.oplogMessage(db.CreateOp))
 			}
+
+			publicId := cs.PublicId
+			agg := allocCredentialStoreAggPublic()
+			agg.PublicId = publicId
+			if err := reader.LookupByPublicId(ctx, agg); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup credential store: %s", publicId)))
+			}
+			returnedCredentialStore = agg.toCredentialStore()
 
 			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
@@ -769,12 +776,16 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var credentialStores []*CredentialStore
+	var credentialStores []*credentialStoreAggPublic
 	err := r.reader.SearchWhere(ctx, &credentialStores, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return credentialStores, nil
+	var out []*CredentialStore
+	for _, ca := range credentialStores {
+		out = append(out, ca.toCredentialStore())
+	}
+	return out, nil
 }
 
 // DeleteCredentialStore deletes publicId from the repository and returns

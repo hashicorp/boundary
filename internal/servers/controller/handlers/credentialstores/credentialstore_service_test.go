@@ -63,8 +63,9 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-					Address: s.GetVaultAddress(),
-					// TODO: Add all fields including VaultTokenHmac, ClientCert, tls related fields, namespace, etc...
+					Address:        s.GetVaultAddress(),
+					VaultTokenHmac: base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					// TODO: Add all fields including ClientCert, tls related fields, namespace, etc...
 				})
 				require.NoError(t, err)
 				return attrs
@@ -665,8 +666,6 @@ func TestUpdate(t *testing.T) {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Name = wrapperspb.String("basic")
 				out.Description = wrapperspb.String("basic")
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -687,8 +686,6 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["address"] = structpb.NewStringValue(v.Addr)
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -709,8 +706,6 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["namespace"] = structpb.NewStringValue("update namespace")
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -731,8 +726,6 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["tls_server_name"] = structpb.NewStringValue("UpdateTlsServerName")
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -753,8 +746,6 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["tls_skip_verify"] = structpb.NewBoolValue(true)
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -775,8 +766,6 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v.CaCert))
-				// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-				delete(out.GetAttributes().Fields, "vault_token_hmac")
 				return out
 			},
 		},
@@ -800,8 +789,6 @@ func TestUpdate(t *testing.T) {
 		// 		out := proto.Clone(in).(*pb.CredentialStore)
 		// 		out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v.ClientCert))
 		// 		out.Attributes.Fields["client_certificate_key"] = structpb.NewStringValue(string(v.ClientKey))
-		// 		// TODO(ICU-1483): Expect a vault token hmac to be set in the update response
-		// 		delete(out.GetAttributes().Fields, "vault_token_hmac")
 		// 		return out
 		// 	},
 		// },

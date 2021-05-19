@@ -27,9 +27,7 @@ type options struct {
 }
 
 func getDefaultOptions() options {
-	return options{
-		withMethod: MethodGet,
-	}
+	return options{}
 }
 
 // WithDescription provides an optional description.

@@ -15,7 +15,7 @@ import (
 // and the list of credential libraries attached to the target, after clIds are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
+func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).AddTargetCredentialLibraries"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -61,7 +61,7 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 	}
 
 	var hostSets []*TargetSet
-	var credLibs []*CredentialLibrary
+	var credLibs []*TargetLibrary
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -210,7 +210,7 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 // SetTargetCredentialLibraries will set the target's credential libraries. Set will add
 // and/or delete credential libraries as need to reconcile the existing credential libraries
 // with the request. If clIds is empty, all the credential libraries will be cleared from the target.
-func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*TargetSet, []*CredentialLibrary, int, error) {
+func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).SetTargetCredentialLibraries"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -274,7 +274,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 
 	var rowsAffected int
 	var hostSets []*TargetSet
-	var credLibs []*CredentialLibrary
+	var credLibs []*TargetLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -385,9 +385,9 @@ func (r *Repository) changes(ctx context.Context, targetId string, clIds []strin
 	return changes, nil
 }
 
-func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*CredentialLibrary, error) {
+func fetchLibraries(ctx context.Context, r db.Reader, targetId string) ([]*TargetLibrary, error) {
 	const op = "target.fetchLibraries"
-	var libraries []*CredentialLibrary
+	var libraries []*TargetLibrary
 	if err := r.SearchWhere(ctx, &libraries, "target_id = ?", []interface{}{targetId}); err != nil {
 		return nil, errors.Wrap(err, op)
 	}

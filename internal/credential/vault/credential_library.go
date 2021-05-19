@@ -3,7 +3,6 @@ package vault
 import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,17 +29,7 @@ type CredentialLibrary struct {
 // All other options are ignored.
 func NewCredentialLibrary(storeId string, vaultPath string, opt ...Option) (*CredentialLibrary, error) {
 	const op = "vault.NewCredentialLibrary"
-	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
-	}
-	if vaultPath == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault path")
-	}
-
 	opts := getOpts(opt...)
-	if len(opts.withRequestBody) > 0 && opts.withMethod != MethodPost {
-		return nil, errors.New(errors.InvalidParameter, op, "a request body is only allowed with an HTTP POST method")
-	}
 
 	l := &CredentialLibrary{
 		CredentialLibrary: &store.CredentialLibrary{
