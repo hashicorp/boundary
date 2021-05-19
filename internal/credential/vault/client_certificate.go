@@ -2,10 +2,14 @@ package vault
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/hmac"
+	"crypto/sha256"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -76,6 +80,9 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}
 	c.KeyId = cipher.KeyID()
+	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
+		errors.Wrap(err, op)
+	}
 	return nil
 }
 
@@ -87,12 +94,32 @@ func (c *ClientCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper
 	return nil
 }
 
+func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "vault.(ClientCertificate).hmacCertificateKey"
+	if cipher == nil {
+		return errors.New(errors.InvalidParameter, op, "missing cipher")
+	}
+	reader, err := kms.NewDerivedReader(cipher, 32, []byte(c.StoreId), nil)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	key, _, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return errors.New(errors.Encrypt, op, "unable to generate derived key")
+	}
+	mac := hmac.New(sha256.New, key)
+	_, _ = mac.Write(c.CertificateKey)
+	c.CertificateKeyHmac = mac.Sum(nil)
+	return nil
+}
+
 func (c *ClientCertificate) insertQuery() (query string, queryValues []interface{}) {
 	query = upsertClientCertQuery
 	queryValues = []interface{}{
 		c.StoreId,
 		c.Certificate,
 		c.CtCertificateKey,
+		c.CertificateKeyHmac,
 		c.KeyId,
 	}
 	return
