@@ -135,7 +135,7 @@ func (c *client) get(path string) (*vault.Secret, error) {
 	const op = "vault.(client).get"
 	s, err := c.cl.Logical().Read(path)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }
@@ -150,7 +150,7 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 	}
 	s, err := c.cl.Logical().WriteBytes(path, data)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }

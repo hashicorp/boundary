@@ -65,7 +65,7 @@ func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, lib
 		if err != nil {
 			// TODO(mgaffney) 05/2021: detect if the error is because of an
 			// expired or invalid token
-			return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest))
+			return nil, errors.Wrap(err, op)
 		}
 
 		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, time.Duration(secret.LeaseDuration)*time.Second)
