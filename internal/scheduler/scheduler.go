@@ -126,8 +126,8 @@ func (s *Scheduler) UpdateJobNextRun(ctx context.Context, name string, nextRunIn
 
 // Start begins the scheduling loop that will query the repository for jobs to run and
 // run them in a goroutine, the scheduler will stop all running jobs and stop requesting
-// new jobs once the ctx past in is cancelled.
-// The scheduler cannot be started again once the ctx is cancelled, a new scheduler will
+// new jobs once the ctx past in is canceled.
+// The scheduler cannot be started again once the ctx is canceled, a new scheduler will
 // need to be instantiated in order to begin scheduling again.
 func (s *Scheduler) Start(ctx context.Context) error {
 	const op = "scheduler.(Scheduler).Start"

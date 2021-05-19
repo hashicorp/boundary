@@ -1,4 +1,4 @@
-4a5e72d77b777403777d3f2dc57c767800cc93bf Merge pull request #533 from hashicorp/fix-authenticate-read
+685ddeac7e9905dcb98660df60b426e9a64a4460 Merge pull request #549 from hashicorp/ICU-1335-close-session-on-cancel
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.

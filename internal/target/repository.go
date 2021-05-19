@@ -56,7 +56,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 // with its host set ids and credential library ids.  If the target is not found,
 // it will return nil, nil, nil, nil.
 // No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := getOpts(opt...)
 
@@ -98,7 +98,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	target := allocTargetView()
 	target.PublicId = publicIdOrName
 	var hostSets []*TargetSet
-	var credLibs []*CredentialLibrary
+	var credLibs []*TargetLibrary
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -131,11 +131,11 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		}
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	subType, err := target.targetSubType()
+	subtype, err := target.targetSubtype()
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, op)
 	}
-	return subType, hostSets, credLibs, nil
+	return subtype, hostSets, credLibs, nil
 }
 
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
@@ -164,11 +164,11 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	targets := make([]Target, 0, len(foundTargets))
 
 	for _, t := range foundTargets {
-		subType, err := t.targetSubType()
+		subtype, err := t.targetSubtype()
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		targets = append(targets, subType)
+		targets = append(targets, subtype)
 	}
 	return targets, nil
 }
@@ -250,7 +250,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 // update a target in the db repository with an oplog entry.
 // It currently supports no options.
-func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, int, error) {
+func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).update"
 	if version == 0 {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
@@ -284,7 +284,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	var rowsUpdated int
 	var returnedTarget interface{}
 	var hostSets []*TargetSet
-	var credLibs []*CredentialLibrary
+	var credLibs []*TargetLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,

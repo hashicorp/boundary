@@ -112,7 +112,7 @@ func TestRepository_AddTargetCredentialLibraries(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Len(gotCredLibs, len(tt.wantCredLibIds))
-			gotCredLibsMap := map[string]*CredentialLibrary{}
+			gotCredLibsMap := map[string]*TargetLibrary{}
 			for _, s := range gotCredLibs {
 				gotCredLibsMap[s.CredentialLibraryId] = s
 			}
@@ -373,7 +373,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
-	setupFn := func(target Target) []*CredentialLibrary {
+	setupFn := func(target Target) []*TargetLibrary {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		clIds := make([]string, 0, len(credLibs))
 		for _, cl := range credLibs {
@@ -392,7 +392,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 	}
 	tests := []struct {
 		name             string
-		setup            func(Target) []*CredentialLibrary
+		setup            func(Target) []*TargetLibrary
 		args             args
 		wantAffectedRows int
 		wantErr          bool
@@ -470,7 +470,7 @@ func TestRepository_SetTargetCredentialLibraries(t *testing.T) {
 
 			target := TestTcpTarget(t, conn, proj.PublicId, tt.name)
 
-			var origCredLibs []*CredentialLibrary
+			var origCredLibs []*TargetLibrary
 			if tt.setup != nil {
 				origCredLibs = tt.setup(target)
 			}

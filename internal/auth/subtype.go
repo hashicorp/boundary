@@ -8,15 +8,15 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
-type SubType int
+type Subtype int
 
 const (
-	UnknownSubtype SubType = iota
+	UnknownSubtype Subtype = iota
 	PasswordSubtype
 	OidcSubtype
 )
 
-func (t SubType) String() string {
+func (t Subtype) String() string {
 	switch t {
 	case PasswordSubtype:
 		return "password"
@@ -58,9 +58,9 @@ var (
 	_ Account = (*password.Account)(nil)
 )
 
-// SubtypeFromType converts a string to a SubType.
-// returns UnknownSubtype if no SubType with that name is found.
-func SubtypeFromType(t string) SubType {
+// SubtypeFromType converts a string to a Subtype.
+// returns UnknownSubtype if no Subtype with that name is found.
+func SubtypeFromType(t string) Subtype {
 	switch {
 	case strings.EqualFold(strings.TrimSpace(t), PasswordSubtype.String()):
 		return PasswordSubtype
@@ -72,8 +72,8 @@ func SubtypeFromType(t string) SubType {
 
 // SubtypeFromId takes any public id in the auth subsystem and uses the prefix to determine
 // what subtype the id is for.
-// Returns UnknownSubtype if no SubType with this id's prefix is found.
-func SubtypeFromId(id string) SubType {
+// Returns UnknownSubtype if no Subtype with this id's prefix is found.
+func SubtypeFromId(id string) Subtype {
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
 		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):

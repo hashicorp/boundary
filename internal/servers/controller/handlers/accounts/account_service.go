@@ -52,7 +52,7 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = map[auth.SubType]action.ActionSet{
+	IdActions = map[auth.Subtype]action.ActionSet{
 		auth.PasswordSubtype: {
 			action.NoOp,
 			action.Read,

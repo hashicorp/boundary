@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestSession_Create(t *testing.T) {
@@ -21,9 +21,7 @@ func TestSession_Create(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
-	require.NoError(t, err)
-	exp := &timestamp.Timestamp{Timestamp: future}
+	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
 	type args struct {
 		composedOf ComposedOf

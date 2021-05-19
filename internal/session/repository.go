@@ -52,8 +52,9 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opts options) error {
+func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "session.(Repository).list"
+	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	var dbOpts []db.Option
 	if opts.withLimit != 0 {

@@ -15,7 +15,7 @@ import (
 // targetVersion or an error will be returned.   The target and a list of
 // current host set ids will be returned on success. Zero is not a valid value
 // for the WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []*CredentialLibrary, error) {
+func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).AddTargetHostSets"
 	if targetId == "" {
 		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -57,7 +57,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	var currentHostSets []*TargetSet
-	var currentCredLibs []*CredentialLibrary
+	var currentCredLibs []*TargetLibrary
 	var updatedTarget interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -203,7 +203,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 // target host sets as need to reconcile the existing sets with the sets
 // requested. If hostSetIds is empty, the target host sets will be cleared. Zero
 // is not a valid value for the WithVersion option and will return an error.
-func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []*CredentialLibrary, int, error) {
+func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).SetTargetHostSets"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
@@ -278,7 +278,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 
 	var totalRowsAffected int
 	var currentHostSets []*TargetSet
-	var currentCredLibs []*CredentialLibrary
+	var currentCredLibs []*TargetLibrary
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
