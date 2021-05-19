@@ -38,6 +38,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 		args    args
 		want    *CredentialLibrary
 		wantErr bool
+		wantCreateErr bool
 	}{
 		{
 			name: "missing-store-id",
@@ -45,19 +46,27 @@ func TestCredentialLibrary_New(t *testing.T) {
 				storeId:   "",
 				vaultPath: "vault/path",
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					VaultPath:  "vault/path",
+				},
+			},
+			wantCreateErr: true,
 		},
 		{
 			name: "missing-vault-path",
 			args: args{
 				storeId: cs.PublicId,
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:    cs.PublicId,
+				},
+			},
+			wantCreateErr: true,
 		},
 		{
-			name: "valid-no-options",
+			name: "no-options",
 			args: args{
 				storeId:   cs.PublicId,
 				vaultPath: "vault/path",
@@ -65,13 +74,13 @@ func TestCredentialLibrary_New(t *testing.T) {
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:    cs.PublicId,
-					HttpMethod: "GET",
 					VaultPath:  "vault/path",
 				},
 			},
+			wantCreateErr: true,
 		},
 		{
-			name: "valid-with-name",
+			name: "with-name",
 			args: args{
 				storeId:   cs.PublicId,
 				vaultPath: "vault/path",
@@ -82,9 +91,28 @@ func TestCredentialLibrary_New(t *testing.T) {
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:    cs.PublicId,
-					HttpMethod: "GET",
 					VaultPath:  "vault/path",
 					Name:       "test-name",
+				},
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "with-name-method",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+					WithName("test-name"),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:    cs.PublicId,
+					VaultPath:  "vault/path",
+					Name:       "test-name",
+					HttpMethod: string(MethodGet),
 				},
 			},
 		},
@@ -100,11 +128,11 @@ func TestCredentialLibrary_New(t *testing.T) {
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:     cs.PublicId,
-					HttpMethod:  "GET",
 					VaultPath:   "vault/path",
 					Description: "test-description",
 				},
 			},
+			wantCreateErr: true,
 		},
 		{
 			name: "valid-with-post-method",
@@ -143,15 +171,24 @@ func TestCredentialLibrary_New(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid-get-method-with-body",
+			name: "get-method-with-body",
 			args: args{
 				storeId:   cs.PublicId,
 				vaultPath: "vault/path",
 				opts: []Option{
+					WithMethod(MethodGet),
 					WithRequestBody("body"),
 				},
 			},
-			wantErr: true,
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.PublicId,
+					VaultPath:       "vault/path",
+					HttpRequestBody: "body",
+					HttpMethod: "GET",
+				},
+			},
+			wantCreateErr: true,
 		},
 	}
 
@@ -179,7 +216,11 @@ func TestCredentialLibrary_New(t *testing.T) {
 			got.PublicId = id
 
 			err2 := rw.Create(ctx, got)
-			assert.NoError(err2)
+			if tt.wantCreateErr {
+				assert.Error(err2)
+			} else {
+				assert.NoError(err2)
+			}
 		})
 	}
 }
