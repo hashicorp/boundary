@@ -63,7 +63,7 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-					Address: s.GetVaultAddress(),
+					Address:        s.GetVaultAddress(),
 					VaultTokenHmac: base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
 					// TODO: Add all fields including ClientCert, tls related fields, namespace, etc...
 				})
