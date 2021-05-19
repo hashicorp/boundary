@@ -521,8 +521,7 @@ func TestCancel(t *testing.T) {
 			name:    "Already canceled",
 			scopeId: sess.ScopeId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
-			res:     nil,
-			err:     errors.New(errors.InvalidSessionState, "sessions.(Service).CancelSession", "session already in canceling state"),
+			res:     &pbs.CancelSessionResponse{Item: wireSess},
 		},
 		{
 			name: "Cancel a non existing Session",
