@@ -263,6 +263,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: VaultTokenNotRenewable,
 		},
 		{
+			name: "VaultCredentialRequest",
+			c:    VaultCredentialRequest,
+			want: VaultCredentialRequest,
+		},
+		{
 			name: "OidcProviderCallbackError",
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,

@@ -14,6 +14,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* oidc: If provider returns an `aud` claim as a `string` or `[]string`,
+  Boundary will properly parse the claims JSON.
+  ([issue](https://github.com/hashicorp/cap/issues/37),
+  [PR](https://github.com/hashicorp/boundary/pull/1231))
 * sessions: Clean up connections that are dangling after a worker dies (is
   restarted, powered off, etc.) This fixes some cases where a session never goes
   to `terminated` state because connections are not properly marked closed.

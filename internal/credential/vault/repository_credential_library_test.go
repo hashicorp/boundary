@@ -125,6 +125,46 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-POST-method",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "POST",
+					Description: "test-description-repo",
+					VaultPath:   "/some/path",
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:     cs.GetPublicId(),
+					HttpMethod:  "POST",
+					Description: "test-description-repo",
+					VaultPath:   "/some/path",
+				},
+			},
+		},
+		{
+			name: "valid-POST-http-body",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					HttpMethod:      "POST",
+					Description:     "test-description-repo",
+					VaultPath:       "/some/path",
+					HttpRequestBody: []byte(`{"common_name":"boundary.com"}`),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					HttpMethod:      "POST",
+					Description:     "test-description-repo",
+					VaultPath:       "/some/path",
+					HttpRequestBody: []byte(`{"common_name":"boundary.com"}`),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -236,7 +276,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	changeHttpRequestBody := func(b string) func(*CredentialLibrary) *CredentialLibrary {
+	changeHttpRequestBody := func(b []byte) func(*CredentialLibrary) *CredentialLibrary {
 		return func(l *CredentialLibrary) *CredentialLibrary {
 			l.HttpRequestBody = b
 			return l
@@ -631,13 +671,13 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					VaultPath:  "/some/path",
 				},
 			},
-			chgFn: changeHttpRequestBody("new request body"),
+			chgFn: changeHttpRequestBody([]byte("new request body")),
 			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "new request body",
+					HttpRequestBody: []byte("new request body"),
 				},
 			},
 			wantCount: 1,
@@ -648,10 +688,10 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "request body",
+					HttpRequestBody: []byte("request body"),
 				},
 			},
-			chgFn: changeHttpRequestBody(""),
+			chgFn: changeHttpRequestBody(nil),
 			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
@@ -667,16 +707,16 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "old request body",
+					HttpRequestBody: []byte("old request body"),
 				},
 			},
-			chgFn: changeHttpRequestBody("new request body"),
+			chgFn: changeHttpRequestBody([]byte("new request body")),
 			masks: []string{httpRequestBodyField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "new request body",
+					HttpRequestBody: []byte("new request body"),
 				},
 			},
 			wantCount: 1,
@@ -687,7 +727,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "old request body",
+					HttpRequestBody: []byte("old request body"),
 				},
 			},
 			chgFn:   changeHttpMethod(MethodGet),
@@ -702,13 +742,13 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 					VaultPath:  "/some/path",
 				},
 			},
-			chgFn: combine(changeHttpRequestBody("new request body"), changeHttpMethod(MethodPost)),
+			chgFn: combine(changeHttpRequestBody([]byte("new request body")), changeHttpMethod(MethodPost)),
 			masks: []string{httpRequestBodyField, httpMethodField},
 			want: &CredentialLibrary{
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:      "POST",
 					VaultPath:       "/some/path",
-					HttpRequestBody: "new request body",
+					HttpRequestBody: []byte("new request body"),
 				},
 			},
 			wantCount: 1,

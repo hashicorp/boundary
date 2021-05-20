@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -34,4 +35,8 @@ func newCredentialLibraryId() (string, error) {
 		return "", errors.Wrap(err, "vault.newCredentialLibraryId")
 	}
 	return id, nil
+}
+
+func init() {
+	credential.Register(credential.VaultSubtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix)
 }

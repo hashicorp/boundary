@@ -153,7 +153,7 @@ func TestCreate(t *testing.T) {
 	defaultCs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	defaultCreated := defaultCs.GetCreateTime().GetTimestamp()
 
-	v := vault.NewTestVaultServer(t, vault.TestClientTLS)
+	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	secret := v.CreateToken(t)
 	token := secret.Auth.ClientToken
 
@@ -653,7 +653,7 @@ func TestUpdate(t *testing.T) {
 		return &fieldmaskpb.FieldMask{Paths: paths}
 	}
 
-	v := vault.NewTestVaultServer(t, vault.TestClientTLS)
+	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	secret := v.CreateToken(t)
 	token := secret.Auth.ClientToken
 	_ = token

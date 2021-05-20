@@ -476,8 +476,8 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 			if vaultIn.GetHttpMethod() != "" {
 				attrs.HttpMethod = wrapperspb.String(vaultIn.GetHttpMethod())
 			}
-			if vaultIn.GetHttpRequestBody() != "" {
-				attrs.HttpRequestBody = wrapperspb.String(vaultIn.GetHttpRequestBody())
+			if vaultIn.GetHttpRequestBody() != nil {
+				attrs.HttpRequestBody = wrapperspb.String(string(vaultIn.GetHttpRequestBody()))
 			}
 			var err error
 			out.Attributes, err = handlers.ProtoToStruct(attrs)
@@ -508,7 +508,7 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithMethod(vault.Method(strings.ToUpper(attrs.GetHttpMethod().GetValue()))))
 	}
 	if attrs.GetHttpRequestBody() != nil {
-		opts = append(opts, vault.WithRequestBody(attrs.GetHttpRequestBody().GetValue()))
+		opts = append(opts, vault.WithRequestBody([]byte(attrs.GetHttpRequestBody().GetValue())))
 	}
 
 	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetVaultPath(), opts...)

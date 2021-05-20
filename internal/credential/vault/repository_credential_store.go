@@ -93,14 +93,14 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
 	}
 
-	tokenLookup, err := client.LookupToken()
+	tokenLookup, err := client.lookupToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
 	}
 	if err := validateTokenLookup(op, tokenLookup); err != nil {
 		return nil, err
 	}
-	renewedToken, err := client.RenewToken()
+	renewedToken, err := client.renewToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
 	}
@@ -324,33 +324,33 @@ func (agg *credentialStoreAggPublic) TableName() string { return "credential_vau
 // GetPublicId returns the public id.
 func (agg *credentialStoreAggPublic) GetPublicId() string { return agg.PublicId }
 
-func (r *Repository) lookupPrivateCredentialStore(ctx context.Context, publicId string) (*privateCredentialStore, error) {
-	const op = "vault.(Repository).lookupPrivateCredentialStore"
+func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*privateStore, error) {
+	const op = "vault.(Repository).lookupPrivateStore"
 	if publicId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
-	pcs := allocPrivateCredentialStore()
-	pcs.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, pcs); err != nil {
+	ps := allocPrivateStore()
+	ps.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, ps); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, pcs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, ps.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
-	if err := pcs.decrypt(ctx, databaseWrapper); err != nil {
+	if err := ps.decrypt(ctx, databaseWrapper); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 
-	return pcs, nil
+	return ps, nil
 }
 
-type privateCredentialStore struct {
+type privateStore struct {
 	PublicId             string `gorm:"primary_key"`
 	ScopeId              string
 	Name                 string
@@ -380,96 +380,96 @@ type privateCredentialStore struct {
 	ClientKeyHmac        []byte
 }
 
-func allocPrivateCredentialStore() *privateCredentialStore {
-	return &privateCredentialStore{}
+func allocPrivateStore() *privateStore {
+	return &privateStore{}
 }
 
-func (pcs *privateCredentialStore) toCredentialStore() *CredentialStore {
+func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
-	cs.PublicId = pcs.PublicId
-	cs.ScopeId = pcs.ScopeId
-	cs.Name = pcs.Name
-	cs.Description = pcs.Description
-	cs.CreateTime = pcs.CreateTime
-	cs.UpdateTime = pcs.UpdateTime
-	cs.Version = pcs.Version
-	cs.VaultAddress = pcs.VaultAddress
-	cs.Namespace = pcs.Namespace
-	cs.CaCert = pcs.CaCert
-	cs.TlsServerName = pcs.TlsServerName
-	cs.TlsSkipVerify = pcs.TlsSkipVerify
-	if pcs.TokenHmac != nil {
+	cs.PublicId = ps.PublicId
+	cs.ScopeId = ps.ScopeId
+	cs.Name = ps.Name
+	cs.Description = ps.Description
+	cs.CreateTime = ps.CreateTime
+	cs.UpdateTime = ps.UpdateTime
+	cs.Version = ps.Version
+	cs.VaultAddress = ps.VaultAddress
+	cs.Namespace = ps.Namespace
+	cs.CaCert = ps.CaCert
+	cs.TlsServerName = ps.TlsServerName
+	cs.TlsSkipVerify = ps.TlsSkipVerify
+	if ps.TokenHmac != nil {
 		tk := allocToken()
-		tk.StoreId = pcs.StoreId
-		tk.TokenHmac = pcs.TokenHmac
-		tk.LastRenewalTime = pcs.TokenLastRenewalTime
-		tk.ExpirationTime = pcs.TokenExpirationTime
-		tk.CreateTime = pcs.TokenCreateTime
-		tk.UpdateTime = pcs.TokenUpdateTime
-		tk.CtToken = pcs.CtToken
-		tk.KeyId = pcs.TokenKeyId
-		tk.Status = pcs.TokenStatus
+		tk.StoreId = ps.StoreId
+		tk.TokenHmac = ps.TokenHmac
+		tk.LastRenewalTime = ps.TokenLastRenewalTime
+		tk.ExpirationTime = ps.TokenExpirationTime
+		tk.CreateTime = ps.TokenCreateTime
+		tk.UpdateTime = ps.TokenUpdateTime
+		tk.CtToken = ps.CtToken
+		tk.KeyId = ps.TokenKeyId
+		tk.Status = ps.TokenStatus
 		cs.privateToken = tk
 	}
-	if pcs.ClientCert != nil {
+	if ps.ClientCert != nil {
 		cert := allocClientCertificate()
-		cert.StoreId = pcs.StoreId
-		cert.Certificate = pcs.ClientCert
-		cert.CtCertificateKey = pcs.CtClientKey
-		cert.CertificateKeyHmac = pcs.ClientKeyHmac
-		cert.KeyId = pcs.ClientKeyId
+		cert.StoreId = ps.StoreId
+		cert.Certificate = ps.ClientCert
+		cert.CtCertificateKey = ps.CtClientKey
+		cert.CertificateKeyHmac = ps.ClientKeyHmac
+		cert.KeyId = ps.ClientKeyId
 		cs.privateClientCert = cert
 	}
 	return cs
 }
 
-func (pcs *privateCredentialStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(privateCredentialStore).decrypt"
+func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "vault.(privateStore).decrypt"
 
-	if pcs.CtToken != nil {
+	if ps.CtToken != nil {
 		type ptk struct {
 			Token   []byte `wrapping:"pt,token_data"`
 			CtToken []byte `wrapping:"ct,token_data"`
 		}
 		ptkv := &ptk{
-			CtToken: pcs.CtToken,
+			CtToken: ps.CtToken,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
 			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
 		}
-		pcs.Token = ptkv.Token
+		ps.Token = ptkv.Token
 	}
 
-	if pcs.CtClientKey != nil && pcs.ClientCert != nil {
+	if ps.CtClientKey != nil && ps.ClientCert != nil {
 		type pck struct {
 			Key   []byte `wrapping:"pt,key_data"`
 			CtKey []byte `wrapping:"ct,key_data"`
 		}
 		pckv := &pck{
-			CtKey: pcs.CtClientKey,
+			CtKey: ps.CtClientKey,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
 			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
 		}
-		pcs.ClientKey = pckv.Key
+		ps.ClientKey = pckv.Key
 	}
 	return nil
 }
 
-func (pcs *privateCredentialStore) client() (*client, error) {
-	const op = "vault.(privateCredentialStore).client"
+func (ps *privateStore) client() (*client, error) {
+	const op = "vault.(privateStore).client"
 	clientConfig := &clientConfig{
-		Addr:          pcs.VaultAddress,
-		Token:         string(pcs.Token),
-		CaCert:        pcs.CaCert,
-		TlsServerName: pcs.TlsServerName,
-		TlsSkipVerify: pcs.TlsSkipVerify,
-		Namespace:     pcs.Namespace,
+		Addr:          ps.VaultAddress,
+		Token:         string(ps.Token),
+		CaCert:        ps.CaCert,
+		TlsServerName: ps.TlsServerName,
+		TlsSkipVerify: ps.TlsSkipVerify,
+		Namespace:     ps.Namespace,
 	}
 
-	if pcs.ClientKey != nil {
-		clientConfig.ClientCert = pcs.ClientCert
-		clientConfig.ClientKey = pcs.ClientKey
+	if ps.ClientKey != nil {
+		clientConfig.ClientCert = ps.ClientCert
+		clientConfig.ClientKey = ps.ClientKey
 	}
 
 	client, err := newClient(clientConfig)
@@ -480,10 +480,10 @@ func (pcs *privateCredentialStore) client() (*client, error) {
 }
 
 // GetPublicId returns the public id.
-func (pcs *privateCredentialStore) GetPublicId() string { return pcs.PublicId }
+func (ps *privateStore) GetPublicId() string { return ps.PublicId }
 
 // TableName returns the table name for gorm.
-func (pcs *privateCredentialStore) TableName() string {
+func (ps *privateStore) TableName() string {
 	return "credential_vault_store_client_private"
 }
 
@@ -601,18 +601,18 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	var token *Token
 	if updateToken {
-		pcs, err := r.lookupPrivateCredentialStore(ctx, cs.GetPublicId())
+		ps, err := r.lookupPrivateStore(ctx, cs.GetPublicId())
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to credential store"))
 		}
 
-		client, err := pcs.client()
+		client, err := ps.client()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		client.SwapToken(string(cs.inputToken))
+		client.swapToken(string(cs.inputToken))
 
-		tokenLookup, err := client.LookupToken()
+		tokenLookup, err := client.lookupToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
 		}
@@ -620,7 +620,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, err
 		}
 
-		renewedToken, err := client.RenewToken()
+		renewedToken, err := client.renewToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
 		}

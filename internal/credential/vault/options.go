@@ -23,7 +23,7 @@ type options struct {
 	withTlsSkipVerify bool
 	withClientCert    *ClientCertificate
 	withMethod        Method
-	withRequestBody   string
+	withRequestBody   []byte
 }
 
 func getDefaultOptions() options {
@@ -104,7 +104,7 @@ func WithMethod(m Method) Option {
 
 // WithRequestBody provides an optional request body for sending to Vault
 // when requesting credentials using HTTP Post.
-func WithRequestBody(b string) Option {
+func WithRequestBody(b []byte) Option {
 	return func(o *options) {
 		o.withRequestBody = b
 	}

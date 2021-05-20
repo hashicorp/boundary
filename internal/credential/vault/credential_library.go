@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -81,3 +82,5 @@ func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+var _ credential.Library = (*CredentialLibrary)(nil)

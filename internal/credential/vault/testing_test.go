@@ -2,6 +2,7 @@ package vault
 
 import (
 	"encoding/json"
+	"path"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -54,7 +55,7 @@ func Test_TestCredentialLibraries(t *testing.T) {
 	}
 }
 
-func Test_TestLeases(t *testing.T) {
+func Test_TestCredentials(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -89,10 +90,10 @@ func Test_TestLeases(t *testing.T) {
 	})
 
 	count := 4
-	leases := TestLeases(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
-	assert.Len(leases, count)
-	for _, lease := range leases {
-		assert.NotEmpty(lease.GetPublicId())
+	credentials := TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
+	assert.Len(credentials, count)
+	for _, credential := range credentials {
+		assert.NotEmpty(credential.GetPublicId())
 	}
 }
 
@@ -200,7 +201,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			v := NewTestVaultServer(t, TestNoTLS)
+			v := NewTestVaultServer(t)
 			require.NotNil(v)
 			secret := v.CreateToken(t, tt.opts...)
 			require.NotNil(secret)
@@ -231,7 +232,7 @@ func TestNewVaultServer(t *testing.T) {
 	t.Parallel()
 	t.Run("TestNoTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestNoTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -245,11 +246,11 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
 	})
 	t.Run("TestServerTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestServerTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -265,11 +266,11 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
 	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		v := NewTestVaultServer(t, TestClientTLS)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
 		require.NotNil(v)
 
 		assert.NotEmpty(v.RootToken)
@@ -289,6 +290,133 @@ func TestNewVaultServer(t *testing.T) {
 		client, err := newClient(conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.Ping())
+		require.NoError(client.ping())
+	})
+}
+
+func TestTestVaultServer_MountPKI(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS))
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t)
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
+
+		certPath := path.Join("pki", "issue", "boundary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
+	})
+	t.Run("with-mount-path", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t, WithTestMountPath("gary"))
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
+
+		certPath := path.Join("gary", "issue", "boundary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
+	})
+	t.Run("with-role-name", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS))
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountPKI(t, WithTestRoleName("gary"))
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token.Auth.ClientToken)
+
+		certPath := path.Join("pki", "issue", "gary")
+		certOptions := map[string]interface{}{
+			"common_name": "boundary.com",
+		}
+		certSecret, err := vc.Logical().Write(certPath, certOptions)
+		assert.NoError(err)
+		require.NotEmpty(certSecret)
+	})
+}
+
+func TestTestVaultServer_MountDatabase(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
+		require.NotNil(v)
+
+		vc := v.client(t).cl
+		mounts, err := vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		beforeCount := len(mounts)
+
+		v.MountDatabase(t)
+
+		mounts, err = vc.Sys().ListMounts()
+		assert.NoError(err)
+		require.NotEmpty(mounts)
+		afterCount := len(mounts)
+		assert.Greater(afterCount, beforeCount)
+
+		token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+		vc.SetToken(token.Auth.ClientToken)
+
+		dbCredPath := path.Join("database", "creds", "opened")
+		dbSecret, err := vc.Logical().Read(dbCredPath)
+		assert.NoError(err)
+		require.NotEmpty(dbSecret)
 	})
 }
