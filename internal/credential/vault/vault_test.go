@@ -137,7 +137,7 @@ func TestClient_Get(t *testing.T) {
 	credPath := path.Join("database", "creds", "opened")
 	cred, err := client.get(credPath)
 	assert.NoError(err)
-	require.NotNil(cred)
+	assert.NotNil(cred)
 }
 
 func TestClient_Post(t *testing.T) {
@@ -164,7 +164,7 @@ func TestClient_Post(t *testing.T) {
 		credData := []byte(`{"common_name":"boundary.com"}`)
 		cred, err := client.post(credPath, credData)
 		assert.NoError(err)
-		require.NotNil(cred)
+		assert.NotNil(cred)
 	})
 	t.Run("nil-body", func(t *testing.T) {
 		cred, err := client.post(credPath, nil)
