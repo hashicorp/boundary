@@ -34,7 +34,7 @@ func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, lib
 		return nil, errors.Wrap(err, op)
 	}
 
-	// TODO(mgaffney) 05/2021: if any error occurs, mark all credentials
+	// TODO(mgaffney)(ICU-1329) 05/2021: if any error occurs, mark all credentials
 	// retrieved for revocation which will be handled by the revocation
 	// job.
 
