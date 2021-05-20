@@ -125,19 +125,19 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, t *Token, credStores *
 		return errors.Wrap(err, op)
 	}
 
-	var pcs *privateCredentialStore
+	var ps *privateStore
 	if s, ok := credStores.Load(t.StoreId); ok {
-		pcs = s.(*privateCredentialStore)
+		ps = s.(*privateStore)
 	} else {
 		// credential store not found in cache, lookup in repo
-		pcs, err = repo.lookupPrivateCredentialStore(ctx, t.StoreId)
+		ps, err = repo.lookupPrivateStore(ctx, t.StoreId)
 		if err != nil {
 			return errors.Wrap(err, op, errors.WithMsg("unable to get credential store"))
 		}
-		credStores.Store(t.StoreId, pcs)
+		credStores.Store(t.StoreId, ps)
 	}
 
-	databaseWrapper, err := repo.kms.GetWrapper(ctx, pcs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := repo.kms.GetWrapper(ctx, ps.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -146,14 +146,14 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, t *Token, credStores *
 		return errors.Wrap(err, op, errors.WithMsg("failed to decrypt token"))
 	}
 
-	vc, err := pcs.client()
+	vc, err := ps.client()
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
-	vc.SwapToken(string(t.Token.Token))
+	vc.swapToken(string(t.Token.Token))
 
 	var respErr *vault.ResponseError
-	renewedToken, err := vc.RenewToken()
+	renewedToken, err := vc.renewToken()
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be

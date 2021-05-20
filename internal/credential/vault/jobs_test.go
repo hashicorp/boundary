@@ -135,7 +135,7 @@ func TestTokenRenewal_RunLimits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create dummy credential store linked to test vault server to avoid run timing
 			// on renew-self network call
-			v := NewTestVaultServer(t, TestNoTLS)
+			v := NewTestVaultServer(t)
 			cs, err := NewCredentialStore(prj.PublicId, v.Addr, []byte("token"))
 			assert.NoError(err)
 			require.NotNil(cs)
@@ -172,7 +172,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 
 	secret := v.CreateToken(t)
 	ct := secret.Auth.ClientToken
@@ -244,7 +244,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 
 	// Create 1s token so it expires in vault
 	req := &vault.TokenCreateRequest{
