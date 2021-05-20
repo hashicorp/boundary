@@ -160,7 +160,7 @@ func TestDynamicCredential_Write(t *testing.T) {
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
-		vaultCred := vault.TestLeases(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), 1)[0]
+		vaultCred := vault.TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), 1)[0]
 		sessionCred, err := NewDynamicCredential(sess.GetPublicId(), vaultCred.GetPublicId(), tcl)
 		assert.NoError(err)
 		require.NotNil(sessionCred)

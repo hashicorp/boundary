@@ -612,7 +612,7 @@ func TestUpdate(t *testing.T) {
 		return &fieldmaskpb.FieldMask{Paths: paths}
 	}
 
-	v := vault.NewTestVaultServer(t, vault.TestClientTLS)
+	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	secret := v.CreateToken(t)
 	token := secret.Auth.ClientToken
 	_ = token

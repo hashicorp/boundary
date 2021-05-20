@@ -5,17 +5,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
-	"net/http"
-	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -23,10 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
-	"github.com/ory/dockertest/v3"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -119,10 +114,10 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 	return libs
 }
 
-// TestLeases creates count number of vault leases in the provided DB with
+// TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
-// during the creation of the leases , the test will fail.
-func TestLeases(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Lease {
+// during the creation of the credentials , the test will fail.
+func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
@@ -144,25 +139,25 @@ func TestLeases(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId
 	token := store.Token()
 	require.NotNil(token)
 
-	var leases []*Lease
+	var credentials []*Credential
 	for i := 0; i < count; i++ {
-		lease, err := newLease(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/lease/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		credential, err := newCredential(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
 		assert.NoError(err)
-		require.NotNil(lease)
+		require.NotNil(credential)
 
 		id, err := newCredentialId()
 		assert.NoError(err)
 		require.NotNil(id)
-		lease.PublicId = id
+		credential.PublicId = id
 
-		query, queryValues := lease.insertQuery()
+		query, queryValues := credential.insertQuery()
 		rows, err2 := rw.Exec(ctx, query, queryValues)
 		assert.Equal(1, rows)
 		assert.NoError(err2)
 
-		leases = append(leases, lease)
+		credentials = append(credentials, credential)
 	}
-	return leases
+	return credentials
 }
 
 func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
@@ -222,214 +217,6 @@ const (
 	// respectively.
 	TestClientTLS
 )
-
-// TestVaultServer is a vault server running in a docker container suitable
-// for testing.
-type TestVaultServer struct {
-	RootToken string
-	Addr      string
-
-	CaCert     []byte
-	ServerCert []byte
-	ClientCert []byte
-	ClientKey  []byte
-
-	serverCertBundle *testCertBundle
-	clientCertBundle *testCertBundle
-}
-
-// NewTestVaultServer creates and returns a TestVaultServer.
-func NewTestVaultServer(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
-	t.Helper()
-
-	switch testTls {
-	case TestServerTLS, TestClientTLS:
-		return newTestVaultServerTLS(t, testTls)
-	default:
-	}
-
-	require := require.New(t)
-	pool, err := dockertest.NewPool("")
-	require.NoError(err)
-
-	server := &TestVaultServer{
-		RootToken: fmt.Sprintf("icu-root-%s", t.Name()),
-	}
-
-	env := []string{
-		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken),
-	}
-
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
-		Tag:        "1.7.0",
-		Env:        env,
-	}
-
-	resource, err := pool.RunWithOptions(dockerOptions)
-	require.NoError(err)
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
-	server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
-
-	vConfig := vault.DefaultConfig()
-	vConfig.Address = server.Addr
-
-	client, err := vault.NewClient(vConfig)
-	require.NoError(err)
-	client.SetToken(server.RootToken)
-
-	err = pool.Retry(func() error {
-		if _, err := client.Sys().Health(); err != nil {
-			return err
-		}
-		return nil
-	})
-	require.NoError(err)
-	return server
-}
-
-func newTestVaultServerTLS(t *testing.T, testTls TestVaultTLS) *TestVaultServer {
-	t.Helper()
-	const (
-		serverTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem"
-      }
-    }
-  ]
-}
-`
-
-		clientTlsTemplate = `{
-  "listener": [
-    {
-      "tcp": {
-        "address": "0.0.0.0:8200",
-        "tls_disable": "false",
-        "tls_cert_file": "/vault/config/certificates/certificate.pem",
-        "tls_key_file": "/vault/config/certificates/key.pem",
-		"tls_require_and_verify_client_cert": "true",
-		"tls_client_ca_file": "/vault/config/certificates/client-ca-certificate.pem"
-      }
-    }
-  ]
-}
-`
-	)
-	template := serverTlsTemplate
-
-	assert, require := assert.New(t), require.New(t)
-	pool, err := dockertest.NewPool("")
-	require.NoError(err)
-
-	server := &TestVaultServer{
-		RootToken: fmt.Sprintf("icu-root-%s", t.Name()),
-	}
-
-	serverCert := testServerCert(t, testCaCert(t), "localhost")
-	server.serverCertBundle = serverCert
-	server.ServerCert = serverCert.Cert.Cert
-	server.CaCert = serverCert.CA.Cert
-
-	dataSrcDir := t.TempDir()
-	require.NoError(os.Chmod(dataSrcDir, 0o777))
-
-	caCertFn := filepath.Join(dataSrcDir, "ca-certificate.pem")
-	require.NoError(ioutil.WriteFile(caCertFn, serverCert.CA.Cert, 0o777))
-	certFn := filepath.Join(dataSrcDir, "certificate.pem")
-	require.NoError(ioutil.WriteFile(certFn, serverCert.Cert.Cert, 0o777))
-	keyFn := filepath.Join(dataSrcDir, "key.pem")
-	require.NoError(ioutil.WriteFile(keyFn, serverCert.Cert.Key, 0o777))
-
-	var clientCert *testCertBundle
-	if testTls == TestClientTLS {
-		template = clientTlsTemplate
-		clientCert = testClientCert(t, testCaCert(t))
-		server.clientCertBundle = clientCert
-		server.ClientCert = clientCert.Cert.Cert
-		server.ClientKey = clientCert.Cert.Key
-		clientCaCertFn := filepath.Join(dataSrcDir, "client-ca-certificate.pem")
-		require.NoError(ioutil.WriteFile(clientCaCertFn, clientCert.CA.Cert, 0o777))
-	}
-
-	env := []string{
-		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken),
-		fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", template),
-		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8300",
-	}
-
-	dataMount := fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir)
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
-		Tag:        "1.7.0",
-		Mounts:     []string{dataMount},
-		Env:        env,
-	}
-
-	resource, err := pool.RunWithOptions(dockerOptions)
-	if !assert.NoError(err) {
-		t.FailNow()
-	}
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
-	server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
-
-	vConfig := vault.DefaultConfig()
-	vConfig.Address = server.Addr
-
-	clientTLSConfig := vConfig.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	rootConfig := &rootcerts.Config{
-		CACertificate: serverCert.CA.Cert,
-	}
-
-	require.NoError(rootcerts.ConfigureTLS(clientTLSConfig, rootConfig))
-
-	if testTls == TestClientTLS {
-		vaultClientCert, err := tls.X509KeyPair(server.ClientCert, server.ClientKey)
-		require.NoError(err)
-		clientTLSConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			return &vaultClientCert, nil
-		}
-	}
-
-	client, err := vault.NewClient(vConfig)
-	require.NoError(err)
-	client.SetToken(server.RootToken)
-
-	err = pool.Retry(func() error {
-		if _, err := client.Sys().Health(); err != nil {
-			return err
-		}
-		return nil
-	})
-	require.NoError(err)
-	return server
-}
-
-func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
-	t.Helper()
-	var err error
-	for i := 0; i < 10; i++ {
-		err = pool.Purge(resource)
-		if err == nil {
-			return
-		}
-		time.Sleep(1 * time.Second)
-	}
-
-	if strings.Contains(err.Error(), "No such container") {
-		return
-	}
-	t.Fatalf("Failed to cleanup local container: %s", err)
-}
 
 type testCert struct {
 	Cert []byte
@@ -624,7 +411,7 @@ func testClientCert(t *testing.T, ca *testCert) *testCertBundle {
 	}
 }
 
-func getTestTokenOpts(t *testing.T, opt ...TestOption) testOptions {
+func getTestOpts(t *testing.T, opt ...TestOption) testOptions {
 	t.Helper()
 	opts := getDefaultTestOptions(t)
 	for _, o := range opt {
@@ -638,19 +425,79 @@ type TestOption func(*testing.T, *testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	orphan    bool
-	periodic  bool
-	renewable bool
-	policies  []string
+	orphan        bool
+	periodic      bool
+	renewable     bool
+	policies      []string
+	mountPath     string
+	roleName      string
+	vaultTLS      TestVaultTLS
+	dockerNetwork bool
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
 	t.Helper()
 	return testOptions{
-		orphan:    true,
-		periodic:  true,
-		renewable: true,
-		policies:  []string{"default"},
+		orphan:        true,
+		periodic:      true,
+		renewable:     true,
+		policies:      []string{"default"},
+		mountPath:     "",
+		roleName:      "boundary",
+		vaultTLS:      TestNoTLS,
+		dockerNetwork: false,
+	}
+}
+
+// WithPolicies sets the polices to attach to a token. The default policy
+// attached to tokens is 'default'.
+func WithPolicies(p []string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.policies = p
+	}
+}
+
+// WithDockerNetwork sets the option to create docker network when creating
+// a Vault test server. The default is to not create a docker network.
+func WithDockerNetwork(b bool) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.dockerNetwork = b
+	}
+}
+
+// WithTestVaultTLS sets the Vault TLS option.
+// TestNoTLS is the default TLS option.
+func WithTestVaultTLS(s TestVaultTLS) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.vaultTLS = s
+	}
+}
+
+// WithTestMountPath sets the mount path option to p.
+func WithTestMountPath(p string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		p = strings.TrimSpace(p)
+		if p != "" {
+			p = strings.TrimRight(p, "/") + "/"
+		}
+		o.mountPath = p
+	}
+}
+
+// WithTestRoleName sets the roleName name to n.
+// The default role name is boundary.
+func WithTestRoleName(n string) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		n = strings.TrimSpace(n)
+		if n == "" {
+			n = "boundary"
+		}
+		o.roleName = n
 	}
 }
 
@@ -695,7 +542,7 @@ func (v *TestVaultServer) client(t *testing.T) *client {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 	return client
 }
 
@@ -705,7 +552,7 @@ func (v *TestVaultServer) client(t *testing.T) *client {
 func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
-	opts := getTestTokenOpts(t, opt...)
+	opts := getTestOpts(t, opt...)
 
 	var period string
 	if opts.periodic {
@@ -739,4 +586,132 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 	require.NoError(err)
 	require.NotNil(secret)
 	return secret
+}
+
+func (v *TestVaultServer) addPolicy(t *testing.T, name string, mountPath string) {
+	const template = `
+		path "%s*" {
+			capabilities = ["create", "read", "update", "delete", "list"]
+		}`
+
+	t.Helper()
+	require := require.New(t)
+	policy := fmt.Sprintf(template, mountPath)
+	vc := v.client(t).cl
+	require.NoError(vc.Sys().PutPolicy(name, policy))
+}
+
+// MountPKI mounts the Vault PKI secret engine and initializes it by
+// generating a root certificate authority and creating a default role on
+// the mount. The root CA is returned.
+//
+// The default mount path is pki and the default role name is boundary.
+// WithTestMountPath and WithTestRoleName are the only test options
+// supported.
+//
+// MountPKI also adds a Vault policy named 'pki' to v and adds it to the
+// standard set of polices attached to tokens created with v.CreateToken.
+// The policy is defined as:
+//
+//   path "mountPath/*" {
+//     capabilities = ["create", "read", "update", "delete", "list"]
+//   }
+func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secret {
+	t.Helper()
+	require := require.New(t)
+	opts := getTestOpts(t, opt...)
+	vc := v.client(t).cl
+
+	// Mount PKI
+	maxTTL := 24 * time.Hour
+	if deadline, ok := t.Deadline(); ok {
+		maxTTL = time.Until(deadline) * 2
+	}
+
+	defaultTTL := maxTTL / 2
+	t.Logf("maxTTL: %s, defaultTTL: %s", maxTTL, defaultTTL)
+	mountInput := &vault.MountInput{
+		Type:        "pki",
+		Description: t.Name(),
+		Config: vault.MountConfigInput{
+			DefaultLeaseTTL: defaultTTL.String(),
+			MaxLeaseTTL:     maxTTL.String(),
+		},
+	}
+	mountPath := opts.mountPath
+	if mountPath == "" {
+		mountPath = "pki/"
+	}
+	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+	v.addPolicy(t, "pki", mountPath)
+
+	// Generate a root CA
+	caPath := path.Join(mountPath, "root/generate/internal")
+	caOptions := map[string]interface{}{
+		"common_name": t.Name(),
+		"ttl":         maxTTL.String(),
+	}
+	s, err := vc.Logical().Write(caPath, caOptions)
+	require.NoError(err)
+	require.NotEmpty(s)
+
+	// Create default role
+	rolePath := path.Join(mountPath, "roles", opts.roleName)
+	roleOptions := map[string]interface{}{
+		"allow_any_name": true,
+		"ttl":            defaultTTL.String(),
+	}
+	_, err = vc.Logical().Write(rolePath, roleOptions)
+	require.NoError(err)
+
+	return s
+}
+
+// TestVaultServer is a vault server running in a docker container suitable
+// for testing.
+type TestVaultServer struct {
+	RootToken string
+	Addr      string
+
+	CaCert     []byte
+	ServerCert []byte
+	ClientCert []byte
+	ClientKey  []byte
+
+	serverCertBundle *testCertBundle
+	clientCertBundle *testCertBundle
+
+	pool              interface{}
+	vaultContainer    interface{}
+	network           interface{}
+	postgresContainer interface{}
+}
+
+// NewTestVaultServer creates and returns a TestVaultServer. Some Vault
+// secret engines require the Vault server be created with a docker
+// network. Check the Mount method for the Vault secret engine to see if a
+// docker network is required.
+//
+// WithTestVaultTLS and WithDockerNetwork are the only valid options.
+// Setting the WithDockerNetwork option can significantly increase the
+// amount of time required for a test to run.
+func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
+	t.Helper()
+	return newVaultServer(t, opt...)
+}
+
+// MountDatabase starts a PostgreSQL database in a docker container then
+// mounts the Vault database secrets engine and configures it to issue
+// credentials for the database.
+//
+// MountDatabase also adds a Vault policy named 'database' to v and adds it
+// to the standard set of polices attached to tokens created with
+// v.CreateToken. The policy is defined as:
+//
+//   path "mountPath/*" {
+//     capabilities = ["create", "read", "update", "delete", "list"]
+//   }
+func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
+	t.Helper()
+	mountDatabase(t, v, opt...)
 }

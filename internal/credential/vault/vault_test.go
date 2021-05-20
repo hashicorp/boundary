@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"path"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func Test_newClient(t *testing.T) {
 func TestClient_RenewToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)
@@ -49,9 +50,9 @@ func TestClient_RenewToken(t *testing.T) {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 
-	renewedToken, err := client.RenewToken()
+	renewedToken, err := client.renewToken()
 	require.NoError(err)
 	require.NotNil(renewedToken)
 	renewedLookup := v.LookupToken(t, token)
@@ -79,7 +80,7 @@ func tokenExpirationTime(t *testing.T, s *vault.Secret) time.Time {
 func TestClient_LookupToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-	v := NewTestVaultServer(t, TestNoTLS)
+	v := NewTestVaultServer(t)
 	require.NotNil(v)
 	secret := v.CreateToken(t)
 	require.NotNil(secret)
@@ -102,9 +103,9 @@ func TestClient_LookupToken(t *testing.T) {
 	client, err := newClient(conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.Ping())
+	require.NoError(client.ping())
 
-	tokenLookup, err := client.LookupToken()
+	tokenLookup, err := client.lookupToken()
 	require.NoError(err)
 	require.NotNil(tokenLookup)
 
@@ -112,4 +113,63 @@ func TestClient_LookupToken(t *testing.T) {
 
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, tokenLookup)
 	assert.True(t1.Equal(t2))
+}
+
+func TestClient_Get(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      v.RootToken,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	require.NoError(client.ping())
+
+	credPath := path.Join("database", "creds", "opened")
+	cred, err := client.get(credPath)
+	assert.NoError(err)
+	assert.NotNil(cred)
+}
+
+func TestClient_Post(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t)
+	v.MountPKI(t)
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      v.RootToken,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	require.NoError(client.ping())
+
+	credPath := path.Join("pki", "issue", "boundary")
+	t.Run("post-body", func(t *testing.T) {
+		credData := []byte(`{"common_name":"boundary.com"}`)
+		cred, err := client.post(credPath, credData)
+		assert.NoError(err)
+		assert.NotNil(cred)
+	})
+	t.Run("nil-body", func(t *testing.T) {
+		cred, err := client.post(credPath, nil)
+		assert.Error(err)
+		assert.Contains(err.Error(), "common_name field is required")
+		assert.Nil(cred)
+	})
 }

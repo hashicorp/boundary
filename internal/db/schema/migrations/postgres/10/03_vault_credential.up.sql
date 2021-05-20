@@ -209,7 +209,7 @@ begin;
         references credential_vault_http_method_enm (name)
         on delete restrict
         on update cascade,
-    http_request_body text
+    http_request_body bytea
       constraint http_request_body_only_allowed_with_post_method
         check(
           http_request_body is null
@@ -217,7 +217,7 @@ begin;
           (
             http_method = 'POST'
             and
-            length(trim(http_request_body)) > 0
+            length(http_request_body) > 0
           )
         ),
     constraint credential_vault_library_store_id_name_uq
@@ -252,7 +252,7 @@ begin;
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
 
-  create table credential_vault_lease (
+  create table credential_vault_credential (
     public_id wt_public_id primary key,
     library_id wt_public_id not null
       constraint credential_vault_library_fkey
@@ -272,11 +272,7 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,
-    lease_id text not null
-      constraint credential_vault_lease_lease_id_uq
-        unique
-      constraint lease_id_must_not_be_empty
-        check(length(trim(lease_id)) > 0),
+    external_id wt_sentinel not null,
     last_renewal_time timestamp with time zone not null,
     expiration_time timestamp with time zone not null
       constraint last_renewal_time_must_be_before_expiration_time
@@ -287,35 +283,35 @@ begin;
       references credential_dynamic (library_id, public_id)
       on delete cascade
       on update cascade,
-    constraint credential_vault_lease_library_id_public_id_uq
+    constraint credential_vault_credential_library_id_public_id_uq
       unique(library_id, public_id)
   );
-  comment on table credential_vault_lease is
-    'credential_vault_lease is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
+  comment on table credential_vault_credential is
+    'credential_vault_credential is a table where each row contains the lease information for a single Vault secret retrieved from a vault credential library for a session.';
 
-  create trigger update_version_column after update on credential_vault_lease
+  create trigger update_version_column after update on credential_vault_credential
     for each row execute procedure update_version_column();
 
-  create trigger update_time_column before update on credential_vault_lease
+  create trigger update_time_column before update on credential_vault_credential
     for each row execute procedure update_time_column();
 
-  create trigger default_create_time_column before insert on credential_vault_lease
+  create trigger default_create_time_column before insert on credential_vault_credential
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on credential_vault_lease
-    for each row execute procedure immutable_columns('lease_id', 'library_id','session_id', 'create_time');
+  create trigger immutable_columns before update on credential_vault_credential
+    for each row execute procedure immutable_columns('external_id', 'library_id','session_id', 'create_time');
 
-  create trigger insert_credential_dynamic_subtype before insert on credential_vault_lease
+  create trigger insert_credential_dynamic_subtype before insert on credential_vault_credential
     for each row execute procedure insert_credential_dynamic_subtype();
 
-  create trigger delete_credential_dynamic_subtype after delete on credential_vault_lease
+  create trigger delete_credential_dynamic_subtype after delete on credential_vault_credential
     for each row execute procedure delete_credential_dynamic_subtype();
 
   insert into oplog_ticket (name, version)
   values
     ('credential_vault_store', 1),
     ('credential_vault_library', 1),
-    ('credential_vault_lease', 1) ;
+    ('credential_vault_credential', 1) ;
 
      create view credential_vault_store_client_private as
      with
@@ -390,5 +386,35 @@ begin;
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_library_private as
+     select library.public_id         as public_id,
+            library.store_id          as store_id,
+            library.name              as name,
+            library.description       as description,
+            library.create_time       as create_time,
+            library.update_time       as update_time,
+            library.version           as version,
+            library.vault_path        as vault_path,
+            library.http_method       as http_method,
+            library.http_request_body as http_request_body,
+            store.scope_id            as scope_id,
+            store.vault_address       as vault_address,
+            store.namespace           as namespace,
+            store.ca_cert             as ca_cert,
+            store.tls_server_name     as tls_server_name,
+            store.tls_skip_verify     as tls_skip_verify,
+            store.token_hmac          as token_hmac,
+            store.ct_token            as ct_token, -- encrypted
+            store.token_key_id        as token_key_id,
+            store.client_cert         as client_cert,
+            store.ct_client_key       as ct_client_key, -- encrypted
+            store.client_key_id       as client_key_id
+       from credential_vault_library library
+       join credential_vault_store_client_private store
+         on library.store_id = store.public_id;
+  comment on view credential_vault_library_private is
+    'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
 commit;

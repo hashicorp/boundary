@@ -78,9 +78,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithRequestBody", func(t *testing.T) {
-		opts := getOpts(WithRequestBody("body"))
+		opts := getOpts(WithRequestBody([]byte("body")))
 		testOpts := getDefaultOptions()
-		testOpts.withRequestBody = "body"
+		testOpts.withRequestBody = []byte("body")
 		assert.Equal(t, opts, testOpts)
 	})
 }
