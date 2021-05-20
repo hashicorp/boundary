@@ -24,7 +24,11 @@ func getArgsAndPaths(in []string, parentTypeName, action string) (colArg, resArg
 		strToReplace = in[len(in)-2]
 	}
 	colArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(strToReplace, "-", "_")))
-	colPath = fmt.Sprintf("%ss", in[len(in)-1])
+	colPath = in[len(in)-1]
+	// append s at the end only if it isn't already present
+	if strings.LastIndex(colPath, "s") != len(colPath)-1 {
+		colPath = fmt.Sprintf("%ss", colPath)
+	}
 
 	if action != "" {
 		action = fmt.Sprintf(":%s", action)

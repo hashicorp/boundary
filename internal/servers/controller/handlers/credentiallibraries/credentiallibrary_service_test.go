@@ -172,7 +172,6 @@ func TestCreate(t *testing.T) {
 			name: "missing vault path",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{})
 					require.NoError(t, err)
@@ -187,7 +186,6 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Id:                vault.CredentialLibraryPrefix + "_notallowed",
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
@@ -204,7 +202,6 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				CreatedTime:       timestamppb.Now(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
@@ -221,7 +218,6 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				UpdatedTime:       timestamppb.Now(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
@@ -234,9 +230,25 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Must specify type",
+			name: "Type and parent id must match",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
+				Type: "static",
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
+						VaultPath: "something",
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "parent id must be included",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				Type: credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
@@ -252,7 +264,6 @@ func TestCreate(t *testing.T) {
 			name: "Attributes must be valid for vault type",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
@@ -269,7 +280,6 @@ func TestCreate(t *testing.T) {
 			name: "Cannot specify a http request body when http method is get",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath:       "something",
@@ -286,7 +296,6 @@ func TestCreate(t *testing.T) {
 			name: "Invalid Method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath:  "something",
@@ -303,7 +312,6 @@ func TestCreate(t *testing.T) {
 			name: "Request Body With GET Method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath:       "something",
@@ -320,7 +328,6 @@ func TestCreate(t *testing.T) {
 			name: "Using POST method",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath:       "something",
@@ -361,7 +368,6 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Name:              &wrapperspb.StringValue{Value: "name"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
-				Type:              credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",

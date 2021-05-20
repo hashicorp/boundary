@@ -530,11 +530,11 @@ func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetCredentialStoreId()), vault.CredentialStorePrefix) {
-			badFields[globals.CredentialStoreIdField] = "This field must be a valid project scope id."
-		}
-		switch credential.SubtypeFromType(req.GetItem().GetType()) {
+		switch credential.SubtypeFromId(req.GetItem().GetCredentialStoreId()) {
 		case credential.VaultSubtype:
+			if t := req.GetItem().GetType(); t != "" && credential.SubtypeFromType(t) != credential.VaultSubtype {
+				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
+			}
 			attrs := &pb.VaultCredentialLibraryAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
@@ -550,7 +550,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
 			}
 		default:
-			badFields[globals.TypeField] = "This is a required field and must be a known credential library type."
+			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 		return badFields
 	})
