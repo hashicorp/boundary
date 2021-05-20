@@ -19,7 +19,7 @@ func TestList(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	vaultServ := vault.NewTestVaultServer(t, vault.TestNoTLS)
+	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
 
 	client := tc.Client()
 	token := tc.Token()
@@ -86,7 +86,7 @@ func TestCrud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
-	vaultServ := vault.NewTestVaultServer(t, vault.TestNoTLS)
+	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
 	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
 
 	client := tc.Client()
@@ -136,7 +136,7 @@ func TestErrors(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	vaultServ := vault.NewTestVaultServer(t, vault.TestNoTLS)
+	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
 	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
 
 	client := tc.Client()
