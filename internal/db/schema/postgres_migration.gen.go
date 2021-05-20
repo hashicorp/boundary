@@ -5007,7 +5007,7 @@ create function wt_is_sentinel(string text)
       check(
         wt_is_sentinel(value)
         or
-        length(trim(u&'\fffe ' from value)) > 1
+        length(trim(u&'\fffe ' from value)) > 0
       );
   comment on domain wt_sentinel is
   'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
