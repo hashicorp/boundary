@@ -4,38 +4,38 @@ import (
 	"strings"
 )
 
-type SubType int
+type Subtype int
 
 const (
-	UnknownSubtype SubType = iota
-	TcpSubType
+	UnknownSubtype Subtype = iota
+	TcpSubtype
 )
 
-func (t SubType) String() string {
+func (t Subtype) String() string {
 	switch t {
-	case TcpSubType:
+	case TcpSubtype:
 		return "tcp"
 	}
 	return "unknown"
 }
 
-// SubtypeFromType converts a string to a SubType.
-// returns UnknownSubtype if no SubType with that name is found.
-func SubtypeFromType(t string) SubType {
+// SubtypeFromType converts a string to a Subtype.
+// returns UnknownSubtype if no Subtype with that name is found.
+func SubtypeFromType(t string) Subtype {
 	switch {
-	case strings.EqualFold(strings.TrimSpace(t), TcpSubType.String()):
-		return TcpSubType
+	case strings.EqualFold(strings.TrimSpace(t), TcpSubtype.String()):
+		return TcpSubtype
 	}
 	return UnknownSubtype
 }
 
 // SubtypeFromId takes any public id in the target subsystem and uses the prefix to determine
 // what subtype the id is for.
-// Returns UnknownSubtype if no SubType with this id's prefix is found.
-func SubtypeFromId(id string) SubType {
+// Returns UnknownSubtype if no Subtype with this id's prefix is found.
+func SubtypeFromId(id string) Subtype {
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(id), TcpTargetPrefix):
-		return TcpSubType
+		return TcpSubtype
 	}
 	return UnknownSubtype
 }

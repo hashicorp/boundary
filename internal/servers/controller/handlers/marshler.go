@@ -5,7 +5,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// JSONMarshaler provides marshaler used for marshalling all proto as JSON
+// JSONMarshaler provides marshaler used for marshaling all proto as JSON
 // in a format expected by the user facing controller API.
 func JSONMarshaler() *runtime.JSONPb {
 	return &runtime.JSONPb{

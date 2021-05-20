@@ -39,9 +39,9 @@ func extraSynopsisFuncImpl(c *Command) string {
 		case strings.HasPrefix(c.Func, "add"):
 			in = "Add members to"
 		case strings.HasPrefix(c.Func, "set"):
-			in = "Set the full contents of the users on"
+			in = "Set the full contents of the members on"
 		case strings.HasPrefix(c.Func, "remove"):
-			in = "Remove users from"
+			in = "Remove members from"
 		}
 		return wordwrap.WrapString(fmt.Sprintf("%s a group", in), base.TermWidth)
 
@@ -60,9 +60,9 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary groups add-members [options] [args]",
 			"",
-			`  Adds members (users) to a group given its ID. The "user" flag can be specified multiple times. Example:`,
+			`  Adds members (users) to a group given its ID. The "member" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary groups add-members -id g_1234567890 -user u_1234567890`,
+			`    $ boundary groups add-members -id g_1234567890 -member u_1234567890`,
 			"",
 			"",
 		})
@@ -71,9 +71,9 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary groups set-members [options] [args]",
 			"",
-			`  Sets the complete set of members (users) on a group given its ID. The "user" flag can be specified multiple times. Example:`,
+			`  Sets the complete set of members (users) on a group given its ID. The "member" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary groups set-principals -id g_1234567890 -user u_anon -user u_1234567890`,
+			`    $ boundary groups set-principals -id g_1234567890 -member u_anon -member u_1234567890`,
 			"",
 			"",
 		})
@@ -82,9 +82,9 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary groups remove-members [options] [args]",
 			"",
-			`  Removes members (users) from a group given its ID. The "user" flag can be specified multiple times. Example:`,
+			`  Removes members (users) from a group given its ID. The "member" flag can be specified multiple times. Example:`,
 			"",
-			`    $ boundary groups remove-members -id g_1234567890 -user u_1234567890`,
+			`    $ boundary groups remove-members -id g_1234567890 -member u_1234567890`,
 			"",
 			"",
 		})

@@ -62,6 +62,8 @@ type Command struct {
 	flagControllerAPIListenAddr      string
 	flagControllerClusterListenAddr  string
 	flagControllerPublicClusterAddr  string
+	flagControllerOnly               bool
+	flagWorkerAuthKey                string
 	flagWorkerProxyListenAddr        string
 	flagWorkerPublicAddr             string
 	flagPassthroughDirectory         string
@@ -202,6 +204,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "Public address at which the controller is reachable for cluster tasks (like worker connections).",
 	})
 
+	f.BoolVar(&base.BoolVar{
+		Name:   "controller-only",
+		Target: &c.flagControllerOnly,
+		Usage:  "If set, only a dev controller will be started instead of both a dev controller and dev worker",
+	})
+
 	f.StringVar(&base.StringVar{
 		Name:   "proxy-listen-address",
 		Target: &c.flagWorkerProxyListenAddr,
@@ -214,6 +222,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagWorkerPublicAddr,
 		EnvVar: "BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS",
 		Usage:  "Public address at which the worker is reachable for session proxying.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-auth-key",
+		Target: &c.flagWorkerAuthKey,
+		EnvVar: "BOUNDARY_DEV_WORKER_AUTH_KEY",
+		Usage:  "If set, a valid base64-encoded AES key to be used for worker-auth purposes",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -276,10 +291,23 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	c.Config, err = config.DevCombined()
+	switch c.flagControllerOnly {
+	case true:
+		c.Config, err = config.DevController()
+	default:
+		c.Config, err = config.DevCombined()
+	}
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return base.CommandUserError
+	}
+	if c.flagWorkerAuthKey != "" {
+		c.Config.DevWorkerAuthKey = c.flagWorkerAuthKey
+		for _, kms := range c.Config.Seals {
+			if strutil.StrListContains(kms.Purpose, "worker-auth") {
+				kms.Config["key"] = c.flagWorkerAuthKey
+			}
+		}
 	}
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
@@ -353,7 +381,9 @@ func (c *Command) Run(args []string) int {
 		case "cluster":
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
-				c.Config.Worker.Controllers = []string{l.Address}
+				if !c.flagControllerOnly {
+					c.Config.Worker.Controllers = []string{l.Address}
+				}
 			} else {
 				l.Address = "127.0.0.1:9201"
 			}
@@ -381,8 +411,10 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-	c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
-	c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
+	if !c.flagControllerOnly {
+		c.InfoKeys = append(c.InfoKeys, "worker public proxy addr")
+		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
+	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
 		c.UI.Error(err.Error())
@@ -496,7 +528,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
-	{
+
+	if !c.flagControllerOnly {
 		conf := &worker.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
@@ -531,8 +564,10 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered")
 
-			if err := c.worker.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+			if !c.flagControllerOnly {
+				if err := c.worker.Shutdown(false); err != nil {
+					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+				}
 			}
 
 			if err := c.controller.Shutdown(false); err != nil {

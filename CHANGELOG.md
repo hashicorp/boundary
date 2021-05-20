@@ -4,6 +4,34 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.2 (2021/05/17)
+
+### New and Improved
+
+* Inline OIDC authentication flow:  when the OIDC authentication flow succeeds,
+  the third-party provider browser window is automatically closed and the user
+  is returned to the admin UI.
+
+### Bug Fixes
+
+* oidc: If provider returns an `aud` claim as a `string` or `[]string`,
+  Boundary will properly parse the claims JSON.
+  ([issue](https://github.com/hashicorp/cap/issues/37),
+  [PR](https://github.com/hashicorp/boundary/pull/1231))
+* sessions: Clean up connections that are dangling after a worker dies (is
+  restarted, powered off, etc.) This fixes some cases where a session never goes
+  to `terminated` state because connections are not properly marked closed.
+  ([Issue 1](https://github.com/hashicorp/boundary/issues/894), [Issue
+  2](https://github.com/hashicorp/boundary/issues/1055),
+  [PR](https://github.com/hashicorp/boundary/pull/1220))
+* sessions: Add some missing API-level checks when session cancellation was
+  requested. It's much easier than interpreting the domain-level check failures.
+  ([PR](https://github.com/hashicorp/boundary/pull/1223))
+* authenticate: When authenticating with OIDC and `json` format output, the
+  command will no longer print out a notice that it's opening your web browser
+  ([Issue](https://github.com/hashicorp/boundary/issues/1193),
+  [PR](https://github.com/hashicorp/boundary/pull/1213))
+
 ## 0.2.1 (2021/05/05)
 
 ### Deprecations/Changes
@@ -314,7 +342,7 @@ for more details.
   ([Issue](https://github.com/hashicorp/boundary/pull/902),
   [PR](https://github.com/hashicorp/boundary/pull/901))
 * server: When shutting down a controller release the shared advisory lock with
-  a non-cancelled context.
+  a non-canceled context.
   ([Issue](https://github.com/hashicorp/boundary/pull/909),
   [PR](https://github.com/hashicorp/boundary/pull/918))
 * targets: If a worker filter references a key that doesn't exist, treat it as a

@@ -111,7 +111,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	default:
 	}
 
-	// Cancel the base context and all job context's should be cancelled and exit
+	// Cancel the base context and all job context's should be canceled and exit
 	baseCnl()
 	<-jobDone
 }

@@ -336,7 +336,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
 	case "create":
-		result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubTypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+		result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubtypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":

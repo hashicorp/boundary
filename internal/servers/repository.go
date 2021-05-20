@@ -136,7 +136,6 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					server.Type,
 					server.Description,
 					server.Address,
-					time.Now().Format(time.RFC3339),
 				})
 			if err != nil {
 				return errors.Wrap(err, op+":Upsert")
