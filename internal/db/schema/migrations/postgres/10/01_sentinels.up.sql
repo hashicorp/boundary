@@ -3,7 +3,7 @@ begin;
   create function wt_is_sentinel(string text)
     returns bool
   as $$
-    select length(trim(leading u&'\fffe ' from string)) > 1 AND starts_with(string, u&'\fffe');
+    select length(trim(leading u&'\fffe ' from string)) > 0 AND starts_with(string, u&'\fffe');
   $$ language sql
      immutable
      returns null on null input;
