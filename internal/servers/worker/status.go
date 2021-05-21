@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -13,7 +14,9 @@ import (
 
 // In the future we could make this configurable
 const (
-	statusInterval = 2 * time.Second
+	statusInterval  = 2 * time.Second
+	statusTimeout   = 10 * time.Second
+	statusFailGrace = 30 * time.Second
 )
 
 type LastStatusInformation struct {
@@ -102,7 +105,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	if w.updateTags.Load() {
 		tags = w.tags.Load().(map[string]*servers.TagValues)
 	}
-	result, err := client.Status(cancelCtx, &pbs.StatusRequest{
+	statusCtx, statusCancel := context.WithTimeout(cancelCtx, statusTimeout)
+	defer statusCancel()
+	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		Worker: &servers.Server{
 			PrivateId:   w.conf.RawConfig.Worker.Name,
@@ -115,6 +120,31 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	})
 	if err != nil {
 		w.logger.Error("error making status request to controller", "error", err)
+		// Check for last successful status. Ignore nil last status, this probably
+		// means that we've never connected to a controller, and as such probably
+		// don't have any sessions to worry about anyway.
+		//
+		// If a length of time has passed since we've been able to communicate, we
+		// want to start terminating all sessions as a "break glass" kind of
+		// scenario, as there will be no way we can really tell if these
+		// connections should continue to exist.
+		lastStatus := w.LastStatusSuccess()
+		if lastStatus != nil && lastStatus.StatusTime.Before(time.Now().Add(statusFailGrace*-1)) {
+			w.logger.Warn("status error grace period has expired, canceling all sessions on worker",
+				"last_status_time", lastStatus.StatusTime.String(),
+				"grace_period", statusFailGrace,
+			)
+
+			// Run a "cleanup" for all sessions that will not be caught by
+			// our standard cleanup routine.
+			w.cleanupConnections(
+				cancelCtx,
+				cleanupConnectionsConditionNotAnyStatus(
+					pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+					pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+				),
+			)
+		}
 	} else {
 		w.logger.Trace("successfully sent status to controller")
 		w.updateTags.Store(false)
@@ -154,46 +184,98 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		}
 	}
 
-	// Cleanup: Run through current jobs. Cancel connections for any
-	// canceling session or any session that is expired. Clear out
-	// sessions that are canceled or expired with all connections
-	// marked as closed. Close any that aren't marked as such.
+	// Standard cleanup: Run through current jobs. Cancel connections
+	// for any canceling session or any session that is expired.
+	w.cleanupConnections(
+		cancelCtx,
+		cleanupConnectionsConditionAnyStatus(
+			pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+			pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+		),
+		cleanupConnectionsConditionExpired,
+	)
+}
+
+type cleanupConnectionsCondition func(si *sessionInfo) bool
+
+func cleanupConnectionsConditionAnyStatus(statuses ...services.SESSIONSTATUS) cleanupConnectionsCondition {
+	return func(si *sessionInfo) bool {
+		for _, status := range statuses {
+			if si.status == status {
+				return true
+			}
+		}
+
+		return false
+	}
+}
+
+func cleanupConnectionsConditionNotAnyStatus(statuses ...services.SESSIONSTATUS) cleanupConnectionsCondition {
+	return func(si *sessionInfo) bool {
+		var result bool
+		for _, status := range statuses {
+			if si.status == status {
+				result = true
+			}
+		}
+
+		return !result
+	}
+}
+
+func cleanupConnectionsConditionExpired(si *sessionInfo) bool {
+	return time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0
+}
+
+// cleanupConnections walks all sessions and shuts down connections
+// based on the specified criteria. Additionally, sessions without
+// connections are cleaned up from the local worker's state.
+//
+// Conditions are inclusive (OR); keep this in mind when working with
+// the function.
+func (w *Worker) cleanupConnections(cancelCtx context.Context, conditions ...cleanupConnectionsCondition) {
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
 	w.sessionInfoMap.Range(func(key, value interface{}) bool {
 		si := value.(*sessionInfo)
 		si.Lock()
-		switch {
-		case si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
-			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
-			time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0:
-			var toClose int
-			for k, v := range si.connInfoMap {
-				if v.closeTime.IsZero() {
-					toClose++
-					v.connCancel()
-					w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
-					closeInfo[k] = si.id
-				}
-			}
-			// closeTime is marked by closeConnections iff the
-			// status is returned for that connection as closed. If
-			// the session is no longer valid and all connections
-			// are marked closed, clean up the session.
-			if toClose == 0 {
-				cleanSessionIds = append(cleanSessionIds, si.id)
+		defer si.Unlock()
+		var condMatched bool
+		for _, cond := range conditions {
+			if cond(si) {
+				condMatched = true
 			}
 		}
-		si.Unlock()
+
+		if !condMatched {
+			// early exit, basically continue
+			return true
+		}
+
+		var toClose int
+		for k, v := range si.connInfoMap {
+			if v.closeTime.IsZero() {
+				toClose++
+				v.connCancel()
+				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
+				closeInfo[k] = si.id
+			}
+		}
+		// closeTime is marked by closeConnections iff the
+		// status is returned for that connection as closed. If
+		// the session is no longer valid and all connections
+		// are marked closed, clean up the session.
+		if toClose == 0 {
+			cleanSessionIds = append(cleanSessionIds, si.id)
+		}
+
 		return true
 	})
 
 	// Note that we won't clean these from the info map until the
 	// next time we run this function
 	if len(closeInfo) > 0 {
-		if err := w.closeConnections(cancelCtx, closeInfo); err != nil {
-			w.logger.Error("error marking connections closed", "error", err)
-		}
+		w.closeConnections(cancelCtx, closeInfo)
 	}
 
 	// Forget sessions where the session is expired/canceled and all

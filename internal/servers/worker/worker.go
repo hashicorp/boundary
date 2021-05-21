@@ -60,6 +60,10 @@ func New(conf *Config) (*Worker, error) {
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	w.controllerResolver.Store((*manual.Resolver)(nil))
 
+	if conf.RawConfig.Worker == nil {
+		conf.RawConfig.Worker = new(config.Worker)
+	}
+
 	w.ParseAndStoreTags(conf.RawConfig.Worker.Tags)
 
 	if conf.SecureRandomReader == nil {
@@ -67,9 +71,6 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	var err error
-	if conf.RawConfig.Worker == nil {
-		conf.RawConfig.Worker = new(config.Worker)
-	}
 	if conf.RawConfig.Worker.Name == "" {
 		if conf.RawConfig.Worker.Name, err = base62.Random(10); err != nil {
 			return nil, fmt.Errorf("error auto-generating worker name: %w", err)

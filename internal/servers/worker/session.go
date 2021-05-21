@@ -251,7 +251,7 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 	return resp, nil
 }
 
-func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) error {
+func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) {
 	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeMap))
 
 	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeMap))
@@ -265,18 +265,36 @@ func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]strin
 		CloseRequestData: closeData,
 	}
 
+	// revMap is a reverse map to closeMap, that is, session ID to connection
+	// IDs, for more efficient locking. How it gets populated depends on if we
+	// can reach the controller.
+	var revMap map[string][]*pbs.CloseConnectionResponseData
+	var warnLocal bool
 	connStatus, err := w.closeConnection(ctx, closeInfo)
 	if err != nil {
-		return err
+		w.logger.Error("error marking connections closed", "error", err)
+		warnLocal = true
+		// Since we can't reach the controller, we populate this "manually",
+		// marking every connection closed. This is to cover edge cases such as if
+		// we can reach the controller on the next heartbeat before we reap the
+		// connectionless session.
+		revMap := make(map[string][]*pbs.CloseConnectionResponseData)
+		for connectionId, sessionId := range closeMap {
+			revMap[sessionId] = append(revMap[sessionId], &pbs.CloseConnectionResponseData{
+				ConnectionId: connectionId,
+				Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+			})
+		}
+	} else {
+		// Normal operation: connection to the controller was successful. Populate
+		// revMap from the response.
+		revMap = make(map[string][]*pbs.CloseConnectionResponseData)
+		for _, v := range connStatus.GetCloseResponseData() {
+			revMap[closeMap[v.GetConnectionId()]] = append(revMap[closeMap[v.GetConnectionId()]], v)
+		}
 	}
-	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
 
-	// Here we build a reverse map from closeMap, that is, session ID to
-	// connection IDs, for more efficient locking
-	revMap := make(map[string][]*pbs.CloseConnectionResponseData)
-	for _, v := range connStatus.GetCloseResponseData() {
-		revMap[closeMap[v.GetConnectionId()]] = append(revMap[closeMap[v.GetConnectionId()]], v)
-	}
+	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
 	for k, v := range revMap {
 		siRaw, ok := w.sessionInfoMap.Load(k)
 		if !ok {
@@ -290,10 +308,15 @@ func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]strin
 			ci.status = connResult.GetStatus()
 			if ci.status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
 				ci.closeTime = time.Now()
+				closedIds = append(closedIds, ci.id)
 			}
 		}
 		si.Unlock()
 	}
-	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
-	return nil
+
+	if warnLocal {
+		w.logger.Warn("connections marked closed on worker only, could not reach controllers", "connection_ids", closedIds)
+	} else {
+		w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
+	}
 }
