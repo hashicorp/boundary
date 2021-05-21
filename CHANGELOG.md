@@ -4,6 +4,18 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* If a `cancel` operation is run on a session already in a canceling or
+  terminated state, a `200` and the session information will be returned instead
+  of an error.
+
+### New and Improved
+
+* sessions: Return a `200` and session information when canceling an
+  already-canceled or terminated session
+  ([PR](https://github.com/hashicorp/boundary/pull/1243))
+
 ## 0.2.2 (2021/05/17)
 
 ### New and Improved
