@@ -345,8 +345,8 @@ func Parse(d string) (*Config, error) {
 			if listener.CorsEnabled == nil {
 				listener.CorsEnabled = new(bool)
 				*listener.CorsEnabled = true
-				listener.CorsAllowedOrigins = []string{desktopCorsOrigin}
 			}
+
 			// If not the wildcard and they haven't disabled us auto-adding
 			// origin values, add the desktop client origin
 			if *listener.CorsEnabled &&
