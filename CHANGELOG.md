@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.3 (2021/05/21)
+
 ### Deprecations/Changes
 
 * The behavior when `cors_enabled` is not specified for a listener is changing
