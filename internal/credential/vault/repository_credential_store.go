@@ -17,10 +17,6 @@ import (
 	vault "github.com/hashicorp/vault/api"
 )
 
-type st struct {
-	name string
-}
-
 // CreateCredentialStore inserts cs into the repository and returns a new
 // CredentialStore containing the credential store's PublicId. cs is not
 // changed. cs must not contain a PublicId. The PublicId is generated and

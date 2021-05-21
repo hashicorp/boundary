@@ -101,32 +101,32 @@ func TestCrud(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(cs)
 
-	checkHost := func(t *testing.T, step string, h *credentiallibraries.CredentialLibrary, err error, wantedName string, wantVersion uint32) {
+	checkResource := func(t *testing.T, step string, r *credentiallibraries.CredentialLibrary, err error, wantedName string, wantVersion uint32) {
 		t.Helper()
 		require.NoError(err, step)
-		assert.NotNil(h, "returned no resource", step)
+		assert.NotNil(r, "returned no resource", step)
 		gotName := ""
-		if h.Name != "" {
-			gotName = h.Name
+		if r.Name != "" {
+			gotName = r.Name
 		}
 		assert.Equal(wantedName, gotName, step)
-		assert.Equal(wantVersion, h.Version)
+		assert.Equal(wantVersion, r.Version)
 	}
 
 	lClient := credentiallibraries.NewClient(client)
 
 	r, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName("foo"),
 		credentiallibraries.WithVaultCredentialLibraryVaultPath("something"))
-	checkHost(t, "create", r.Item, err, "foo", 1)
+	checkResource(t, "create", r.Item, err, "foo", 1)
 
 	r, err = lClient.Read(tc.Context(), r.Item.Id)
-	checkHost(t, "read", r.Item, err, "foo", 1)
+	checkResource(t, "read", r.Item, err, "foo", 1)
 
 	r, err = lClient.Update(tc.Context(), r.Item.Id, r.Item.Version, credentiallibraries.WithName("bar"))
-	checkHost(t, "update", r.Item, err, "bar", 2)
+	checkResource(t, "update", r.Item, err, "bar", 2)
 
 	r, err = lClient.Update(tc.Context(), r.Item.Id, r.Item.Version, credentiallibraries.DefaultName())
-	checkHost(t, "update", r.Item, err, "", 3)
+	checkResource(t, "update", r.Item, err, "", 3)
 
 	_, err = lClient.Delete(tc.Context(), r.Item.Id)
 	assert.NoError(err)
