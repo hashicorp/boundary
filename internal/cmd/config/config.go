@@ -341,17 +341,22 @@ func Parse(d string) (*Config, error) {
 	for _, listener := range result.SharedConfig.Listeners {
 		if strutil.StrListContains(listener.Purpose, "api") &&
 			(listener.CorsDisableDefaultAllowedOriginValues == nil || !*listener.CorsDisableDefaultAllowedOriginValues) {
-			// If CORS wasn't specified, enable default values
-			if listener.CorsEnabled == nil {
+			switch listener.CorsEnabled {
+			case nil:
+				// If CORS wasn't specified, enable default value of *, which allows
+				// both the admin UI (without the user having to explicitly set an
+				// origin) and the desktop origin
 				listener.CorsEnabled = new(bool)
 				*listener.CorsEnabled = true
-				listener.CorsAllowedOrigins = []string{desktopCorsOrigin}
-			}
-			// If not the wildcard and they haven't disabled us auto-adding
-			// origin values, add the desktop client origin
-			if *listener.CorsEnabled &&
-				!strutil.StrListContains(listener.CorsAllowedOrigins, "*") {
-				listener.CorsAllowedOrigins = strutil.AppendIfMissing(listener.CorsAllowedOrigins, desktopCorsOrigin)
+				listener.CorsAllowedOrigins = []string{"*"}
+
+			default:
+				// If not the wildcard and they haven't disabled us auto-adding
+				// origin values, add the desktop client origin
+				if *listener.CorsEnabled &&
+					!strutil.StrListContains(listener.CorsAllowedOrigins, "*") {
+					listener.CorsAllowedOrigins = strutil.AppendIfMissing(listener.CorsAllowedOrigins, desktopCorsOrigin)
+				}
 			}
 		}
 	}
