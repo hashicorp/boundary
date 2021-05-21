@@ -7,7 +7,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### Deprecations/Changes
 
 * The behavior when `cors_enabled` is not specified for a listener is changing
-  to be equivalent to an `allowed_origins` value of `*`; that is, accept all
+  to be equivalent to a `cors_allowed_origins` value of `*`; that is, accept all
   origins. This allows Boundary, by default, to have the admin UI and desktop
   client work without further specification of origins by the operator. This is
   only affecting default behavior; if `cors_enabled` is explicitly set to
@@ -177,9 +177,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   behavior to automatically include the origin of the Desktop Client. This will
   be fixed in 0.2.1. In the meantime, this can be worked around by either
   explicitly disabing CORS with `cors_enabled = false` in the `listener` config
-  block with purpose `api`; or setting an `allowed_origins` field to have values
-  other than `serve://boundary` (including values that do not map to any real
-  origin).
+  block with purpose `api`; or setting a `cors_allowed_origins` field to have
+  values other than `serve://boundary` (including values that do not map to any
+  real origin).
 
 ### Deprecations/Changes
 
@@ -339,9 +339,9 @@ for more details.
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
 * CORS: CORS is now turned on by default when running with `boundary server`
-  with an `allowed_origins` value of `serve://boundary`. You can disable it with
-  `cors_enabled = false`, or if you want to change parameters, set `cors_enabled
-  = true` and the other related configuration values.
+  with a `cors_allowed_origins` value of `serve://boundary`. You can disable it
+  with `cors_enabled = false`, or if you want to change parameters, set
+  `cors_enabled = true` and the other related configuration values.
 
 ### New and Improved
 
