@@ -103,7 +103,7 @@ update credential_vault_token
 `
 
 	tokenRenewalNextRunInQuery = `
-select now(), renewal_time 
+select extract(epoch from renewal_time - now())::int as renewal_in 
 	from credential_vault_job_renewable_tokens 
 	order by renewal_time asc 
 	limit 1

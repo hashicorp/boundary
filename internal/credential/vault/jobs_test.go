@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -314,7 +315,28 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			require.NotNil(token)
 
 			require.NoError(token.encrypt(context.Background(), databaseWrapper))
-			query, queryValues := token.insertQuery()
+
+			query := insertTokenQuery
+			queryValues := []interface{}{
+				token.TokenHmac,
+				token.CtToken,
+				token.StoreId,
+				token.KeyId,
+				token.Status,
+			}
+
+			expire := int(d.Seconds())
+			if expire < 0 {
+				// last_renewal_time must be before expiration_time, if we are testing a expiration in the past set
+				// lastRenew to 1 second before that
+				query = strings.Replace(query,
+					"$6, -- last_renewal_time",
+					"wt_add_seconds_to_now($6),  -- last_renewal_time",
+					-1)
+				queryValues = append(queryValues, expire-1, expire)
+			} else {
+				queryValues = append(queryValues, "now()", expire)
+			}
 
 			rows, err := rw.Exec(context.Background(), query, queryValues)
 			assert.Equal(1, rows)
@@ -346,6 +368,16 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			expirations: []time.Duration{24 * time.Hour, 6 * time.Hour, 12 * time.Hour, 10 * time.Hour},
 			// 6 hours is the soonest expiration time
 			want: 3 * time.Hour,
+		},
+		{
+			name:        "overdue-renewal",
+			expirations: []time.Duration{-1 * time.Hour},
+			want:        0,
+		},
+		{
+			name:        "multiple-with-overdue-renewal",
+			expirations: []time.Duration{24 * time.Hour, 6 * time.Hour, -12 * time.Hour, 10 * time.Hour},
+			want:        0,
 		},
 	}
 
