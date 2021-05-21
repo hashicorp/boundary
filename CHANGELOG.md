@@ -4,14 +4,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Bug Fixes
-
-* You can now omit `cors_enabled` to use its implicit setting of `true` when
-  specifying `cors_allowed_origins`. Previously, omitting `cors_enabled` would
-  cause an explicit `cors_allowed_origins` to be ignored, resetting this value
-  to the desktop origin only.
-  [PR](https://github.com/hashicorp/boundary/pull/1247)
-
 ## 0.2.2 (2021/05/17)
 
 ### New and Improved
