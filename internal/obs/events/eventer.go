@@ -17,14 +17,14 @@ type SinkFormat string
 type DeliveryGuarantee string
 
 const (
-	StdoutSink     SinkType          = "stdout"
-	FileSink       SinkType          = "file"
-	JSONSinkFormat SinkFormat        = "json"
-	Enforced       DeliveryGuarantee = "enforced"
-	BestEffort     DeliveryGuarantee = "best-effort"
-	AuditPipeline                    = "audit-pipeline"
-	InfoPipeline                     = "info-pipeline"
-	ErrPipeline                      = "err-pipeline"
+	StdoutSink          SinkType          = "stdout"
+	FileSink            SinkType          = "file"
+	JSONSinkFormat      SinkFormat        = "json"
+	Enforced            DeliveryGuarantee = "enforced"
+	BestEffort          DeliveryGuarantee = "best-effort"
+	AuditPipeline                         = "audit-pipeline"
+	ObservationPipeline                   = "observation-pipeline"
+	ErrPipeline                           = "err-pipeline"
 )
 
 // Eventer provides a method to send events to pipelines of sinks
@@ -54,11 +54,11 @@ type SinkConfig struct {
 
 // EventerConfig supplies all the configuration needed to create/config an Eventer.
 type EventerConfig struct {
-	AuditDelivery DeliveryGuarantee
-	InfoDelivery  DeliveryGuarantee
-	AuditEnabled  bool
-	InfoEnabled   bool
-	Sinks         []SinkConfig
+	AuditDelivery       DeliveryGuarantee
+	ObservationDelivery DeliveryGuarantee
+	AuditEnabled        bool
+	ObservationsEnabled bool
+	Sinks               []SinkConfig
 }
 
 var sysEventer *Eventer
@@ -98,7 +98,7 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 		fmtId     eventlogger.NodeID
 		sinkId    eventlogger.NodeID
 	}
-	var auditPipelines, infoPipelines, errPipelines []pipeline
+	var auditPipelines, observationPipelines, errPipelines []pipeline
 	broker := eventlogger.NewBroker()
 
 	// Create JSONFormatter node
@@ -157,19 +157,19 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to register sink node %s", sinkId)))
 		}
-		var addToAudit, addToInfo, addToErr bool
+		var addToAudit, addToObservation, addToErr bool
 		for _, t := range s.EventTypes {
 			switch t {
 			case EveryType:
 				addToAudit = true
-				addToInfo = true
+				addToObservation = true
 				addToErr = true
 			case ErrorType:
 				addToErr = true
 			case AuditType:
 				addToAudit = true
-			case InfoType:
-				addToInfo = true
+			case ObservationType:
+				addToObservation = true
 			}
 		}
 		if addToAudit {
@@ -179,9 +179,9 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 				sinkId:    sinkId,
 			})
 		}
-		if addToInfo {
-			infoPipelines = append(infoPipelines, pipeline{
-				eventType: InfoType,
+		if addToObservation {
+			observationPipelines = append(observationPipelines, pipeline{
+				eventType: ObservationType,
 				fmtId:     jsonfmtId,
 				sinkId:    sinkId,
 			})
@@ -197,7 +197,7 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
-		id, err = newId("audit-pipeline")
+		id, err = newId(AuditPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -211,9 +211,9 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 		}
 		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
-	infoNodeIds := make([]eventlogger.NodeID, 0, len(infoPipelines))
-	for _, p := range infoPipelines {
-		id, err = newId("info-pipeline")
+	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
+	for _, p := range observationPipelines {
+		id, err = newId(ObservationPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -223,13 +223,13 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to register info pipeline")
+			return nil, errors.Wrap(err, "failed to register observation pipeline")
 		}
-		infoNodeIds = append(infoNodeIds, p.sinkId)
+		observationNodeIds = append(observationNodeIds, p.sinkId)
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
-		id, err = newId("err-pipeline")
+		id, err = newId(ErrPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -253,10 +253,10 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
 		}
 	}
-	if c.InfoDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(InfoType), len(infoNodeIds))
+	if c.ObservationDelivery == Enforced {
+		err = broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to set success threshold for info events")
+			return nil, errors.Wrap(err, "failed to set success threshold for observation events")
 		}
 	}
 	// always enforce delivery of errors
@@ -272,50 +272,47 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 	}, nil
 }
 
-// Info sends an Info event.
-func (e *Eventer) Info(ctx context.Context, event *Info, opt ...Option) error {
-	const op = "event.(Eventer).Info"
-	if !e.conf.InfoEnabled {
+// WriteObservation writes/sends an Observation event.
+func (e *Eventer) WriteObservation(ctx context.Context, event *Observation, opt ...Option) error {
+	const op = "event.(Eventer).WriteObservation"
+	if !e.conf.ObservationsEnabled {
 		return nil
 	}
-	status, err := e.broker.Send(ctx, eventlogger.EventType(InfoType), event)
+	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
+	})
 	if err != nil {
-		e.logger.Error("encountered an error sending an info event", "error:", err.Error())
+		e.logError("encountered an error sending an observation event", "error:", err.Error())
 		return errors.Wrap(err, op)
-	}
-	if len(status.Warnings) > 0 {
-		e.logger.Warn("encountered warnings send info event", "warnings:", status.Warnings)
 	}
 	return nil
 }
 
-// Error sends an Err event
-func (e *Eventer) Error(ctx context.Context, event *Err, opt ...Option) error {
-	const op = "event.(Eventer).Error"
-	status, err := e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
+// WriteError writes/sends an Err event
+func (e *Eventer) WriteError(ctx context.Context, event *Err, opt ...Option) error {
+	const op = "event.(Eventer).WriteError"
+	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
+	})
 	if err != nil {
-		e.logger.Error("encountered an error sending an error event", "error:", err.Error())
+		e.logError("encountered an error sending an error event", "error:", err.Error())
 		return errors.Wrap(err, op)
-	}
-	if len(status.Warnings) > 0 {
-		e.logger.Warn("encountered warnings send error event", "warnings:", status.Warnings)
 	}
 	return nil
 }
 
-// Audit sends and Audit event
-func (e *Eventer) Audit(ctx context.Context, event *Audit, opt ...Option) error {
-	const op = "event.(Eventer).Audit"
+// WriteAudit writes/send an audit event
+func (e *Eventer) WriteAudit(ctx context.Context, event *Audit, opt ...Option) error {
+	const op = "event.(Eventer).WriteAudit"
 	if !e.conf.AuditEnabled {
 		return nil
 	}
-	status, err := e.broker.Send(ctx, eventlogger.EventType(InfoType), event)
+	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
+	})
 	if err != nil {
-		e.logger.Error("encountered an error sending an audit event", "error:", err.Error())
+		e.logError("encountered an error sending an audit event", "error:", err.Error())
 		return errors.Wrap(err, op)
-	}
-	if len(status.Warnings) > 0 {
-		e.logger.Warn("encountered warnings send audit event", "warnings:", status.Warnings)
 	}
 	return nil
 }
@@ -326,4 +323,16 @@ func (e *Eventer) Reopen() error {
 	e.l.Lock()
 	defer e.l.Unlock()
 	return e.broker.Reopen(context.Background())
+}
+
+func (e *Eventer) logError(msg string, args ...interface{}) {
+	if e.logger != nil {
+		e.logger.Error(msg, args)
+	}
+}
+
+func (e *Eventer) logWarning(msg string, args ...interface{}) {
+	if e.logger != nil {
+		e.logger.Warn(msg, args)
+	}
 }

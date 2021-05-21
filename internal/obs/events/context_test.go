@@ -14,28 +14,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_WriteInfo(t *testing.T) {
+func Test_WriteObservation(t *testing.T) {
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name: "test",
 	})
 
-	tmpFile, err := ioutil.TempFile("./", "test_writeinfo-info")
+	tmpFile, err := ioutil.TempFile("./", "test_writeobservation-observation")
 	require.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
 
-	tmpErrFile, err := ioutil.TempFile("./", "test_writeinfo-err")
+	tmpErrFile, err := ioutil.TempFile("./", "test_writeobservation-err")
 	require.NoError(t, err)
 	tmpErrFile.Close()
 	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
 
 	c := event.EventerConfig{
-		InfoEnabled:  true,
-		InfoDelivery: event.Enforced,
+		ObservationsEnabled: true,
+		ObservationDelivery: event.Enforced,
 		Sinks: []event.SinkConfig{
 			{
-				Name:       "info-file-sink",
+				Name:       "observation-file-sink",
 				EventTypes: []event.Type{event.EveryType},
 				Format:     event.JSONSinkFormat,
 				Path:       "./",
@@ -72,37 +72,37 @@ func Test_WriteInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name             string
-		header           map[string]interface{}
-		details          map[string]interface{}
-		ctx              context.Context
-		errSinkFileName  string
-		infoSinkFileName string
-		wantFileSink     string
+		name                    string
+		header                  map[string]interface{}
+		details                 map[string]interface{}
+		ctx                     context.Context
+		errSinkFileName         string
+		observationSinkFileName string
+		wantFileSink            string
 	}{
 		{
-			name:             "simple",
-			ctx:              ctx,
-			header:           testHdr,
-			errSinkFileName:  tmpErrFile.Name(),
-			infoSinkFileName: tmpFile.Name(),
-			wantFileSink:     "first",
+			name:                    "simple",
+			ctx:                     ctx,
+			header:                  testHdr,
+			errSinkFileName:         tmpErrFile.Name(),
+			observationSinkFileName: tmpFile.Name(),
+			wantFileSink:            "first",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := event.WriteInfo(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header))
+			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header))
 			require.NoError(err)
 
-			if tt.infoSinkFileName != "" {
-				defer os.Remove(tt.infoSinkFileName)
-				b, err := ioutil.ReadFile(tt.infoSinkFileName)
+			if tt.observationSinkFileName != "" {
+				defer os.Remove(tt.observationSinkFileName)
+				b, err := ioutil.ReadFile(tt.observationSinkFileName)
 				require.NoError(err)
-				gotInfo := &eventJson{}
-				err = json.Unmarshal(b, gotInfo)
+				gotObservation := &eventJson{}
+				err = json.Unmarshal(b, gotObservation)
 				require.NoError(err)
-				wantJson := testInfoJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotInfo.Payload["id"].(string), gotInfo.CreatedAt, tt.header, tt.details)
+				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation.Payload["id"].(string), gotObservation.CreatedAt, tt.header, tt.details)
 				assert.Equal(string(wantJson), strings.TrimSuffix(string(b), "\n"))
 			}
 
@@ -117,7 +117,7 @@ func Test_WriteInfo(t *testing.T) {
 
 }
 
-func testInfoJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, Id, createdAt string, hdr, details map[string]interface{}) []byte {
+func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, Id, createdAt string, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	require := require.New(t)
 
@@ -126,7 +126,7 @@ func testInfoJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, Id,
 
 	j := eventJson{
 		CreatedAt: createdAt,
-		EventType: string(event.InfoType),
+		EventType: string(event.ObservationType),
 		Payload: map[string]interface{}{
 			"id":           Id,
 			"op":           string(caller),

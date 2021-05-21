@@ -13,44 +13,6 @@ const (
 	RequestInfoKey
 )
 
-// RequestInfo defines the fields captured about a Boundary request.  This type
-// is duplicated in the internal/auth package, but there are circular dependency
-// issues.  TBD how to resolve this, but for now, we've dupped it here.
-//
-// fields are intentionally alphabetically ordered so they will match output
-// from marshaling event json
-type RequestInfo struct {
-	Id       string    `json:"id,omitempty"`
-	Method   string    `json:"method,omitempty"`
-	Path     string    `json:"path,omitempty"`
-	PublicId string    `json:"public_id,omitempty"`
-	UserInfo *UserInfo `json:"user_info,omitempty"`
-}
-
-// UserInfo defines the fields captured about a user for a Boundary request.
-// This type is duplicated in the internal/auth package, but there are circular
-// dependency issues.  TBD how to resolve this, but for now, we've dupped it
-// here.
-//
-// fields are intentionally alphabetically ordered so they will match output
-// from marshaling event json
-type UserInfo struct {
-	Grants []GrantsPair `json:"grants_pair,omitempty"`
-	Id     string       `json:"id,omitempty"`
-}
-
-// UserInfo defines the fields captured about a user for a Boundary request.
-// This type is duplicated in the internal/perms package, but there are circular
-// dependency issues.  TBD how to resolve this, but for now, we've dupped it
-// here.
-//
-// fields are intentionally alphabetically ordered so they will match output
-// from marshaling event json
-type GrantsPair struct {
-	Grant   string `json:"grant,omitempty"`
-	ScopeId string `json:"scope_id,omitempty"`
-}
-
 func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
 	const op = "event.NewEventerContext"
 	if ctx == nil {
@@ -76,8 +38,8 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 	return context.WithValue(ctx, RequestInfoKey, info), nil
 }
 
-func WriteInfo(ctx context.Context, caller Op, opt ...Option) error {
-	const op = "event.WriteInfo"
+func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
+	const op = "event.WriteObservation"
 	eventer, ok := ctx.Value(EventerKey).(*Eventer)
 	if !ok {
 		return errors.New(errors.InvalidParameter, op, "context missing eventer")
@@ -87,18 +49,16 @@ func WriteInfo(ctx context.Context, caller Op, opt ...Option) error {
 		return errors.New(errors.InvalidParameter, op, "you must specify either header or details options for an event payload")
 	}
 	if opts.withRequestInfo == nil {
-		reqInfo, ok := ctx.Value(RequestInfoKey).(*RequestInfo)
-		if !ok {
-			return errors.New(errors.InvalidParameter, op, "context missing request info")
+		var err error
+		if opt, err = addCtxOptions(ctx, opt...); err != nil {
+			return errors.Wrap(err, op)
 		}
-		opt = append(opt, WithRequestInfo(reqInfo))
 	}
-
-	e, err := NewInfo(caller, opt...)
+	e, err := NewObservation(caller, opt...)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
-	if err := eventer.Info(ctx, e, opt...); err != nil {
+	if err := eventer.WriteObservation(ctx, e, opt...); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -112,18 +72,35 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) error {
 	}
 	opts := getOpts(opt...)
 	if opts.withRequestInfo == nil {
-		reqInfo, ok := ctx.Value(RequestInfoKey).(*RequestInfo)
-		if !ok {
-			return errors.New(errors.InvalidParameter, op, "context missing request info")
+		var err error
+		if opt, err = addCtxOptions(ctx, opt...); err != nil {
+			return errors.Wrap(err, op)
 		}
-		opt = append(opt, WithRequestInfo(reqInfo))
 	}
 	ev, err := NewError(caller, e, opt...)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
-	if err := eventer.Error(ctx, ev); err != nil {
+	if err := eventer.WriteError(ctx, ev); err != nil {
 		return errors.Wrap(err, op)
 	}
 	return nil
+}
+
+func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
+	const op = "event.addCtxOptions"
+	opts := getOpts(opt...)
+	retOpts := make([]Option, 0, len(opt))
+	retOpts = append(retOpts, opt...)
+	if opts.withRequestInfo == nil {
+		reqInfo, ok := ctx.Value(RequestInfoKey).(*RequestInfo)
+		if !ok {
+			return nil, errors.New(errors.InvalidParameter, op, "context missing request info")
+		}
+		retOpts = append(retOpts, WithRequestInfo(reqInfo))
+		if reqInfo.Id != "" {
+			retOpts = append(retOpts, WithId(reqInfo.Id))
+		}
+	}
+	return retOpts, nil
 }

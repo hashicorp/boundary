@@ -15,7 +15,7 @@ func Test_NewEventer(t *testing.T) {
 		Name: "test",
 	})
 	c := EventerConfig{
-		InfoEnabled: true,
+		ObservationsEnabled: true,
 	}
 	// with no defined config, it will default to a stdout sink
 	e, err := NewEventer(logger, c)
@@ -25,9 +25,9 @@ func Test_NewEventer(t *testing.T) {
 		"name": "bar",
 		"list": []string{"1", "2"},
 	}
-	infoEvent, err := NewInfo("Test_NewEventer", WithHeader(m))
+	observationEvent, err := NewObservation("Test_NewEventer", WithHeader(m))
 	require.NoError(err)
 
-	require.NoError(e.Info(context.Background(), infoEvent))
+	require.NoError(e.WriteObservation(context.Background(), observationEvent))
 
 }

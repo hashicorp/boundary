@@ -1,117 +1,51 @@
 package event
 
-import (
-	"github.com/hashicorp/boundary/internal/errors"
-)
-
 type Type string
 
 const (
-	EveryType Type = "*"
-	InfoType  Type = "info"
-	AuditType Type = "audit"
-	ErrorType Type = "error"
+	EveryType       Type = "*"
+	ObservationType Type = "observation"
+	AuditType       Type = "audit"
+	ErrorType       Type = "error"
 )
 
 type Id string
 type Op string
 
+// RequestInfo defines the fields captured about a Boundary request.  This type
+// is duplicated in the internal/auth package, but there are circular dependency
+// issues.  TBD how to resolve this, but for now, we've dupped it here.
+//
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
-type Audit struct {
-	Id          Id           `json:"id,omitempty"`
-	Op          Op           `json:"op,omitempty"`
-	RequestInfo *RequestInfo `json:"request_info,omitempty"`
+type RequestInfo struct {
+	Id       string    `json:"id,omitempty"`
+	Method   string    `json:"method,omitempty"`
+	Path     string    `json:"path,omitempty"`
+	PublicId string    `json:"public_id,omitempty"`
+	UserInfo *UserInfo `json:"user_info,omitempty"`
 }
 
+// UserInfo defines the fields captured about a user for a Boundary request.
+// This type is duplicated in the internal/auth package, but there are circular
+// dependency issues.  TBD how to resolve this, but for now, we've dupped it
+// here.
+//
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
-type Err struct {
-	e           error
-	Id          Id           `json:"id,omitempty"`
-	Op          Op           `json:"op,omitempty"`
-	RequestInfo *RequestInfo `json:"request_info,omitempty"`
+type UserInfo struct {
+	Grants []GrantsPair `json:"grants_pair,omitempty"`
+	Id     string       `json:"id,omitempty"`
 }
 
-func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
-	const op = "event.NewError"
-	if fromOperation == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
-	}
-	id, err := newId(string(InfoType))
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	opts := getOpts(opt...)
-	newErr := &Err{
-		Id:          Id(id),
-		Op:          fromOperation,
-		RequestInfo: opts.withRequestInfo,
-		e:           e,
-	}
-	if err := newErr.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	return newErr, nil
-}
-
-// EventType is required for all event types by the eventlogger broker
-func (e *Err) EventType() string { return string(ErrorType) }
-
-func (e *Err) validate() error {
-	const op = "event.(Info).validate"
-	if e.Id == "" {
-		return errors.New(errors.InvalidParameter, op, "missing event id")
-	}
-	if e.Op == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation which raised event")
-	}
-	return nil
-}
-
+// UserInfo defines the fields captured about a user for a Boundary request.
+// This type is duplicated in the internal/perms package, but there are circular
+// dependency issues.  TBD how to resolve this, but for now, we've dupped it
+// here.
+//
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
-type Info struct {
-	Details     map[string]interface{} `json:"details,omitempty"`
-	Header      map[string]interface{} `json:"header,omitempty"`
-	Id          Id                     `json:"id,omitempty"`
-	Op          Op                     `json:"op,omitempty"`
-	RequestInfo *RequestInfo           `json:"request_info,omitempty"`
-}
-
-func NewInfo(fromOperation Op, opt ...Option) (*Info, error) {
-	const op = "event.NewInfo"
-	opts := getOpts(opt...)
-	if fromOperation == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
-	}
-	id, err := newId(string(InfoType))
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	i := &Info{
-		Id:          Id(id),
-		Op:          fromOperation,
-		RequestInfo: opts.withRequestInfo,
-		Header:      opts.withHeader,
-		Details:     opts.withDetails,
-	}
-	if err := i.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	return i, nil
-}
-
-// EventType is required for all event types by the eventlogger broker
-func (i *Info) EventType() string { return string(InfoType) }
-
-func (i *Info) validate() error {
-	const op = "event.(Info).validate"
-	if i.Id == "" {
-		return errors.New(errors.InvalidParameter, op, "missing event id")
-	}
-	if i.Op == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation which raised event")
-	}
-	return nil
+type GrantsPair struct {
+	Grant   string `json:"grant,omitempty"`
+	ScopeId string `json:"scope_id,omitempty"`
 }
