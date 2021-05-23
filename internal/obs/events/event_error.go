@@ -5,7 +5,7 @@ import "github.com/hashicorp/boundary/internal/errors"
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
 type Err struct {
-	e           error
+	Error       error        `json:"error"`
 	Id          Id           `json:"id,omitempty"`
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
@@ -28,7 +28,7 @@ func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
 		Id:          Id(opts.withId),
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
-		e:           e,
+		Error:       e,
 	}
 	if err := newErr.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
