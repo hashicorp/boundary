@@ -64,6 +64,29 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	return nil
 }
 
+func FlushRequestObservation(ctx context.Context, opt ...Option) error {
+	const op = "event.WriteObservation"
+	eventer, ok := ctx.Value(EventerKey).(*Eventer)
+	if !ok {
+		return errors.New(errors.InvalidParameter, op, "context missing eventer")
+	}
+	opts := getOpts(opt...)
+	if opts.withRequestInfo == nil {
+		var err error
+		if opt, err = addCtxOptions(ctx, opt...); err != nil {
+			return errors.Wrap(err, op)
+		}
+	}
+	e, err := NewObservation(op, opt...)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err := eventer.WriteObservation(ctx, e, opt...); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
+}
+
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) error {
 	const op = "event.WriteError"
 	eventer, ok := ctx.Value(EventerKey).(*Eventer)
