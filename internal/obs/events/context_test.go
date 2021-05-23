@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	event "github.com/hashicorp/boundary/internal/obs/events"
@@ -92,7 +91,7 @@ func Test_WriteObservation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header))
+			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details))
 			require.NoError(err)
 
 			if tt.observationSinkFileName != "" {
@@ -102,8 +101,12 @@ func Test_WriteObservation(t *testing.T) {
 				gotObservation := &eventJson{}
 				err = json.Unmarshal(b, gotObservation)
 				require.NoError(err)
+
+				actualJson, err := json.Marshal(gotObservation)
+				require.NoError(err)
 				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation.Payload["id"].(string), gotObservation.CreatedAt, tt.header, tt.details)
-				assert.Equal(string(wantJson), strings.TrimSuffix(string(b), "\n"))
+
+				assert.Equal(string(wantJson), string(actualJson))
 			}
 
 			if tt.errSinkFileName != "" {
