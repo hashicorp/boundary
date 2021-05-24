@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	event "github.com/hashicorp/boundary/internal/obs/events"
+	event "github.com/hashicorp/boundary/internal/observability/events"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
