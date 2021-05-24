@@ -26,6 +26,11 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 			return nil, errors.Wrap(err, op)
 		}
 	}
+	for k := range opts.withHeader {
+		if k == OpField || k == RequestInfoField {
+			return nil, errors.New(errors.InvalidParameter, op, "%s: %s is a reserved field name")
+		}
+	}
 	i := &observation{
 		SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
 			ID:     opts.withId,
