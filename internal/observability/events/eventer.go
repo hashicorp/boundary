@@ -15,6 +15,7 @@ import (
 const (
 	OpField          = "op"
 	RequestInfoField = "request_info"
+	VersionField     = "version"
 )
 
 type SinkType string
@@ -316,6 +317,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 		if event.Header != nil {
 			event.Header[OpField] = string(event.Op)
 			event.Header[RequestInfoField] = event.RequestInfo
+			event.Header[VersionField] = event.Version
 		}
 		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})

@@ -160,6 +160,7 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 			"header": map[string]interface{}{
 				event.OpField:          string(caller),
 				event.RequestInfoField: reqInfo,
+				event.VersionField:     event.ObservationVersion,
 			},
 		},
 	}

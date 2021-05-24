@@ -3,12 +3,16 @@ package event
 import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
+
+const ObservationVersion = "v0.1"
 
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
 type observation struct {
 	*eventlogger.SimpleGatedPayload
+	Version     string       `json:"version"`
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
 }
@@ -27,7 +31,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		}
 	}
 	for k := range opts.withHeader {
-		if k == OpField || k == RequestInfoField {
+		if strutil.StrListContains([]string{OpField, VersionField, RequestInfoField}, k) {
 			return nil, errors.New(errors.InvalidParameter, op, "%s: %s is a reserved field name")
 		}
 	}
@@ -40,6 +44,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		},
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
+		Version:     ObservationVersion,
 	}
 	if err := i.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
