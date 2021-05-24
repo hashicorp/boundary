@@ -12,6 +12,11 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
+const (
+	OpField          = "op"
+	RequestInfoField = "request_info"
+)
+
 type SinkType string
 type SinkFormat string
 type DeliveryGuarantee string
@@ -309,8 +314,8 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 	}
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		if event.Header != nil {
-			event.Header["op"] = string(event.Op)
-			event.Header["request_info"] = event.RequestInfo
+			event.Header[OpField] = string(event.Op)
+			event.Header[RequestInfoField] = event.RequestInfo
 		}
 		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})

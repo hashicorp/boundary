@@ -158,8 +158,8 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 		Payload: map[string]interface{}{
 			"id": got.Payload["id"].(string),
 			"header": map[string]interface{}{
-				"op":           string(caller),
-				"request_info": reqInfo,
+				event.OpField:          string(caller),
+				event.RequestInfoField: reqInfo,
 			},
 		},
 	}
