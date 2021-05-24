@@ -20,7 +20,7 @@ func TestList(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
-	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
+	vaultServ := vault.NewTestVaultServer(t)
 	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
 
 	client := tc.Client()
