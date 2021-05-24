@@ -25,7 +25,7 @@ func Test_NewEventer(t *testing.T) {
 		"name": "bar",
 		"list": []string{"1", "2"},
 	}
-	observationEvent, err := NewObservation("Test_NewEventer", WithHeader(m))
+	observationEvent, err := newObservation("Test_NewEventer", WithHeader(m))
 	require.NoError(err)
 
 	require.NoError(e.writeObservation(context.Background(), observationEvent))

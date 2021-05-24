@@ -4,14 +4,14 @@ import "github.com/hashicorp/boundary/internal/errors"
 
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
-type Err struct {
+type err struct {
 	Error       error        `json:"error"`
 	Id          Id           `json:"id,omitempty"`
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
 }
 
-func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
+func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 	const op = "event.NewError"
 	if fromOperation == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
@@ -24,7 +24,7 @@ func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
 			return nil, errors.Wrap(err, op)
 		}
 	}
-	newErr := &Err{
+	newErr := &err{
 		Id:          Id(opts.withId),
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
@@ -37,9 +37,9 @@ func NewError(fromOperation Op, e error, opt ...Option) (*Err, error) {
 }
 
 // EventType is required for all event types by the eventlogger broker
-func (e *Err) EventType() string { return string(ErrorType) }
+func (e *err) EventType() string { return string(ErrorType) }
 
-func (e *Err) validate() error {
+func (e *err) validate() error {
 	const op = "event.(Error).validate"
 	if e.Id == "" {
 		return errors.New(errors.InvalidParameter, op, "missing event id")

@@ -7,13 +7,13 @@ import (
 
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
-type Observation struct {
+type observation struct {
 	*eventlogger.SimpleGatedPayload
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
 }
 
-func NewObservation(fromOperation Op, opt ...Option) (*Observation, error) {
+func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 	const op = "event.NewObservation"
 	if fromOperation == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
@@ -26,7 +26,7 @@ func NewObservation(fromOperation Op, opt ...Option) (*Observation, error) {
 			return nil, errors.Wrap(err, op)
 		}
 	}
-	i := &Observation{
+	i := &observation{
 		SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
 			ID:     opts.withId,
 			Header: opts.withHeader,
@@ -43,9 +43,9 @@ func NewObservation(fromOperation Op, opt ...Option) (*Observation, error) {
 }
 
 // EventType is required for all event types by the eventlogger broker
-func (i *Observation) EventType() string { return string(ObservationType) }
+func (i *observation) EventType() string { return string(ObservationType) }
 
-func (i *Observation) validate() error {
+func (i *observation) validate() error {
 	const op = "event.(Observation).validate"
 	if i.ID == "" {
 		return errors.New(errors.InvalidParameter, op, "missing event id")

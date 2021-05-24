@@ -54,7 +54,7 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 			return errors.Wrap(err, op)
 		}
 	}
-	e, err := NewObservation(caller, opt...)
+	e, err := newObservation(caller, opt...)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -77,7 +77,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) error {
 			return errors.Wrap(err, op)
 		}
 	}
-	ev, err := NewError(caller, e, opt...)
+	ev, err := newError(caller, e, opt...)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -85,6 +85,10 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) error {
 		return errors.Wrap(err, op)
 	}
 	return nil
+}
+
+func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
+	panic("to-do")
 }
 
 func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {

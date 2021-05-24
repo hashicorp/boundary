@@ -302,7 +302,7 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 }
 
 // writeObservation writes/sends an Observation event.
-func (e *Eventer) writeObservation(ctx context.Context, event *Observation, opt ...Option) error {
+func (e *Eventer) writeObservation(ctx context.Context, event *observation, opt ...Option) error {
 	const op = "event.(Eventer).WriteObservation"
 	if !e.conf.ObservationsEnabled {
 		return nil
@@ -322,7 +322,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *Observation, opt 
 }
 
 // writeError writes/sends an Err event
-func (e *Eventer) writeError(ctx context.Context, event *Err, opt ...Option) error {
+func (e *Eventer) writeError(ctx context.Context, event *err, opt ...Option) error {
 	const op = "event.(Eventer).WriteError"
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
