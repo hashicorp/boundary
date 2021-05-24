@@ -45,7 +45,7 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 		return errors.New(errors.InvalidParameter, op, "context missing eventer")
 	}
 	opts := getOpts(opt...)
-	if opts.withDetails == nil && opts.withHeader == nil {
+	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush {
 		return errors.New(errors.InvalidParameter, op, "you must specify either header or details options for an event payload")
 	}
 	if opts.withRequestInfo == nil {

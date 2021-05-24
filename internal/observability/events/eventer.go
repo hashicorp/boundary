@@ -308,9 +308,10 @@ func (e *Eventer) writeObservation(ctx context.Context, event *Observation, opt 
 		return nil
 	}
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
-		event.Header["op"] = string(event.Op)
-		event.Header["request_info"] = event.RequestInfo
-
+		if event.Header != nil {
+			event.Header["op"] = string(event.Op)
+			event.Header["request_info"] = event.RequestInfo
+		}
 		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})
 	if err != nil {

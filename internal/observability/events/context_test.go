@@ -64,9 +64,13 @@ func Test_WriteObservation(t *testing.T) {
 	require.NoError(t, err)
 	ctx, err = event.NewRequestInfoContext(ctx, info)
 	require.NoError(t, err)
-
+	type observationPayload struct {
+		header  map[string]interface{}
+		details map[string]interface{}
+	}
 	tests := []struct {
 		name                    string
+		observationPayload      []observationPayload
 		header                  map[string]interface{}
 		details                 map[string]interface{}
 		ctx                     context.Context
@@ -77,6 +81,23 @@ func Test_WriteObservation(t *testing.T) {
 		{
 			name: "simple",
 			ctx:  ctx,
+			observationPayload: []observationPayload{
+				{
+					header: map[string]interface{}{
+						"name": "bar",
+					},
+				},
+				{
+					header: map[string]interface{}{
+						"list": []string{"1", "2"},
+					},
+				},
+				{
+					details: map[string]interface{}{
+						"file": "temp-file.txt",
+					},
+				},
+			},
 			header: map[string]interface{}{
 				"name": "bar",
 				"list": []string{"1", "2"},
@@ -92,8 +113,14 @@ func Test_WriteObservation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details), event.WithFlush())
-			require.NoError(err)
+			for _, p := range tt.observationPayload {
+				err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(p.header), event.WithDetails(p.details))
+				require.NoError(err)
+			}
+			require.NoError(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithFlush()))
+
+			// err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details), event.WithFlush())
+			// require.NoError(err)
 
 			if tt.observationSinkFileName != "" {
 				defer os.Remove(tt.observationSinkFileName)
