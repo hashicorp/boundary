@@ -198,7 +198,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 
 	token := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
-	origExp := token.ExpirationTime.Timestamp.Seconds
+	origExp := token.GetExpirationTime().AsTime()
 
 	r, err := NewTokenRenewalJob(repoFn, hclog.L())
 	require.NoError(err)
@@ -216,8 +216,8 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	assert.Equal(1, count)
 
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
-	assert.True(token.ExpirationTime.Timestamp.Seconds < origExp)
-	origExp = token.ExpirationTime.Timestamp.Seconds
+	assert.True(token.GetExpirationTime().AsTime().Before(origExp))
+	origExp = token.GetExpirationTime().AsTime()
 
 	// Run token renewal again with new expiration time
 	err = r.Run(context.Background())
@@ -233,7 +233,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 
 	// Verify token was renewed in repo
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
-	assert.True(origExp < token.ExpirationTime.Timestamp.Seconds)
+	assert.True(origExp.Before(token.GetExpirationTime().AsTime()))
 }
 
 func TestTokenRenewalJob_RunExpired(t *testing.T) {
@@ -389,7 +389,8 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 
 			createTokens(tt.name, tt.expirations)
 
-			got := r.NextRunIn()
+			got, err := r.NextRunIn()
+			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating tokens and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
 

@@ -19,6 +19,8 @@ const (
 	tokenRenewalWindow          = 10 // in minutes
 )
 
+// TokenRenewalJob is the recurring job that renews credential store Vault tokens that
+// are in the `current` and `maintaining` state
 type TokenRenewalJob struct {
 	repoFn RepositoryFactory
 	logger hclog.Logger
@@ -27,7 +29,7 @@ type TokenRenewalJob struct {
 	numTokens, numProcessed int
 }
 
-// tokenRenewalView provides a simple way to read an Vault Tokens that need to be renewed.
+// renewablePrivateStore provides a simple way to read an Vault Tokens that need to be renewed.
 // By definition, it's used only for reading tokens.
 type renewablePrivateStore struct {
 	Store       *privateStore `gorm:"embedded"`
@@ -40,7 +42,7 @@ func (_ *renewablePrivateStore) TableName() string {
 }
 
 func NewTokenRenewalJob(repoFn RepositoryFactory, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
-	const op = "vault.NewNewTokenRenewal"
+	const op = "vault.NewTokenRenewalJob"
 	if repoFn == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing vault credential repo function")
 	}
@@ -84,7 +86,10 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	}
 
 	var rps []*renewablePrivateStore
-	err = repo.reader.SearchWhere(ctx, &rps, `now() + (?||'min')::interval > renewal_time`, []interface{}{tokenRenewalWindow}, db.WithLimit(r.limit))
+	// Fetch all tokens that will reach their renewal point within the next `tokenRenewalWindow` minutes.
+	// This is done to avoid constantly scheduling the token renewal job when there are multiple tokens
+	// set to renew in sequence.
+	err = repo.reader.SearchWhere(ctx, &rps, `renewal_time < now() + (?||'min')::interval`, []interface{}{tokenRenewalWindow}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -98,54 +103,9 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 			return errors.Wrap(err, op)
 		}
 
-		databaseWrapper, err := repo.kms.GetWrapper(ctx, s.Store.ScopeId, kms.KeyPurposeDatabase)
+		err := r.renewToken(ctx, repo, s)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
-		}
-
-		err = s.Store.decrypt(ctx, databaseWrapper)
-		if err != nil {
-			return errors.Wrap(err, op)
-		}
-
-		vc, err := s.Store.client()
-		if err != nil {
-			return errors.Wrap(err, op)
-		}
-
-		var respErr *vault.ResponseError
-		renewedToken, err := vc.renewToken()
-		if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
-			// Vault returned a 403 when attempting a renew self, the token is either expired
-			// or malformed.  Set status to "expired" so credentials created with token can be
-			// cleaned up.
-			numRows, err := repo.writer.Exec(ctx, updateTokenStatusQuery, []interface{}{StatusExpired, s.Store.TokenHmac})
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
-			if numRows != 1 {
-				return errors.New(errors.Unknown, op, "token expired but failed to update repo")
-			}
-			r.logger.Info("Vault credential store token has expired", "credential store id", s.Store.StoreId, "previous status", s.Store.TokenStatus)
-
-			return nil
-		}
-		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
-		}
-
-		tokenExpires, err := renewedToken.TokenTTL()
-		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
-		}
-
-		exp := int(tokenExpires.Round(time.Second).Seconds())
-		numRows, err := repo.writer.Exec(ctx, updateTokenExpirationQuery, []interface{}{exp, s.Store.TokenHmac})
-		if err != nil {
-			return errors.Wrap(err, op)
-		}
-		if numRows != 1 {
-			return errors.New(errors.Unknown, op, "token renewed but failed to update repo")
+			r.logger.Error("error renewing token", "credential store id", s.Store.StoreId, "token status", s.Store.TokenStatus)
 		}
 
 		r.numProcessed++
@@ -154,18 +114,72 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	return nil
 }
 
+func (r *TokenRenewalJob) renewToken(ctx context.Context, repo *Repository, s *renewablePrivateStore) error {
+	const op = "vault.(TokenRenewalJob).renewToken"
+	databaseWrapper, err := repo.kms.GetWrapper(ctx, s.Store.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+
+	err = s.Store.decrypt(ctx, databaseWrapper)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	vc, err := s.Store.client()
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	var respErr *vault.ResponseError
+	renewedToken, err := vc.renewToken()
+	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
+		// Vault returned a 403 when attempting a renew self, the token is either expired
+		// or malformed.  Set status to "expired" so credentials created with token can be
+		// cleaned up.
+		numRows, err := repo.writer.Exec(ctx, updateTokenStatusQuery, []interface{}{StatusExpired, s.Store.TokenHmac})
+		if err != nil {
+			return errors.Wrap(err, op)
+		}
+		if numRows != 1 {
+			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
+		}
+		r.logger.Info("Vault credential store token has expired", "credential store id", s.Store.StoreId, "previous status", s.Store.TokenStatus)
+
+		return nil
+	}
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
+	}
+
+	tokenExpires, err := renewedToken.TokenTTL()
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
+	}
+
+	exp := int(tokenExpires.Round(time.Second).Seconds())
+	numRows, err := repo.writer.Exec(ctx, updateTokenExpirationQuery, []interface{}{exp, s.Store.TokenHmac})
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if numRows != 1 {
+		return errors.New(errors.Unknown, op, "token renewed but failed to update repo")
+	}
+
+	return nil
+}
+
 // NextRunIn queries the vault credential repo to determine when the next token renewal job should run.
-func (r *TokenRenewalJob) NextRunIn() time.Duration {
+func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
+	const op = "vault.(TokenRenewalJob).NextRunIn"
 	repo, err := r.repoFn()
 	if err != nil {
-		r.logger.Error("Error generating repository for Vault token renewal next run check", "error", err)
-		return defaultTokenRenewalInterval
+		return defaultTokenRenewalInterval, errors.Wrap(err, op)
 	}
 
 	rows, err := repo.reader.Query(context.Background(), tokenRenewalNextRunInQuery, nil)
 	if err != nil {
-		r.logger.Error("Error querying repository for Vault token renewal next run check", "error", err)
-		return defaultTokenRenewalInterval
+		return defaultTokenRenewalInterval, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 
@@ -176,17 +190,16 @@ func (r *TokenRenewalJob) NextRunIn() time.Duration {
 		var n NextRenewal
 		err = repo.reader.ScanRows(rows, &n)
 		if err != nil {
-			r.logger.Error("Error scanning rows for Vault token renewal next run check", "error", err)
-			return defaultTokenRenewalInterval
+			return defaultTokenRenewalInterval, errors.Wrap(err, op)
 		}
 		if n.RenewalIn < 0 {
 			// If we are past the next renewal time, return 0 to schedule immediately
-			return 0
+			return 0, nil
 		}
-		return n.RenewalIn * time.Second
+		return n.RenewalIn * time.Second, nil
 	}
 
-	return defaultTokenRenewalInterval
+	return defaultTokenRenewalInterval, nil
 }
 
 // Name is the unique name of the job.

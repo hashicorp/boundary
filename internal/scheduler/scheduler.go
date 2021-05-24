@@ -220,19 +220,23 @@ func (s *Scheduler) runJob(ctx context.Context, r *job.Run) error {
 	go func() {
 		defer rj.cancelCtx()
 		runErr := j.Run(jobContext)
+		var updateErr error
 		switch runErr {
 		case nil:
 			s.logger.Debug("job run complete", "run id", r.PrivateId, "name", j.Name())
-			if _, inner := repo.CompleteRun(jobContext, r.PrivateId, j.NextRunIn()); inner != nil {
-				s.logger.Error("error updating completed job run", "error", inner)
+			nextRun, inner := j.NextRunIn()
+			if inner != nil {
+				s.logger.Error("error getting next run time", "name", j.Name(), "error", inner)
 			}
+			_, updateErr = repo.CompleteRun(jobContext, r.PrivateId, nextRun)
 		default:
 			s.logger.Debug("job run failed", "run id", r.PrivateId, "name", j.Name(), "error", runErr)
-			if _, inner := repo.FailRun(jobContext, r.PrivateId); inner != nil {
-				s.logger.Error("error updating failed job run", "error", inner)
-			}
+			_, updateErr = repo.FailRun(jobContext, r.PrivateId)
 		}
 
+		if updateErr != nil {
+			s.logger.Error("error updating job run", "name", j.Name(), "error", updateErr)
+		}
 		s.runningJobs.Delete(j.Name())
 	}()
 
