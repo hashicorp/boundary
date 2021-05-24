@@ -28,6 +28,6 @@ func Test_NewEventer(t *testing.T) {
 	observationEvent, err := NewObservation("Test_NewEventer", WithHeader(m))
 	require.NoError(err)
 
-	require.NoError(e.WriteObservation(context.Background(), observationEvent))
+	require.NoError(e.writeObservation(context.Background(), observationEvent))
 
 }

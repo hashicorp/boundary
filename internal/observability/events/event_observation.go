@@ -8,7 +8,7 @@ import (
 // fields are intentionally alphabetically ordered so they will match output
 // from marshaling event json
 type Observation struct {
-	eventlogger.SimpleGatedPayload
+	*eventlogger.SimpleGatedPayload
 	Op          Op           `json:"op,omitempty"`
 	RequestInfo *RequestInfo `json:"request_info,omitempty"`
 }
@@ -27,10 +27,11 @@ func NewObservation(fromOperation Op, opt ...Option) (*Observation, error) {
 		}
 	}
 	i := &Observation{
-		SimpleGatedPayload: eventlogger.SimpleGatedPayload{
+		SimpleGatedPayload: &eventlogger.SimpleGatedPayload{
 			ID:     opts.withId,
 			Header: opts.withHeader,
 			Detail: opts.withDetails,
+			Flush:  opts.withFlush,
 		},
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,

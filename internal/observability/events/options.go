@@ -17,6 +17,7 @@ type options struct {
 	withId          string
 	withDetails     map[string]interface{}
 	withHeader      map[string]interface{}
+	withFlush       bool
 	withRequestInfo *RequestInfo
 }
 
@@ -38,6 +39,12 @@ func WithDetails(d map[string]interface{}) Option {
 func WithHeader(d map[string]interface{}) Option {
 	return func(o *options) {
 		o.withHeader = d
+	}
+}
+
+func WithFlush() Option {
+	return func(o *options) {
+		o.withFlush = true
 	}
 }
 
