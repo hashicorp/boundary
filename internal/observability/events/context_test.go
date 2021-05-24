@@ -119,9 +119,6 @@ func Test_WriteObservation(t *testing.T) {
 			}
 			require.NoError(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithFlush()))
 
-			// err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details), event.WithFlush())
-			// require.NoError(err)
-
 			if tt.observationSinkFileName != "" {
 				defer os.Remove(tt.observationSinkFileName)
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
