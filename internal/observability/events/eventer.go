@@ -68,16 +68,19 @@ var sysEventerOnce sync.Once
 // singleton for Boundary
 func InitSysEventer(log hclog.Logger, c EventerConfig) error {
 	const op = "event.InitSysEventer"
-	var err error
-	sysEventerOnce.Do(func() {
-		sysEventer, err = NewEventer(log, c)
-		if err != nil {
-			return
-		}
-	})
+	if log == nil {
+		return errors.New(errors.InvalidParameter, op, "missing hclog")
+	}
+	// the order of operations is important here.  we want to determine if
+	// there's an error before setting the singleton sysEventer which can only
+	// be done one time.
+	eventer, err := NewEventer(log, c)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
+	sysEventerOnce.Do(func() {
+		sysEventer = eventer
+	})
 	return nil
 }
 
@@ -194,17 +197,33 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 			})
 		}
 	}
+	if c.AuditEnabled && len(auditPipelines) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "audit events enabled but no sink defined for it")
+	}
+	if c.ObservationsEnabled && len(observationPipelines) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "observation events enabled but no sink defined for it")
+	}
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
-		id, err = newId(AuditPipeline)
+		gatedFilterNode := eventlogger.GatedFilter{}
+		gateId, err := newId("gated-audit")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		gatedFilterNodeId := eventlogger.NodeID(gateId)
+		if err := broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
+		}
+
+		pipeId, err := newId(AuditPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		err = broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
-			PipelineID: eventlogger.PipelineID(id),
-			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+			PipelineID: eventlogger.PipelineID(pipeId),
+			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to register audit pipeline")
@@ -213,14 +232,24 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 	}
 	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
-		id, err = newId(ObservationPipeline)
+		gatedFilterNode := eventlogger.GatedFilter{}
+		gateId, err := newId("gated-audit")
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		gatedFilterNodeId := eventlogger.NodeID(gateId)
+		if err := broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
+		}
+
+		pipeId, err := newId(ObservationPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		err = broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
-			PipelineID: eventlogger.PipelineID(id),
-			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+			PipelineID: eventlogger.PipelineID(pipeId),
+			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to register observation pipeline")
@@ -229,13 +258,13 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
-		id, err = newId(ErrPipeline)
+		pipeId, err := newId(ErrPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		err = broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
-			PipelineID: eventlogger.PipelineID(id),
+			PipelineID: eventlogger.PipelineID(pipeId),
 			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
 		})
 		if err != nil {
@@ -272,14 +301,17 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 	}, nil
 }
 
-// WriteObservation writes/sends an Observation event.
-func (e *Eventer) WriteObservation(ctx context.Context, event *Observation, opt ...Option) error {
+// writeObservation writes/sends an Observation event.
+func (e *Eventer) writeObservation(ctx context.Context, event *Observation, opt ...Option) error {
 	const op = "event.(Eventer).WriteObservation"
 	if !e.conf.ObservationsEnabled {
 		return nil
 	}
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
-		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
+		event.Header["op"] = string(event.Op)
+		event.Header["request_info"] = event.RequestInfo
+
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})
 	if err != nil {
 		e.logError("encountered an error sending an observation event", "error:", err.Error())
@@ -288,8 +320,8 @@ func (e *Eventer) WriteObservation(ctx context.Context, event *Observation, opt 
 	return nil
 }
 
-// WriteError writes/sends an Err event
-func (e *Eventer) WriteError(ctx context.Context, event *Err, opt ...Option) error {
+// writeError writes/sends an Err event
+func (e *Eventer) writeError(ctx context.Context, event *Err, opt ...Option) error {
 	const op = "event.(Eventer).WriteError"
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
@@ -301,8 +333,8 @@ func (e *Eventer) WriteError(ctx context.Context, event *Err, opt ...Option) err
 	return nil
 }
 
-// WriteAudit writes/send an audit event
-func (e *Eventer) WriteAudit(ctx context.Context, event *Audit, opt ...Option) error {
+// writeAudit writes/send an audit event
+func (e *Eventer) writeAudit(ctx context.Context, event *Audit, opt ...Option) error {
 	const op = "event.(Eventer).WriteAudit"
 	if !e.conf.AuditEnabled {
 		return nil
