@@ -60,6 +60,9 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if cs.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
+	if cs.clientCert != nil && len(cs.clientCert.CertificateKey) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "client certificate without private key")
+	}
 
 	cs = cs.clone()
 

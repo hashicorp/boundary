@@ -29,15 +29,15 @@ func NewClientCertificate(certificate []byte, key []byte) (*ClientCertificate, e
 	if len(certificate) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no certificate")
 	}
-	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no certificate key")
-	}
 
 	certificateCopy := make([]byte, len(certificate))
 	copy(certificateCopy, certificate)
 
-	keyCopy := make([]byte, len(key))
-	copy(keyCopy, key)
+	var keyCopy []byte
+	if len(key) > 0 {
+		keyCopy = make([]byte, len(key))
+		copy(keyCopy, key)
+	}
 
 	c := &ClientCertificate{
 		ClientCertificate: &store.ClientCertificate{
@@ -76,6 +76,9 @@ func (c *ClientCertificate) SetTableName(n string) {
 
 func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).encrypt"
+	if len(c.CertificateKey) == 0 {
+		errors.New(errors.InvalidParameter, op, "no certificate key defined")
+	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
 	}

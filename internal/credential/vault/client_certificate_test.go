@@ -53,6 +53,7 @@ func TestClientCertificate_New(t *testing.T) {
 		args    args
 		want    *ClientCertificate
 		wantErr bool
+		wantEncryptErr bool
 	}{
 		{
 			name: "missing-certificate",
@@ -63,12 +64,16 @@ func TestClientCertificate_New(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing-key",
+			name: "valid-missing-key",
 			args: args{
 				certificate: []byte(certPem),
 			},
-			want:    nil,
-			wantErr: true,
+			want: &ClientCertificate{
+				ClientCertificate: &store.ClientCertificate{
+					Certificate:    []byte(certPem),
+				},
+			},
+			wantEncryptErr: true,
 		},
 		{
 			name: "valid",
@@ -108,8 +113,13 @@ func TestClientCertificate_New(t *testing.T) {
 			assert.Empty(got.CtCertificateKey)
 			assert.Equal(want, got)
 
-			require.NoError(got.encrypt(ctx, databaseWrapper))
-			require.NoError(got.decrypt(ctx, databaseWrapper))
+			err = got.encrypt(ctx, databaseWrapper)
+			if tt.wantEncryptErr {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.NoError(got.decrypt(ctx, databaseWrapper))
+			}
 		})
 	}
 }

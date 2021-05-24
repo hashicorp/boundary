@@ -243,6 +243,26 @@ func TestCreate(t *testing.T) {
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Define key in both client cert payload and key field",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+				Type:    credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:              v.Addr,
+						VaultToken:           token,
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificateKey: wrapperspb.String(string(append(v.ClientCert, v.ClientKey...))),
+						ClientCertificate: wrapperspb.String(string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
