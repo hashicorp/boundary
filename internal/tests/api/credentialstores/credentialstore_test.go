@@ -35,7 +35,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		tok := vaultServ.CreateToken(t).Auth.ClientToken
 		expected = append(expected, &credentialstores.CredentialStore{Name: fmt.Sprint(i), Attributes: map[string]interface{}{
-			"address": vaultServ.Addr,
+			"address":     vaultServ.Addr,
 			"vault_token": tok,
 		}})
 	}

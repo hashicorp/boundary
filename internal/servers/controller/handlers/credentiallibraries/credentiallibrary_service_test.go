@@ -233,7 +233,7 @@ func TestCreate(t *testing.T) {
 			name: "Type and parent id must match",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type: "static",
+				Type:              "static",
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
 						VaultPath: "something",
