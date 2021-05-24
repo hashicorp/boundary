@@ -60,11 +60,6 @@ func Test_WriteObservation(t *testing.T) {
 
 	info := &event.RequestInfo{Id: "867-5309"}
 
-	testHdr := map[string]interface{}{
-		"name": "bar",
-		"list": []string{"1", "2"},
-	}
-
 	ctx, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
 	ctx, err = event.NewRequestInfoContext(ctx, info)
@@ -80,9 +75,15 @@ func Test_WriteObservation(t *testing.T) {
 		wantFileSink            string
 	}{
 		{
-			name:                    "simple",
-			ctx:                     ctx,
-			header:                  testHdr,
+			name: "simple",
+			ctx:  ctx,
+			header: map[string]interface{}{
+				"name": "bar",
+				"list": []string{"1", "2"},
+			},
+			details: map[string]interface{}{
+				"file": "temp-file.txt",
+			},
 			errSinkFileName:         tmpErrFile.Name(),
 			observationSinkFileName: tmpFile.Name(),
 			wantFileSink:            "first",
@@ -91,7 +92,7 @@ func Test_WriteObservation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details))
+			err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(tt.header), event.WithDetails(tt.details), event.WithFlush())
 			require.NoError(err)
 
 			if tt.observationSinkFileName != "" {
@@ -104,9 +105,9 @@ func Test_WriteObservation(t *testing.T) {
 
 				actualJson, err := json.Marshal(gotObservation)
 				require.NoError(err)
-				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation.Payload["id"].(string), gotObservation.CreatedAt, tt.header, tt.details)
+				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation, tt.header, tt.details)
 
-				assert.Equal(string(wantJson), string(actualJson))
+				assert.JSONEq(string(wantJson), string(actualJson))
 			}
 
 			if tt.errSinkFileName != "" {
@@ -120,7 +121,7 @@ func Test_WriteObservation(t *testing.T) {
 
 }
 
-func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, Id, createdAt string, hdr, details map[string]interface{}) []byte {
+func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *eventJson, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	require := require.New(t)
 
@@ -128,19 +129,35 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 	require.Truef(ok, "missing reqInfo in ctx")
 
 	j := eventJson{
-		CreatedAt: createdAt,
+		CreatedAt: got.CreatedAt,
 		EventType: string(event.ObservationType),
 		Payload: map[string]interface{}{
-			"id":           Id,
-			"op":           string(caller),
-			"request_info": reqInfo,
+			"id": got.Payload["id"].(string),
+			"header": map[string]interface{}{
+				"op":           string(caller),
+				"request_info": reqInfo,
+			},
 		},
 	}
 	if hdr != nil {
-		j.Payload["header"] = hdr
+		h := j.Payload["header"].(map[string]interface{})
+		for k, v := range hdr {
+			h[k] = v
+		}
 	}
 	if details != nil {
-		j.Payload["details"] = details
+		d := got.Payload["details"].([]interface{})[0].(map[string]interface{})
+		j.Payload["details"] = []struct {
+			CreatedAt string                 `json:"created_at"`
+			Type      string                 `json:"type"`
+			Payload   map[string]interface{} `json:"payload"`
+		}{
+			{
+				CreatedAt: d["created_at"].(string),
+				Type:      d["type"].(string),
+				Payload:   details,
+			},
+		}
 	}
 	b, err := json.Marshal(j)
 	require.NoError(err)
