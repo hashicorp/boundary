@@ -184,8 +184,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 	}
 }
 
-/*
-func TestRepository_LookupAccount(t *testing.T) {
+func TestRepository_LookupManagedGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -205,30 +204,30 @@ func TestRepository_LookupAccount(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	account := TestAccount(t, conn, authMethod, "test-subject")
+	mg := TestManagedGroup(t, conn, authMethod, `"/foo" == "bar"`)
 
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-id")
+	newMgId, err := newManagedGroupId()
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
 		in         string
-		want       *Account
+		want       *ManagedGroup
 		wantIsErr  errors.Code
 		wantErrMsg string
 	}{
 		{
 			name:       "With no public id",
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "oidc.(Repository).LookupAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "oidc.(Repository).LookupManagedGroup: missing public id: parameter violation: error #102",
 		},
 		{
-			name: "With non existing account id",
-			in:   newAcctId,
+			name: "With non existing mg id",
+			in:   newMgId,
 		},
 		{
-			name: "With existing account id",
-			in:   account.GetPublicId(),
-			want: account,
+			name: "With existing mg id",
+			in:   mg.GetPublicId(),
+			want: mg,
 		},
 	}
 
@@ -239,7 +238,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupAccount(context.Background(), tt.in)
+			got, err := repo.LookupManagedGroup(context.Background(), tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -251,6 +250,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	}
 }
 
+/*
 func TestRepository_DeleteAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)

@@ -176,6 +176,24 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, op
 	return a
 }
 
+// TestManagedGroup creates a test oidc managed group.
+func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg, err := NewManagedGroup(am.PublicId, filter, opt...)
+	require.NoError(err)
+
+	id, err := newManagedGroupId()
+	require.NoError(err)
+	mg.PublicId = id
+
+	require.NoError(rw.Create(ctx, mg))
+	return mg
+}
+
 // TestConvertToUrls will convert URL string representations to a slice of
 // *url.URL
 func TestConvertToUrls(t *testing.T, urls ...string) []*url.URL {
