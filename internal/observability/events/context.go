@@ -41,9 +41,11 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 
 // WriteObservation will write an observation event.  It will first check the
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
-// found an error is returned.  At least one and any combination of the
-// supported options may be used: WithHeader, WithDetails, WithId, WithFlush and
-// WithRequestInfo. All other options are ignored.
+// found an error is returned.
+//
+// At least one and any combination of the supported options may be used:
+// WithHeader, WithDetails, WithId, WithFlush and WithRequestInfo. All other
+// options are ignored.
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteObservation"
 	eventer, ok := ctx.Value(EventerKey).(*Eventer)
@@ -75,8 +77,10 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 
 // WriteError will write an error event.  It will first check the
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
-// found an hclog.Logger will be created and used. The options WithId and
-// WithRequestInfo are supported and all other options are ignored.
+// found an hclog.Logger will be created and used.
+//
+// The options WithId and WithRequestInfo are supported and all other options
+// are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	const op = "event.WriteError"
 	eventer, ok := ctx.Value(EventerKey).(*Eventer)
@@ -110,8 +114,37 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	}
 }
 
+// WriteAudit will write an audit event.  It will first check the ctx for an
+// eventer, then try event.SysEventer() and if no eventer can be  found an error
+// is returned.
+//
+// At least one and any combination of the supported options may be used:
+// WithRequest, WithResponse, WithAuth, WithId, WithFlush and WithRequestInfo.
+// All other options are ignored.
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
-	panic("to-do")
+	const op = "event.WriteAudit"
+	eventer, ok := ctx.Value(EventerKey).(*Eventer)
+	if !ok {
+		eventer = SysEventer()
+		if eventer == nil {
+			return errors.New(errors.InvalidParameter, op, "missing both context and system eventer")
+		}
+	}
+	opts := getOpts(opt...)
+	if opts.withRequestInfo == nil {
+		var err error
+		if opt, err = addCtxOptions(ctx, opt...); err != nil {
+			return errors.Wrap(err, op)
+		}
+	}
+	e, err := newAudit(caller, opt...)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err := eventer.writeAudit(ctx, e); err != nil {
+		return errors.Wrap(err, op)
+	}
+	return nil
 }
 
 func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
