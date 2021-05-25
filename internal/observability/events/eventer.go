@@ -16,6 +16,11 @@ const (
 	OpField          = "op"
 	RequestInfoField = "request_info"
 	VersionField     = "version"
+	DetailsField     = "details"
+	HeaderField      = "header"
+	IdField          = "id"
+	CreatedAtField   = "created_at"
+	TypeField        = "type"
 )
 
 type SinkType string
@@ -320,9 +325,11 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 	}
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		if event.Header != nil {
-			event.Header[OpField] = string(event.Op)
 			event.Header[RequestInfoField] = event.RequestInfo
 			event.Header[VersionField] = event.Version
+		}
+		if event.Detail != nil {
+			event.Detail[OpField] = string(event.Op)
 		}
 		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})
