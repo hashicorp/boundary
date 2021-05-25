@@ -5,12 +5,12 @@ create table auth_oidc_managed_group (
     primary key,
   auth_method_id wt_public_id
     not null,
-  "name" wt_name,
+  name wt_name,
   description wt_description,
   create_time wt_timestamp,
   update_time wt_timestamp,
-  "version" wt_version,
-  "filter" wt_bexprfilter
+  version wt_version,
+  filter wt_bexprfilter
     not null,
   -- Ensure that this managed group relates to an oidc auth method, as opposed
   -- to other types
@@ -86,5 +86,12 @@ create trigger
   insert_managed_group_subtype
 before insert on auth_oidc_managed_group
   for each row execute procedure insert_managed_group_subtype();
+
+-- The tickets for oplog are the subtypes not the base types because no updates
+-- are done to any values in the base types.
+insert into oplog_ticket
+  (name, version)
+values
+  ('auth_oidc_managed_group', 1);
 
 commit;
