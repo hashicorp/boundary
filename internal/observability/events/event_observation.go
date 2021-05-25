@@ -8,8 +8,6 @@ import (
 
 const ObservationVersion = "v0.1"
 
-// fields are intentionally alphabetically ordered so they will match output
-// from marshaling event json
 type observation struct {
 	*eventlogger.SimpleGatedPayload
 	Version     string       `json:"version"`

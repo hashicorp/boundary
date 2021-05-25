@@ -4,8 +4,6 @@ import "github.com/hashicorp/boundary/internal/errors"
 
 const ErrorVersion = "v0.1"
 
-// fields are intentionally alphabetically ordered so they will match output
-// from marshaling event json
 type err struct {
 	Error       error        `json:"error"`
 	Id          Id           `json:"id,omitempty"`
