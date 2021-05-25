@@ -21,51 +21,32 @@ func Test_ManagedGroupTable(t *testing.T) {
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
 	defaultOidcAuthMethodId := "amoidc_1234567890"
-	globalScopeId := "global"
 
 	insertTests := []struct {
 		testName     string
 		publicId     string
 		authMethodId string
-		scopeId      string
 		wantErr      bool
 	}{
 		{
 			testName:     "invalid auth method",
 			publicId:     managedGroupId,
 			authMethodId: "amoid_1234567890",
-			scopeId:      globalScopeId,
-			wantErr:      true,
-		},
-		{
-			testName:     "invalid scope",
-			publicId:     managedGroupId,
-			authMethodId: defaultOidcAuthMethodId,
-			scopeId:      "globule",
-			wantErr:      true,
-		},
-		{
-			testName:     "invalid scope",
-			publicId:     managedGroupId,
-			authMethodId: defaultOidcAuthMethodId,
-			scopeId:      "globule",
 			wantErr:      true,
 		},
 		{
 			testName:     "valid",
 			publicId:     managedGroupId,
 			authMethodId: defaultOidcAuthMethodId,
-			scopeId:      globalScopeId,
 			wantErr:      false,
 		},
 	}
 	for _, tt := range insertTests {
 		t.Run("insert: "+tt.testName, func(t *testing.T) {
 			require := require.New(t)
-			_, err = db.Exec("insert into auth_managed_group values ($1, $2, $3)",
+			_, err = db.Exec("insert into auth_managed_group values ($1, $2)",
 				tt.publicId,
-				tt.authMethodId,
-				tt.scopeId)
+				tt.authMethodId)
 			require.True(tt.wantErr == (err != nil))
 		})
 	}
@@ -81,13 +62,6 @@ func Test_ManagedGroupTable(t *testing.T) {
 			testName: "immutable public id",
 			column:   "public_id",
 			value:    "z_yxwvutsrqp",
-			publicId: managedGroupId,
-			wantErr:  true,
-		},
-		{
-			testName: "immutable scope",
-			column:   "scope_id",
-			value:    "globule",
 			publicId: managedGroupId,
 			wantErr:  true,
 		},
@@ -119,7 +93,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	managedGroupId := "a_bcdefghijk"
 	defaultPasswordAuthMethodId := "ampw_1234567890"
 	defaultOidcAuthMethodId := "amoidc_1234567890"
-	globalScopeId := "global"
 	name := "this is the name"
 	filter := "this is a filter"
 
@@ -129,7 +102,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 			testName     string
 			publicId     string
 			authMethodId string
-			scopeId      string
 			name         string
 			filter       string
 			wantErr      bool
@@ -138,7 +110,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName:     "null filter",
 				publicId:     managedGroupId,
 				authMethodId: "amoid_1234567890",
-				scopeId:      globalScopeId,
 				name:         name,
 				filter:       "",
 				wantErr:      true,
@@ -147,16 +118,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName:     "invalid auth method",
 				publicId:     managedGroupId,
 				authMethodId: defaultPasswordAuthMethodId,
-				scopeId:      globalScopeId,
-				name:         name,
-				filter:       filter,
-				wantErr:      true,
-			},
-			{
-				testName:     "invalid scope",
-				publicId:     managedGroupId,
-				authMethodId: defaultOidcAuthMethodId,
-				scopeId:      "globule",
 				name:         name,
 				filter:       filter,
 				wantErr:      true,
@@ -165,7 +126,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName:     "valid",
 				publicId:     managedGroupId,
 				authMethodId: defaultOidcAuthMethodId,
-				scopeId:      globalScopeId,
 				name:         name,
 				filter:       filter,
 				wantErr:      false,
@@ -174,7 +134,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName:     "duplicate public id",
 				publicId:     managedGroupId,
 				authMethodId: defaultOidcAuthMethodId,
-				scopeId:      globalScopeId,
 				name:         name,
 				filter:       filter,
 				wantErr:      true,
@@ -183,7 +142,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName:     "duplicate name",
 				publicId:     "z_yxwvutsrqp",
 				authMethodId: defaultOidcAuthMethodId,
-				scopeId:      globalScopeId,
 				name:         name,
 				filter:       filter,
 				wantErr:      true,
@@ -192,10 +150,9 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 		for _, tt := range insertTests {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				require := require.New(t)
-				_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, scope_id, name, filter) values ($1, $2, $3, $4, $5)",
+				_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values ($1, $2, $3, $4)",
 					tt.publicId,
 					tt.authMethodId,
-					tt.scopeId,
 					tt.name,
 					tt.filter)
 				require.True(tt.wantErr == (err != nil))
@@ -226,12 +183,6 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 				testName: "immutable public id",
 				column:   "public_id",
 				value:    "z_yxwvutsrqp",
-				wantErr:  true,
-			},
-			{
-				testName: "immutable scope",
-				column:   "scope_id",
-				value:    "globule",
 				wantErr:  true,
 			},
 			{
@@ -273,11 +224,11 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.Equal(t, 2, version)
 
 	// Finally, read values from auth_managed_group to ensure it was populated automatically
-	rows, err = db.Query("select public_id, auth_method_id, scope_id from auth_managed_group")
+	rows, err = db.Query("select public_id, auth_method_id from auth_managed_group")
 	require.NoError(t, err)
 	require.True(t, rows.Next())
-	var public_id, auth_method_id, scope_id string
-	require.NoError(t, rows.Scan(&public_id, &auth_method_id, &scope_id))
+	var public_id, auth_method_id string
+	require.NoError(t, rows.Scan(&public_id, &auth_method_id))
 	assert.Equal(t, managedGroupId, public_id)
 	assert.Equal(t, defaultOidcAuthMethodId, auth_method_id)
 }
@@ -292,15 +243,13 @@ func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
 
 	managedGroupId := "a_bcdefghijk"
 	defaultOidcAuthMethodId := "amoidc_1234567890"
-	globalScopeId := "global"
 	name := "this is the name"
 	filter := "this is a filter"
 
 	// Insert valid data in auth_oidc_managed_group to use for the following tests
-	_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, scope_id, name, filter) values ($1, $2, $3, $4, $5)",
+	_, err = db.Exec("insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values ($1, $2, $3, $4)",
 		managedGroupId,
 		defaultOidcAuthMethodId,
-		globalScopeId,
 		name,
 		filter)
 	require.NoError(t, err)
