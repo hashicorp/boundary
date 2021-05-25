@@ -156,30 +156,30 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 		CreatedAt: got.CreatedAt,
 		EventType: string(event.ObservationType),
 		Payload: map[string]interface{}{
-			"id": got.Payload["id"].(string),
-			"header": map[string]interface{}{
-				event.OpField:          string(caller),
+			event.IdField: got.Payload[event.IdField].(string),
+			event.HeaderField: map[string]interface{}{
 				event.RequestInfoField: reqInfo,
 				event.VersionField:     event.ObservationVersion,
 			},
 		},
 	}
 	if hdr != nil {
-		h := j.Payload["header"].(map[string]interface{})
+		h := j.Payload[event.HeaderField].(map[string]interface{})
 		for k, v := range hdr {
 			h[k] = v
 		}
 	}
 	if details != nil {
-		d := got.Payload["details"].([]interface{})[0].(map[string]interface{})
-		j.Payload["details"] = []struct {
+		details[event.OpField] = string(caller)
+		d := got.Payload[event.DetailsField].([]interface{})[0].(map[string]interface{})
+		j.Payload[event.DetailsField] = []struct {
 			CreatedAt string                 `json:"created_at"`
 			Type      string                 `json:"type"`
 			Payload   map[string]interface{} `json:"payload"`
 		}{
 			{
-				CreatedAt: d["created_at"].(string),
-				Type:      d["type"].(string),
+				CreatedAt: d[event.CreatedAtField].(string),
+				Type:      d[event.TypeField].(string),
 				Payload:   details,
 			},
 		}
