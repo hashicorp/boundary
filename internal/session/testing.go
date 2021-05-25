@@ -8,6 +8,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -121,11 +123,12 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-
 	hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
-
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
+
+	stores := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)
+	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 
 	tcpTarget := target.TestTcpTarget(t, conn, proj.PublicId, "test target")
 
@@ -133,6 +136,8 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	_, _, _, err = targetRepo.AddTargetHostSets(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+	require.NoError(err)
+	_, _, _, err = targetRepo.AddTargetCredentialLibraries(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion()+1, []string{libs[0].PublicId, libs[1].PublicId})
 	require.NoError(err)
 
 	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
@@ -144,18 +149,25 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)
 
+	creds := []*DynamicCredential{
+		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
+		NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
+		NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+	}
+
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
 	return ComposedOf{
-		UserId:          user.PublicId,
-		HostId:          hosts[0].PublicId,
-		TargetId:        tcpTarget.PublicId,
-		HostSetId:       sets[0].PublicId,
-		AuthTokenId:     at.PublicId,
-		ScopeId:         tcpTarget.ScopeId,
-		Endpoint:        "tcp://127.0.0.1:22",
-		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
-		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
+		UserId:             user.PublicId,
+		HostId:             hosts[0].PublicId,
+		TargetId:           tcpTarget.PublicId,
+		HostSetId:          sets[0].PublicId,
+		AuthTokenId:        at.PublicId,
+		ScopeId:            tcpTarget.ScopeId,
+		Endpoint:           "tcp://127.0.0.1:22",
+		ExpirationTime:     &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit:    tcpTarget.GetSessionConnectionLimit(),
+		DynamicCredentials: creds,
 	}
 }
 

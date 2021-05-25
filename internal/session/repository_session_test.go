@@ -345,15 +345,16 @@ func TestRepository_CreateSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				UserId:          tt.args.composedOf.UserId,
-				HostId:          tt.args.composedOf.HostId,
-				TargetId:        tt.args.composedOf.TargetId,
-				HostSetId:       tt.args.composedOf.HostSetId,
-				AuthTokenId:     tt.args.composedOf.AuthTokenId,
-				ScopeId:         tt.args.composedOf.ScopeId,
-				Endpoint:        "tcp://127.0.0.1:22",
-				ExpirationTime:  tt.args.composedOf.ExpirationTime,
-				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
+				UserId:             tt.args.composedOf.UserId,
+				HostId:             tt.args.composedOf.HostId,
+				TargetId:           tt.args.composedOf.TargetId,
+				HostSetId:          tt.args.composedOf.HostSetId,
+				AuthTokenId:        tt.args.composedOf.AuthTokenId,
+				ScopeId:            tt.args.composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     tt.args.composedOf.ExpirationTime,
+				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
+				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 			}
 			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
@@ -378,7 +379,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)
 			ses.ExpirationTime = foundSession.ExpirationTime
 
-			assert.Equal(foundSession, ses)
+			assert.Equal(ses, foundSession)
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
