@@ -9,7 +9,7 @@ import (
 )
 
 // defaultManagedGroupTableName defines the default table name for a Managed Group
-const defaultMangedGroupTableName = "auth_oidc_managed_group"
+const defaultManagedGroupTableName = "auth_oidc_managed_group"
 
 // ManagedGroup contains an OIDC managed group. It is assigned to an OIDC AuthMethod
 // and updates/deletes to that AuthMethod are cascaded to its Managed Groups.
@@ -73,7 +73,7 @@ func (mg *ManagedGroup) TableName() string {
 	if mg.tableName != "" {
 		return mg.tableName
 	}
-	return defaultAccountTableName
+	return defaultManagedGroupTableName
 }
 
 // SetTableName sets the table name.

@@ -12,12 +12,12 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateManagedGroup inserts an ManagedGroup, mg, into the repository and returns a
-// new ManagedGroup containing its PublicId. mg is not changed. mg must contain a
-// valid AuthMethodId. mg must not contain a PublicId. The PublicId is
-// generated and assigned by this method.
+// CreateManagedGroup inserts an ManagedGroup, mg, into the repository and
+// returns a new ManagedGroup containing its PublicId. mg is not changed. mg
+// must contain a valid AuthMethodId. mg must not contain a PublicId. The
+// PublicId is generated and assigned by this method.
 //
-// Both mg.Name and a.Description are optional. If mg.Name is set, it must be
+// Both mg.Name and mg.Description are optional. If mg.Name is set, it must be
 // unique within mg.AuthMethodId.
 func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg *ManagedGroup, opt ...Option) (*ManagedGroup, error) {
 	const op = "oidc.(Repository).CreateManagedGroup"

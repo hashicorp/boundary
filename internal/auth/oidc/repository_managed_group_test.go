@@ -2,15 +2,11 @@ package oidc
 
 import (
 	"context"
-	"fmt"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
-	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -19,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_CreateAccount(t *testing.T) {
+func TestRepository_CreateManagedGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -40,156 +36,101 @@ func TestRepository_CreateAccount(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	noIssuerAm := TestAuthMethod(
-		t, conn, databaseWrapper, org.GetPublicId(), InactiveState,
-		"client", "fido",
-		WithSigningAlgs(RS256),
-		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-	)
-
 	tests := []struct {
 		name       string
-		in         *Account
+		in         *ManagedGroup
 		opts       []Option
-		want       *Account
+		want       *ManagedGroup
 		wantIsErr  errors.Code
 		wantErrMsg string
 	}{
 		{
-			name:       "nil-Account",
+			name:       "nil-ManagedGroup",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing Account: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing ManagedGroup: parameter violation: error #100",
 		},
 		{
-			name:       "nil-embedded-Account",
-			in:         &Account{},
+			name:       "nil-embedded-ManagedGroup",
+			in:         &ManagedGroup{},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing embedded ManagedGroup: parameter violation: error #100",
 		},
 		{
 			name: "invalid-no-auth-method-id",
-			in: &Account{
-				Account: &store.Account{},
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing auth method id: parameter violation: error #100",
+		},
+		{
+			name: "invalid-no-filter",
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					AuthMethodId: authMethod.PublicId,
+				},
+			},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing filter: parameter violation: error #100",
 		},
 		{
 			name: "invalid-public-id-set",
-			in: &Account{
-				Account: &store.Account{
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					PublicId:     "hcst_OOOOOOOOOO",
-					Subject:      "invalid public id set",
+					Filter:       `"/test/foo" == "baz"`,
+					PublicId:     "mgoidc_OOOOOOOOOO",
 				},
 			},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: public id must be empty: parameter violation: error #100",
-		},
-		{
-			name: "invalid-no-subject",
-			in: &Account{
-				Account: &store.Account{
-					AuthMethodId: authMethod.PublicId,
-				},
-			},
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: missing subject: parameter violation: error #100",
-		},
-		{
-			name: "invalid-no-issuer-authmethod-no-issuer",
-			in: &Account{
-				Account: &store.Account{
-					AuthMethodId: noIssuerAm.PublicId,
-					Subject:      "invalid no issuer authmethod no issuer",
-				},
-			},
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).CreateAccount: no issuer on auth method: parameter violation: error #100",
-		},
-		{
-			name: "valid-provide-issuer-authmethod-no-issuer",
-			in: &Account{
-				Account: &store.Account{
-					AuthMethodId: noIssuerAm.PublicId,
-					Subject:      "valid provide issuer authmethod no issuer",
-					Issuer:       "https://overwrite.com",
-				},
-			},
-			want: &Account{
-				Account: &store.Account{
-					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://overwrite.com",
-					Subject:      "valid provide issuer authmethod no issuer",
-				},
-			},
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: public id must be empty: parameter violation: error #100",
 		},
 		{
 			name: "valid-no-options",
-			in: &Account{
-				Account: &store.Account{
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Subject:      "valid-no-options",
+					Filter:       `"/test/foo" == "baz"`,
 				},
 			},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://www.alice.com",
-					Subject:      "valid-no-options",
+					Filter:       `"/test/foo" == "baz"`,
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
-			in: &Account{
-				Account: &store.Account{
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Subject:      "valid-with-name",
+					Filter:       `"/test/foo" == "baz"`,
 					Name:         "test-name-repo",
 				},
 			},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://www.alice.com",
-					Subject:      "valid-with-name",
+					Filter:       `"/test/foo" == "baz"`,
 					Name:         "test-name-repo",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
-			in: &Account{
-				Account: &store.Account{
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Subject:      "valid-with-description",
+					Filter:       `"/test/foo" == "baz"`,
 					Description:  ("test-description-repo"),
 				},
 			},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://www.alice.com",
-					Subject:      "valid-with-description",
+					Filter:       `"/test/foo" == "baz"`,
 					Description:  ("test-description-repo"),
-				},
-			},
-		},
-		{
-			name: "valid-overwrite-issuer",
-			in: &Account{
-				Account: &store.Account{
-					AuthMethodId: authMethod.PublicId,
-					Subject:      "valid-overwrite-issuer",
-					Issuer:       "https://overwrite.com",
-				},
-			},
-			want: &Account{
-				Account: &store.Account{
-					AuthMethodId: authMethod.PublicId,
-					Issuer:       "https://overwrite.com",
-					Subject:      "valid-overwrite-issuer",
 				},
 			},
 		},
@@ -202,7 +143,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateManagedGroup(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -211,12 +152,10 @@ func TestRepository_CreateAccount(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, ManagedGroupPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(tt.want.Subject, got.Subject)
-			assert.Equal(tt.want.Issuer, got.Issuer)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -224,6 +163,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 	}
 }
 
+/*
 func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1314,3 +1254,4 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
+*/
