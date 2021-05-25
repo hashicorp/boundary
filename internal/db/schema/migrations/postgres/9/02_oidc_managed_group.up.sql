@@ -5,8 +5,6 @@ create table auth_oidc_managed_group (
     primary key,
   auth_method_id wt_public_id
     not null,
-  scope_id wt_scope_id
-    not null,
   "name" wt_name,
   description wt_description,
   create_time wt_timestamp,
@@ -15,11 +13,10 @@ create table auth_oidc_managed_group (
   "filter" wt_bexprfilter
     not null,
   -- Ensure that this managed group relates to an oidc auth method, as opposed
-  -- to other types. Including scope ensures that this group is within the same
-  -- scope as the auth method.
+  -- to other types
   constraint auth_oidc_method_fkey
-    foreign key (scope_id, auth_method_id) -- fk1
-      references auth_oidc_method (scope_id, public_id)
+    foreign key (auth_method_id) -- fk1
+      references auth_oidc_method (public_id)
       on delete cascade
       on update cascade,
   -- Ensure it relates to an abstract managed group
@@ -42,7 +39,7 @@ create trigger
   immutable_columns
 before
 update on auth_oidc_managed_group
-  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time');
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'create_time');
 
 -- Populate create time on insert
 create trigger 
@@ -74,15 +71,10 @@ create or replace function
 as $$
 begin
 
-  select auth_method.scope_id
-    into new.scope_id
-  from auth_method
-  where auth_method.public_id = new.auth_method_id;
-
   insert into auth_managed_group
-    (public_id, auth_method_id, scope_id)
+    (public_id, auth_method_id)
   values
-    (new.public_id, new.auth_method_id, new.scope_id);
+    (new.public_id, new.auth_method_id);
 
   return new;
 

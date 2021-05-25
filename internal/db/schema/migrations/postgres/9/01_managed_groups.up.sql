@@ -6,8 +6,6 @@ create table auth_managed_group (
     primary key,
   auth_method_id wt_public_id
     not null,
-  scope_id wt_scope_id
-    not null,
   -- Ensure that if the auth method is deleted (which will also happen if the
   -- scope is deleted) this is deleted too
   constraint auth_method_fkey
@@ -24,6 +22,6 @@ create trigger
   immutable_columns
 before
 update on auth_managed_group
-  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id');
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id');
 
 commit;
