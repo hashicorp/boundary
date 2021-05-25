@@ -43,6 +43,15 @@ type Library interface {
 	GetStoreId() string
 }
 
+// Purpose is the purpose of the credential.
+type Purpose string
+
+const (
+	ApplicationPurpose Purpose = "application"
+	IngressPurpose     Purpose = "ingress"
+	EgressPurpose      Purpose = "egress"
+)
+
 // SecretData represents secret data.
 type SecretData interface{}
 
@@ -57,4 +66,5 @@ type Dynamic interface {
 	Credential
 	GetSessionId() string
 	Library() Library
+	Purpose() Purpose
 }
