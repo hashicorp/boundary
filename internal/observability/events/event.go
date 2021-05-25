@@ -16,11 +16,10 @@ type Op string
 
 // RequestInfo defines the fields captured about a Boundary request.
 type RequestInfo struct {
-	Id       string    `json:"id,omitempty"`
-	Method   string    `json:"method,omitempty"`
-	Path     string    `json:"path,omitempty"`
-	PublicId string    `json:"public_id,omitempty"`
-	UserInfo *UserInfo `json:"user_info,omitempty"`
+	Id       string `json:"id,omitempty"`
+	Method   string `json:"method,omitempty"`
+	Path     string `json:"path,omitempty"`
+	PublicId string `json:"public_id,omitempty"`
 }
 
 // UserInfo defines the fields captured about a user for a Boundary request.
