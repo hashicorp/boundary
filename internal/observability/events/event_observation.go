@@ -18,7 +18,7 @@ type observation struct {
 }
 
 func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
-	const op = "event.NewObservation"
+	const op = "event.newObservation"
 	if fromOperation == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
 	}

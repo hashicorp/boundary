@@ -15,7 +15,7 @@ type err struct {
 }
 
 func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
-	const op = "event.NewError"
+	const op = "event.newError"
 	if fromOperation == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
 	}
@@ -44,7 +44,7 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 func (e *err) EventType() string { return string(ErrorType) }
 
 func (e *err) validate() error {
-	const op = "event.(Error).validate"
+	const op = "event.(err).validate"
 	if e.Id == "" {
 		return errors.New(errors.InvalidParameter, op, "missing event id")
 	}
