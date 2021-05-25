@@ -354,13 +354,13 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 }
 
 // writeAudit writes/send an audit event
-func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
+func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 	const op = "event.(Eventer).WriteAudit"
 	if !e.conf.AuditEnabled {
 		return nil
 	}
 	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
-		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
+		return e.broker.Send(ctx, eventlogger.EventType(AuditType), event)
 	})
 	if err != nil {
 		e.logError("encountered an error sending an audit event", "error:", err.Error())
