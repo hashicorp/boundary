@@ -1,5 +1,7 @@
 package event
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -19,6 +21,7 @@ type options struct {
 	withHeader      map[string]interface{}
 	withFlush       bool
 	withRequestInfo *RequestInfo
+	withNow         time.Time
 }
 
 func getDefaultOptions() options {
@@ -51,5 +54,11 @@ func WithFlush() Option {
 func WithRequestInfo(i *RequestInfo) Option {
 	return func(o *options) {
 		o.withRequestInfo = i
+	}
+}
+
+func WithNow(now time.Time) Option {
+	return func(o *options) {
+		o.withNow = now
 	}
 }
