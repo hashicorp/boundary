@@ -22,6 +22,9 @@ type options struct {
 	withFlush       bool
 	withRequestInfo *RequestInfo
 	withNow         time.Time
+	withRequest     *Request
+	withResponse    *Response
+	withAuth        *Auth
 }
 
 func getDefaultOptions() options {
@@ -60,5 +63,23 @@ func WithRequestInfo(i *RequestInfo) Option {
 func WithNow(now time.Time) Option {
 	return func(o *options) {
 		o.withNow = now
+	}
+}
+
+func WithRequest(r *Request) Option {
+	return func(o *options) {
+		o.withRequest = r
+	}
+}
+
+func WithResponse(r *Response) Option {
+	return func(o *options) {
+		o.withResponse = r
+	}
+}
+
+func WithAuth(a *Auth) Option {
+	return func(o *options) {
+		o.withAuth = a
 	}
 }
