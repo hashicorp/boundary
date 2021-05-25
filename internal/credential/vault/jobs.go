@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	defaultTokenRenewalInterval = time.Minute * 5
-	tokenRenewalWindow          = 10 // in minutes
+	defaultTokenRenewalInterval = 5 * time.Minute
+	tokenRenewalWindow          = 10 * time.Minute
 )
 
 // TokenRenewalJob is the recurring job that renews credential store Vault tokens that
@@ -86,10 +86,10 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	}
 
 	var rps []*renewablePrivateStore
-	// Fetch all tokens that will reach their renewal point within the next `tokenRenewalWindow` minutes.
+	// Fetch all tokens that will reach their renewal point within the tokenRenewalWindow.
 	// This is done to avoid constantly scheduling the token renewal job when there are multiple tokens
 	// set to renew in sequence.
-	err = repo.reader.SearchWhere(ctx, &rps, `renewal_time < now() + (?||'min')::interval`, []interface{}{tokenRenewalWindow}, db.WithLimit(r.limit))
+	err = repo.reader.SearchWhere(ctx, &rps, `renewal_time < wt_add_seconds_to_now(?)`, []interface{}{tokenRenewalWindow.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(err, op)
 	}

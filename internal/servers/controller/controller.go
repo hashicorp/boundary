@@ -114,6 +114,14 @@ func New(conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(dbase, dbase, c.kms)
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new scheduler: %w", err)
+	}
+
 	c.IamRepoFn = func() (*iam.Repository, error) {
 		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
@@ -126,7 +134,7 @@ func New(conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(dbase, dbase, c.kms)
+		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
@@ -145,14 +153,6 @@ func New(conf *Config) (*Controller, error) {
 	}
 
 	c.workerAuthCache = cache.New(0, 0)
-
-	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(dbase, dbase, c.kms)
-	}
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
-	if err != nil {
-		return nil, fmt.Errorf("error creating new scheduler: %w", err)
-	}
 
 	return c, nil
 }

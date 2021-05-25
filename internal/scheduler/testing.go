@@ -18,28 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, serverId string, opts ...Option) *Scheduler {
+func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opts ...Option) *Scheduler {
 	t.Helper()
 
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := servers.NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
 	iam.TestRepo(t, conn, wrapper)
-
-	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(rw, rw, kmsCache)
-	}
-
-	s, err := New(serverId, jobRepoFn, hclog.L(), opts...)
-	require.NoError(t, err)
-	return s
-}
-
-func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
-	t.Helper()
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
@@ -51,7 +37,14 @@ func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *serv
 	}
 	_, _, err = serversRepo.UpsertServer(context.Background(), controller)
 	require.NoError(t, err)
-	return controller
+
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(rw, rw, kmsCache)
+	}
+
+	s, err := New(controller.PrivateId, jobRepoFn, hclog.L(), opts...)
+	require.NoError(t, err)
+	return s
 }
 
 func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{}) {

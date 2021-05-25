@@ -163,8 +163,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId)
+	sched := TestScheduler(t, conn, wrapper)
 
 	tests := []struct {
 		name        string
@@ -268,8 +267,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 		_, ok := sched.registeredJobs.Load(tj.name)
 		assert.True(ok)
 
-		server1 := testController(t, conn, wrapper)
-		sched1 := testScheduler(t, conn, wrapper, server1.PrivateId)
+		sched1 := TestScheduler(t, conn, wrapper)
 		// Verify job is not registered on second scheduler
 		_, ok = sched1.registeredJobs.Load(tj.name)
 		assert.False(ok)
@@ -282,23 +280,22 @@ func TestScheduler_RegisterJob(t *testing.T) {
 	})
 }
 
-func TestScheduler_UpdateJobNextRun(t *testing.T) {
+func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId)
+	sched := TestScheduler(t, conn, wrapper)
 
 	t.Run("missing-job-name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		err := sched.UpdateJobNextRun(context.Background(), "", time.Hour)
+		err := sched.UpdateJobNextRunInAtLeast(context.Background(), "", time.Hour)
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
-		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: missing name: parameter violation: error #100", err.Error())
+		assert.Equal("scheduler.(Scheduler).UpdateJobNextRunInAtLeast: missing name: parameter violation: error #100", err.Error())
 	})
 	t.Run("job-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -306,10 +303,10 @@ func TestScheduler_UpdateJobNextRun(t *testing.T) {
 		// Insert fake job to bypass registration check
 		sched.registeredJobs.Store("fake-job-name", nil)
 
-		err := sched.UpdateJobNextRun(context.Background(), "fake-job-name", time.Hour)
+		err := sched.UpdateJobNextRunInAtLeast(context.Background(), "fake-job-name", time.Hour)
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("scheduler.(Scheduler).UpdateJobNextRun: job.(Repository).UpdateJobNextRun: db.DoTx: job.(Repository).UpdateJobNextRun: job \"fake-job-name\" does not exist: search issue: error #1100", err.Error())
+		assert.Equal("scheduler.(Scheduler).UpdateJobNextRunInAtLeast: job.(Repository).UpdateJobNextRunInAtLeast: db.DoTx: job.(Repository).UpdateJobNextRunInAtLeast: job \"fake-job-name\" does not exist: search issue: error #1100", err.Error())
 	})
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -318,21 +315,54 @@ func TestScheduler_UpdateJobNextRun(t *testing.T) {
 			name:        "name",
 			description: "description",
 		}
-		err := sched.RegisterJob(context.Background(), tj)
+		err := sched.RegisterJob(context.Background(), tj, WithNextRunIn(2*time.Hour))
 		require.NoError(err)
 
 		// get job from repo
 		var dbJob job.Job
 		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
 		require.NoError(err)
-		previousNextRun := dbJob.NextScheduledRun.Timestamp.GetSeconds()
+		previousNextRun := dbJob.NextScheduledRun.AsTime()
 
-		err = sched.UpdateJobNextRun(context.Background(), tj.name, time.Hour)
+		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
 		require.NoError(err)
 
 		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
 		require.NoError(err)
-		// Verify job run time in repo is at least 1 hour later than the previous run time
-		assert.True(previousNextRun+int64(time.Hour.Seconds()) <= dbJob.NextScheduledRun.Timestamp.GetSeconds())
+		// Verify job run time in repo is at least 1 hour before than the previous run time
+		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))
+	})
+
+	t.Run("next-run-already-sooner", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		tj := testJob{
+			name:        "name",
+			description: "description",
+		}
+		err := sched.RegisterJob(context.Background(), tj, WithNextRunIn(2*time.Hour))
+		require.NoError(err)
+
+		// get job from repo
+		var dbJob job.Job
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		require.NoError(err)
+		previousNextRun := dbJob.NextScheduledRun.AsTime()
+
+		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 4*time.Hour)
+		require.NoError(err)
+
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		require.NoError(err)
+		// Job should not have updated next run time, since its later than the already scheduled time
+		assert.Equal(previousNextRun, dbJob.NextScheduledRun.AsTime())
+
+		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
+		require.NoError(err)
+
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		require.NoError(err)
+		// Verify job run time in repo is at least 1 hour before than the previous run time
+		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))
 	})
 }

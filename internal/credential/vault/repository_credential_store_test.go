@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,8 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -60,7 +62,8 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -156,7 +159,8 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -265,7 +269,8 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -323,7 +328,8 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -809,7 +815,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -889,7 +896,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -939,7 +947,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -968,7 +977,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1021,7 +1031,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1084,7 +1095,8 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -1217,7 +1229,8 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -1281,7 +1294,8 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -1340,7 +1354,8 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			sche := scheduler.TestScheduler(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 

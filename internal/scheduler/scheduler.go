@@ -76,8 +76,8 @@ func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...
 //
 // • job must be provided and is an implementer of the Job interface.
 //
-// All options are ignored.
-func (s *Scheduler) RegisterJob(ctx context.Context, j Job, _ ...Option) error {
+// WithNextRunIn is the only valid options.
+func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
 	if err := validateJob(j); err != nil {
 		return errors.Wrap(err, op)
@@ -93,7 +93,8 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, _ ...Option) error {
 		return errors.Wrap(err, op)
 	}
 
-	_, err = repo.CreateJob(ctx, j.Name(), j.Description())
+	opts := getOpts(opt...)
+	_, err = repo.CreateJob(ctx, j.Name(), j.Description(), job.WithNextRunIn(opts.withNextRunIn))
 	if err != nil && !errors.IsUniqueError(err) {
 		return errors.Wrap(err, op)
 	}
@@ -102,13 +103,14 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, _ ...Option) error {
 	return nil
 }
 
-// UpdateJobNextRun sets the next scheduled run time for the provided name
-// to the current database time incremented by the nextRunIn parameter.  If
-// nextRunIn == 0 the job will be available to run immediately.
+// UpdateJobNextRunInAtLeast updates the next scheduled run time for the provided name,
+// setting the job's NextScheduledRun time to either the current database time incremented by
+// the nextRunInAtLeast parameter or the current NextScheduledRun time value, which ever is sooner.
+// If nextRunInAtLeast == 0 the job will be available to run immediately.
 //
 // All options are ignored.
-func (s *Scheduler) UpdateJobNextRun(ctx context.Context, name string, nextRunIn time.Duration, _ ...Option) error {
-	const op = "scheduler.(Scheduler).UpdateJobNextRun"
+func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) error {
+	const op = "scheduler.(Scheduler).UpdateJobNextRunInAtLeast"
 	if name == "" {
 		return errors.New(errors.InvalidParameter, op, "missing name")
 	}
@@ -117,7 +119,7 @@ func (s *Scheduler) UpdateJobNextRun(ctx context.Context, name string, nextRunIn
 		return errors.Wrap(err, op)
 	}
 
-	_, err = repo.UpdateJobNextRun(ctx, name, nextRunIn)
+	_, err = repo.UpdateJobNextRunInAtLeast(ctx, name, nextRunInAtLeast)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}

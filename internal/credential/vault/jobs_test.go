@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,9 @@ func TestNewTokenRenewalJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache) }
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+
+	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	type args struct {
 		repoFn RepositoryFactory
@@ -101,7 +104,9 @@ func TestTokenRenewal_RunLimits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache) }
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+
+	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	count := 10
@@ -172,6 +177,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	v := NewTestVaultServer(t)
 
@@ -182,7 +188,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache) }
+	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 	repo, err := repoFn()
 	require.NoError(err)
 
@@ -244,6 +250,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	v := NewTestVaultServer(t)
 
@@ -263,7 +270,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache) }
+	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 	repo, err := repoFn()
 	require.NoError(err)
 
@@ -294,7 +301,8 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache) }
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs, err := NewCredentialStore(prj.PublicId, "http://vault", []byte("token"))
@@ -375,7 +383,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			want:        0,
 		},
 		{
-			name:        "multiple-with-overdue-renewal",
+			name:        "multiple-with-single-overdue-renewal",
 			expirations: []time.Duration{24 * time.Hour, 6 * time.Hour, -12 * time.Hour, 10 * time.Hour},
 			want:        0,
 		},
