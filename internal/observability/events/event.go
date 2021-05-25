@@ -1,5 +1,7 @@
 package event
 
+import "google.golang.org/protobuf/proto"
+
 type Type string
 
 const (
@@ -48,4 +50,21 @@ type UserInfo struct {
 type GrantsPair struct {
 	Grant   string `json:"grant,omitempty"`
 	ScopeId string `json:"scope_id,omitempty"`
+}
+
+type Auth struct {
+	// AccessorId is a std audit field == auth_token public_id
+	AccessorId string    `json:"accessor_id"`
+	UserInfo   *UserInfo `json:"user_info,omitempty"` // boundary field
+}
+
+type Request struct {
+	Operation string        `json:"operation"` // std audit field
+	Endpoint  string        `json:"endpoint"`  // std audit field
+	Details   proto.Message `json:"details"`   // boundary field
+}
+
+type Response struct {
+	StatusCode int           `json:"status_code,omitempty"` // std audit
+	Details    proto.Message `json:"details,omitempty"`     // boundary field
 }
