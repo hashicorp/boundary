@@ -233,7 +233,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.Equal(t, defaultOidcAuthMethodId, auth_method_id)
 }
 
-func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
+func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 	t.Parallel()
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -254,8 +254,8 @@ func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
 		filter)
 	require.NoError(t, err)
 
-	// Fetch a valid account  ID to use in insertion
-	rows, err := db.Query("select public_id from auth_account limit 1")
+	// Fetch a valid (oidc) account ID to use in insertion
+	rows, err := db.Query("select public_id from auth_oidc_account limit 1")
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var accountId string
@@ -298,7 +298,7 @@ func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
 		for _, tt := range insertTests {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
-				_, err = db.Exec("insert into auth_managed_group_member_account (managed_group_id, member_id) values ($1, $2)",
+				_, err = db.Exec("insert into auth_oidc_managed_group_member_account (managed_group_id, member_id) values ($1, $2)",
 					tt.managedGroupId,
 					tt.memberId)
 				assert.True(tt.wantErr == (err != nil))
@@ -307,11 +307,12 @@ func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
 	}
 
 	// Read some values to validate that things were set automatically
-	rows, err = db.Query("select create_time from auth_managed_group_member_account")
+	rows, err = db.Query("select create_time, managed_group_id, member_id from auth_oidc_managed_group_member_account")
 	require.NoError(t, err)
 	require.True(t, rows.Next())
 	var create_time time.Time
-	require.NoError(t, rows.Scan(&create_time))
+	var managed_group_id, member_id string
+	require.NoError(t, rows.Scan(&create_time, &managed_group_id, &member_id))
 	assert.False(t, create_time.IsZero())
 
 	// These update tests check immutability
@@ -344,9 +345,20 @@ func Test_AuthManagedGroupMemberAccountTable(t *testing.T) {
 		for _, tt := range updateTests {
 			t.Run("update: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
-				_, err = db.Exec(fmt.Sprintf("update auth_managed_grou_member_account set %s = $1 where managed_group_id = $2 and member_id = $3", tt.column), managedGroupId, accountId)
+				_, err = db.Exec(fmt.Sprintf("update auth_managed_group_member_account set %s = $1 where managed_group_id = $2 and member_id = $3", tt.column), managedGroupId, accountId)
 				assert.True(tt.wantErr == (err != nil))
 			})
 		}
 	}
+
+	// Read from the view to ensure we see it there
+	rows, err = db.Query("select create_time, managed_group_id, member_id from auth_managed_group_member_account")
+	require.NoError(t, err)
+	require.True(t, rows.Next())
+	var view_create_time time.Time
+	var view_managed_group_id, view_member_id string
+	require.NoError(t, rows.Scan(&view_create_time, &view_managed_group_id, &view_member_id))
+	assert.Equal(t, create_time, view_create_time)
+	assert.Equal(t, managed_group_id, view_managed_group_id)
+	assert.Equal(t, member_id, view_member_id)
 }
