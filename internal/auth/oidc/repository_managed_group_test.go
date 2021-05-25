@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,12 +38,13 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 	)
 
 	tests := []struct {
-		name       string
-		in         *ManagedGroup
-		opts       []Option
-		want       *ManagedGroup
-		wantIsErr  errors.Code
-		wantErrMsg string
+		name            string
+		in              *ManagedGroup
+		opts            []Option
+		want            *ManagedGroup
+		wantIsErr       errors.Code
+		wantErrMsg      string
+		wantErrContains string
 	}{
 		{
 			name:       "nil-ManagedGroup",
@@ -124,6 +126,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 					AuthMethodId: authMethod.PublicId,
 					Filter:       `"/test/foo" == "baz"`,
 					Description:  ("test-description-repo"),
+					Name:         "myname",
 				},
 			},
 			want: &ManagedGroup{
@@ -131,8 +134,22 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 					AuthMethodId: authMethod.PublicId,
 					Filter:       `"/test/foo" == "baz"`,
 					Description:  ("test-description-repo"),
+					Name:         "myname",
 				},
 			},
+		},
+		{
+			name: "duplicate-name",
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					AuthMethodId: authMethod.PublicId,
+					Filter:       `"/test/foo" == "baz"`,
+					Description:  ("test-description-repo"),
+					Name:         "myname",
+				},
+			},
+			wantIsErr:       errors.NotUnique,
+			wantErrContains: `name "myname" already exists`,
 		},
 	}
 
@@ -146,7 +163,11 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			got, err := repo.CreateManagedGroup(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				if tt.wantErrContains != "" {
+					assert.True(strings.Contains(err.Error(), tt.wantErrContains))
+				} else {
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
 				return
 			}
 			require.NoError(err)
@@ -164,256 +185,6 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 }
 
 /*
-func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	ctx := context.Background()
-
-	t.Run("invalid-duplicate-names", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		authMethod := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-
-		in := &Account{
-			Account: &store.Account{
-				AuthMethodId: authMethod.GetPublicId(),
-				Name:         "test-name-repo",
-				Subject:      "subject",
-			},
-		}
-
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		require.NoError(err)
-		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
-		assert.Nil(got2)
-	})
-
-	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		authMethoda := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp1", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		authMethodb := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp2", "fido",
-			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
-			WithSigningAlgs(RS256),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		in := &Account{
-			Account: &store.Account{
-				Name:    "test-name-repo",
-				Subject: "subject1",
-			},
-		}
-		in2 := in.Clone()
-
-		in.AuthMethodId = authMethoda.GetPublicId()
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		require.NoError(err)
-		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		in2.AuthMethodId = authMethodb.GetPublicId()
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
-		assert.NoError(err)
-		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
-		assert.NotSame(in2, got2)
-		assert.Equal(in2.Name, got2.Name)
-		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(got2.CreateTime, got2.UpdateTime)
-	})
-
-	t.Run("invalid-duplicate-subjects", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		authMethod := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-
-		in := &Account{
-			Account: &store.Account{
-				AuthMethodId: authMethod.GetPublicId(),
-				Subject:      "subject1",
-			},
-		}
-
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		require.NoError(err)
-		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
-		assert.Nil(got2)
-	})
-
-	t.Run("valid-duplicate-subject-diff-authmethod", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		authMethoda := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp1", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		authMethodb := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp2", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		in := &Account{
-			Account: &store.Account{
-				Subject: "subject1",
-			},
-		}
-		in2 := in.Clone()
-
-		in.AuthMethodId = authMethoda.GetPublicId()
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		require.NoError(err)
-		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(in.Subject, got.Subject)
-		assert.Equal(authMethoda.GetIssuer(), got.Issuer)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		in2.AuthMethodId = authMethodb.GetPublicId()
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
-		assert.NoError(err)
-		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
-		assert.NotSame(in2, got2)
-		assert.Equal(in2.Name, got2.Name)
-		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(in2.Subject, got2.Subject)
-		assert.Equal(authMethodb.GetIssuer(), got2.Issuer)
-		assert.Equal(got2.CreateTime, got2.UpdateTime)
-	})
-
-	t.Run("valid-duplicate-subject-diff-issuer", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		authMethod := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp1", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice1.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		in := &Account{
-			Account: &store.Account{
-				AuthMethodId: authMethod.GetPublicId(),
-				Subject:      "subject1",
-			},
-		}
-		in2 := in.Clone()
-
-		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
-		require.NoError(err)
-		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(in.Name, got.Name)
-		assert.Equal(in.Description, got.Description)
-		assert.Equal(in.Subject, got.Subject)
-		assert.Equal(authMethod.Issuer, got.Issuer)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		authMethod.Issuer = "https://somethingelse.com"
-		authMethod, _, err = repo.UpdateAuthMethod(ctx, authMethod, authMethod.Version, []string{IssuerField}, WithForce())
-		require.NoError(err)
-
-		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
-		assert.NoError(err)
-		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
-		assert.NotSame(in2, got2)
-		assert.Equal(in2.Name, got2.Name)
-		assert.Equal(in2.Description, got2.Description)
-		assert.Equal(in2.Subject, got2.Subject)
-		assert.Equal(authMethod.Issuer, got2.Issuer)
-		assert.Equal(got2.CreateTime, got2.UpdateTime)
-	})
-}
-
 func TestRepository_LookupAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
