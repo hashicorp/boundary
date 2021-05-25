@@ -25,7 +25,6 @@ type Audit struct {
 	Auth           *Auth        `json:"auth,omitempty"`         // std audit field
 	Request        *Request     `json:"request,omitempty"`      // std audit field
 	Response       *Response    `json:"response,omitempty"`     // std audit field
-	Serialized     []byte       `json:"serialized"`             // boundary field
 	SerializedHMAC string       `json:"serialized_hmac"`        // boundary field
 	Flush          bool         `json:"-"`
 }

@@ -350,7 +350,6 @@ func Test_WriteAudit(t *testing.T) {
 						"request":         tt.wantAudit.Request,
 						"response":        tt.wantAudit.Response,
 						"serialized_hmac": "",
-						"serialized":      nil,
 						"type":            event.ApiRequest,
 						"version":         event.AuditVersion,
 						"request_info": event.RequestInfo{
