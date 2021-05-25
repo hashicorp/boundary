@@ -347,7 +347,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 }
 
 // writeAudit writes/send an audit event
-func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
+func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
 	const op = "event.(Eventer).WriteAudit"
 	if !e.conf.AuditEnabled {
 		return nil
