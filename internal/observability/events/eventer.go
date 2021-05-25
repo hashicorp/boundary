@@ -96,7 +96,7 @@ func SysEventer() *Eventer {
 }
 
 // NewEventer creates a new Eventer using the config
-func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
+func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
@@ -108,7 +108,12 @@ func NewEventer(log hclog.Logger, c EventerConfig) (*Eventer, error) {
 		sinkId    eventlogger.NodeID
 	}
 	var auditPipelines, observationPipelines, errPipelines []pipeline
+
 	broker := eventlogger.NewBroker()
+	opts := getOpts(opt...)
+	if !opts.withNow.IsZero() {
+		broker.StopTimeAt(opts.withNow)
+	}
 
 	// Create JSONFormatter node
 	id, err := newId("json")
