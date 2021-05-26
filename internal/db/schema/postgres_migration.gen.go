@@ -6553,11 +6553,6 @@ before
 update on auth_oidc_managed_group_member_account
   for each row execute procedure auth_immutable_managed_oidc_group_member_account();
 
-insert into oplog_ticket
-  (name, version)
-values
-  ('auth_oidc_managed_group_member_account', 1);
-
 -- Initially create the view with just oidc; eventually we can replace this view
 -- to union with other subtype tables.
 create view auth_managed_group_member_account as
