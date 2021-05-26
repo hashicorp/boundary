@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -519,8 +520,7 @@ func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 	}
 }
 
-/*
-func TestRepository_UpdateAccount(t *testing.T) {
+func TestRepository_UpdateManagedGroup(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -539,197 +539,205 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	changeName := func(s string) func(*Account) *Account {
-		return func(a *Account) *Account {
-			a.Name = s
-			return a
+	changeName := func(s string) func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			mg.Name = s
+			return mg
 		}
 	}
 
-	changeDescription := func(s string) func(*Account) *Account {
-		return func(a *Account) *Account {
-			a.Description = s
-			return a
+	changeDescription := func(s string) func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			mg.Description = s
+			return mg
 		}
 	}
 
-	makeNil := func() func(*Account) *Account {
-		return func(a *Account) *Account {
+	changeFilter := func(s string) func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			mg.Filter = s
+			return mg
+		}
+	}
+
+	makeNil := func() func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
 			return nil
 		}
 	}
 
-	makeEmbeddedNil := func() func(*Account) *Account {
-		return func(a *Account) *Account {
-			return &Account{}
+	makeEmbeddedNil := func() func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			return &ManagedGroup{}
 		}
 	}
 
-	deletePublicId := func() func(*Account) *Account {
-		return func(a *Account) *Account {
-			a.PublicId = ""
-			return a
+	deletePublicId := func() func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			mg.PublicId = ""
+			return mg
 		}
 	}
 
-	nonExistentPublicId := func() func(*Account) *Account {
-		return func(a *Account) *Account {
-			a.PublicId = "abcd_OOOOOOOOOO"
-			return a
+	nonExistentPublicId := func() func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
+			mg.PublicId = "abcd_OOOOOOOOOO"
+			return mg
 		}
 	}
 
-	combine := func(fns ...func(a *Account) *Account) func(*Account) *Account {
-		return func(a *Account) *Account {
+	combine := func(fns ...func(mg *ManagedGroup) *ManagedGroup) func(*ManagedGroup) *ManagedGroup {
+		return func(mg *ManagedGroup) *ManagedGroup {
 			for _, fn := range fns {
-				a = fn(a)
+				mg = fn(mg)
 			}
-			return a
+			return mg
 		}
 	}
 
 	tests := []struct {
-		name       string
-		scopeId    string
-		version    uint32
-		orig       *Account
-		chgFn      func(*Account) *Account
-		masks      []string
-		want       *Account
-		wantCount  int
-		wantIsErr  errors.Code
-		wantErrMsg string
+		name            string
+		scopeId         string
+		version         uint32
+		orig            *ManagedGroup
+		chgFn           func(*ManagedGroup) *ManagedGroup
+		masks           []string
+		want            *ManagedGroup
+		wantCount       int
+		wantIsErr       errors.Code
+		wantErrMsg      string
+		wantErrContains string
 	}{
 		{
-			name:    "nil-Account",
+			name:    "nil-ManagedGroup",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{},
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{},
 			},
 			chgFn:      makeNil(),
 			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing Account: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing ManagedGroup: parameter violation: error #100",
 		},
 		{
-			name:    "nil-embedded-Account",
+			name:    "nil-embedded-ManagedGroup",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{},
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{},
 			},
 			chgFn:      makeEmbeddedNil(),
 			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing embedded Account: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing embedded ManagedGroup: parameter violation: error #100",
 		},
 		{
 			name:    "no-scope-id",
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "no-scope-id-test-name-repo",
 				},
 			},
 			chgFn:      changeName("no-scope-id-test-update-name-repo"),
 			masks:      []string{NameField},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing scope id: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing scope id: parameter violation: error #100",
 		},
 		{
 			name:    "missing-version",
 			scopeId: org.GetPublicId(),
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "missing-version-test-name-repo",
 				},
 			},
 			chgFn:      changeName("test-update-name-repo"),
 			masks:      []string{NameField},
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing version: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing version: parameter violation: error #100",
 		},
 		{
 			name:    "no-public-id",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{},
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{},
 			},
 			chgFn:      deletePublicId(),
 			masks:      []string{NameField, DescriptionField},
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing public id: parameter violation: error #102",
 		},
 		{
-			name:    "updating-non-existent-Account",
+			name:    "updating-non-existent-ManagedGroup",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
-					Name: "updating-non-existent-Account-test-name-repo",
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					Name: "updating-non-existent-ManagedGroup-test-name-repo",
 				},
 			},
-			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-Account-test-update-name-repo")),
+			chgFn:      combine(nonExistentPublicId(), changeName("updating-non-existent-ManagedGroup-test-update-name-repo")),
 			masks:      []string{NameField},
 			wantIsErr:  errors.RecordNotFound,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateAccount: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: abcd_OOOOOOOOOO: db.DoTx: oidc.(Repository).UpdateManagedGroup: db.Update: db.lookupAfterWrite: db.LookupById: record not found, search issue: error #1100",
 		},
 		{
 			name:    "empty-field-mask",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "empty-field-mask-test-name-repo",
 				},
 			},
 			chgFn:      changeName("empty-field-mask-test-update-name-repo"),
 			wantIsErr:  errors.EmptyFieldMask,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: missing field mask: parameter violation: error #104",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: missing field mask: parameter violation: error #104",
 		},
 		{
 			name:    "read-only-fields-in-field-mask",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "read-only-fields-in-field-mask-test-name-repo",
 				},
 			},
 			chgFn:      changeName("read-only-fields-in-field-mask-test-update-name-repo"),
 			masks:      []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
 			wantIsErr:  errors.InvalidFieldMask,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: PublicId: parameter violation: error #103",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: PublicId: parameter violation: error #103",
 		},
 		{
 			name:    "unknown-field-in-field-mask",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "unknown-field-in-field-mask-test-name-repo",
 				},
 			},
 			chgFn:      changeName("unknown-field-in-field-mask-test-update-name-repo"),
 			masks:      []string{"Bilbo"},
 			wantIsErr:  errors.InvalidFieldMask,
-			wantErrMsg: "oidc.(Repository).UpdateAccount: Bilbo: parameter violation: error #103",
+			wantErrMsg: "oidc.(Repository).UpdateManagedGroup: Bilbo: parameter violation: error #103",
 		},
 		{
 			name:    "change-name",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "change-name-test-name-repo",
 				},
 			},
 			chgFn: changeName("change-name-test-update-name-repo"),
 			masks: []string{NameField},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "change-name-test-update-name-repo",
 				},
 			},
@@ -739,16 +747,34 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name:    "change-description",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Description: "test-description-repo",
 				},
 			},
 			chgFn: changeDescription("test-update-description-repo"),
 			masks: []string{DescriptionField},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name:    "change-filter",
+			scopeId: org.GetPublicId(),
+			version: 1,
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					Filter: testFakeFilter,
+				},
+			},
+			chgFn: changeFilter(`"/zip" == "zap"`),
+			masks: []string{FilterField},
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					Filter: `"/zip" == "zap"`,
 				},
 			},
 			wantCount: 1,
@@ -757,16 +783,16 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name:    "change-name-and-description",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "change-name-and-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("change-name-and-description-test-update-name-repo")),
 			masks: []string{NameField, DescriptionField},
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "change-name-and-description-test-update-name-repo",
 					Description: "test-update-description-repo",
 				},
@@ -777,16 +803,16 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name:    "delete-name",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "delete-name-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			masks: []string{NameField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Description: "test-description-repo",
 				},
 			},
@@ -796,35 +822,49 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name:    "delete-description",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "delete-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			masks: []string{DescriptionField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name: "delete-description-test-name-repo",
 				},
 			},
 			wantCount: 1,
 		},
 		{
+			name:    "delete-filter",
+			scopeId: org.GetPublicId(),
+			version: 1,
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					Filter: testFakeFilter,
+				},
+			},
+			masks:           []string{FilterField},
+			chgFn:           combine(changeFilter("")),
+			wantIsErr:       errors.NotNull,
+			wantErrContains: "oidc.(Repository).UpdateManagedGroup: db.Update: filter must not be empty: not null constraint violated: integrity violation: error #1001",
+		},
+		{
 			name:    "do-not-delete-name",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "do-not-delete-name-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			masks: []string{DescriptionField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "do-not-delete-name-test-name-repo",
 					Description: "test-update-description-repo",
 				},
@@ -835,16 +875,16 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name:    "do-not-delete-description",
 			scopeId: org.GetPublicId(),
 			version: 1,
-			orig: &Account{
-				Account: &store.Account{
+			orig: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "do-not-delete-description-test-name-repo",
 					Description: "test-description-repo",
 				},
 			},
 			masks: []string{NameField},
 			chgFn: combine(changeDescription(""), changeName("do-not-delete-description-test-update-name-repo")),
-			want: &Account{
-				Account: &store.Account{
+			want: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
 					Name:        "do-not-delete-description-test-update-name-repo",
 					Description: "test-description-repo",
 				},
@@ -861,16 +901,20 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			orig := TestAccount(t, conn, am, tt.name, WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
+			orig := TestManagedGroup(t, conn, am, testFakeFilter, WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateAccount(context.Background(), tt.scopeId, orig, tt.version, tt.masks)
+			got, gotCount, err := repo.UpdateManagedGroup(context.Background(), tt.scopeId, orig, tt.version, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				if tt.wantErrContains != "" {
+					assert.True(strings.Contains(err.Error(), tt.wantErrContains))
+				} else {
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
@@ -883,7 +927,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				return
 			}
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, ManagedGroupPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)
@@ -904,141 +948,3 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		})
 	}
 }
-
-func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-
-	t.Run("invalid-duplicate-names", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		name := "test-dup-name"
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		am := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		aa := TestAccount(t, conn, am, "create-success1")
-		ab := TestAccount(t, conn, am, "create-success2")
-
-		aa.Name = name
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{NameField})
-		assert.NoError(err)
-		require.NotNil(got1)
-		assert.Equal(name, got1.Name)
-		assert.Equal(1, gotCount1, "row count")
-		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
-
-		ab.Name = name
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{NameField})
-		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "Unexpected error %s", err)
-		assert.Nil(got2)
-		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
-		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-		assert.Error(err)
-		assert.True(errors.IsNotFoundError(err))
-	})
-
-	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		ama := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		aa := TestAccount(t, conn, ama, "create-success1", WithName("test-name-aa"))
-
-		amb := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido2",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		ab := TestAccount(t, conn, amb, "create-success2", WithName("test-name-ab"))
-
-		ab.Name = aa.Name
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), ab, 1, []string{NameField})
-		assert.NoError(err)
-		require.NotNil(got3)
-		assert.NotSame(ab, got3)
-		assert.Equal(aa.Name, got3.Name)
-		assert.Equal(1, gotCount3, "row count")
-		assert.NoError(db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
-	})
-
-	t.Run("change-authmethod-id", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
-		assert.NoError(err)
-		require.NotNil(repo)
-
-		org, _ := iam.TestScopes(t, iamRepo)
-		databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
-		require.NoError(err)
-
-		ama := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		aa := TestAccount(t, conn, ama, "create-success1")
-
-		amb := TestAuthMethod(
-			t, conn, databaseWrapper, org.PublicId, ActivePrivateState,
-			"alice-rp", "fido2",
-			WithSigningAlgs(RS256),
-			WithIssuer(TestConvertToUrls(t, "https://www.alice2.com")[0]),
-			WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-		)
-		ab := TestAccount(t, conn, amb, "create-success2")
-
-		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
-		orig := aa.Clone()
-
-		aa.AuthMethodId = ab.AuthMethodId
-		assert.Equal(aa.AuthMethodId, ab.AuthMethodId)
-
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), org.GetPublicId(), aa, 1, []string{NameField})
-
-		assert.NoError(err)
-		require.NotNil(got1)
-		assert.Equal(orig.AuthMethodId, got1.AuthMethodId)
-		assert.Equal(1, gotCount1, "row count")
-		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
-	})
-}
-
-func assertPublicId(t *testing.T, prefix, actual string) {
-	t.Helper()
-	assert.NotEmpty(t, actual)
-	parts := strings.Split(actual, "_")
-	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
-	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
-}
-*/
