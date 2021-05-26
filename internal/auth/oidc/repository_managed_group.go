@@ -105,12 +105,12 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var accts []*ManagedGroup
-	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
+	var mgs []*ManagedGroup
+	err := r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	return accts, nil
+	return mgs, nil
 }
 
 // DeleteManagedGroup deletes the managed group for the provided id from the
@@ -124,8 +124,8 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 	if scopeId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
-	ac := AllocManagedGroup()
-	ac.PublicId = withPublicId
+	mg := AllocManagedGroup()
+	mg.PublicId = withPublicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -138,9 +138,9 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE, scopeId)
-			dAc := ac.Clone()
-			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
+			metadata := mg.oplog(oplog.OpType_OP_TYPE_DELETE, scopeId)
+			dMg := mg.Clone()
+			rowsDeleted, err = w.Delete(ctx, dMg, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -219,6 +219,8 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 	mg = mg.Clone()
 
 	metadata := mg.oplog(oplog.OpType_OP_TYPE_UPDATE, scopeId)
+
+	// TODO/FIXME: if the filter is updated, remove all account/mg associations
 
 	var rowsUpdated int
 	var returnedManagedGroup *ManagedGroup
