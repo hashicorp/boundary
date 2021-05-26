@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const testFakeFilter = `"/foo" == "bar"`
 
 func TestRepository_CreateManagedGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -80,7 +83,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					PublicId:     "mgoidc_OOOOOOOOOO",
 				},
 			},
@@ -92,13 +95,13 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 				},
 			},
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 				},
 			},
 		},
@@ -107,14 +110,14 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					Name:         "test-name-repo",
 				},
 			},
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					Name:         "test-name-repo",
 				},
 			},
@@ -124,7 +127,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -132,7 +135,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -143,7 +146,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       `"/test/foo" == "baz"`,
+					Filter:       testFakeFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -204,7 +207,7 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	mg := TestManagedGroup(t, conn, authMethod, `"/foo" == "bar"`)
+	mg := TestManagedGroup(t, conn, authMethod, testFakeFilter)
 
 	newMgId, err := newManagedGroupId()
 	require.NoError(t, err)
@@ -250,8 +253,7 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 	}
 }
 
-/*
-func TestRepository_DeleteAccount(t *testing.T) {
+func TestRepository_DeleteManagedGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -270,8 +272,8 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	account := TestAccount(t, conn, authMethod, "create-success")
-	newAcctId, err := newAccountId(authMethod.GetPublicId(), authMethod.Issuer, "random-subject")
+	mg := TestManagedGroup(t, conn, authMethod, testFakeFilter)
+	newMgId, err := newManagedGroupId()
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -284,26 +286,26 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		{
 			name:       "With no scope id",
 			scopeId:    "",
-			in:         account.GetPublicId(),
+			in:         mg.GetPublicId(),
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).DeleteAccount: missing scope id: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).DeleteManagedGroup: missing scope id: parameter violation: error #100",
 		},
 		{
 			name:       "With no public id",
 			scopeId:    org.GetPublicId(),
 			wantIsErr:  errors.InvalidPublicId,
-			wantErrMsg: "oidc.(Repository).DeleteAccount: missing public id: parameter violation: error #102",
+			wantErrMsg: "oidc.(Repository).DeleteManagedGroup: missing public id: parameter violation: error #102",
 		},
 		{
-			name:    "With non existing account id",
+			name:    "With non existing managed group id",
 			scopeId: org.GetPublicId(),
-			in:      newAcctId,
+			in:      newMgId,
 			want:    0,
 		},
 		{
-			name:    "With existing account id",
+			name:    "With existing managed group id",
 			scopeId: org.GetPublicId(),
-			in:      account.GetPublicId(),
+			in:      mg.GetPublicId(),
 			want:    1,
 		},
 	}
@@ -315,7 +317,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAccount(context.Background(), tt.scopeId, tt.in)
+			got, err := repo.DeleteManagedGroup(context.Background(), tt.scopeId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -327,7 +329,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	}
 }
 
-func TestRepository_ListAccounts(t *testing.T) {
+func TestRepository_ListManagedGroups(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -360,40 +362,51 @@ func TestRepository_ListAccounts(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice3.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	accounts1 := []*Account{
-		TestAccount(t, conn, authMethod1, "create-success"),
-		TestAccount(t, conn, authMethod1, "create-success2"),
-		TestAccount(t, conn, authMethod1, "create-success3"),
+	mgs1 := []*ManagedGroup{
+		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
 	}
-	accounts2 := []*Account{
-		TestAccount(t, conn, authMethod2, "create-success"),
-		TestAccount(t, conn, authMethod2, "create-success2"),
-		TestAccount(t, conn, authMethod2, "create-success3"),
+	sort.Slice(mgs1, func(i, j int) bool {
+		return strings.Compare(mgs1[i].PublicId, mgs1[j].PublicId) < 0
+	})
+
+	mgs2 := []*ManagedGroup{
+		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
 	}
-	_ = accounts2
+	sort.Slice(mgs2, func(i, j int) bool {
+		return strings.Compare(mgs2[i].PublicId, mgs2[j].PublicId) < 0
+	})
 
 	tests := []struct {
 		name       string
 		in         string
 		opts       []Option
-		want       []*Account
+		want       []*ManagedGroup
 		wantIsErr  errors.Code
 		wantErrMsg string
 	}{
 		{
 			name:       "With no auth method id",
 			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "oidc.(Repository).ListAccounts: missing auth method id: parameter violation: error #100",
+			wantErrMsg: "oidc.(Repository).ListManagedGroups: missing auth method id: parameter violation: error #100",
 		},
 		{
-			name: "With no accounts id",
+			name: "With no managed groups",
 			in:   authMethod3.GetPublicId(),
-			want: []*Account{},
+			want: []*ManagedGroup{},
 		},
 		{
 			name: "With first auth method id",
 			in:   authMethod1.GetPublicId(),
-			want: accounts1,
+			want: mgs1,
+		},
+		{
+			name: "With first auth method id",
+			in:   authMethod2.GetPublicId(),
+			want: mgs2,
 		},
 	}
 
@@ -404,7 +417,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
+			got, err := repo.ListManagedGroups(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -413,13 +426,15 @@ func TestRepository_ListAccounts(t *testing.T) {
 			require.NoError(err)
 
 			sort.Slice(got, func(i, j int) bool {
-				return strings.Compare(got[i].Subject, got[j].Subject) < 0
+				return strings.Compare(got[i].PublicId, got[j].PublicId) < 0
 			})
+
 			assert.EqualValues(tt.want, got)
 		})
 	}
 }
 
+/*
 func TestRepository_ListAccounts_Limits(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
