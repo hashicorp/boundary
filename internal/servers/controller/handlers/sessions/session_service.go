@@ -237,18 +237,19 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		}
 	}
 
+	var skipCancel bool
 	for _, state := range ses.States {
 		switch state.Status {
-		case session.StatusCanceling:
-			return nil, errors.New(errors.InvalidSessionState, op, "session already in canceling state")
-		case session.StatusTerminated:
-			return nil, errors.New(errors.InvalidSessionState, op, "session already terminated")
+		case session.StatusCanceling, session.StatusTerminated:
+			skipCancel = true
 		}
 	}
 
-	ses, err = s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
-	if err != nil {
-		return nil, err
+	if !skipCancel {
+		ses, err = s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
