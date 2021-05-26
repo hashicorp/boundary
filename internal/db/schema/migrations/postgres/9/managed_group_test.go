@@ -223,7 +223,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.NotEqual(t, update_time, updated_update_time)
 	assert.Equal(t, 2, version)
 
-	// Finally, read values from auth_managed_group to ensure it was populated automatically
+	// Read values from auth_managed_group to ensure it was populated automatically
 	rows, err = db.Query("select public_id, auth_method_id from auth_managed_group")
 	require.NoError(t, err)
 	require.True(t, rows.Next())
@@ -231,6 +231,18 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	require.NoError(t, rows.Scan(&public_id, &auth_method_id))
 	assert.Equal(t, managedGroupId, public_id)
 	assert.Equal(t, defaultOidcAuthMethodId, auth_method_id)
+
+	// Delete the value from the subtype table
+	res, err := db.Exec("delete from auth_oidc_managed_group where public_id = $1", managedGroupId)
+	require.NoError(t, err)
+	affected, err := res.RowsAffected()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, affected)
+
+	// It should no longer be in the base table
+	rows, err = db.Query("select public_id, auth_method_id from auth_managed_group")
+	require.NoError(t, err)
+	require.False(t, rows.Next())
 }
 
 func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
