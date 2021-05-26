@@ -6387,7 +6387,9 @@ create table auth_managed_group (
     foreign key (auth_method_id) -- fk1
       references auth_method(public_id)
       on delete cascade
-      on update cascade
+      on update cascade,
+  constraint auth_managed_group_auth_method_id_public_id_uq
+    unique(auth_method_id, public_id)
 );
 comment on table auth_managed_group is
 'auth_managed_group is the abstract base table for managed groups.';
@@ -6398,6 +6400,37 @@ create trigger
 before
 update on auth_managed_group
   for each row execute procedure immutable_columns('public_id', 'auth_method_id');
+
+-- Function to insert into the base table when values are inserted into a
+-- concrete type table. This happens before inserts so the foreign keys in the
+-- concrete type will be valid.
+create or replace function
+  insert_managed_group_subtype()
+  returns trigger
+as $$
+begin
+
+  insert into auth_managed_group
+    (public_id, auth_method_id)
+  values
+    (new.public_id, new.auth_method_id);
+
+  return new;
+
+end;
+$$ language plpgsql;
+
+-- delete_managed_group_subtype() is an after delete trigger
+-- function for subtypes of managed_group
+create or replace function delete_managed_group_subtype()
+  returns trigger
+as $$
+begin
+  delete from auth_managed_group
+  where public_id = old.public_id;
+  return null; -- result is ignored since this is an after trigger
+end;
+$$ language plpgsql;
 `),
 			9002: []byte(`
 create table auth_oidc_managed_group (
@@ -6421,15 +6454,12 @@ create table auth_oidc_managed_group (
       on update cascade,
   -- Ensure it relates to an abstract managed group
   constraint auth_managed_group_fkey
-    foreign key (public_id) -- fk2
-      references auth_managed_group (public_id)
+    foreign key (auth_method_id, public_id) -- fk2
+      references auth_managed_group (auth_method_id, public_id)
       on delete cascade
       on update cascade,
   constraint auth_oidc_managed_group_auth_method_id_name_uq
-    unique(auth_method_id, name),
-  -- QUESTION: is this necessary? It isn't for uniqueness, but maybe for an index to look up via auth method ID?
-  constraint auth_oidc_managed_group_auth_method_id_public_id_uq
-    unique(auth_method_id, public_id)
+    unique(auth_method_id, name)
 );
 comment on table auth_oidc_managed_group is
 'auth_oidc_managed_group entries are subtypes of auth_managed_group and represent an oidc managed group.';
@@ -6462,30 +6492,19 @@ after
 update on auth_oidc_managed_group
   for each row execute procedure update_version_column();
 
--- Function to insert into the base table when values are inserted into a
--- concrete type table. This happens before inserts so the foreign keys in the
--- concrete type will be valid.
-create or replace function
-  insert_managed_group_subtype()
-  returns trigger
-as $$
-begin
-
-  insert into auth_managed_group
-    (public_id, auth_method_id)
-  values
-    (new.public_id, new.auth_method_id);
-
-  return new;
-
-end;
-$$ language plpgsql;
-
 -- Add into the base table when inserting into the concrete table
 create trigger
   insert_managed_group_subtype
 before insert on auth_oidc_managed_group
   for each row execute procedure insert_managed_group_subtype();
+
+-- Ensure that deletions in the oidc subtype result in deletions to the base
+-- table.
+create trigger 
+  delete_managed_group_subtype
+after
+delete on auth_oidc_managed_group
+  for each row execute procedure delete_managed_group_subtype();
 
 -- The tickets for oplog are the subtypes not the base types because no updates
 -- are done to any values in the base types.
