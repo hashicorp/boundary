@@ -680,7 +680,11 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store version"))
 				}
-				if rowsUpdated != 1 {
+				switch rowsUpdated {
+				case 1:
+				case 0:
+					return nil
+				default:
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store version and %d rows updated", rowsUpdated))
 				}
 			default:
@@ -688,7 +692,11 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
 				}
-				if rowsUpdated != 1 {
+				switch rowsUpdated {
+				case 1:
+				case 0:
+					return nil
+				default:
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store and %d rows updated", rowsUpdated))
 				}
 			}

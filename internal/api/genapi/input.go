@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -311,6 +313,51 @@ var inputStructs = []*structInfo{
 		pathArgs:            []string{"auth-token"},
 		createResponseTypes: true,
 		recursiveListing:    true,
+	},
+	// Credentials
+	{
+		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName: "VaultCredentialStore",
+	},
+	{
+		inProto: &credentialstores.CredentialStore{},
+		outFile: "credentialstores/credential_store.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"credential-store"},
+		parentTypeName:      "scope",
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
+		recursiveListing:    true,
+	},
+	{
+		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+	},
+	{
+		inProto: &credentiallibraries.CredentialLibrary{},
+		outFile: "credentiallibraries/credential_library.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"credential-libraries"},
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Host related resources
 	{
