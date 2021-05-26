@@ -108,6 +108,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: InvalidJobRunState,
 		},
 		{
+			name: "InvalidDynamicCredential",
+			c:    InvalidDynamicCredential,
+			want: InvalidDynamicCredential,
+		},
+		{
 			name: "InternalError",
 			c:    Internal,
 			want: Internal,

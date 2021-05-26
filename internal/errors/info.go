@@ -88,6 +88,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "job run is already in a final run state",
 		Kind:    Integrity,
 	},
+	InvalidDynamicCredential: {
+		Message: "dynamic credential for session is in an invalid state",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
