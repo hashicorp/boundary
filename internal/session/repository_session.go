@@ -150,7 +150,9 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			if err := read.SearchWhere(ctx, &creds, "session_id = ?", []interface{}{sessionId}); err != nil {
 				return errors.Wrap(err, op)
 			}
-			session.DynamicCredentials = creds
+			if len(creds) > 0 {
+				session.DynamicCredentials = creds
+			}
 			return nil
 		},
 	)

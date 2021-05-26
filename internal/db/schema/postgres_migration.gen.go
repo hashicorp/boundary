@@ -5779,7 +5779,7 @@ create table session_credential_dynamic (
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on session_credential_dynamic
-    for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
+    for each row execute procedure immutable_columns('session_id', 'library_id', 'credential_purpose', 'create_time');
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

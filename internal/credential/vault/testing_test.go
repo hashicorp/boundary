@@ -5,13 +5,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/target"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,6 +50,7 @@ func Test_TestCredentialLibraries(t *testing.T) {
 	}
 }
 
+/*
 func Test_TestCredentials(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
@@ -96,6 +92,7 @@ func Test_TestCredentials(t *testing.T) {
 		assert.NotEmpty(credential.GetPublicId())
 	}
 }
+*/
 
 func testLogVaultSecret(t *testing.T, v *vault.Secret) string {
 	t.Helper()

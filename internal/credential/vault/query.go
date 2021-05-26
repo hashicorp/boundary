@@ -88,4 +88,14 @@ select *
   from credential_vault_library_private
  where public_id in (%s);
 `
+
+	updateSessionCredentialQuery = `
+update session_credential_dynamic
+   set credential_id = $1
+ where library_id = $2
+   and session_id = $3
+   and credential_purpose = $4
+   and credential_id is null
+returning *;
+`
 )

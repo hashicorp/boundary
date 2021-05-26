@@ -68,3 +68,10 @@ type Dynamic interface {
 	Library() Library
 	Purpose() Purpose
 }
+
+// A RequestDynamic represents a request for a dynamic credential from the
+// library for the given purpose.
+type RequestDynamic struct {
+	LibraryId string
+	Purpose   Purpose
+}
