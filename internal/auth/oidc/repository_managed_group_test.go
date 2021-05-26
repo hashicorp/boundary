@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -434,8 +435,7 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 	}
 }
 
-/*
-func TestRepository_ListAccounts_Limits(t *testing.T) {
+func TestRepository_ListManagedGroups_Limits(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -456,9 +456,9 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
-	accountCount := 10
-	for i := 0; i < accountCount; i++ {
-		TestAccount(t, conn, am, fmt.Sprintf("create-success-%d", i))
+	mgCount := 10
+	for i := 0; i < mgCount; i++ {
+		TestManagedGroup(t, conn, am, fmt.Sprintf(`"/foo/%d" == "bar"`, i))
 	}
 
 	tests := []struct {
@@ -469,7 +469,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	}{
 		{
 			name:    "With no limits",
-			wantLen: accountCount,
+			wantLen: mgCount,
 		},
 		{
 			name:     "With repo limit",
@@ -479,7 +479,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		{
 			name:     "With negative repo limit",
 			repoOpts: []Option{WithLimit(-1)},
-			wantLen:  accountCount,
+			wantLen:  mgCount,
 		},
 		{
 			name:     "With List limit",
@@ -489,7 +489,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		{
 			name:     "With negative List limit",
 			listOpts: []Option{WithLimit(-1)},
-			wantLen:  accountCount,
+			wantLen:  mgCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
@@ -512,13 +512,14 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			got, err := repo.ListManagedGroups(context.Background(), am.GetPublicId(), tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
 	}
 }
 
+/*
 func TestRepository_UpdateAccount(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
