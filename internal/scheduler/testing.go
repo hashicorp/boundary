@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opts ...Option) *Scheduler {
+func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 
 	rw := db.New(conn)
@@ -42,8 +42,9 @@ func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opts .
 		return job.NewRepository(rw, rw, kmsCache)
 	}
 
-	s, err := New(controller.PrivateId, jobRepoFn, hclog.L(), opts...)
+	s, err := New(controller.PrivateId, jobRepoFn, hclog.L(), opt...)
 	require.NoError(t, err)
+
 	return s
 }
 

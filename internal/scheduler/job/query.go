@@ -31,10 +31,10 @@ const setNextScheduledRunIfSoonerQuery = `
 	update
 	  job
 	set
-	  next_scheduled_run = least(wt_add_seconds_to_now($1), next_scheduled_run)
+	  next_scheduled_run = least(wt_add_seconds_to_now(?), next_scheduled_run)
 	where
-	  plugin_id = $2
-	  and name = $3
+	  plugin_id = ?
+	  and name = ?
 	returning *;
 `
 
@@ -42,10 +42,10 @@ const setNextScheduledRunQuery = `
 	update
 	  job
 	set
-	  next_scheduled_run = wt_add_seconds_to_now($1)
+	  next_scheduled_run = wt_add_seconds_to_now(?)
 	where
-	  plugin_id = $2
-	  and name = $3
+	  plugin_id = ?
+	  and name = ?
 	returning *;
 `
 

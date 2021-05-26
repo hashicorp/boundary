@@ -15,6 +15,9 @@ import (
 )
 
 const (
+	// TokenRenewalJobName is the unique name of the Vault token renewal job
+	TokenRenewalJobName = "vault_token_renewal"
+
 	defaultTokenRenewalInterval = 5 * time.Minute
 	tokenRenewalWindow          = 10 * time.Minute
 )
@@ -22,7 +25,9 @@ const (
 // TokenRenewalJob is the recurring job that renews credential store Vault tokens that
 // are in the `current` and `maintaining` state
 type TokenRenewalJob struct {
-	repoFn RepositoryFactory
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
 	logger hclog.Logger
 	limit  int
 
@@ -41,21 +46,28 @@ func (_ *renewablePrivateStore) TableName() string {
 	return "credential_vault_job_renewable_client_private"
 }
 
-func NewTokenRenewalJob(repoFn RepositoryFactory, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
+func NewTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
 	const op = "vault.NewTokenRenewalJob"
-	if repoFn == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing vault credential repo function")
-	}
-	if logger == nil {
+	switch {
+	case r == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+	case w == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+	case kms == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+	case logger == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
 	}
+
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 	return &TokenRenewalJob{
-		repoFn: repoFn,
+		reader: r,
+		writer: w,
+		kms:    kms,
 		logger: logger,
 		limit:  opts.withLimit,
 	}, nil
@@ -80,16 +92,11 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 
-	repo, err := r.repoFn()
-	if err != nil {
-		return errors.Wrap(err, op)
-	}
-
 	var rps []*renewablePrivateStore
 	// Fetch all tokens that will reach their renewal point within the tokenRenewalWindow.
 	// This is done to avoid constantly scheduling the token renewal job when there are multiple tokens
 	// set to renew in sequence.
-	err = repo.reader.SearchWhere(ctx, &rps, `renewal_time < wt_add_seconds_to_now(?)`, []interface{}{tokenRenewalWindow.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &rps, `renewal_time < wt_add_seconds_to_now(?)`, []interface{}{tokenRenewalWindow.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -103,7 +110,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 			return errors.Wrap(err, op)
 		}
 
-		err := r.renewToken(ctx, repo, s)
+		err := r.renewToken(ctx, s)
 		if err != nil {
 			r.logger.Error("error renewing token", "credential store id", s.Store.StoreId, "token status", s.Store.TokenStatus)
 		}
@@ -114,9 +121,9 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *TokenRenewalJob) renewToken(ctx context.Context, repo *Repository, s *renewablePrivateStore) error {
+func (r *TokenRenewalJob) renewToken(ctx context.Context, s *renewablePrivateStore) error {
 	const op = "vault.(TokenRenewalJob).renewToken"
-	databaseWrapper, err := repo.kms.GetWrapper(ctx, s.Store.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, s.Store.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -137,14 +144,16 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, repo *Repository, s *r
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be
 		// cleaned up.
-		numRows, err := repo.writer.Exec(ctx, updateTokenStatusQuery, []interface{}{StatusExpired, s.Store.TokenHmac})
+		numRows, err := r.writer.Exec(ctx, updateTokenStatusQuery, []interface{}{StatusExpired, s.Store.TokenHmac})
 		if err != nil {
 			return errors.Wrap(err, op)
 		}
 		if numRows != 1 {
 			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
 		}
-		r.logger.Info("Vault credential store token has expired", "credential store id", s.Store.StoreId, "previous status", s.Store.TokenStatus)
+		if s.Store.TokenStatus == string(StatusCurrent) {
+			r.logger.Info("Vault credential store current token has expired", "credential store id", s.Store.StoreId)
+		}
 
 		return nil
 	}
@@ -158,7 +167,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, repo *Repository, s *r
 	}
 
 	exp := int(tokenExpires.Round(time.Second).Seconds())
-	numRows, err := repo.writer.Exec(ctx, updateTokenExpirationQuery, []interface{}{exp, s.Store.TokenHmac})
+	numRows, err := r.writer.Exec(ctx, updateTokenExpirationQuery, []interface{}{exp, s.Store.TokenHmac})
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -172,12 +181,8 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, repo *Repository, s *r
 // NextRunIn queries the vault credential repo to determine when the next token renewal job should run.
 func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
 	const op = "vault.(TokenRenewalJob).NextRunIn"
-	repo, err := r.repoFn()
-	if err != nil {
-		return defaultTokenRenewalInterval, errors.Wrap(err, op)
-	}
 
-	rows, err := repo.reader.Query(context.Background(), tokenRenewalNextRunInQuery, nil)
+	rows, err := r.reader.Query(context.Background(), tokenRenewalNextRunInQuery, nil)
 	if err != nil {
 		return defaultTokenRenewalInterval, errors.Wrap(err, op)
 	}
@@ -188,7 +193,7 @@ func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
 			RenewalIn time.Duration
 		}
 		var n NextRenewal
-		err = repo.reader.ScanRows(rows, &n)
+		err = r.reader.ScanRows(rows, &n)
 		if err != nil {
 			return defaultTokenRenewalInterval, errors.Wrap(err, op)
 		}
@@ -204,7 +209,7 @@ func (r *TokenRenewalJob) NextRunIn() (time.Duration, error) {
 
 // Name is the unique name of the job.
 func (r *TokenRenewalJob) Name() string {
-	return "vault_token_renewal"
+	return TokenRenewalJobName
 }
 
 // Description is the human readable description of the job.

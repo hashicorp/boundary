@@ -380,7 +380,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		job, err := repo.CreateJob(context.Background(), "name", "description", WithNextRunIn(2*time.Hour))
+		job, err := repo.CreateJob(context.Background(), "valid", "description", WithNextRunIn(2*time.Hour))
 		require.NoError(err)
 
 		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, time.Hour)
@@ -400,7 +400,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
-		job, err := repo.CreateJob(context.Background(), "name", "description", WithNextRunIn(time.Hour))
+		job, err := repo.CreateJob(context.Background(), "next-run-already-sooner", "description", WithNextRunIn(time.Hour))
 		require.NoError(err)
 		previousRunAt := job.NextScheduledRun.AsTime()
 

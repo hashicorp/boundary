@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,6 +34,11 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+		trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+		require.NoError(err)
+		err = sche.RegisterJob(context.Background(), trj)
+		require.NoError(err)
 
 		v := NewTestVaultServer(t)
 		secret := v.CreateToken(t)
@@ -67,6 +73,11 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+		trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+		require.NoError(err)
+		err = sche.RegisterJob(context.Background(), trj)
+		require.NoError(err)
 
 		v := NewTestVaultServer(t)
 
@@ -164,6 +175,11 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+			require.NoError(err)
+			err = sche.RegisterJob(context.Background(), trj)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 			secret := v.CreateToken(t, tt.tokenOpts...)
@@ -333,6 +349,11 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+			require.NoError(err)
+			err = sche.RegisterJob(context.Background(), trj)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 
@@ -820,6 +841,11 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
+			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+			require.NoError(err)
+			err = sche.RegisterJob(context.Background(), trj)
+			require.NoError(err)
+
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			tt.orig.ScopeId = prj.GetPublicId()
 
@@ -1101,6 +1127,11 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
+			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+			require.NoError(err)
+			err = sche.RegisterJob(context.Background(), trj)
+			require.NoError(err)
+
 			v := NewTestVaultServer(t)
 			origSecret := v.CreateToken(t)
 			origToken := origSecret.Auth.ClientToken
@@ -1234,6 +1265,11 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
+			require.NoError(err)
+			err = sche.RegisterJob(context.Background(), trj)
+			require.NoError(err)
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
 

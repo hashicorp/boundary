@@ -24,12 +24,11 @@ func TestNewTokenRenewalJob(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
-
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	type args struct {
-		repoFn RepositoryFactory
+		r      db.Reader
+		w      db.Writer
+		kms    *kms.Kms
 		logger hclog.Logger
 	}
 	tests := []struct {
@@ -41,14 +40,33 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		wantErrCode errors.Code
 	}{
 		{
-			name:        "nil repo fn",
+			name:        "nil reader",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "nil writer",
+			args: args{
+				r: rw,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "nil kms",
+			args: args{
+				r: rw,
+				w: rw,
+			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "nil logger",
 			args: args{
-				repoFn: repoFn,
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -56,7 +74,9 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		{
 			name: "valid-no-options",
 			args: args{
-				repoFn: repoFn,
+				r:      rw,
+				w:      rw,
+				kms:    kmsCache,
 				logger: hclog.L(),
 			},
 			wantLimit: db.DefaultLimit,
@@ -64,7 +84,9 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		{
 			name: "valid-with-limit",
 			args: args{
-				repoFn: repoFn,
+				r:      rw,
+				w:      rw,
+				kms:    kmsCache,
 				logger: hclog.L(),
 			},
 			options:   []Option{WithLimit(100)},
@@ -76,7 +98,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewTokenRenewalJob(tt.args.repoFn, tt.args.logger, tt.options...)
+			got, err := NewTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -85,13 +107,11 @@ func TestNewTokenRenewalJob(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
-			require.NotNil(got.repoFn)
+			assert.Equal(tt.args.r, got.reader)
+			assert.Equal(tt.args.w, got.writer)
+			assert.Equal(tt.args.kms, got.kms)
 			require.NotNil(got.logger)
 			assert.Equal(tt.wantLimit, got.limit)
-
-			repo, err := got.repoFn()
-			require.NoError(err)
-			assert.NotNil(repo)
 		})
 	}
 }
@@ -104,9 +124,6 @@ func TestTokenRenewal_RunLimits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
-
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	count := 10
@@ -155,7 +172,7 @@ func TestTokenRenewal_RunLimits(t *testing.T) {
 			// Create test tokens
 			testTokens(t, conn, wrapper, prj.PublicId, cs.PublicId, count)
 
-			r, err := NewTokenRenewalJob(repoFn, hclog.L(), tt.opts...)
+			r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -188,10 +205,14 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
-	repo, err := repoFn()
+	r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
+	err = sche.RegisterJob(context.Background(), r)
+	require.NoError(err)
+
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
@@ -205,9 +226,6 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	token := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
 	origExp := token.GetExpirationTime().AsTime()
-
-	r, err := NewTokenRenewalJob(repoFn, hclog.L())
-	require.NoError(err)
 
 	err = r.Run(context.Background())
 	require.NoError(err)
@@ -270,18 +288,19 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
-	repo, err := repoFn()
+	r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
+	err = sche.RegisterJob(context.Background(), r)
+	require.NoError(err)
+
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
+	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
 	// Sleep to move clock and expire token
 	time.Sleep(time.Second * 2)
-
-	r, err := NewTokenRenewalJob(repoFn, hclog.L())
-	require.NoError(err)
 
 	err = r.Run(context.Background())
 	require.NoError(err)
@@ -301,8 +320,6 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repoFn := func() (*Repository, error) { return NewRepository(rw, rw, kmsCache, sche) }
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs, err := NewCredentialStore(prj.PublicId, "http://vault", []byte("token"))
@@ -391,7 +408,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := NewTokenRenewalJob(repoFn, hclog.L())
+			r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 			assert.NoError(err)
 			require.NotNil(r)
 

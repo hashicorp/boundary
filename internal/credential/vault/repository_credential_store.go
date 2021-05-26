@@ -166,6 +166,12 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, newToken.oplogMessage(db.CreateOp))
 
+			// Set next run time for token renewal task to at least the mid point of this token
+			tokenRenewalIn := token.expiration / 2
+			if err = r.scheduler.UpdateJobNextRunInAtLeast(ctx, TokenRenewalJobName, tokenRenewalIn); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("error updating next run time for vault token renewal job"))
+			}
+
 			newCredentialStore.inputToken = nil
 			newToken.Token.Token = nil
 			newToken.Token.CtToken = nil
@@ -713,6 +719,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 					return errors.New(errors.MultipleRecords, op, "more than 1 token would have been created")
 				}
 				msgs = append(msgs, returnedToken.oplogMessage(db.CreateOp))
+
+				// Set next run time for token renewal task to at least the mid point of this token
+				tokenRenewalIn := token.expiration / 2
+				if err = r.scheduler.UpdateJobNextRunInAtLeast(ctx, TokenRenewalJobName, tokenRenewalIn); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("error updating next run time for vault token renewal job"))
+				}
 
 				returnedCredentialStore.inputToken = nil
 				returnedToken.Token.Token = nil

@@ -7,9 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 )
 
-// RepositoryFactory is used by "service functions" to create a new oidc repo
-type RepositoryFactory func() (*Repository, error)
-
 // A Repository stores and retrieves the persistent types in the vault
 // package. It is not safe to use a repository concurrently.
 type Repository struct {

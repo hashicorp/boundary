@@ -312,7 +312,7 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		tj := testJob{
-			name:        "name",
+			name:        "valid",
 			description: "description",
 		}
 		err := sched.RegisterJob(context.Background(), tj, WithNextRunIn(2*time.Hour))
@@ -337,7 +337,7 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		tj := testJob{
-			name:        "name",
+			name:        "next-run-already-sooner",
 			description: "description",
 		}
 		err := sched.RegisterJob(context.Background(), tj, WithNextRunIn(2*time.Hour))

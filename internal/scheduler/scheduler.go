@@ -161,7 +161,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 func (s *Scheduler) start(ctx context.Context) {
 	s.logger.Debug("starting scheduling loop")
-	timer := time.NewTimer(0)
+	timer := time.NewTimer(s.runJobsInterval)
 	for {
 		select {
 		case <-ctx.Done():
