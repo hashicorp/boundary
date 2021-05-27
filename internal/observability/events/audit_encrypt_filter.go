@@ -39,9 +39,8 @@ type AuditEncryptFilter struct {
 	// Info for deriving key (can be nil)
 	HmacInfo []byte
 
-	HmacSha256Payloads bool
-	EncryptFields      bool
-	HmacSha256Fields   bool
+	EncryptFields    bool
+	HmacSha256Fields bool
 
 	l sync.RWMutex
 }
@@ -64,11 +63,15 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	if ef.Wrapper == nil {
 		return e, nil
 	}
-	if !ef.HmacSha256Payloads && !ef.EncryptFields && !ef.HmacSha256Fields {
+	if !ef.EncryptFields && !ef.HmacSha256Fields {
 		return e, nil
 	}
 
-	// Get both the value and the type of what the pointer points to. Value is
+	if ef.EncryptFields && ef.HmacSha256Fields {
+		return nil, errors.New(errors.InvalidParameter, op, "you cannot both encrypt and hmac-sha256 fields")
+	}
+
+	// Get both the value and the type of what the payload points to. Value is
 	// used to mutate underlying data and Type is used to get the name of the
 	// field.
 	payloadValue := reflect.ValueOf(e.Payload).Elem()
@@ -76,23 +79,53 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	if err := ef.filterField(ctx, payloadValue); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	panic("todo")
+	return e, nil
 }
 
 // filterField will recursively iterate over all the field for a value and
 // filter them based on their DataClassification
 func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value) error {
+	const op = "event.(AuditEncryptFilter).filterField"
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
 		fkind := field.Kind()
+		ftype := field.Type()
 
-		// If the field is a slice, sanitize it first
 		isPtrToSlice := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Slice
 		isSlice := fkind == reflect.Slice
-		if isSlice || isPtrToSlice {
-			if reflect.SliceOf(v.Type()) == reflect.TypeOf([]string{}) {
+
+		switch {
+		// if the field is a string or []byte then we just need to sanitize it
+		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]byte{}):
+			classification := getClassificationFromTag(ftype.Field(0).Tag)
+			if err := ef.sanitizeValue(ctx, field, classification); err != nil {
+				return errors.Wrap(err, op)
+			}
+		// If the field is a slice
+		case isSlice || isPtrToSlice:
+			sliceType := reflect.SliceOf(v.Type())
+			switch {
+			// if the field is a []string or [][]byte
+			case sliceType == reflect.TypeOf([]string{}) || sliceType == reflect.TypeOf([][]byte{}):
 				if err := ef.filterSlice(ctx, v, i); err != nil {
 					return err
+				}
+			// if the field is a slice of structs, recurse through them...
+			default:
+				if isPtrToSlice {
+					field = field.Elem()
+				}
+				for i := 0; i < field.Len(); i++ {
+					f := field.Index(i)
+					if f.Kind() == reflect.Ptr {
+						f = f.Elem()
+					}
+					if f.Kind() != reflect.Struct {
+						continue
+					}
+					if err := ef.filterField(ctx, f); err != nil {
+						return err
+					}
 				}
 			}
 		}
