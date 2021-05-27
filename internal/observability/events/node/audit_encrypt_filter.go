@@ -198,11 +198,21 @@ func (ef *AuditEncryptFilter) sanitizeValue(ctx context.Context, fv reflect.Valu
 			return errors.Wrap(err, op)
 		}
 	case SensitiveClassification:
-		encryptedData, err := ef.encrypt(ctx, fv.Bytes())
-		if err != nil {
-			return errors.Wrap(err, op)
+		ef.l.RLock()
+		encrypt := ef.EncryptFields
+		ef.l.Unlock()
+		var data string
+		var err error
+		if encrypt {
+			if data, err = ef.encrypt(ctx, fv.Bytes(), opt...); err != nil {
+				return errors.Wrap(err, op)
+			}
+		} else {
+			if data, err = ef.hmacSha256(ctx, fv.Bytes(), opt...); err != nil {
+				return errors.Wrap(err, op)
+			}
 		}
-		if err := setValue(fv, encryptedData); err != nil {
+		if err := setValue(fv, data); err != nil {
 			return errors.Wrap(err, op)
 		}
 	default:
@@ -213,14 +223,22 @@ func (ef *AuditEncryptFilter) sanitizeValue(ctx context.Context, fv reflect.Valu
 	return nil
 }
 
-func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte) (string, error) {
+func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
-	ef.l.Lock()
-	defer ef.l.Unlock()
-	if ef.Wrapper == nil {
+	opts := getOpts(opt...)
+	if ef.Wrapper == nil && opts.withWrapper == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
-	blobInfo, err := ef.Wrapper.Encrypt(ctx, value, nil)
+	var w wrapping.Wrapper
+	ef.l.RLock()
+	switch {
+	case opts.withWrapper != nil:
+		w = opts.withWrapper
+	default:
+		w = ef.Wrapper
+	}
+	ef.l.RUnlock()
+	blobInfo, err := w.Encrypt(ctx, value, nil)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
@@ -231,14 +249,38 @@ func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte) (string
 	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob), nil
 }
 
-func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte) (string, error) {
+func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...option) (string, error) {
 	const op = "event.(EncryptFilter).hmacField"
 	ef.l.Lock()
 	defer ef.l.Unlock()
-	if ef.Wrapper == nil {
+	opts := getOpts(opt...)
+	if ef.Wrapper == nil && opts.withWrapper == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
-	reader, err := kms.NewDerivedReader(ef.Wrapper, 32, ef.HmacSalt, ef.HmacInfo)
+	var w wrapping.Wrapper
+	var salt []byte
+	var info []byte
+	ef.l.RLock()
+	switch {
+	case opts.withWrapper != nil:
+		w = opts.withWrapper
+	default:
+		w = ef.Wrapper
+	}
+	switch {
+	case opts.withSalt != nil:
+		copy(salt, opts.withSalt)
+	default:
+		copy(salt, ef.HmacSalt)
+	}
+	switch {
+	case opts.withInfo != nil:
+		copy(info, opts.withInfo)
+	default:
+		copy(info, ef.HmacInfo)
+	}
+	ef.l.RUnlock()
+	reader, err := kms.NewDerivedReader(w, 32, salt, info)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
