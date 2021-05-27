@@ -26,57 +26,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCredentialStores creates count number of vault credential stores in
-// the provided DB with the provided scope id. If any errors are
-// encountered during the creation of the credential stores, the test will
-// fail.
-func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, opts... Option) *CredentialStore {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	w := db.New(conn)
-
 	ctx := context.Background()
 	kkms := kms.TestKms(t, conn, wrapper)
 	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	assert.NoError(err)
 	require.NotNil(databaseWrapper)
 
+	cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("vault-token-%s-%d", scopeId, i)))
+	assert.NoError(err)
+	require.NotNil(cs)
+	id, err := newCredentialStoreId()
+	assert.NoError(err)
+	require.NotEmpty(id)
+	cs.PublicId = id
+
+	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, iw db.Writer) error {
+			return iw.Create(ctx, cs)
+		},
+	)
+	require.NoError(err2)
+
+	tokens := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 4)
+	// the last token added is the current one.
+	cs.outputToken = tokens[3]
+
+	inCert := testClientCert(t, testCaCert(t))
+	clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+	require.NoError(err)
+	require.NotEmpty(clientCert)
+	clientCert.StoreId = id
+	require.NoError(clientCert.encrypt(ctx, databaseWrapper))
+
+	_, err3 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, iw db.Writer) error {
+			return iw.Create(ctx, clientCert)
+		},
+	)
+	require.NoError(err3)
+
+	cs.clientCert = clientCert
+}
+
+// TestCredentialStores creates count number of vault credential stores in
+// the provided DB with the provided scope id. If any errors are
+// encountered during the creation of the credential stores, the test will
+// fail.
+func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+	t.Helper()
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
-		cs, err := NewCredentialStore(scopeId, fmt.Sprintf("http://vault%d", i), []byte(fmt.Sprintf("vault-token-%s-%d", scopeId, i)))
-		assert.NoError(err)
-		require.NotNil(cs)
-		id, err := newCredentialStoreId()
-		assert.NoError(err)
-		require.NotEmpty(id)
-		cs.PublicId = id
-
-		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-			func(_ db.Reader, iw db.Writer) error {
-				return iw.Create(ctx, cs)
-			},
-		)
-		require.NoError(err2)
-
-		tokens := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 4)
-		// the last token added is the current one.
-		cs.outputToken = tokens[3]
-
-		inCert := testClientCert(t, testCaCert(t))
-		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
-		require.NoError(err)
-		require.NotEmpty(clientCert)
-		clientCert.StoreId = id
-		require.NoError(clientCert.encrypt(ctx, databaseWrapper))
-
-		_, err3 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-			func(_ db.Reader, iw db.Writer) error {
-				return iw.Create(ctx, clientCert)
-			},
-		)
-		require.NoError(err3)
-
-		cs.clientCert = clientCert
+		cs := TestCredentialStore(t, conn, wrapper, scopeId)
 		css = append(css, cs)
 	}
 	return css

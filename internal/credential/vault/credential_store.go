@@ -97,3 +97,20 @@ func (cs *CredentialStore) Token() *Token {
 func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 	return cs.clientCert
 }
+
+func (cs *CredentialStore) client() (*client, error) {
+	clientConfig := &clientConfig{
+		Addr:          cs.VaultAddress,
+		Token:         string(cs.inputToken),
+		CaCert:        cs.CaCert,
+		TlsServerName: cs.TlsServerName,
+		TlsSkipVerify: cs.TlsSkipVerify,
+		Namespace:     cs.Namespace,
+	}
+	if cs.clientCert != nil {
+		clientConfig.ClientCert = cs.clientCert.GetCertificate()
+		clientConfig.ClientKey = cs.clientCert.GetCertificateKey()
+	}
+
+	return newClient(clientConfig)
+}

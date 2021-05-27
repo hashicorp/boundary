@@ -1255,7 +1255,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(updateIn)
 			updateIn.PublicId = orig.GetPublicId()
-			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"ClientCertificate"})
+			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"Certificate", "CertificateKey"})
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
