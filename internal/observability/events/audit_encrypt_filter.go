@@ -69,6 +69,8 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	panic("todo")
 }
 
+// filterField will recursively iterate over all the field for a value and
+// filter them based on their DataClassification
 func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value) error {
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
@@ -88,9 +90,7 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value) 
 	return nil
 }
 
-// sanitizeSliceField sanitizes a slice field. Requires the whole
-// reflect.Value for the slice because it needs access to both the Value and
-// Type of the slice.
+// filterSlice will filter a slice reflect.Value
 func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, structValue reflect.Value, idx int) error {
 	const op = "event.(AuditEncryptFilter).filterSlice"
 	fieldValue := structValue.Field(idx)
@@ -100,18 +100,15 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, structValue refle
 	if structValue.Len() == 0 {
 		return nil
 	}
-	if isFieldPublic(structValue.Type().Field(idx).Tag) {
+	classification := getClassificationFromTag(structValue.Type().Field(idx).Tag)
+
+	if classification == PublicClassification {
 		return nil
 	}
 
 	if fieldValue.Kind() == reflect.Ptr && !fieldValue.IsNil() {
 		fieldValue = fieldValue.Elem()
 	}
-
-	for i := 0; i < structValue.Len(); i++ {
-		fmt.Println(structValue.Index(i))
-	}
-	classification := getClassificationFromTag(structValue.Type().Field(idx).Tag)
 
 	for i := 0; i < structValue.Len(); i++ {
 		fv := structValue.Index(i)
@@ -122,6 +119,7 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, structValue refle
 	return nil
 }
 
+// sanitizeValue will sanitize a value based on it's DataClassification
 func (ef *AuditEncryptFilter) sanitizeValue(ctx context.Context, fv reflect.Value, classification DataClassification) error {
 	const op = "event.(AuditEncryptFilter).sanitizeField"
 	isByteArray := fv.Type() != reflect.TypeOf([]byte(nil))
@@ -208,14 +206,6 @@ func setValue(fv reflect.Value, newVal string) error {
 	}
 	return nil
 
-}
-
-func isFieldPublic(f reflect.StructTag) bool {
-	t, ok := f.Lookup(DataClassificationTagName)
-	if !ok {
-		return false
-	}
-	return getClassificationFromTagString(t) == PublicClassification
 }
 
 func getClassificationFromTag(f reflect.StructTag) DataClassification {
