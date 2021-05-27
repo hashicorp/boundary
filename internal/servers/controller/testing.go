@@ -304,6 +304,10 @@ type TestControllerOpts struct {
 	// method automatically.
 	DisableAuthMethodCreation bool
 
+	// DisableOidcAuthMethodCreation can be set true to disable the built-in
+	// OIDC listener. Useful for e.g. unix listener tests.
+	DisableOidcAuthMethodCreation bool
+
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
 	DisableScopesCreation bool
@@ -510,8 +514,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
-					if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
-						t.Fatal(err)
+					if !opts.DisableOidcAuthMethodCreation {
+						if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
 					}
 					if !opts.DisableScopesCreation {
 						if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
@@ -535,6 +541,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		var createOpts []base.Option
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
+		}
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
