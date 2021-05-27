@@ -78,10 +78,16 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	}
 
 	var opts []option
+	var optWrapper wrapping.Wrapper
 	if i, ok := e.Payload.(WrapperPayload); ok {
-		opts = append(opts, withWrapper(i.Wrapper()))
+		optWrapper := i.Wrapper()
+		opts = append(opts, withWrapper(optWrapper))
 		opts = append(opts, withInfo(i.HmacInfo()))
 		opts = append(opts, withSalt(i.HmacSalt()))
+	}
+
+	if (ef.EncryptFields || ef.HmacSha256Fields) && ef.Wrapper == nil && optWrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 
 	// Get both the value and the type of what the payload points to. Value is
