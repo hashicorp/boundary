@@ -1,6 +1,18 @@
 package oidc
 
 const (
+	acctUpsertQuery = `
+	insert into auth_oidc_account
+			(%s)
+	values
+			(%s)
+	on conflict on constraint 
+			auth_oidc_account_auth_method_id_issuer_subject_uq
+	do update set
+			%s
+	returning public_id, version
+       `
+
 	findManagedGroupMembershipsForAccount = `
 	select
 		managed_group_id

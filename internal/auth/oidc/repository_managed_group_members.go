@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,34 +16,34 @@ import (
 //
 // mgs contains the set of managed groups that matched. It must contain the
 // group's version as this is used to ensure consistency.
-func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]string, int, error) {
+func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).setManagedGroupMembers"
 	if am == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if am.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
 	}
 	if acct == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
 	}
 	if acct.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newMgPublicIds := make(map[string]bool, len(mgs))
 	updatedMgs := make([]*ManagedGroup, 0, len(mgs))
 	for _, mg := range mgs {
 		if mg.Version == 0 {
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
+			return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
 		}
 		updatedMg := AllocManagedGroup()
 		updatedMg.PublicId = mg.PublicId
@@ -96,6 +95,7 @@ func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod,
 				return errors.Wrap(err, op)
 			}
 
+			// Figure out which ones to delete and which ones we already have
 			toDelete := make([]interface{}, 0, len(mgs))
 			var currMgId string
 			for rows.Next() {
@@ -134,149 +134,30 @@ func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod,
 			}
 
 			// Now do insertion
-			if len(toSet.addUserRoles) > 0 || len(toSet.addGroupRoles) > 0 {
+			if len(newMgPublicIds) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
-				if len(toSet.addUserRoles) > 0 {
-					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.addUserRoles))
-					if err := w.CreateItems(ctx, toSet.addUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add users"))
-					}
-					totalRowsAffected += len(toSet.addUserRoles)
-					msgs = append(msgs, userOplogMsgs...)
+				addOplogMsgs := make([]*oplog.Message, 0, len(newMgPublicIds))
+				toAdd := make([]interface{}, 0, len(newMgPublicIds))
+				for mgId := range newMgPublicIds {
+					newMg := AllocManagedGroupMemberAccount()
+					newMg.ManagedGroupId = mgId
+					newMg.MemberId = acct.PublicId
+					toAdd = append(toAdd, newMg)
 				}
-				if len(toSet.addGroupRoles) > 0 {
-					grpOplogMsgs := make([]*oplog.Message, 0, len(toSet.addGroupRoles))
-					if err := w.CreateItems(ctx, toSet.addGroupRoles, db.NewOplogMsgs(&grpOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add groups"))
-					}
-					totalRowsAffected += len(toSet.addGroupRoles)
-					msgs = append(msgs, grpOplogMsgs...)
+				if err := w.CreateItems(ctx, toAdd, db.NewOplogMsgs(&addOplogMsgs)); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to add managed group member accounts"))
 				}
+				totalRowsAffected += len(toAdd)
+				msgs = append(msgs, addOplogMsgs...)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, mgTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
-			// we need a new repo, that's using the same reader/writer as this TxHandler
-			txRepo := &Repository{
-				reader: reader,
-				writer: w,
-				kms:    r.kms,
-				// intentionally not setting the defaultLimit, so we'll get all
-				// the principal roles without a limit
-			}
-			currentPrincipals, err = txRepo.ListPrincipalRoles(ctx, roleId)
-			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
-			}
+
 			return nil
 		})
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return currentPrincipals, totalRowsAffected, nil
-}
-
-type managedGroupSet struct {
-	addMgs                  []interface{}
-	deleteMgsRoles          []interface{}
-	unchangedPrincipalRoles []PrincipalRole
-}
-
-func (r *Repository) managedGroupssToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
-	const op = "iam.(Repository).principalsToSet"
-	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
-	if role == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role")
-	}
-	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to list existing principal role %s", role.PublicId)))
-	}
-	existingUsers := map[string]PrincipalRole{}
-	existingGroups := map[string]PrincipalRole{}
-	for _, p := range existing {
-		switch p.GetType() {
-		case UserRoleType.String():
-			existingUsers[p.PrincipalId] = p
-		case GroupRoleType.String():
-			existingGroups[p.PrincipalId] = p
-		default:
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
-		}
-	}
-	var newUserRoles []interface{}
-	userIdsMap := map[string]struct{}{}
-	for _, id := range userIds {
-		userIdsMap[id] = struct{}{}
-		if _, ok := existingUsers[id]; !ok {
-			usrRole, err := NewUserRole(role.PublicId, id)
-			if err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory user role for add"))
-			}
-			newUserRoles = append(newUserRoles, usrRole)
-		}
-	}
-	var newGrpRoles []interface{}
-	groupIdsMap := map[string]struct{}{}
-	for _, id := range groupIds {
-		groupIdsMap[id] = struct{}{}
-		if _, ok := existingGroups[id]; !ok {
-			grpRole, err := NewGroupRole(role.PublicId, id)
-			if err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group role for add"))
-			}
-			newGrpRoles = append(newGrpRoles, grpRole)
-		}
-	}
-	var deleteUserRoles []interface{}
-	for _, p := range existingUsers {
-		if _, ok := userIdsMap[p.PrincipalId]; !ok {
-			usrRole, err := NewUserRole(p.GetRoleId(), p.GetPrincipalId())
-			if err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory user role for delete"))
-			}
-			deleteUserRoles = append(deleteUserRoles, usrRole)
-		}
-	}
-	var deleteGrpRoles []interface{}
-	for _, p := range existingGroups {
-		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
-			grpRole, err := NewGroupRole(p.GetRoleId(), p.GetPrincipalId())
-			if err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group role for delete"))
-			}
-			deleteGrpRoles = append(deleteGrpRoles, grpRole)
-		}
-	}
-
-	toSet := &principalSet{
-		addUserRoles:     newUserRoles,
-		addGroupRoles:    newGrpRoles,
-		deleteUserRoles:  deleteUserRoles,
-		deleteGroupRoles: deleteGrpRoles,
-	}
-
-	if len(toSet.addUserRoles) == 0 && len(toSet.addGroupRoles) == 0 && len(toSet.deleteUserRoles) == 0 && len(toSet.deleteGroupRoles) == 0 {
-		toSet.unchangedPrincipalRoles = existing
-	}
-
-	return toSet, nil
-}
-
-func splitPrincipals(principals []string) ([]string, []string, error) {
-	const op = "iam.splitPrincipals"
-	var users, groups []string
-	for _, principal := range principals {
-		switch {
-		case strings.HasPrefix(principal, UserPrefix):
-			users = append(users, principal)
-		// TODO: This needs to handle all of the kinds of group prefixes (sg_, dg_, etc.)
-		case strings.HasPrefix(principal, GroupPrefix):
-			groups = append(groups, principal)
-		default:
-			return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
-		}
-	}
-
-	return users, groups, nil
+	return totalRowsAffected, nil
 }
