@@ -46,6 +46,16 @@ type AuditEncryptFilter struct {
 	l sync.RWMutex
 }
 
+// Reopen is a no op for AuditEncryptFilters.
+func (af *AuditEncryptFilter) Reopen() error {
+	return nil
+}
+
+// Type describes the type of the node as a Filter.
+func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
+	return eventlogger.NodeTypeFilter
+}
+
 func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(EncryptFilter).Process"
 	if e == nil {
