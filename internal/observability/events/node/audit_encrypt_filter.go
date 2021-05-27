@@ -19,7 +19,12 @@ import (
 )
 
 const (
-	RedactedData              = "<REDACTED>"
+
+	// RedactedData is the value that replaces redacted data (secrets)
+	RedactedData = "<REDACTED>"
+
+	// DataClassificationTagName is the tag name for classifying data into
+	// DataClassification's
 	DataClassificationTagName = "classified"
 )
 
