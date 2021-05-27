@@ -82,14 +82,14 @@ func (mg *ManagedGroup) SetTableName(n string) {
 }
 
 // oplog will create oplog metadata for the ManagedGroup.
-func (c *ManagedGroup) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
+func (mg *ManagedGroup) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
+		"resource-public-id": []string{mg.GetPublicId()},
 		"resource-type":      []string{"oidc managed group"},
 		"op-type":            []string{op.String()},
 	}
-	if c.AuthMethodId != "" {
-		metadata["auth-method-id"] = []string{c.AuthMethodId}
+	if mg.AuthMethodId != "" {
+		metadata["auth-method-id"] = []string{mg.AuthMethodId}
 	}
 	if authMethodScopeId != "" {
 		metadata["scope-id"] = []string{authMethodScopeId}
