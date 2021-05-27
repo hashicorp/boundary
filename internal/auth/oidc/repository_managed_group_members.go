@@ -16,10 +16,13 @@ import (
 //
 // mgs contains the set of managed groups that matched. It must contain the
 // group's version as this is used to ensure consistency.
-func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) (int, error) {
+func (r *Repository) SetManagedGroupMembers(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).setManagedGroupMembers"
 	if am == nil {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+	}
+	if am.AuthMethod == nil {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
 	}
 	if am.PublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
@@ -29,6 +32,9 @@ func (r *Repository) setManagedGroupMembers(ctx context.Context, am *AuthMethod,
 	}
 	if acct == nil {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
+	}
+	if acct.Account == nil {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account store")
 	}
 	if acct.PublicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")

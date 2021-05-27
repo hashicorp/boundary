@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testFakeFilter = `"/foo" == "bar"`
+const testFakeManagedGroupFilter = `"/foo" == "bar"`
 
 func TestRepository_CreateManagedGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -85,7 +85,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					PublicId:     "mgoidc_OOOOOOOOOO",
 				},
 			},
@@ -97,13 +97,13 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 				},
 			},
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 				},
 			},
 		},
@@ -112,14 +112,14 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					Name:         "test-name-repo",
 				},
 			},
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					Name:         "test-name-repo",
 				},
 			},
@@ -129,7 +129,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -137,7 +137,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			want: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -148,7 +148,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
-					Filter:       testFakeFilter,
+					Filter:       testFakeManagedGroupFilter,
 					Description:  ("test-description-repo"),
 					Name:         "myname",
 				},
@@ -209,7 +209,7 @@ func TestRepository_LookupManagedGroup(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	mg := TestManagedGroup(t, conn, authMethod, testFakeFilter)
+	mg := TestManagedGroup(t, conn, authMethod, testFakeManagedGroupFilter)
 
 	newMgId, err := newManagedGroupId()
 	require.NoError(t, err)
@@ -274,7 +274,7 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 		WithIssuer(TestConvertToUrls(t, "https://www.alice.com")[0]),
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	mg := TestManagedGroup(t, conn, authMethod, testFakeFilter)
+	mg := TestManagedGroup(t, conn, authMethod, testFakeManagedGroupFilter)
 	newMgId, err := newManagedGroupId()
 	require.NoError(t, err)
 	tests := []struct {
@@ -365,18 +365,18 @@ func TestRepository_ListManagedGroups(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	mgs1 := []*ManagedGroup{
-		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
-		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
-		TestManagedGroup(t, conn, authMethod1, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod1, testFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod1, testFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod1, testFakeManagedGroupFilter),
 	}
 	sort.Slice(mgs1, func(i, j int) bool {
 		return strings.Compare(mgs1[i].PublicId, mgs1[j].PublicId) < 0
 	})
 
 	mgs2 := []*ManagedGroup{
-		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
-		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
-		TestManagedGroup(t, conn, authMethod2, testFakeFilter),
+		TestManagedGroup(t, conn, authMethod2, testFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod2, testFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, authMethod2, testFakeManagedGroupFilter),
 	}
 	sort.Slice(mgs2, func(i, j int) bool {
 		return strings.Compare(mgs2[i].PublicId, mgs2[j].PublicId) < 0
@@ -767,7 +767,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			version: 1,
 			orig: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
-					Filter: testFakeFilter,
+					Filter: testFakeManagedGroupFilter,
 				},
 			},
 			chgFn: changeFilter(`"/zip" == "zap"`),
@@ -843,7 +843,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			version: 1,
 			orig: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
-					Filter: testFakeFilter,
+					Filter: testFakeManagedGroupFilter,
 				},
 			},
 			masks:           []string{FilterField},
@@ -901,7 +901,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			orig := TestManagedGroup(t, conn, am, testFakeFilter, WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
+			orig := TestManagedGroup(t, conn, am, testFakeManagedGroupFilter, WithName(tt.orig.GetName()), WithDescription(tt.orig.GetDescription()))
 
 			tt.orig.AuthMethodId = am.PublicId
 			if tt.chgFn != nil {
