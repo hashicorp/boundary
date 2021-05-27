@@ -16,40 +16,40 @@ import (
 //
 // mgs contains the set of managed groups that matched. It must contain the
 // group's version as this is used to ensure consistency.
-func (r *Repository) SetManagedGroupMembers(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) (int, error) {
-	const op = "oidc.(Repository).setManagedGroupMembers"
+func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]*ManagedGroupMemberAccount, int, error) {
+	const op = "oidc.(Repository).SetManagedGroupMembers"
 	if am == nil {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.AuthMethod == nil {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
 	}
 	if am.PublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if am.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
 	}
 	if acct == nil {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
 	}
 	if acct.Account == nil {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account store")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account store")
 	}
 	if acct.PublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newMgPublicIds := make(map[string]bool, len(mgs))
 	updatedMgs := make([]*ManagedGroup, 0, len(mgs))
 	for _, mg := range mgs {
 		if mg.Version == 0 {
-			return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
+			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
 		}
 		updatedMg := AllocManagedGroup()
 		updatedMg.PublicId = mg.PublicId
@@ -60,6 +60,7 @@ func (r *Repository) SetManagedGroupMembers(ctx context.Context, am *AuthMethod,
 
 	ticketMg := AllocManagedGroup()
 	var totalRowsAffected int
+	var currentMemberships []*ManagedGroupMemberAccount
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -160,10 +161,41 @@ func (r *Repository) SetManagedGroupMembers(ctx context.Context, am *AuthMethod,
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
+			// we need a new repo that's using the same reader/writer as this TxHandler
+			txRepo := &Repository{
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
+			}
+			currentMemberships, err = txRepo.ListManagedGroupMembershipsByMember(ctx, acct.PublicId)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
+			}
 			return nil
 		})
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	return totalRowsAffected, nil
+	return currentMemberships, totalRowsAffected, nil
+}
+
+// ListManagedGroupMembershipsByMember lists managed group memberships via the
+// member (account) ID and supports WithLimit option.
+func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, withAcctId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
+	const op = "oidc.(Repository).ListManagedGroupMembershipsByMember"
+	if withAcctId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var mgs []*ManagedGroupMemberAccount
+	err := r.reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return mgs, nil
 }
