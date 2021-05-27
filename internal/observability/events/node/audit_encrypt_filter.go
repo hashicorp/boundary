@@ -18,34 +18,64 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type DataClassification string
-
 const (
 	RedactedData              = "<REDACTED>"
 	DataClassificationTagName = "classified"
+)
 
+// DataClassification defines a type for classification of data into categories
+// like: public, sensitive, secret, etc
+type DataClassification string
+
+const (
 	UnknownClassification   DataClassification = "unknown"
 	PublicClassification    DataClassification = "public"
 	SensitiveClassification DataClassification = "sensitive"
 	SecretClassification    DataClassification = "secret"
 )
 
+// WrapperPayload defines an interface for eventlogger payloads which include
+// wrapping.Wrapper fields.  This interface allows the AuditEncryptFilter to
+// support per event wrappers and hmac salt/info.
 type WrapperPayload interface {
+
+	// Wrapper to use for the event encryption or hmac-sha256 operations
 	Wrapper() wrapping.Wrapper
+
+	// HmacSalt to use for the event hmac-sha256 operations
 	HmacSalt() []byte
+
+	// HmacInfo to use for the event hmac-sha256 operations
 	HmacInfo() []byte
 }
 
+// AuditEncryptFilter is an eventlogger Filter Node which will filter string and
+// []byte fields in an event.  Fields with tags that designate
+// SecretClassification will be redacted. Fields with tags that designate
+// SensitiveClassification will either be encrypted or hmac-sha256.
 type AuditEncryptFilter struct {
-	// Wrapper to encrypt or hmac-sha256 string and []byte fields not mark "non-sensitive"
+	// Wrapper to encrypt or hmac-sha256 string and []byte fields which are
+	// tagged as SensitiveClassification.  This wrapper may be overridden on a
+	// per event basis when the event has a WrapperPayload which contains a
+	// wrapper to use for the specific event.
 	Wrapper wrapping.Wrapper
 
-	// Salt for deriving key (can be nil)
+	// Salt for deriving a hmac-sha256 operations key (can be nil).  This salt
+	// may be overridden on a per event basis when the event has a
+	// WrapperPayload which contains salt to use for the specific event.
 	HmacSalt []byte
-	// Info for deriving key (can be nil)
+
+	// Info for deriving a hmac-sha256 operations key (can be nil). This info
+	// may be overridden on a per event basis when the event has a
+	// WrapperPayload which contains info to use for the specific event.
 	HmacInfo []byte
 
-	EncryptFields    bool
+	// EncryptFields with SensitiveClassification.  It is invalid to set both
+	// EncryptFields and HmacSha256Fields to true.
+	EncryptFields bool
+
+	// HmacSha256Fields with SensitiveClassification.  It is invalid to set both
+	// EncryptFields and HmacSha256Fields to true.
 	HmacSha256Fields bool
 
 	l sync.RWMutex
@@ -61,13 +91,17 @@ func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
 	return eventlogger.NodeTypeFilter
 }
 
+// Process will encrypt or hmac-sha256 string and []byte fields which are tagged
+// as SensitiveClassification.  Fields that are tagged SecretClassification will
+// be redacted.
+//
+// If the event payload satisfies the WrapperPayload interface, then the
+// payloads Wrapper(), HmacSalt() and HmacInfo() will be used for
+// encryption/hmac-sha256 operations on that specific event.
 func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(EncryptFilter).Process"
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing event")
-	}
-	if ef.Wrapper == nil {
-		return e, nil
 	}
 	if !ef.EncryptFields && !ef.HmacSha256Fields {
 		return e, nil
