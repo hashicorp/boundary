@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -46,17 +47,28 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 	}
 
 	newMgPublicIds := make(map[string]bool, len(mgs))
-	updatedMgs := make([]*ManagedGroup, 0, len(mgs))
+	mgsToUpdate := make([]*ManagedGroup, 0, len(mgs))
 	for _, mg := range mgs {
 		if mg.Version == 0 {
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
 		}
-		updatedMg := AllocManagedGroup()
-		updatedMg.PublicId = mg.PublicId
-		updatedMg.Version = mg.Version + 1
-		updatedMgs = append(updatedMgs, updatedMg)
+		if newMgPublicIds[mg.PublicId] {
+			// We've already seen this -- could be a duplicate in the incoming
+			// MGs. We don't want to add it again because the version won't be
+			// correct, and it's unnecessary.
+			continue
+		}
 		newMgPublicIds[mg.PublicId] = true
+		mgToUpdate := AllocManagedGroup()
+		mgToUpdate.PublicId = mg.PublicId
+		mgToUpdate.AuthMethodId = mg.AuthMethodId
+		mgToUpdate.Version = mg.Version + 1
+		mgsToUpdate = append(mgsToUpdate, mgToUpdate)
+		log.Println("to update", mgToUpdate.PublicId, mgToUpdate.Version)
 	}
+	log.Println(len(mgs))
+	log.Println(len(newMgPublicIds))
+	log.Println(len(mgsToUpdate))
 
 	ticketMg := AllocManagedGroup()
 	var totalRowsAffected int
@@ -84,15 +96,25 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 
 			// Ensure that none of the filters have changed or will change
 			// during this operation
-			for i, updatedMg := range updatedMgs {
+			for i, mgToUpdate := range mgsToUpdate {
 				var mgOplogMsg oplog.Message
-				rowsUpdated, err := w.Update(ctx, updatedMg, []string{"Version"}, nil, db.NewOplogMsg(&mgOplogMsg), db.WithVersion(&mgs[i].Version))
+				log.Println("updating", mgToUpdate.PublicId, mgToUpdate.Version)
+
+				cloned := mgToUpdate.Clone()
+				if err := r.reader.LookupByPublicId(ctx, cloned); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("uh oh"))
+				}
+				log.Println("updating 2", cloned.PublicId, cloned.Version)
+
+				rowsUpdated, err := w.Update(ctx, mgToUpdate, []string{"Version"}, nil, db.NewOplogMsg(&mgOplogMsg), db.WithVersion(&mgs[i].Version))
 				if err != nil {
 					return errors.Wrap(err, op)
 				}
 				if rowsUpdated != 1 {
+					log.Println("bad", mgToUpdate.PublicId, mgToUpdate.Version)
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
 				}
+				log.Println("good", mgToUpdate.PublicId, mgToUpdate.Version)
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
@@ -109,6 +131,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				if err := rows.Scan(&currMgId); err != nil {
 					return errors.Wrap(err, op)
 				}
+				log.Println("found existing membership", currMgId)
 				if newMgPublicIds[currMgId] {
 					// We're slated to add it in, but it's already in there, so
 					// take it out of the new list
@@ -119,11 +142,24 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 					delMg.ManagedGroupId = currMgId
 					delMg.MemberId = acct.PublicId
 					toDelete = append(toDelete, delMg)
+					log.Println("deleting", delMg.ManagedGroupId, delMg.MemberId)
 				}
 			}
 
 			// At this point, anything in toDelete should be deleted, and
-			// anything left in newMgPublicIds should be added
+			// anything left in newMgPublicIds should be added. However, if we
+			// had no managed group to update, because none were passed in, but
+			// also none to delete, we return at this point. Nothing will have
+			// changed and nothing will be changed either.
+			//
+			// FIXME: Not returning an error means we don't abort the
+			// transaction, but we don't really want the function as a whole to
+			// error. Figure out the right way to do this.
+			/*
+				if len(mgs) == 0 && len(toDelete) == 0 {
+					return nil
+				}
+			*/
 
 			// Start with deletion
 			if len(toDelete) > 0 {
@@ -157,6 +193,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				totalRowsAffected += len(toAdd)
 				msgs = append(msgs, addOplogMsgs...)
 			}
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, mgTicket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}

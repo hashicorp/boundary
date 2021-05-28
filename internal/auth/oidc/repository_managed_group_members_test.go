@@ -2,6 +2,7 @@ package oidc_test
 
 import (
 	"context"
+	"log"
 	"math/rand"
 	"strings"
 	"testing"
@@ -47,7 +48,7 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	mgIds := make([]string, 0, 10)
+	mgs := make([]*oidc.ManagedGroup, 0, 10)
 
 	for i := 0; i < 100; i++ {
 		mg := oidc.AllocManagedGroup()
@@ -55,7 +56,7 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 		mg.Filter = testFakeManagedGroupFilter
 		got, err := repo.CreateManagedGroup(context.Background(), org.GetPublicId(), mg)
 		require.NoError(t, err)
-		mgIds = append(mgIds, got.PublicId)
+		mgs = append(mgs, got)
 	}
 
 	// Fetch valid OIDC accounts. One will be "static" where we will simply
@@ -88,7 +89,7 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 		authMethodScopeId     string
 		wantPreseededMgsCount int
 		wantMgsCount          int
-		specificMgIds         []string
+		specificMgs           []*oidc.ManagedGroup
 
 		wantErr         errors.Code
 		wantErrContains string
@@ -137,25 +138,73 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 			wantErrContains: "missing account id",
 		},
 		{
-			name:         "valid no preseeded",
-			authMethod:   authMethod,
-			account:      account,
-			wantMgsCount: 20,
+			name:         "valid fixed",
+			validPrereqs: true,
+			specificMgs:  mgs[0:20],
 		},
 		{
-			name:          "valid with duplicates",
-			authMethod:    authMethod,
-			account:       account,
-			specificMgIds: append(mgIds[0:20], mgIds[0:20]...),
-			wantMgsCount:  20,
+			name:         "valid fixed, second test",
+			validPrereqs: true,
+			specificMgs:  mgs[0:20],
 		},
+		{
+			name:         "valid none",
+			validPrereqs: true,
+			wantMgsCount: 0,
+		},
+		{
+			name:         "valid none, second test",
+			validPrereqs: true,
+			wantMgsCount: 0,
+		},
+		{
+			name:         "valid fixed, prep for random",
+			validPrereqs: true,
+			specificMgs:  mgs[20:40],
+		},
+		{
+			name:         "valid random",
+			validPrereqs: true,
+			wantMgsCount: 20,
+		},
+		/*
+			{
+				name:         "valid random, second test",
+				validPrereqs: true,
+				wantMgsCount: 20,
+			},
+				{
+					name:         "valid with duplicates",
+					validPrereqs: true,
+					specificMgs:  append(mgs[0:20], mgs[0:20]...),
+				},
+		*/
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var mgs []*oidc.ManagedGroup
+
+			// We are intentionally carrying things over between tests to be
+			// more realistic but that means we need correct versions, so update
+			// them first.
+			currMgs, err := repo.ListManagedGroups(ctx, authMethod.PublicId)
+			require.NoError(err)
+			require.Len(currMgs, 100)
+			currVersionMap := make(map[string]uint32, len(currMgs))
+			for _, currMg := range currMgs {
+				currVersionMap[currMg.PublicId] = currMg.Version
+			}
+			for _, mg := range mgs {
+				if mg.Version != currVersionMap[mg.PublicId] {
+					log.Println("updating version", mg.PublicId, mg.Version, "to", currVersionMap[mg.PublicId])
+				}
+				mg.Version = currVersionMap[mg.PublicId]
+			}
+
+			var mgsToTest []*oidc.ManagedGroup
+			var finalMgs map[string]*oidc.ManagedGroup
 			// If we know the inputs are sane, create the test data
 			if tt.validPrereqs {
 				tt.authMethod = authMethod
@@ -163,25 +212,37 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 				tt.account.PublicId = accountId
 				switch {
 				// If we want to select specific IDs, create member accounts and append
-				case tt.specificMgIds != nil:
-					mgs = make([]*oidc.ManagedGroup, len(tt.specificMgIds))
-					for i, v := range tt.specificMgIds {
-						mg := oidc.AllocManagedGroup()
-						mg.PublicId = v
-						mgs[i] = mg
+				case tt.specificMgs != nil:
+					mgsToTest = make([]*oidc.ManagedGroup, len(tt.specificMgs))
+					for i, mg := range tt.specificMgs {
+						newMg := oidc.AllocManagedGroup()
+						newMg.PublicId = mg.PublicId
+						newMg.Version = mg.Version
+						newMg.AuthMethodId = tt.authMethodId
+						mgsToTest[i] = newMg
 					}
 				default:
 					// Otherwise select at random
-					mgs = make([]*oidc.ManagedGroup, 0, tt.wantMgsCount)
+					mgsToTest = make([]*oidc.ManagedGroup, tt.wantMgsCount)
 					for i := 0; i < tt.wantMgsCount; i++ {
-						mg := oidc.AllocManagedGroup()
-						mg.PublicId = mgIds[rand.Int()%len(mgIds)]
-						mgs[i] = mg
+						mg := mgs[rand.Int()%len(mgs)]
+						newMg := oidc.AllocManagedGroup()
+						newMg.PublicId = mg.PublicId
+						newMg.Version = mg.Version
+						newMg.AuthMethodId = mg.AuthMethodId
+						mgsToTest[i] = newMg
 					}
+				}
+				finalMgs = make(map[string]*oidc.ManagedGroup)
+				for _, v := range mgsToTest {
+					finalMgs[v.PublicId] = v
 				}
 			}
 
-			memberships, num, err := repo.SetManagedGroupMemberships(ctx, tt.authMethod, tt.account, mgs)
+			t.Log(len(mgsToTest))
+			t.Log(len(finalMgs))
+
+			memberships, _, err := repo.SetManagedGroupMemberships(ctx, tt.authMethod, tt.account, mgsToTest)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "Unexpected error %s", err)
 				if tt.wantErrContains != "" {
@@ -191,8 +252,16 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 			}
 
 			require.NoError(err)
-			assert.Len(num, tt.wantMgsCount)
-			assert.Len(memberships, tt.wantMgsCount)
+			assert.Len(memberships, len(finalMgs))
+
+			// Ensure the same set was found; all memberships found should have
+			// been in the finalMgs map, and when they are all removed there
+			// should be nothing left.
+			for _, mship := range memberships {
+				assert.Contains(finalMgs, mship.ManagedGroupId)
+				delete(finalMgs, mship.ManagedGroupId)
+			}
+			assert.Len(finalMgs, 0)
 
 			// assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
