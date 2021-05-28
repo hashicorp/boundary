@@ -11,6 +11,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -1437,7 +1438,7 @@ func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) e
 			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
 			break
 		}
-		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
+		if cl.GetPurpose() != "" && cl.GetPurpose() != string(credential.ApplicationPurpose) {
 			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
 			break
 		}
@@ -1467,7 +1468,7 @@ func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) e
 			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
 			break
 		}
-		if cl.GetPurpose() != "" && cl.GetPurpose() != "application" {
+		if cl.GetPurpose() != "" && cl.GetPurpose() != string(credential.ApplicationPurpose) {
 			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
 			break
 		}
