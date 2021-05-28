@@ -595,3 +595,138 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		assert.Equal(tk.Status, string(authtoken.PendingStatus))
 	})
 }
+
+func Test_ManagedGroupFiltering(t *testing.T) {
+	// DO NOT run these tests under t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	// some standard factories for unit tests which
+	// are used in the Callback(...) call
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	repoFn := func() (*Repository, error) {
+		return NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	// a very simple test mock controller, that simply responds with a 200 OK to every
+	// request.
+	testController := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer testController.Close()
+
+	// test provider for the tests (see the oidc package docs for more info)
+	// it will provide discovery, JWKs, a token endpoint, etc for these tests.
+	tp := oidc.StartTestProvider(t)
+	tpCert, err := ParseCertificates(tp.CACert())
+	require.NoError(t, err)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	// a reusable test authmethod for the unit tests
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+		"alice-rp", "fido",
+		WithCertificates(tpCert...),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]))
+
+	// set this as the primary so users will be created on first login
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, testAuthMethod.PublicId)
+
+	// Create two managed groups. We'll use these in tests to set filters and
+	// then check that the user belongs to the ones we expect.
+	mgIds := []string{
+		TestManagedGroup(t, conn, testAuthMethod, testFakeManagedGroupFilter).PublicId,
+		TestManagedGroup(t, conn, testAuthMethod, testFakeManagedGroupFilter).PublicId,
+	}
+	_ = mgIds
+
+	// A reusable oidc.Provider for the tests
+	testProvider, err := convertToProvider(ctx, testAuthMethod)
+	require.NoError(t, err)
+	testConfigHash, err := testProvider.ConfigHash()
+	require.NoError(t, err)
+
+	// Set up the provider a bit
+	testNonce := "nonce"
+	tp.SetExpectedAuthNonce(testNonce)
+	code := "simple"
+	tp.SetExpectedAuthCode(code)
+	sub := "alice@example.com"
+	tp.SetExpectedSubject(sub)
+	tp.SetCustomAudience("foo", "alice-rp")
+	info := map[string]interface{}{
+		"roles": []string{"user", "operator"},
+		"sub":   "alice@example.com",
+		"email": "alice@example.com",
+		"name":  "alice doe joe foe",
+	}
+	tp.SetUserInfoReply(info)
+
+	tests := []struct {
+		name            string
+		wantErrMatch    *errors.Template // error template to match
+		filters         []string         // Should always be length 2, and specify the filters to use for the test
+		matchingMgs     []string         // The public IDs of the managed groups we expect the user to be in
+		wantErrContains string           // error string should contain
+	}{
+		{
+			name:    "simple", // must remain the first test
+			filters: []string{testFakeManagedGroupFilter, testFakeManagedGroupFilter},
+		},
+		{
+			name:    "simple 2", // must remain the first test
+			filters: []string{testFakeManagedGroupFilter, testFakeManagedGroupFilter},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// A unique token ID for each test
+			testTokenRequestId, err := authtoken.NewAuthTokenId()
+			require.NoError(err)
+
+			// the test provider is stateful, so we need to configure
+			// it for this unit test.
+
+			tp.SetClientCreds(testAuthMethod.ClientId, testAuthMethod.ClientSecret)
+			tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testAuthMethod.ApiUrl)
+			tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
+
+			state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
+			tp.SetExpectedState(state)
+
+			gotRedirect, err := Callback(ctx,
+				repoFn,
+				iamRepoFn,
+				atRepoFn,
+				testAuthMethod,
+				state,
+				code,
+			)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Empty(gotRedirect)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err code: %q got: %q", tt.wantErrMatch.Code, err)
+				assert.Contains(err.Error(), tt.wantErrContains)
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
