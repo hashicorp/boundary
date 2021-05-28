@@ -252,6 +252,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    OidcProviderCallbackError,
 			want: OidcProviderCallbackError,
 		},
+		{
+			name: "GracefullyAborted",
+			c:    GracefullyAborted,
+			want: GracefullyAborted,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,14 +10,14 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// setManagedGroups will set the managed groups for the given account ID. If mgs
-// is empty, the set of groups the account belongs to will be cleared. It
-// returns the set of managed group IDs.
+// SetManagedGroupMemberships will set the managed groups for the given account
+// ID. If mgs is empty, the set of groups the account belongs to will be
+// cleared. It returns the set of managed group IDs.
 //
 // mgs contains the set of managed groups that matched. It must contain the
 // group's version as this is used to ensure consistency.
 func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]*ManagedGroupMemberAccount, int, error) {
-	const op = "oidc.(Repository).SetManagedGroupMembers"
+	const op = "oidc.(Repository).SetManagedGroupMemberships"
 	if am == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
 	}
@@ -61,14 +60,10 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 		newMgPublicIds[mg.PublicId] = true
 		mgToUpdate := AllocManagedGroup()
 		mgToUpdate.PublicId = mg.PublicId
-		mgToUpdate.AuthMethodId = mg.AuthMethodId
+		mgToUpdate.AuthMethodId = am.PublicId
 		mgToUpdate.Version = mg.Version + 1
 		mgsToUpdate = append(mgsToUpdate, mgToUpdate)
-		log.Println("to update", mgToUpdate.PublicId, mgToUpdate.Version)
 	}
-	log.Println(len(mgs))
-	log.Println(len(newMgPublicIds))
-	log.Println(len(mgsToUpdate))
 
 	ticketMg := AllocManagedGroup()
 	var totalRowsAffected int
@@ -96,42 +91,30 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 
 			// Ensure that none of the filters have changed or will change
 			// during this operation
-			for i, mgToUpdate := range mgsToUpdate {
+			for _, mgToUpdate := range mgsToUpdate {
 				var mgOplogMsg oplog.Message
-				log.Println("updating", mgToUpdate.PublicId, mgToUpdate.Version)
-
-				cloned := mgToUpdate.Clone()
-				if err := r.reader.LookupByPublicId(ctx, cloned); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("uh oh"))
-				}
-				log.Println("updating 2", cloned.PublicId, cloned.Version)
-
-				rowsUpdated, err := w.Update(ctx, mgToUpdate, []string{"Version"}, nil, db.NewOplogMsg(&mgOplogMsg), db.WithVersion(&mgs[i].Version))
+				// mgToUpdate will have come in with an incremented version
+				// already, but WithVersion needs the current version
+				prevVersion := mgToUpdate.Version - 1
+				rowsUpdated, err := w.Update(ctx, mgToUpdate, []string{"Version"}, nil, db.NewOplogMsg(&mgOplogMsg), db.WithVersion(&prevVersion))
 				if err != nil {
 					return errors.Wrap(err, op)
 				}
 				if rowsUpdated != 1 {
-					log.Println("bad", mgToUpdate.PublicId, mgToUpdate.Version)
 					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
 				}
-				log.Println("good", mgToUpdate.PublicId, mgToUpdate.Version)
 				msgs = append(msgs, &mgOplogMsg)
 			}
 
-			// Find all existing memberships
-			rows, err := reader.Query(ctx, findManagedGroupMembershipsForAccount, []interface{}{acct.PublicId})
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
 			}
 
 			// Figure out which ones to delete and which ones we already have
 			toDelete := make([]interface{}, 0, len(mgs))
-			var currMgId string
-			for rows.Next() {
-				if err := rows.Scan(&currMgId); err != nil {
-					return errors.Wrap(err, op)
-				}
-				log.Println("found existing membership", currMgId)
+			for _, currMg := range currentMemberships {
+				currMgId := currMg.ManagedGroupId
 				if newMgPublicIds[currMgId] {
 					// We're slated to add it in, but it's already in there, so
 					// take it out of the new list
@@ -142,7 +125,6 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 					delMg.ManagedGroupId = currMgId
 					delMg.MemberId = acct.PublicId
 					toDelete = append(toDelete, delMg)
-					log.Println("deleting", delMg.ManagedGroupId, delMg.MemberId)
 				}
 			}
 
@@ -151,15 +133,9 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			// had no managed group to update, because none were passed in, but
 			// also none to delete, we return at this point. Nothing will have
 			// changed and nothing will be changed either.
-			//
-			// FIXME: Not returning an error means we don't abort the
-			// transaction, but we don't really want the function as a whole to
-			// error. Figure out the right way to do this.
-			/*
-				if len(mgs) == 0 && len(toDelete) == 0 {
-					return nil
-				}
-			*/
+			if len(mgs) == 0 && len(toDelete) == 0 {
+				return errors.New(errors.GracefullyAborted, op, "nothing to do")
+			}
 
 			// Start with deletion
 			if len(toDelete) > 0 {
@@ -194,23 +170,19 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 				msgs = append(msgs, addOplogMsgs...)
 			}
 
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, mgTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+			if len(msgs) > 0 {
+				if err := w.WriteOplogEntryWith(ctx, oplogWrapper, mgTicket, metadata, msgs); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				}
 			}
 
-			// we need a new repo that's using the same reader/writer as this TxHandler
-			txRepo := &Repository{
-				reader: reader,
-				writer: w,
-				kms:    r.kms,
-			}
-			currentMemberships, err = txRepo.ListManagedGroupMembershipsByMember(ctx, acct.PublicId)
+			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
 			}
 			return nil
 		})
-	if err != nil {
+	if err != nil && !errors.Match(errors.T(errors.GracefullyAborted), err) {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	return currentMemberships, totalRowsAffected, nil
@@ -229,8 +201,12 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	reader := r.reader
+	if opts.withReader != nil {
+		reader = opts.withReader
+	}
 	var mgs []*ManagedGroupMemberAccount
-	err := r.reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}

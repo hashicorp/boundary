@@ -79,6 +79,11 @@ const (
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
 	VersionMismatch      Code = 1105 // VersionMismatch represents the update version and the db version for an entry do not match.
+	// GracefullyAborted means we intended to abort a transaction but the
+	// enclosing function should not treat it as an error; we aborted for
+	// reasons related to the state of the DDL and/or inputs (such as we're
+	// already in the right state and don't want to end up writing oplogs).
+	GracefullyAborted Code = 1106
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code

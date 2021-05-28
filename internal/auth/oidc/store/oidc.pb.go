@@ -959,11 +959,11 @@ type ManagedGroupMemberAccount struct {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// managed_group_id is the fk to the oidc managed group public id
-	// @inject_tag: `gorm:"not_null"`
-	ManagedGroupId string `protobuf:"bytes,20,opt,name=managed_group_id,json=managedGroupId,proto3" json:"managed_group_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"primary_key"`
+	ManagedGroupId string `protobuf:"bytes,20,opt,name=managed_group_id,json=managedGroupId,proto3" json:"managed_group_id,omitempty" gorm:"primary_key"`
 	// member_id is the fk to the oidc account public id
-	// @inject_tag: `gorm:"not_null"`
-	MemberId string `protobuf:"bytes,30,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"primary_key"`
+	MemberId string `protobuf:"bytes,30,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty" gorm:"primary_key"`
 }
 
 func (x *ManagedGroupMemberAccount) Reset() {

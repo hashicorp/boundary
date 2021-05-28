@@ -2,7 +2,6 @@ package oidc_test
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"strings"
 	"testing"
@@ -20,8 +19,18 @@ import (
 
 const testFakeManagedGroupFilter = `"/foo" == "bar"`
 
-func Test_SetManagedGroupMembers(t *testing.T) {
+func Test_ManagedGroupMemberships(t *testing.T) {
+	// This tests both managed group membership functions (set/list) as list is
+	// always called as a return from set and we are validating the values that
+	// come back against what we expect.
+
+	// This test can be run in parallel; the subtests *cannot*.
 	t.Parallel()
+
+	// Note: using a test controller here for ease of setup as we need a working
+	// dev OIDC auth method and associated accounts. This test is not making API
+	// calls! It's accessing the repo directly via the test controller's
+	// exposure of the underlying DB primitives.
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -143,9 +152,14 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 			specificMgs:  mgs[0:20],
 		},
 		{
-			name:         "valid fixed, second test",
+			name:         "valid fixed, same values",
 			validPrereqs: true,
 			specificMgs:  mgs[0:20],
+		},
+		{
+			name:         "valid fixed, new values",
+			validPrereqs: true,
+			specificMgs:  mgs[20:40],
 		},
 		{
 			name:         "valid none",
@@ -153,32 +167,30 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 			wantMgsCount: 0,
 		},
 		{
-			name:         "valid none, second test",
+			name:         "valid none, second test, testing gracefully aborting",
 			validPrereqs: true,
 			wantMgsCount: 0,
 		},
 		{
 			name:         "valid fixed, prep for random",
 			validPrereqs: true,
-			specificMgs:  mgs[20:40],
+			specificMgs:  mgs[20:50],
 		},
 		{
 			name:         "valid random",
 			validPrereqs: true,
+			wantMgsCount: 30,
+		},
+		{
+			name:         "valid random, second test",
+			validPrereqs: true,
 			wantMgsCount: 20,
 		},
-		/*
-			{
-				name:         "valid random, second test",
-				validPrereqs: true,
-				wantMgsCount: 20,
-			},
-				{
-					name:         "valid with duplicates",
-					validPrereqs: true,
-					specificMgs:  append(mgs[0:20], mgs[0:20]...),
-				},
-		*/
+		{
+			name:         "valid with duplicates",
+			validPrereqs: true,
+			specificMgs:  append(mgs[0:20], mgs[0:20]...),
+		},
 	}
 
 	for _, tt := range tests {
@@ -197,9 +209,6 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 				currVersionMap[currMg.PublicId] = currMg.Version
 			}
 			for _, mg := range mgs {
-				if mg.Version != currVersionMap[mg.PublicId] {
-					log.Println("updating version", mg.PublicId, mg.Version, "to", currVersionMap[mg.PublicId])
-				}
 				mg.Version = currVersionMap[mg.PublicId]
 			}
 
@@ -210,27 +219,13 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 				tt.authMethod = authMethod
 				tt.account = oidc.AllocAccount()
 				tt.account.PublicId = accountId
-				switch {
-				// If we want to select specific IDs, create member accounts and append
-				case tt.specificMgs != nil:
-					mgsToTest = make([]*oidc.ManagedGroup, len(tt.specificMgs))
-					for i, mg := range tt.specificMgs {
-						newMg := oidc.AllocManagedGroup()
-						newMg.PublicId = mg.PublicId
-						newMg.Version = mg.Version
-						newMg.AuthMethodId = tt.authMethodId
-						mgsToTest[i] = newMg
-					}
-				default:
-					// Otherwise select at random
+				mgsToTest = tt.specificMgs
+				if mgsToTest == nil {
+					// Select at random
 					mgsToTest = make([]*oidc.ManagedGroup, tt.wantMgsCount)
 					for i := 0; i < tt.wantMgsCount; i++ {
 						mg := mgs[rand.Int()%len(mgs)]
-						newMg := oidc.AllocManagedGroup()
-						newMg.PublicId = mg.PublicId
-						newMg.Version = mg.Version
-						newMg.AuthMethodId = mg.AuthMethodId
-						mgsToTest[i] = newMg
+						mgsToTest[i] = mg
 					}
 				}
 				finalMgs = make(map[string]*oidc.ManagedGroup)
@@ -238,9 +233,6 @@ func Test_SetManagedGroupMembers(t *testing.T) {
 					finalMgs[v.PublicId] = v
 				}
 			}
-
-			t.Log(len(mgsToTest))
-			t.Log(len(finalMgs))
 
 			memberships, _, err := repo.SetManagedGroupMemberships(ctx, tt.authMethod, tt.account, mgsToTest)
 			if tt.wantErr != 0 {
