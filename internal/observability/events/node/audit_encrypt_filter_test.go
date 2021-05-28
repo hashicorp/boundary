@@ -20,10 +20,9 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 	wrapper := node.TestWrapper(t)
 	now := time.Now()
 	testEncryptingFilter := &node.AuditEncryptFilter{
-		Wrapper:       wrapper,
-		HmacSalt:      []byte("salt"),
-		HmacInfo:      []byte("info"),
-		EncryptFields: true,
+		Wrapper:  wrapper,
+		HmacSalt: []byte("salt"),
+		HmacInfo: []byte("info"),
 	}
 
 	tests := []struct {
@@ -43,6 +42,8 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 				Type:      "test",
 				CreatedAt: now,
 				Payload: &testPayload{
+					NotTagged:         "not-tagged-data-will-be-redacted",
+					SensitiveRedacted: []byte("sensitive-redact-override"),
 					UserInfo: &testUserInfo{
 						Id:           "id-12",
 						UserFullName: "Alice Eve Doe",
@@ -54,6 +55,8 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 				Type:      "test",
 				CreatedAt: now,
 				Payload: &testPayload{
+					NotTagged:         node.RedactedData,
+					SensitiveRedacted: []byte(node.RedactedData),
 					UserInfo: &testUserInfo{
 						Id:           "id-12",
 						UserFullName: "Alice Eve Doe",
@@ -124,6 +127,8 @@ type testUserInfo struct {
 }
 
 type testPayload struct {
-	UserInfo *testUserInfo
-	Keys     [][]byte `classified:"secret"`
+	NotTagged         string
+	SensitiveRedacted []byte `classified:"sensitive,redact`
+	UserInfo          *testUserInfo
+	Keys              [][]byte `classified:"secret"`
 }
