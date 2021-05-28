@@ -1,6 +1,7 @@
 package node_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"testing"
@@ -29,6 +30,7 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 		name            string
 		filter          *node.AuditEncryptFilter
 		testEvent       *eventlogger.Event
+		setupWantEvent  func(*eventlogger.Event)
 		wantEvent       *eventlogger.Event
 		wantErr         bool
 		wantErrIs       error
@@ -54,10 +56,13 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 				Payload: &testPayload{
 					UserInfo: &testUserInfo{
 						Id:           "id-12",
-						UserFullName: testEncryptValue(t, wrapper, []byte("Alice Eve Doe")),
+						UserFullName: "Alice Eve Doe",
 					},
 					Keys: [][]byte{[]byte(node.RedactedData), []byte(node.RedactedData)},
 				},
+			},
+			setupWantEvent: func(e *eventlogger.Event) {
+				e.Payload.(*testPayload).UserInfo.UserFullName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.UserFullName)))
 			},
 		},
 	}
@@ -79,6 +84,10 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			if tt.setupWantEvent != nil {
+				tt.setupWantEvent(got)
+			}
+
 			assert.Equal(tt.wantEvent, got)
 		})
 	}
@@ -92,6 +101,20 @@ func testEncryptValue(t *testing.T, w wrapping.Wrapper, value []byte) string {
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	require.NoError(err)
 	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob)
+}
+
+func testDecryptValue(t *testing.T, w wrapping.Wrapper, value []byte) []byte {
+	t.Helper()
+	require := require.New(t)
+	value = bytes.TrimPrefix(value, []byte("encrypted:"))
+	value, err := base64.RawURLEncoding.DecodeString(string(value))
+	require.NoError(err)
+	blobInfo := new(wrapping.EncryptedBlobInfo)
+	require.NoError(proto.Unmarshal(value, blobInfo))
+
+	marshaledInfo, err := w.Decrypt(context.Background(), blobInfo, nil)
+	require.NoError(err)
+	return marshaledInfo
 }
 
 type testUserInfo struct {
