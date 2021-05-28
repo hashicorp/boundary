@@ -19,7 +19,9 @@ type Job interface {
 
 	// NextRunIn returns the duration until the next job run should be scheduled.  This
 	// method is invoked after a run has successfully completed and the next run time
-	// is being persisted by the scheduler.
+	// is being persisted by the scheduler.  If an error is returned, the error will be logged
+	// but the duration returned will still be used in scheduling.  If a zero duration is returned
+	// the job will be scheduled to run again immediately.
 	NextRunIn() (time.Duration, error)
 
 	// Name is the unique name of the job.

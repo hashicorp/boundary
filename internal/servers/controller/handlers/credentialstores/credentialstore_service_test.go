@@ -1,7 +1,6 @@
 package credentialstores
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -153,11 +151,6 @@ func TestCreate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
-
-	trj, err := vault.NewTokenRenewalJob(rw, rw, kms, hclog.L())
-	require.NoError(t, err)
-	err = sche.RegisterJob(context.Background(), trj)
-	require.NoError(t, err)
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	defaultCs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]

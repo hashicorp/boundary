@@ -1,19 +1,25 @@
 begin;
 
+    create index credential_vault_token_expiration_time_ix
+        on credential_vault_token(expiration_time);
+    comment on index credential_vault_token_expiration_time_ix is
+        'the credential_vault_token_expiration_time_ix is used by the token renewal job';
+
     create view credential_vault_job_renewable_tokens as
         select token_hmac,
                token, -- encrypted
                store_id,
                status,
+               last_renewal_time,
+               expiration_time,
                -- renewal time is the midpoint between the last renewal time and the expiration time
-               last_renewal_time + (expiration_time - last_renewal_time) / 2 renewal_time
+               last_renewal_time + (expiration_time - last_renewal_time) / 2 as renewal_time
         from credential_vault_token
         where status in ('current', 'maintaining');
 
     comment on view credential_vault_job_renewable_tokens is
         'credential_vault_renewable_tokens is a view where each row contains a token that is current or maintaining and should be renewed in Vault. '
         'Each row contains encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
-
 
     create view credential_vault_job_renewable_client_private as
     select store.public_id           as public_id,

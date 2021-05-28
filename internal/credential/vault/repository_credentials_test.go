@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,11 +37,6 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
-
-	trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
-	require.NoError(err)
-	err = sche.RegisterJob(context.Background(), trj)
-	require.NoError(err)
 
 	secret := v.CreateToken(t, WithPolicies([]string{"default", "database", "pki"}))
 	token := secret.Auth.ClientToken
@@ -181,11 +175,6 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
-
-			trj, err := NewTokenRenewalJob(rw, rw, kms, hclog.L())
-			require.NoError(err)
-			err = sche.RegisterJob(context.Background(), trj)
-			require.NoError(err)
 
 			var opts []Option
 			if tt.tls == TestServerTLS {

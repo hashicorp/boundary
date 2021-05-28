@@ -166,12 +166,6 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 			msgs = append(msgs, newToken.oplogMessage(db.CreateOp))
 
-			// Set next run time for token renewal task to at least the mid point of this token
-			tokenRenewalIn := token.expiration / 2
-			if err = r.scheduler.UpdateJobNextRunInAtLeast(ctx, TokenRenewalJobName, tokenRenewalIn); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error updating next run time for vault token renewal job"))
-			}
-
 			newCredentialStore.inputToken = nil
 			newToken.Token.Token = nil
 			newToken.Token.CtToken = nil
@@ -198,6 +192,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil
 		},
 	)
+
+	// Best effort update next run time of token renewal job, but an error should not
+	// cause update to fail.
+	// TODO (lcr 05/2021): log error once repo has logger
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
@@ -423,6 +422,25 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 		cs.privateClientCert = cert
 	}
 	return cs
+}
+
+func (ps *privateStore) token() *Token {
+	if ps.TokenHmac != nil {
+		tk := allocToken()
+		tk.StoreId = ps.StoreId
+		tk.TokenHmac = ps.TokenHmac
+		tk.LastRenewalTime = ps.TokenLastRenewalTime
+		tk.ExpirationTime = ps.TokenExpirationTime
+		tk.CreateTime = ps.TokenCreateTime
+		tk.UpdateTime = ps.TokenUpdateTime
+		tk.CtToken = ps.CtToken
+		tk.KeyId = ps.TokenKeyId
+		tk.Status = ps.TokenStatus
+
+		return tk
+	}
+
+	return nil
 }
 
 func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
@@ -720,12 +738,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				}
 				msgs = append(msgs, returnedToken.oplogMessage(db.CreateOp))
 
-				// Set next run time for token renewal task to at least the mid point of this token
-				tokenRenewalIn := token.expiration / 2
-				if err = r.scheduler.UpdateJobNextRunInAtLeast(ctx, TokenRenewalJobName, tokenRenewalIn); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("error updating next run time for vault token renewal job"))
-				}
-
 				returnedCredentialStore.inputToken = nil
 				returnedToken.Token.Token = nil
 				returnedToken.Token.CtToken = nil
@@ -775,6 +787,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return err
 		},
 	)
+
+	if updateToken {
+		// Best effort update next run time of token renewal job, but an error should not
+		// cause update to fail.
+		// TODO (lcr 05/2021): log error once repo has logger
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
+	}
 
 	if err != nil {
 		if errors.IsUniqueError(err) {

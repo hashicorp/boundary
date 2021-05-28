@@ -118,7 +118,6 @@ func TestNewTokenRenewalJob(t *testing.T) {
 
 func TestTokenRenewal_RunLimits(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -156,6 +155,7 @@ func TestTokenRenewal_RunLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			// Create dummy credential store linked to test vault server to avoid run timing
 			// on renew-self network call
 			v := NewTestVaultServer(t)
@@ -227,13 +227,20 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
 	origExp := token.GetExpirationTime().AsTime()
 
+	// Set expiration time in database to 1 hour from now so token should not be up for renewal
+	count, err := rw.Exec(context.Background(),
+		updateTokenExpirationQuery,
+		[]interface{}{int(time.Hour.Seconds()), token.TokenHmac})
+	require.NoError(err)
+	assert.Equal(1, count)
+
 	err = r.Run(context.Background())
 	require.NoError(err)
 	// No tokens should have been renewed
 	assert.Equal(0, r.numProcessed)
 
 	// Set expiration time in database to 1 minute from now to force token renewal
-	count, err := rw.Exec(context.Background(),
+	count, err = rw.Exec(context.Background(),
 		updateTokenExpirationQuery,
 		[]interface{}{int(time.Minute.Seconds()), token.TokenHmac})
 	require.NoError(err)
@@ -314,7 +321,6 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 
 func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -323,23 +329,23 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs, err := NewCredentialStore(prj.PublicId, "http://vault", []byte("token"))
-	assert.NoError(err)
-	require.NotNil(cs)
+	assert.NoError(t, err)
+	require.NotNil(t, cs)
 	id, err := newCredentialStoreId()
-	assert.NoError(err)
-	require.NotEmpty(id)
+	assert.NoError(t, err)
+	require.NotEmpty(t, id)
 	cs.PublicId = id
 	err = rw.Create(context.Background(), cs)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	createTokens := func(name string, exp []time.Duration) {
 		for i, d := range exp {
 			databaseWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 			token, err := newToken(cs.GetPublicId(), []byte(fmt.Sprintf("%s-token%d", name, i)), []byte(fmt.Sprintf("%s-accessor%d", name, i)), d)
-			assert.NoError(err)
-			require.NotNil(token)
+			assert.NoError(t, err)
+			require.NotNil(t, token)
 
-			require.NoError(token.encrypt(context.Background(), databaseWrapper))
+			require.NoError(t, token.encrypt(context.Background(), databaseWrapper))
 
 			query := insertTokenQuery
 			queryValues := []interface{}{
@@ -364,8 +370,8 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			}
 
 			rows, err := rw.Exec(context.Background(), query, queryValues)
-			assert.Equal(1, rows)
-			require.NoError(err)
+			assert.Equal(t, 1, rows)
+			require.NoError(t, err)
 		}
 	}
 
@@ -408,6 +414,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 			assert.NoError(err)
 			require.NotNil(r)
