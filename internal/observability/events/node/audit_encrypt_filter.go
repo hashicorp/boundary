@@ -144,28 +144,26 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 // filter them based on their DataClassification
 func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...option) error {
 	const op = "event.(AuditEncryptFilter).filterField"
-	fmt.Println("v: ", v)
 	for i := 0; i < v.Type().NumField(); i++ {
-		fmt.Println("field [", i, "] ", v.Field(i))
 		field := v.Field(i)
 		fkind := field.Kind()
 		ftype := field.Type()
-		fmt.Println("ftype: ", ftype)
 
 		isPtrToSlice := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Slice
+		isPtrToStruct := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Struct
 		isSlice := fkind == reflect.Slice
 
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
 		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]uint8{}):
-			classification := getClassificationFromTag(ftype.Field(0).Tag)
+			classification := getClassificationFromTag(v.Type().Field(i).Tag)
 			if err := ef.filterValue(ctx, field, classification, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
-		// If the field is a slice
+		// if the field is a slice
 		case isSlice || isPtrToSlice:
 			switch {
-			// if the field is a []string or [][]byte
+			// if the field is a slice of string or slice of []byte
 			case ftype == reflect.TypeOf([]string{}) || ftype == reflect.TypeOf([][]uint8{}):
 				classification := getClassificationFromTag(v.Type().Field(i).Tag)
 				if err := ef.filterSlice(ctx, classification, field, opt...); err != nil {
@@ -188,6 +186,15 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 						return err
 					}
 				}
+
+			}
+		// if the field is a struct
+		case fkind == reflect.Struct || isPtrToStruct:
+			if isPtrToStruct {
+				field = field.Elem()
+			}
+			if err := ef.filterField(ctx, field, opt...); err != nil {
+				return err
 			}
 		}
 	}
@@ -233,15 +240,23 @@ func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value,
 	case SensitiveClassification:
 		ef.l.RLock()
 		encrypt := ef.EncryptFields
-		ef.l.Unlock()
+		ef.l.RUnlock()
+		var raw []byte
+		switch ftype {
+		case reflect.TypeOf(""):
+			raw = []byte(fv.String())
+		default:
+			raw = fv.Bytes()
+		}
+
 		var data string
 		var err error
 		if encrypt {
-			if data, err = ef.encrypt(ctx, fv.Bytes(), opt...); err != nil {
+			if data, err = ef.encrypt(ctx, raw, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
 		} else {
-			if data, err = ef.hmacSha256(ctx, fv.Bytes(), opt...); err != nil {
+			if data, err = ef.hmacSha256(ctx, raw, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
 		}
@@ -258,19 +273,19 @@ func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value,
 
 func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
+	ef.l.Lock()
+	defer ef.l.Unlock()
 	opts := getOpts(opt...)
 	if ef.Wrapper == nil && opts.withWrapper == nil {
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 	var w wrapping.Wrapper
-	ef.l.RLock()
 	switch {
 	case opts.withWrapper != nil:
 		w = opts.withWrapper
 	default:
 		w = ef.Wrapper
 	}
-	ef.l.RUnlock()
 	blobInfo, err := w.Encrypt(ctx, value, nil)
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -293,7 +308,6 @@ func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt .
 	var w wrapping.Wrapper
 	var salt []byte
 	var info []byte
-	ef.l.RLock()
 	switch {
 	case opts.withWrapper != nil:
 		w = opts.withWrapper
@@ -312,7 +326,6 @@ func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt .
 	default:
 		copy(info, ef.HmacInfo)
 	}
-	ef.l.RUnlock()
 	reader, err := kms.NewDerivedReader(w, 32, salt, info)
 	if err != nil {
 		return "", errors.Wrap(err, op)
@@ -365,7 +378,7 @@ func getClassificationFromTagString(tag string) DataClassification {
 	case PublicClassification:
 		return PublicClassification
 	case SensitiveClassification:
-		return SecretClassification
+		return SensitiveClassification
 	case SecretClassification:
 		return SecretClassification
 	default:
