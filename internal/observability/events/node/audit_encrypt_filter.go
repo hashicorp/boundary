@@ -144,28 +144,31 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 // filter them based on their DataClassification
 func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...option) error {
 	const op = "event.(AuditEncryptFilter).filterField"
+	fmt.Println("v: ", v)
 	for i := 0; i < v.Type().NumField(); i++ {
+		fmt.Println("field [", i, "] ", v.Field(i))
 		field := v.Field(i)
 		fkind := field.Kind()
 		ftype := field.Type()
+		fmt.Println("ftype: ", ftype)
 
 		isPtrToSlice := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Slice
 		isSlice := fkind == reflect.Slice
 
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
-		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]byte{}):
+		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]uint8{}):
 			classification := getClassificationFromTag(ftype.Field(0).Tag)
-			if err := ef.sanitizeValue(ctx, field, classification, opt...); err != nil {
+			if err := ef.filterValue(ctx, field, classification, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
 		// If the field is a slice
 		case isSlice || isPtrToSlice:
-			sliceType := reflect.SliceOf(v.Type())
 			switch {
 			// if the field is a []string or [][]byte
-			case sliceType == reflect.TypeOf([]string{}) || sliceType == reflect.TypeOf([][]byte{}):
-				if err := ef.filterSlice(ctx, v, i, opt...); err != nil {
+			case ftype == reflect.TypeOf([]string{}) || ftype == reflect.TypeOf([][]uint8{}):
+				classification := getClassificationFromTag(v.Type().Field(i).Tag)
+				if err := ef.filterSlice(ctx, classification, field, opt...); err != nil {
 					return err
 				}
 			// if the field is a slice of structs, recurse through them...
@@ -192,40 +195,31 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 }
 
 // filterSlice will filter a slice reflect.Value
-func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, structValue reflect.Value, idx int, opt ...option) error {
+func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classification DataClassification, slice reflect.Value, opt ...option) error {
 	const op = "event.(AuditEncryptFilter).filterSlice"
-	fieldValue := structValue.Field(idx)
-	if reflect.SliceOf(structValue.Type()) == reflect.TypeOf([]string{}) {
-		return errors.New(errors.InvalidParameter, op, "not a []string")
-	}
-	if structValue.Len() == 0 {
-		return nil
-	}
-	classification := getClassificationFromTag(structValue.Type().Field(idx).Tag)
-
 	if classification == PublicClassification {
 		return nil
 	}
-
-	if fieldValue.Kind() == reflect.Ptr && !fieldValue.IsNil() {
-		fieldValue = fieldValue.Elem()
+	if slice.Len() == 0 {
+		return nil
 	}
-
-	for i := 0; i < structValue.Len(); i++ {
-		fv := structValue.Index(i)
-		if err := ef.sanitizeValue(ctx, fv, classification); err != nil {
+	if slice.Kind() == reflect.Ptr && !slice.IsNil() {
+		slice = slice.Elem()
+	}
+	for i := 0; i < slice.Len(); i++ {
+		fv := slice.Index(i)
+		if err := ef.filterValue(ctx, fv, classification); err != nil {
 			return errors.Wrap(err, op)
 		}
 	}
 	return nil
 }
 
-// sanitizeValue will sanitize a value based on it's DataClassification
-func (ef *AuditEncryptFilter) sanitizeValue(ctx context.Context, fv reflect.Value, classification DataClassification, opt ...option) error {
-	const op = "event.(AuditEncryptFilter).sanitizeField"
-	isByteArray := fv.Type() != reflect.TypeOf([]byte(nil))
-	isString := fv.Type() != reflect.TypeOf("")
-	if !isString || !isByteArray {
+// filterValue will filter a value based on it's DataClassification
+func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classification DataClassification, opt ...option) error {
+	const op = "event.(AuditEncryptFilter).filterValue"
+	ftype := fv.Type()
+	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
 	}
 
@@ -333,10 +327,11 @@ func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt .
 }
 
 func setValue(fv reflect.Value, newVal string) error {
-	const op = "event.(EncryptFilter).setField"
-	isByteArray := fv.Type() != reflect.TypeOf([]byte(nil))
-	isString := fv.Type() != reflect.TypeOf("")
-	if !isString || !isByteArray {
+	const op = "event.(EncryptFilter).setValue"
+	ftype := fv.Type()
+	isByteArray := ftype == reflect.TypeOf([]uint8(nil))
+	isString := ftype == reflect.TypeOf("")
+	if !isString && !isByteArray {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
 	}
 	switch {
