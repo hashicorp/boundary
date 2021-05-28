@@ -29,14 +29,39 @@ const (
 )
 
 // DataClassification defines a type for classification of data into categories
-// like: public, sensitive, secret, etc
+// like: public, sensitive, secret, etc.  DataClassifications are used with as
+// values for tags using DataClassificationTagName to declare a type of
+// classification.
 type DataClassification string
 
 const (
-	UnknownClassification   DataClassification = "unknown"
-	PublicClassification    DataClassification = "public"
+	UnknownClassification DataClassification = "unknown"
+
+	// PublicClassification declares a field as public data.  No filter
+	// operations are ever performed on public data.
+	PublicClassification DataClassification = "public"
+
+	// SensitiveClassification declares a field as sensitive data.  By default,
+	// sensitive data is encrypted unless the tag includes an overriding FilterOperation.
 	SensitiveClassification DataClassification = "sensitive"
-	SecretClassification    DataClassification = "secret"
+
+	// SecretClassification declares a field as secret data.  By default,
+	// secret data is redacted unless the tag includes an overriding FilterOperation.
+	SecretClassification DataClassification = "secret"
+)
+
+// FilterOperation defines a type for filtering operations like: redact,
+// encrypt, hmac-sha256, etc.  Used in combination with a DataClassification, it
+// allows developers to override the default filter operations on tag fields.
+
+type FilterOperation string
+
+const (
+	NoOperation         FilterOperation = ""
+	UnknownOperation    FilterOperation = "unknown"
+	RedactOperation     FilterOperation = "redact"
+	EncryptOperation    FilterOperation = "encrypt"
+	HmacSha256Operation FilterOperation = "hmac-sha256"
 )
 
 // WrapperPayload defines an interface for eventlogger payloads which include
@@ -75,14 +100,6 @@ type AuditEncryptFilter struct {
 	// WrapperPayload which contains info to use for the specific event.
 	HmacInfo []byte
 
-	// EncryptFields with SensitiveClassification.  It is invalid to set both
-	// EncryptFields and HmacSha256Fields to true.
-	EncryptFields bool
-
-	// HmacSha256Fields with SensitiveClassification.  It is invalid to set both
-	// EncryptFields and HmacSha256Fields to true.
-	HmacSha256Fields bool
-
 	l sync.RWMutex
 }
 
@@ -108,13 +125,6 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing event")
 	}
-	if !ef.EncryptFields && !ef.HmacSha256Fields {
-		return e, nil
-	}
-
-	if ef.EncryptFields && ef.HmacSha256Fields {
-		return nil, errors.New(errors.InvalidParameter, op, "you cannot both encrypt and hmac-sha256 fields")
-	}
 
 	var opts []option
 	var optWrapper wrapping.Wrapper
@@ -125,7 +135,7 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 		opts = append(opts, withSalt(i.HmacSalt()))
 	}
 
-	if (ef.EncryptFields || ef.HmacSha256Fields) && ef.Wrapper == nil && optWrapper == nil {
+	if ef.Wrapper == nil && optWrapper == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 
@@ -156,8 +166,11 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
 		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]uint8{}):
-			classification := getClassificationFromTag(v.Type().Field(i).Tag)
-			if err := ef.filterValue(ctx, field, classification, opt...); err != nil {
+			classificationTag, err := getClassificationFromTag(v.Type().Field(i).Tag)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if err := ef.filterValue(ctx, field, classificationTag, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
 		// if the field is a slice
@@ -165,8 +178,11 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 			switch {
 			// if the field is a slice of string or slice of []byte
 			case ftype == reflect.TypeOf([]string{}) || ftype == reflect.TypeOf([][]uint8{}):
-				classification := getClassificationFromTag(v.Type().Field(i).Tag)
-				if err := ef.filterSlice(ctx, classification, field, opt...); err != nil {
+				classificationTag, err := getClassificationFromTag(v.Type().Field(i).Tag)
+				if err != nil {
+					return errors.Wrap(err, op)
+				}
+				if err := ef.filterSlice(ctx, classificationTag, field, opt...); err != nil {
 					return err
 				}
 			// if the field is a slice of structs, recurse through them...
@@ -202,9 +218,9 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 }
 
 // filterSlice will filter a slice reflect.Value
-func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classification DataClassification, slice reflect.Value, opt ...option) error {
+func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...option) error {
 	const op = "event.(AuditEncryptFilter).filterSlice"
-	if classification == PublicClassification {
+	if classificationTag.Classification == PublicClassification {
 		return nil
 	}
 	if slice.Len() == 0 {
@@ -215,7 +231,7 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classification Da
 	}
 	for i := 0; i < slice.Len(); i++ {
 		fv := slice.Index(i)
-		if err := ef.filterValue(ctx, fv, classification); err != nil {
+		if err := ef.filterValue(ctx, fv, classificationTag); err != nil {
 			return errors.Wrap(err, op)
 		}
 	}
@@ -223,24 +239,17 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classification Da
 }
 
 // filterValue will filter a value based on it's DataClassification
-func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classification DataClassification, opt ...option) error {
+func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...option) error {
 	const op = "event.(AuditEncryptFilter).filterValue"
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
 	}
 
-	switch classification {
+	switch classificationTag.Classification {
 	case PublicClassification:
 		return nil
-	case SecretClassification:
-		if err := setValue(fv, RedactedData); err != nil {
-			return errors.Wrap(err, op)
-		}
-	case SensitiveClassification:
-		ef.l.RLock()
-		encrypt := ef.EncryptFields
-		ef.l.RUnlock()
+	case SecretClassification, SensitiveClassification:
 		var raw []byte
 		switch ftype {
 		case reflect.TypeOf(""):
@@ -251,14 +260,19 @@ func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value,
 
 		var data string
 		var err error
-		if encrypt {
+		switch classificationTag.Operation {
+		case EncryptOperation:
 			if data, err = ef.encrypt(ctx, raw, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
-		} else {
+		case HmacSha256Operation:
 			if data, err = ef.hmacSha256(ctx, raw, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
+		case RedactOperation:
+			data = RedactedData
+		default: // catch UnknownOperation, NoOperation and everything else
+			return errors.New(errors.InvalidParameter, op, "unknown filter operation for field")
 		}
 		if err := setValue(fv, data); err != nil {
 			return errors.Wrap(err, op)
@@ -359,29 +373,88 @@ func setValue(fv reflect.Value, newVal string) error {
 
 }
 
-func getClassificationFromTag(f reflect.StructTag) DataClassification {
+type tagInfo struct {
+	Classification DataClassification
+	Operation      FilterOperation
+}
+
+func getClassificationFromTag(f reflect.StructTag) (*tagInfo, error) {
 	t, ok := f.Lookup(DataClassificationTagName)
+
 	if !ok {
-		return UnknownClassification
+		return &tagInfo{
+			Classification: UnknownClassification,
+			Operation:      UnknownOperation,
+		}, nil
 	}
 	return getClassificationFromTagString(t)
 }
 
-func getClassificationFromTagString(tag string) DataClassification {
+func getClassificationFromTagString(tag string) (*tagInfo, error) {
+	const op = "node.getClassificationFromTagString"
 	segs := strings.Split(tag, ",")
 
-	if len(segs) != 1 {
-		return UnknownClassification
+	if len(segs) == 0 {
+		return &tagInfo{
+			Classification: UnknownClassification,
+			Operation:      UnknownOperation,
+		}, nil
 	}
 	classification := DataClassification(segs[0])
+	if classification == UnknownClassification {
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: classification of %s is unknown", classification))
+	}
+
+	var operation FilterOperation
+	switch len(segs) {
+	case 0, 1:
+		operation = NoOperation
+	default:
+		operation = convertToOperation(segs[1])
+	}
+	if operation == UnknownOperation {
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: filter operation of %s is unknown", operation))
+	}
+
 	switch classification {
 	case PublicClassification:
-		return PublicClassification
+		return &tagInfo{
+			Classification: PublicClassification,
+			Operation:      NoOperation,
+		}, nil
 	case SensitiveClassification:
-		return SensitiveClassification
+		if operation == NoOperation {
+			// set a default
+			operation = EncryptOperation
+		}
+		return &tagInfo{
+			Classification: SensitiveClassification,
+			Operation:      operation,
+		}, nil
 	case SecretClassification:
-		return SecretClassification
+		if operation == NoOperation {
+			// set a default
+			operation = RedactOperation
+		}
+		return &tagInfo{
+			Classification: SecretClassification,
+			Operation:      operation,
+		}, nil
 	default:
-		return UnknownClassification
+		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: classification of %s is unknown", classification))
+	}
+}
+
+func convertToOperation(seg string) FilterOperation {
+	seg = strings.ToLower(seg)
+	switch FilterOperation(seg) {
+	case NoOperation:
+		return NoOperation
+	case HmacSha256Operation:
+		return HmacSha256Operation
+	case EncryptOperation:
+		return EncryptOperation
+	default:
+		return UnknownOperation
 	}
 }
