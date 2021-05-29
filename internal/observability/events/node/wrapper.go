@@ -28,10 +28,10 @@ func (k derivedKeyPurpose) String() string {
 	}
 }
 
-// WrapperPayload defines an interface for eventlogger payloads which include
+// RotateWrapper defines an interface for eventlogger payloads which include
 // rotated wrapper data.  This interface allows for the rotation of the wrapper,
 // salt and info
-type WrapperPayload interface {
+type RotateWrapper interface {
 	// Wrapper to use for event encryption or hmac-sha256 operations
 	Wrapper() wrapping.Wrapper
 

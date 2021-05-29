@@ -24,21 +24,21 @@ import (
 type AuditEncryptFilter struct {
 	// Wrapper to encrypt or hmac-sha256 string and []byte fields which are
 	// tagged as SensitiveClassification.  This may be rotated with an event
-	// that has a payload satisfying the WrapperPayload interface.  If an
+	// that has a payload satisfying the RotateWrapper interface.  If an
 	// event's payload satisfies the EventWrapperInfo interface, an event
 	// specify wrapper will be derived from this wrapper using that
 	// EventWrapperInfo.
 	Wrapper wrapping.Wrapper
 
 	// Salt for deriving a hmac-sha256 operations key (can be nil). This may be
-	// rotated with an event that has a payload satisfying the WrapperPayload
+	// rotated with an event that has a payload satisfying the RotateWrapper
 	// interface. If an event's payload satisfies the EventWrapperInfo
 	// interface, event specific HmacSalt will be used for operations on that
 	// specific event.
 	HmacSalt []byte
 
 	// Info for deriving a hmac-sha256 operations key (can be nil). This may be
-	// rotated with an event that has a payload satisfying the WrapperPayload
+	// rotated with an event that has a payload satisfying the RotateWrapper
 	// interface.  If an event's payload satisfies the
 	// EventWrapperInfointerface, event specific HmacSalt will be used for
 	// operations on that
@@ -64,7 +64,9 @@ func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
 //
 // If the event payload satisfies the WrapperPayload interface, then the
 // payload's Wrapper(), HmacSalt() and HmacInfo() will be used to rotate the
-// filter's wrappers for ongoing filtering operations.
+// filter's wrappers for ongoing filtering operations.  Events matching this
+// WrapperPayload interface are not sent along in the pipeline and a nil with no
+// errors is immediately returned after the wrapper has been rotated.
 //
 // If the event payload satisfies the EventWrapperInfo interface, then the
 // payload's EventId(), HmacSalt() and HmacInfo() will be used to for filtering
@@ -74,8 +76,9 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing event")
 	}
-	if i, ok := e.Payload.(WrapperPayload); ok {
+	if i, ok := e.Payload.(RotateWrapper); ok {
 		ef.l.Lock()
+		defer ef.l.Unlock()
 		if i.Wrapper() != nil {
 			ef.Wrapper = i.Wrapper()
 		}
@@ -85,7 +88,7 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 		if i.HmacInfo() != nil {
 			ef.HmacSalt = i.HmacInfo()
 		}
-		ef.l.Unlock()
+		return nil, nil
 	}
 
 	var opts []option
