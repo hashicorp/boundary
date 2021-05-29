@@ -99,15 +99,23 @@ update credential_vault_token
 	updateTokenStatusQuery = `
 update credential_vault_token 
 	set status = ? 
-	where token_hmac = ?
+	where token_hmac = ?;
 `
 
 	tokenRenewalNextRunInQuery = `
-select extract(epoch from renewal_time - now())::int as renewal_in
-  from credential_vault_job_renewable_tokens
- where expiration_time = (
-		 select min(expiration_time)
-		   from credential_vault_job_renewable_tokens
-	   )
+with 
+	renewable_tokens(expiration_time, renewal_time) as (
+        select 
+		  expiration_time,
+		  last_renewal_time + (expiration_time - last_renewal_time) / 2 as renewal_time
+		from credential_vault_token
+		where status in ('current', 'maintaining')
+	)
+	select extract(epoch from renewal_time - now())::int as renewal_in
+  	  from renewable_tokens
+     where expiration_time = (
+       select min(expiration_time)
+         from renewable_tokens
+     );
 `
 )

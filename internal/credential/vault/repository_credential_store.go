@@ -331,8 +331,7 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocPrivateStore()
-	ps.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, ps); err != nil {
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", publicId, StatusCurrent); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -372,6 +371,7 @@ type privateStore struct {
 	TokenUpdateTime      *timestamp.Timestamp
 	TokenLastRenewalTime *timestamp.Timestamp
 	TokenExpirationTime  *timestamp.Timestamp
+	TokenRenewalTime     *timestamp.Timestamp
 	TokenKeyId           string
 	TokenStatus          string
 	ClientCert           []byte
@@ -399,19 +399,8 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs.CaCert = ps.CaCert
 	cs.TlsServerName = ps.TlsServerName
 	cs.TlsSkipVerify = ps.TlsSkipVerify
-	if ps.TokenHmac != nil {
-		tk := allocToken()
-		tk.StoreId = ps.StoreId
-		tk.TokenHmac = ps.TokenHmac
-		tk.LastRenewalTime = ps.TokenLastRenewalTime
-		tk.ExpirationTime = ps.TokenExpirationTime
-		tk.CreateTime = ps.TokenCreateTime
-		tk.UpdateTime = ps.TokenUpdateTime
-		tk.CtToken = ps.CtToken
-		tk.KeyId = ps.TokenKeyId
-		tk.Status = ps.TokenStatus
-		cs.privateToken = tk
-	}
+	cs.privateToken = ps.token()
+
 	if ps.ClientCert != nil {
 		cert := allocClientCertificate()
 		cert.StoreId = ps.StoreId

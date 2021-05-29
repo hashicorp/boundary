@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10006,
+		binarySchemaVersion: 10005,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -5376,6 +5376,11 @@ create table credential_vault_store (
     on credential_vault_token (store_id)
     where status = 'current';
 
+  create index credential_vault_token_expiration_time_ix
+    on credential_vault_token(expiration_time);
+  comment on index credential_vault_token_expiration_time_ix is
+    'the credential_vault_token_expiration_time_ix is used by the token renewal job';
+
   create trigger update_time_column before update on credential_vault_token
     for each row execute procedure update_time_column();
 
@@ -5576,7 +5581,7 @@ create table credential_vault_store (
 
      create view credential_vault_store_client_private as
      with
-     current_tokens as (
+     active_tokens as (
         select token_hmac,
                token, -- encrypted
                store_id,
@@ -5584,43 +5589,47 @@ create table credential_vault_store (
                update_time,
                last_renewal_time,
                expiration_time,
+               -- renewal time is the midpoint between the last renewal time and the expiration time
+               last_renewal_time + (expiration_time - last_renewal_time) / 2 as renewal_time,
                key_id,
                status
           from credential_vault_token
-         where status = 'current'
+         where status in ('current', 'maintaining')
      )
-     select store.public_id         as public_id,
-            store.scope_id          as scope_id,
-            store.name              as name,
-            store.description       as description,
-            store.create_time       as create_time,
-            store.update_time       as update_time,
-            store.version           as version,
-            store.vault_address     as vault_address,
-            store.namespace         as namespace,
-            store.ca_cert           as ca_cert,
-            store.tls_server_name   as tls_server_name,
-            store.tls_skip_verify   as tls_skip_verify,
-            store.public_id         as store_id,
-            token.token_hmac        as token_hmac,
-            token.token             as ct_token, -- encrypted
-            token.create_time       as token_create_time,
-            token.update_time       as token_update_time,
-            token.last_renewal_time as token_last_renewal_time,
-            token.expiration_time   as token_expiration_time,
-            token.key_id            as token_key_id,
-            token.status            as token_status,
-            cert.certificate        as client_cert,
-            cert.certificate_key    as ct_client_key, -- encrypted
+     select store.public_id           as public_id,
+            store.scope_id            as scope_id,
+            store.name                as name,
+            store.description         as description,
+            store.create_time         as create_time,
+            store.update_time         as update_time,
+            store.version             as version,
+            store.vault_address       as vault_address,
+            store.namespace           as namespace,
+            store.ca_cert             as ca_cert,
+            store.tls_server_name     as tls_server_name,
+            store.tls_skip_verify     as tls_skip_verify,
+            store.public_id           as store_id,
+            token.token_hmac          as token_hmac,
+            token.token               as ct_token, -- encrypted
+            token.create_time         as token_create_time,
+            token.update_time         as token_update_time,
+            token.last_renewal_time   as token_last_renewal_time,
+            token.expiration_time     as token_expiration_time,
+            token.renewal_time        as token_renewal_time,
+            token.key_id              as token_key_id,
+            token.status              as token_status,
+            cert.certificate          as client_cert,
+            cert.certificate_key      as ct_client_key, -- encrypted
             cert.certificate_key_hmac as client_cert_key_hmac,
-            cert.key_id             as client_key_id
+            cert.key_id               as client_key_id
        from credential_vault_store store
-  left join current_tokens token
+  left join active_tokens token
          on store.public_id = token.store_id
   left join credential_vault_client_certificate cert
          on store.public_id = cert.store_id;
   comment on view credential_vault_store_client_private is
     'credential_vault_store_client_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+    'The view returns a separate row for each current and maintaining token, maintaining tokens should only be used for token/credential renewal and revocation.'
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
      create view credential_vault_store_agg_public as
@@ -5643,7 +5652,8 @@ create table credential_vault_store (
             token_expiration_time,
             client_cert,
             client_cert_key_hmac
-       from credential_vault_store_client_private;
+       from credential_vault_store_client_private
+      where token_status = 'current';
   comment on view credential_vault_store_agg_public is
     'credential_vault_store_agg_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
@@ -5673,7 +5683,8 @@ create table credential_vault_store (
             store.client_key_id       as client_key_id
        from credential_vault_library library
        join credential_vault_store_client_private store
-         on library.store_id = store.public_id;
+         on library.store_id = store.public_id
+        and store.token_status = 'current';
   comment on view credential_vault_library_private is
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
@@ -5779,57 +5790,6 @@ create table session_credential_dynamic (
 
   create trigger immutable_columns before update on session_credential_dynamic
     for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
-`),
-			10006: []byte(`
-create index credential_vault_token_expiration_time_ix
-        on credential_vault_token(expiration_time);
-    comment on index credential_vault_token_expiration_time_ix is
-        'the credential_vault_token_expiration_time_ix is used by the token renewal job';
-
-    create view credential_vault_job_renewable_tokens as
-        select token_hmac,
-               token, -- encrypted
-               store_id,
-               status,
-               last_renewal_time,
-               expiration_time,
-               -- renewal time is the midpoint between the last renewal time and the expiration time
-               last_renewal_time + (expiration_time - last_renewal_time) / 2 as renewal_time
-        from credential_vault_token
-        where status in ('current', 'maintaining');
-
-    comment on view credential_vault_job_renewable_tokens is
-        'credential_vault_renewable_tokens is a view where each row contains a token that is current or maintaining and should be renewed in Vault. '
-        'Each row contains encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
-
-    create view credential_vault_job_renewable_client_private as
-    select store.public_id           as public_id,
-           store.scope_id            as scope_id,
-           store.name                as name,
-           store.description         as description,
-           store.vault_address       as vault_address,
-           store.namespace           as namespace,
-           store.ca_cert             as ca_cert,
-           store.tls_server_name     as tls_server_name,
-           store.tls_skip_verify     as tls_skip_verify,
-           store.public_id           as store_id,
-           token.token_hmac          as token_hmac,
-           token.token               as ct_token, -- encrypted
-           token.renewal_time        as renewal_time,
-           token.status              as token_status,
-           cert.certificate          as client_cert,
-           cert.certificate_key      as ct_client_key, -- encrypted
-           cert.certificate_key_hmac as client_cert_key_hmac,
-           cert.key_id               as client_key_id
-    from credential_vault_store store
-             left join credential_vault_job_renewable_tokens token
-                       on store.public_id = token.store_id
-             left join credential_vault_client_certificate cert
-                       on store.public_id = cert.store_id;
-    comment on view credential_vault_job_renewable_client_private is
-        'credential_vault_job_renewable_client_private is a view where each row contains a token that is current or maintaining, '
-        'as well as the credential store''s data needed to connect to Vault. '
-        'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
