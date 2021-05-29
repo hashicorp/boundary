@@ -25,6 +25,8 @@ func convertToOperation(seg string) FilterOperation {
 		return HmacSha256Operation
 	case EncryptOperation:
 		return EncryptOperation
+	case RedactOperation:
+		return RedactOperation
 	default:
 		return UnknownOperation
 	}

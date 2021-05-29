@@ -108,10 +108,7 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
 		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]uint8{}):
-			classificationTag, err := getClassificationFromTag(v.Type().Field(i).Tag)
-			if err != nil {
-				return errors.Wrap(err, op)
-			}
+			classificationTag := getClassificationFromTag(v.Type().Field(i).Tag)
 			if err := ef.filterValue(ctx, field, classificationTag, opt...); err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -120,10 +117,7 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 			switch {
 			// if the field is a slice of string or slice of []byte
 			case ftype == reflect.TypeOf([]string{}) || ftype == reflect.TypeOf([][]uint8{}):
-				classificationTag, err := getClassificationFromTag(v.Type().Field(i).Tag)
-				if err != nil {
-					return errors.Wrap(err, op)
-				}
+				classificationTag := getClassificationFromTag(v.Type().Field(i).Tag)
 				if err := ef.filterSlice(ctx, classificationTag, field, opt...); err != nil {
 					return err
 				}
@@ -144,7 +138,6 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 						return err
 					}
 				}
-
 			}
 		// if the field is a struct
 		case fkind == reflect.Struct || isPtrToStruct:
