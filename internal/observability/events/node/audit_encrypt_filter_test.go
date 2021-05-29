@@ -45,8 +45,8 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 					NotTagged:         "not-tagged-data-will-be-redacted",
 					SensitiveRedacted: []byte("sensitive-redact-override"),
 					UserInfo: &testUserInfo{
-						Id:           "id-12",
-						UserFullName: "Alice Eve Doe",
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
 					},
 					Keys: [][]byte{[]byte("key1"), []byte("key2")},
 				},
@@ -58,14 +58,14 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 					NotTagged:         node.RedactedData,
 					SensitiveRedacted: []byte(node.RedactedData),
 					UserInfo: &testUserInfo{
-						Id:           "id-12",
-						UserFullName: "Alice Eve Doe",
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
 					},
 					Keys: [][]byte{[]byte(node.RedactedData), []byte(node.RedactedData)},
 				},
 			},
 			setupWantEvent: func(e *eventlogger.Event) {
-				e.Payload.(*testPayload).UserInfo.UserFullName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.UserFullName)))
+				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
 			},
 		},
 	}
@@ -90,7 +90,6 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 			if tt.setupWantEvent != nil {
 				tt.setupWantEvent(got)
 			}
-
 			assert.Equal(tt.wantEvent, got)
 		})
 	}
@@ -121,14 +120,14 @@ func testDecryptValue(t *testing.T, w wrapping.Wrapper, value []byte) []byte {
 }
 
 type testUserInfo struct {
-	Id             string `classified:"public"`
-	UserFullName   string `classified:"sensitive"`
-	LoginTimestamp time.Time
+	PublicId          string `classified:"public"`
+	SensitiveUserName string `classified:"sensitive"`
+	LoginTimestamp    time.Time
 }
 
 type testPayload struct {
 	NotTagged         string
-	SensitiveRedacted []byte `classified:"sensitive,redact`
+	SensitiveRedacted []byte `classified:"sensitive,redact"`
 	UserInfo          *testUserInfo
 	Keys              [][]byte `classified:"secret"`
 }
