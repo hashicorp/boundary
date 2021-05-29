@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -17,67 +16,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"google.golang.org/protobuf/proto"
 )
-
-const (
-
-	// RedactedData is the value that replaces redacted data (secrets)
-	RedactedData = "<REDACTED>"
-
-	// DataClassificationTagName is the tag name for classifying data into
-	// DataClassification's
-	DataClassificationTagName = "classified"
-)
-
-// DataClassification defines a type for classification of data into categories
-// like: public, sensitive, secret, etc.  DataClassifications are used with as
-// values for tags using DataClassificationTagName to declare a type of
-// classification.
-type DataClassification string
-
-const (
-	UnknownClassification DataClassification = "unknown"
-
-	// PublicClassification declares a field as public data.  No filter
-	// operations are ever performed on public data.
-	PublicClassification DataClassification = "public"
-
-	// SensitiveClassification declares a field as sensitive data.  By default,
-	// sensitive data is encrypted unless the tag includes an overriding FilterOperation.
-	SensitiveClassification DataClassification = "sensitive"
-
-	// SecretClassification declares a field as secret data.  By default,
-	// secret data is redacted unless the tag includes an overriding FilterOperation.
-	SecretClassification DataClassification = "secret"
-)
-
-// FilterOperation defines a type for filtering operations like: redact,
-// encrypt, hmac-sha256, etc.  Used in combination with a DataClassification, it
-// allows developers to override the default filter operations on tag fields.
-
-type FilterOperation string
-
-const (
-	NoOperation         FilterOperation = ""
-	UnknownOperation    FilterOperation = "unknown"
-	RedactOperation     FilterOperation = "redact"
-	EncryptOperation    FilterOperation = "encrypt"
-	HmacSha256Operation FilterOperation = "hmac-sha256"
-)
-
-// WrapperPayload defines an interface for eventlogger payloads which include
-// wrapping.Wrapper fields.  This interface allows the AuditEncryptFilter to
-// support per event wrappers and hmac salt/info.
-type WrapperPayload interface {
-
-	// Wrapper to use for the event encryption or hmac-sha256 operations
-	Wrapper() wrapping.Wrapper
-
-	// HmacSalt to use for the event hmac-sha256 operations
-	HmacSalt() []byte
-
-	// HmacInfo to use for the event hmac-sha256 operations
-	HmacInfo() []byte
-}
 
 // AuditEncryptFilter is an eventlogger Filter Node which will filter string and
 // []byte fields in an event.  Fields with tags that designate
@@ -129,7 +67,11 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 	var opts []option
 	var optWrapper wrapping.Wrapper
 	if i, ok := e.Payload.(WrapperPayload); ok {
-		optWrapper := i.Wrapper()
+		w, err := NewEventWrapper(i.Wrapper(), i.EventId())
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		optWrapper := w
 		opts = append(opts, withWrapper(optWrapper))
 		opts = append(opts, withInfo(i.HmacInfo()))
 		opts = append(opts, withSalt(i.HmacSalt()))
@@ -371,90 +313,4 @@ func setValue(fv reflect.Value, newVal string) error {
 	}
 	return nil
 
-}
-
-type tagInfo struct {
-	Classification DataClassification
-	Operation      FilterOperation
-}
-
-func getClassificationFromTag(f reflect.StructTag) (*tagInfo, error) {
-	t, ok := f.Lookup(DataClassificationTagName)
-
-	if !ok {
-		return &tagInfo{
-			Classification: UnknownClassification,
-			Operation:      UnknownOperation,
-		}, nil
-	}
-	return getClassificationFromTagString(t)
-}
-
-func getClassificationFromTagString(tag string) (*tagInfo, error) {
-	const op = "node.getClassificationFromTagString"
-	segs := strings.Split(tag, ",")
-
-	if len(segs) == 0 {
-		return &tagInfo{
-			Classification: UnknownClassification,
-			Operation:      UnknownOperation,
-		}, nil
-	}
-	classification := DataClassification(segs[0])
-	if classification == UnknownClassification {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: classification of %s is unknown", classification))
-	}
-
-	var operation FilterOperation
-	switch len(segs) {
-	case 0, 1:
-		operation = NoOperation
-	default:
-		operation = convertToOperation(segs[1])
-	}
-	if operation == UnknownOperation {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: filter operation of %s is unknown", operation))
-	}
-
-	switch classification {
-	case PublicClassification:
-		return &tagInfo{
-			Classification: PublicClassification,
-			Operation:      NoOperation,
-		}, nil
-	case SensitiveClassification:
-		if operation == NoOperation {
-			// set a default
-			operation = EncryptOperation
-		}
-		return &tagInfo{
-			Classification: SensitiveClassification,
-			Operation:      operation,
-		}, nil
-	case SecretClassification:
-		if operation == NoOperation {
-			// set a default
-			operation = RedactOperation
-		}
-		return &tagInfo{
-			Classification: SecretClassification,
-			Operation:      operation,
-		}, nil
-	default:
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid tag: classification of %s is unknown", classification))
-	}
-}
-
-func convertToOperation(seg string) FilterOperation {
-	seg = strings.ToLower(seg)
-	switch FilterOperation(seg) {
-	case NoOperation:
-		return NoOperation
-	case HmacSha256Operation:
-		return HmacSha256Operation
-	case EncryptOperation:
-		return EncryptOperation
-	default:
-		return UnknownOperation
-	}
 }
