@@ -4,6 +4,34 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.2.3 (2021/05/21)
+
+### Deprecations/Changes
+
+* The behavior when `cors_enabled` is not specified for a listener is changing
+  to be equivalent to a `cors_allowed_origins` value of `*`; that is, accept all
+  origins. This allows Boundary, by default, to have the admin UI and desktop
+  client work without further specification of origins by the operator. This is
+  only affecting default behavior; if `cors_enabled` is explicitly set to
+  `true`, the behavior will be the same as before. This had been changed in
+  v0.2.1 due to a bug found in v0.2.0 that caused all origins to always be
+  allowed, but fixing that bug exposed that the default behavior was difficult
+  for users to configure to simply get up and running.
+* If a `cancel` operation is run on a session already in a canceling or
+  terminated state, a `200` and the session information will be returned instead
+  of an error.
+
+### New and Improved
+
+* sessions: Return a `200` and session information when canceling an
+  already-canceled or terminated session
+  ([PR](https://github.com/hashicorp/boundary/pull/1243))
+
+### Bug Fixes
+
+* cors: Change the default allowed origins when `cors_enabled` is not specified
+  to be `*`. ([PR](https://github.com/hashicorp/boundary/pull/1249))
+
 ## 0.2.2 (2021/05/17)
 
 ### New and Improved
@@ -151,9 +179,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   behavior to automatically include the origin of the Desktop Client. This will
   be fixed in 0.2.1. In the meantime, this can be worked around by either
   explicitly disabing CORS with `cors_enabled = false` in the `listener` config
-  block with purpose `api`; or setting an `allowed_origins` field to have values
-  other than `serve://boundary` (including values that do not map to any real
-  origin).
+  block with purpose `api`; or setting a `cors_allowed_origins` field to have
+  values other than `serve://boundary` (including values that do not map to any
+  real origin).
 
 ### Deprecations/Changes
 
@@ -313,9 +341,9 @@ for more details.
     `create` or `list`. This format operates only on collections so assigning
     more actions this way will never work
 * CORS: CORS is now turned on by default when running with `boundary server`
-  with an `allowed_origins` value of `serve://boundary`. You can disable it with
-  `cors_enabled = false`, or if you want to change parameters, set `cors_enabled
-  = true` and the other related configuration values.
+  with a `cors_allowed_origins` value of `serve://boundary`. You can disable it
+  with `cors_enabled = false`, or if you want to change parameters, set
+  `cors_enabled = true` and the other related configuration values.
 
 ### New and Improved
 
