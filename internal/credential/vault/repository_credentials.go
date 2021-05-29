@@ -24,19 +24,9 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		return nil, errors.New(errors.InvalidParameter, op, "no requests")
 	}
 
-	mapper := newMapper(requests)
-	if mapper.Err() != nil {
-		return nil, errors.Wrap(mapper.Err(), op)
-	}
-
-	libs, err := r.getPrivateLibraries(ctx, mapper.LibIds())
+	libs, err := r.getPrivateLibraries(ctx, requests)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
-	}
-
-	purpLibs := mapper.Map(libs)
-	if mapper.Err() != nil {
-		return nil, errors.Wrap(mapper.Err(), op)
 	}
 
 	// TODO(mgaffney)(ICU-1329) 05/2021: if any error occurs, mark all credentials
@@ -44,7 +34,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	// job.
 
 	var creds []credential.Dynamic
-	for _, lib := range purpLibs {
+	for _, lib := range libs {
 		// Get the credential ID early. No need to get a secret from Vault
 		// if there is no way to save it in the database.
 		credId, err := newCredentialId()
@@ -110,7 +100,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		creds = append(creds, &privateCredential{
 			id:         cred.PublicId,
 			sessionId:  cred.SessionId,
-			lib:        lib.privateLibrary,
+			lib:        lib,
 			secretData: secret.Data,
 			purpose:    lib.Purpose,
 		})

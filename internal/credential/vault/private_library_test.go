@@ -75,7 +75,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			assert.Equal(origStore.GetPublicId(), origLookup.GetPublicId())
 
 			libs := make(map[string]*CredentialLibrary, 3)
-			var libIds []string
+			var requests []credential.Request
 			{
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path")
 				assert.NoError(err)
@@ -84,7 +84,8 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				requests = append(requests, req)
 			}
 			{
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", WithMethod(MethodPost))
@@ -94,7 +95,8 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				requests = append(requests, req)
 			}
 			{
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", WithMethod(MethodPost), WithRequestBody([]byte(`{"common_name":"boundary.com"}`)))
@@ -104,10 +106,11 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				requests = append(requests, req)
 			}
 
-			gotLibs, err := repo.getPrivateLibraries(ctx, libIds)
+			gotLibs, err := repo.getPrivateLibraries(ctx, requests)
 			assert.NoError(err)
 			require.NotNil(gotLibs)
 			assert.Len(gotLibs, len(libs))
@@ -133,16 +136,13 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 func TestRequestMap(t *testing.T) {
 	type args struct {
 		requests []credential.Request
-		libs     []*privateLibrary
 	}
 
 	tests := []struct {
-		name          string
-		args          args
-		wantLibIds    []string
-		wantMap       []*privPurpLibrary
-		wantCreateErr bool
-		wantMapErr    bool
+		name       string
+		args       args
+		wantLibIds []string
+		wantErr    bool
 	}{
 		{
 			name: "empty",
@@ -156,21 +156,8 @@ func TestRequestMap(t *testing.T) {
 						Purpose:  credential.ApplicationPurpose,
 					},
 				},
-				libs: []*privateLibrary{
-					{
-						PublicId: "kaz",
-					},
-				},
 			},
 			wantLibIds: []string{"kaz"},
-			wantMap: []*privPurpLibrary{
-				{
-					privateLibrary: &privateLibrary{
-						PublicId: "kaz",
-					},
-					Purpose: "application",
-				},
-			},
 		},
 		{
 			name: "two-libs",
@@ -185,30 +172,8 @@ func TestRequestMap(t *testing.T) {
 						Purpose:  credential.EgressPurpose,
 					},
 				},
-				libs: []*privateLibrary{
-					{
-						PublicId: "kaz",
-					},
-					{
-						PublicId: "gary",
-					},
-				},
 			},
 			wantLibIds: []string{"kaz", "gary"},
-			wantMap: []*privPurpLibrary{
-				{
-					privateLibrary: &privateLibrary{
-						PublicId: "kaz",
-					},
-					Purpose: "application",
-				},
-				{
-					privateLibrary: &privateLibrary{
-						PublicId: "gary",
-					},
-					Purpose: "egress",
-				},
-			},
 		},
 		{
 			name: "one-lib-two-purps",
@@ -223,27 +188,8 @@ func TestRequestMap(t *testing.T) {
 						Purpose:  credential.EgressPurpose,
 					},
 				},
-				libs: []*privateLibrary{
-					{
-						PublicId: "kaz",
-					},
-				},
 			},
 			wantLibIds: []string{"kaz"},
-			wantMap: []*privPurpLibrary{
-				{
-					privateLibrary: &privateLibrary{
-						PublicId: "kaz",
-					},
-					Purpose: "application",
-				},
-				{
-					privateLibrary: &privateLibrary{
-						PublicId: "kaz",
-					},
-					Purpose: "egress",
-				},
-			},
 		},
 		{
 			name: "one-lib-dup-purps-error",
@@ -259,57 +205,22 @@ func TestRequestMap(t *testing.T) {
 					},
 				},
 			},
-			wantCreateErr: true,
-		},
-		{
-			name: "to-many-libs-to-map",
-			args: args{
-				requests: []credential.Request{
-					{
-						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
-					},
-					{
-						SourceId: "kaz",
-						Purpose:  credential.EgressPurpose,
-					},
-				},
-				libs: []*privateLibrary{
-					{
-						PublicId: "kaz",
-					},
-					{
-						PublicId: "gary",
-					},
-				},
-			},
-			wantLibIds: []string{"kaz"},
-			wantMapErr: true,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			mapper := newMapper(tt.args.requests)
-			require.NotNil(mapper)
-			if tt.wantCreateErr {
-				assert.Error(mapper.Err())
-				assert.Nil(mapper.LibIds())
-				assert.Nil(mapper.Map(tt.args.libs))
+			mapper, err := newMapper(tt.args.requests)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(mapper)
 				return
-			} else {
-				assert.NoError(mapper.Err())
 			}
-			assert.Equal(tt.wantLibIds, mapper.LibIds())
-			got := mapper.Map(tt.args.libs)
-			if tt.wantMapErr {
-				assert.Error(mapper.Err())
-				assert.Nil(got)
-			} else {
-				assert.NoError(mapper.Err())
-				assert.Equal(tt.wantMap, got)
-			}
+			assert.NoError(err)
+			require.NotNil(mapper)
+			assert.ElementsMatch(tt.wantLibIds, mapper.LibIds())
 		})
 	}
 }

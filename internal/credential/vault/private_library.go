@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ credential.Dynamic = (*privateCredential)(nil)
@@ -32,34 +33,63 @@ func (pc *privateCredential) Purpose() credential.Purpose   { return pc.purpose 
 var _ credential.Library = (*privateLibrary)(nil)
 
 type privateLibrary struct {
-	PublicId    string `gorm:"primary_key"`
-	StoreId     string
-	Name        string
-	Description string
-	CreateTime  *timestamp.Timestamp
-	UpdateTime  *timestamp.Timestamp
-	Version     uint32
-
+	PublicId        string `gorm:"primary_key"`
+	StoreId         string
+	Name            string
+	Description     string
+	CreateTime      *timestamp.Timestamp
+	UpdateTime      *timestamp.Timestamp
+	Version         uint32
 	ScopeId         string
 	VaultPath       string
 	HttpMethod      string
 	HttpRequestBody []byte
+	VaultAddress    string
+	Namespace       string
+	CaCert          []byte
+	TlsServerName   string
+	TlsSkipVerify   bool
+	TokenHmac       []byte
+	Token           []byte
+	CtToken         []byte
+	TokenKeyId      string
+	ClientCert      []byte
+	ClientKey       []byte
+	CtClientKey     []byte
+	ClientKeyId     string
+	Purpose         credential.Purpose `gorm:"-"`
+}
 
-	VaultAddress  string
-	Namespace     string
-	CaCert        []byte
-	TlsServerName string
-	TlsSkipVerify bool
-
-	TokenHmac  []byte
-	Token      []byte
-	CtToken    []byte
-	TokenKeyId string
-
-	ClientCert  []byte
-	ClientKey   []byte
-	CtClientKey []byte
-	ClientKeyId string
+func (pl *privateLibrary) clone() *privateLibrary {
+	// The 'append(a[:0:0], a...)' comes from
+	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
+	return &privateLibrary{
+		PublicId:        pl.PublicId,
+		StoreId:         pl.StoreId,
+		Name:            pl.Name,
+		Description:     pl.Description,
+		CreateTime:      proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
+		UpdateTime:      proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
+		Version:         pl.Version,
+		ScopeId:         pl.ScopeId,
+		VaultPath:       pl.VaultPath,
+		HttpMethod:      pl.HttpMethod,
+		HttpRequestBody: append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
+		VaultAddress:    pl.VaultAddress,
+		Namespace:       pl.Namespace,
+		CaCert:          append(pl.CaCert[:0:0], pl.CaCert...),
+		TlsServerName:   pl.TlsServerName,
+		TlsSkipVerify:   pl.TlsSkipVerify,
+		TokenHmac:       append(pl.TokenHmac[:0:0], pl.TokenHmac...),
+		Token:           append(pl.Token[:0:0], pl.Token...),
+		CtToken:         append(pl.CtToken[:0:0], pl.CtToken...),
+		TokenKeyId:      pl.TokenKeyId,
+		ClientCert:      append(pl.ClientCert[:0:0], pl.ClientCert...),
+		ClientKey:       append(pl.ClientKey[:0:0], pl.ClientKey...),
+		CtClientKey:     append(pl.CtClientKey[:0:0], pl.CtClientKey...),
+		ClientKeyId:     pl.ClientKeyId,
+		Purpose:         pl.Purpose,
+	}
 }
 
 func (pl *privateLibrary) GetPublicId() string                 { return pl.PublicId }
@@ -131,11 +161,15 @@ func (pl *privateLibrary) TableName() string {
 	return "credential_vault_library_private"
 }
 
-func (r *Repository) getPrivateLibraries(ctx context.Context, libIds []string) ([]*privateLibrary, error) {
+func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credential.Request) ([]*privateLibrary, error) {
 	const op = "vault.(Repository).getPrivateLibraries"
-	if len(libIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no library ids")
+
+	mapper, err := newMapper(requests)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
+
+	libIds := mapper.LibIds()
 
 	inClause := strings.TrimSuffix(strings.Repeat("?,", len(libIds)), ",")
 
@@ -157,7 +191,15 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, libIds []string) (
 		if err := r.reader.ScanRows(rows, &lib); err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
 		}
-		libs = append(libs, &lib)
+		purps := mapper.Get(lib.GetPublicId())
+		if len(purps) == 0 {
+			return nil, errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("unknown library"))
+		}
+		for _, purp := range purps {
+			cp := lib.clone()
+			cp.Purpose = purp
+			libs = append(libs, cp)
+		}
 	}
 
 	for _, pl := range libs {
@@ -174,31 +216,17 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, libIds []string) (
 	return libs, nil
 }
 
-type privPurpLibrary struct {
-	*privateLibrary
-	credential.Purpose
-}
-
-func allocPrivPurpLibrary() *privPurpLibrary {
-	return &privPurpLibrary{
-		privateLibrary: &privateLibrary{},
-	}
-}
-
 type requestMap struct {
 	ids map[string][]credential.Purpose
-	err error
 }
 
-func newMapper(requests []credential.Request) *requestMap {
+func newMapper(requests []credential.Request) (*requestMap, error) {
 	ids := make(map[string][]credential.Purpose, len(requests))
 	for _, req := range requests {
 		if purps, ok := ids[req.SourceId]; ok {
 			for _, purp := range purps {
 				if purp == req.Purpose {
-					return &requestMap{
-						err: errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose")),
-					}
+					return nil, errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose"))
 				}
 			}
 		}
@@ -206,17 +234,10 @@ func newMapper(requests []credential.Request) *requestMap {
 	}
 	return &requestMap{
 		ids: ids,
-	}
-}
-
-func (m *requestMap) Err() error {
-	return m.err
+	}, nil
 }
 
 func (m *requestMap) LibIds() []string {
-	if m.err != nil {
-		return nil
-	}
 	var ids []string
 	for id := range m.ids {
 		ids = append(ids, id)
@@ -224,23 +245,6 @@ func (m *requestMap) LibIds() []string {
 	return ids
 }
 
-func (m *requestMap) Map(libs []*privateLibrary) []*privPurpLibrary {
-	if m.err != nil {
-		return nil
-	}
-	var ppls []*privPurpLibrary
-	for _, lib := range libs {
-		purps, ok := m.ids[lib.GetPublicId()]
-		if !ok {
-			m.err = errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("unknown library"))
-			return nil
-		}
-		for _, purp := range purps {
-			ppl := allocPrivPurpLibrary()
-			ppl.privateLibrary = lib
-			ppl.Purpose = purp
-			ppls = append(ppls, ppl)
-		}
-	}
-	return ppls
+func (m *requestMap) Get(libraryId string) []credential.Purpose {
+	return m.ids[libraryId]
 }
