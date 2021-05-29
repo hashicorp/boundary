@@ -29,14 +29,22 @@ func (k derivedKeyPurpose) String() string {
 }
 
 // WrapperPayload defines an interface for eventlogger payloads which include
-// wrapping.Wrapper fields.  This interface allows the AuditEncryptFilter to
-// support per event wrappers and hmac salt/info.
+// rotated wrapper data.  This interface allows for the rotation of the wrapper,
+// salt and info
 type WrapperPayload interface {
-
-	// Wrapper to use for the event encryption or hmac-sha256 operations
+	// Wrapper to use for event encryption or hmac-sha256 operations
 	Wrapper() wrapping.Wrapper
 
-	// Event ID to use when deriving keys for crypto operatons on the event payload
+	// HmacSalt to use for event hmac-sha256 operations
+	HmacSalt() []byte
+
+	// HmacInfo to use for event hmac-sha256 operations
+	HmacInfo() []byte
+}
+
+type EventWrapperInfo interface {
+	// Event ID to use when deriving keys for crypto operations on the event
+	// payload
 	EventId() string
 
 	// HmacSalt to use for the event hmac-sha256 operations
@@ -49,12 +57,18 @@ type WrapperPayload interface {
 // NewEventWrapper is used by the AuditEncryptFilter to derive a wrapper to use
 // for a specific event.  The event must implement the WrapperPayload interface
 // for per event wrappers to be derived.
-func NewEventWrapper(payloadWrapper wrapping.Wrapper, eventId string) (wrapping.Wrapper, error) {
+func NewEventWrapper(wrapper wrapping.Wrapper, eventId string) (wrapping.Wrapper, error) {
 	const op = "node.deriveWrapper"
+	if wrapper == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+	}
+	if eventId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing event id")
+	}
 
-	keyId := derivedKeyId(derivedKeyPurposeEvent, payloadWrapper.KeyID(), eventId)
+	keyId := derivedKeyId(derivedKeyPurposeEvent, wrapper.KeyID(), eventId)
 
-	reader, err := kms.NewDerivedReader(payloadWrapper, 32, []byte(eventId), nil)
+	reader, err := kms.NewDerivedReader(wrapper, 32, []byte(eventId), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -71,7 +85,7 @@ func NewEventWrapper(payloadWrapper wrapping.Wrapper, eventId string) (wrapping.
 	if err := derivedWrapper.SetAESGCMKeyBytes(privKey); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper for event id %s", eventId)))
 	}
-	return payloadWrapper, nil
+	return wrapper, nil
 }
 
 // derivedKeyId returns a key that represents the derived key
