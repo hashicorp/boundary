@@ -23,19 +23,26 @@ import (
 // SensitiveClassification will either be encrypted or hmac-sha256.
 type AuditEncryptFilter struct {
 	// Wrapper to encrypt or hmac-sha256 string and []byte fields which are
-	// tagged as SensitiveClassification.  This wrapper may be overridden on a
-	// per event basis when the event has a WrapperPayload which contains a
-	// wrapper to use for the specific event.
+	// tagged as SensitiveClassification.  This may be rotated with an event
+	// that has a payload satisfying the WrapperPayload interface.  If an
+	// event's payload satisfies the EventWrapperInfo interface, an event
+	// specify wrapper will be derived from this wrapper using that
+	// EventWrapperInfo.
 	Wrapper wrapping.Wrapper
 
-	// Salt for deriving a hmac-sha256 operations key (can be nil).  This salt
-	// may be overridden on a per event basis when the event has a
-	// WrapperPayload which contains salt to use for the specific event.
+	// Salt for deriving a hmac-sha256 operations key (can be nil). This may be
+	// rotated with an event that has a payload satisfying the WrapperPayload
+	// interface. If an event's payload satisfies the EventWrapperInfo
+	// interface, event specific HmacSalt will be used for operations on that
+	// specific event.
 	HmacSalt []byte
 
-	// Info for deriving a hmac-sha256 operations key (can be nil). This info
-	// may be overridden on a per event basis when the event has a
-	// WrapperPayload which contains info to use for the specific event.
+	// Info for deriving a hmac-sha256 operations key (can be nil). This may be
+	// rotated with an event that has a payload satisfying the WrapperPayload
+	// interface.  If an event's payload satisfies the
+	// EventWrapperInfointerface, event specific HmacSalt will be used for
+	// operations on that
+	// specific event.
 	HmacInfo []byte
 
 	l sync.RWMutex
@@ -56,18 +63,37 @@ func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
 // be redacted.
 //
 // If the event payload satisfies the WrapperPayload interface, then the
-// payloads Wrapper(), HmacSalt() and HmacInfo() will be used for
-// encryption/hmac-sha256 operations on that specific event.
+// payload's Wrapper(), HmacSalt() and HmacInfo() will be used to rotate the
+// filter's wrappers for ongoing filtering operations.
+//
+// If the event payload satisfies the EventWrapperInfo interface, then the
+// payload's EventId(), HmacSalt() and HmacInfo() will be used to for filtering
+// operations for just the single event being processed.
 func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(EncryptFilter).Process"
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing event")
 	}
+	if i, ok := e.Payload.(WrapperPayload); ok {
+		ef.l.Lock()
+		if i.Wrapper() != nil {
+			ef.Wrapper = i.Wrapper()
+		}
+		if i.HmacSalt() != nil {
+			ef.HmacSalt = i.HmacSalt()
+		}
+		if i.HmacInfo() != nil {
+			ef.HmacSalt = i.HmacInfo()
+		}
+		ef.l.Unlock()
+	}
 
 	var opts []option
 	var optWrapper wrapping.Wrapper
-	if i, ok := e.Payload.(WrapperPayload); ok {
-		w, err := NewEventWrapper(i.Wrapper(), i.EventId())
+	if i, ok := e.Payload.(EventWrapperInfo); ok {
+		ef.l.RLock()
+		w, err := NewEventWrapper(ef.Wrapper, i.EventId())
+		ef.l.RUnlock()
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
