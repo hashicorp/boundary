@@ -190,10 +190,10 @@ type requestMap struct {
 	err error
 }
 
-func newMapper(requests []credential.RequestDynamic) *requestMap {
+func newMapper(requests []credential.Request) *requestMap {
 	ids := make(map[string][]credential.Purpose, len(requests))
 	for _, req := range requests {
-		if purps, ok := ids[req.LibraryId]; ok {
+		if purps, ok := ids[req.SourceId]; ok {
 			for _, purp := range purps {
 				if purp == req.Purpose {
 					return &requestMap{
@@ -202,7 +202,7 @@ func newMapper(requests []credential.RequestDynamic) *requestMap {
 				}
 			}
 		}
-		ids[req.LibraryId] = append(ids[req.LibraryId], req.Purpose)
+		ids[req.SourceId] = append(ids[req.SourceId], req.Purpose)
 	}
 	return &requestMap{
 		ids: ids,

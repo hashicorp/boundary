@@ -97,11 +97,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 
 	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
 
-	rc2dc := func(rcs []credential.RequestDynamic) []*session.DynamicCredential {
+	rc2dc := func(rcs []credential.Request) []*session.DynamicCredential {
 		var dcs []*session.DynamicCredential
 		for _, rc := range rcs {
 			dc := &session.DynamicCredential{
-				LibraryId:         rc.LibraryId,
+				LibraryId:         rc.SourceId,
 				CredentialPurpose: string(rc.Purpose),
 			}
 			dcs = append(dcs, dc)
@@ -109,45 +109,45 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		return dcs
 	}
 
-	rc2nil := func(rcs []credential.RequestDynamic) []*session.DynamicCredential { return nil }
+	rc2nil := func(rcs []credential.Request) []*session.DynamicCredential { return nil }
 
 	tests := []struct {
 		name      string
-		convertFn func(rcs []credential.RequestDynamic) []*session.DynamicCredential
-		requests  []credential.RequestDynamic
+		convertFn func(rcs []credential.Request) []*session.DynamicCredential
+		requests  []credential.Request
 		wantErr   errors.Code
 	}{
 		{
 			name:      "one-library-valid",
 			convertFn: rc2dc,
-			requests: []credential.RequestDynamic{
+			requests: []credential.Request{
 				{
-					LibraryId: libs[libDB],
-					Purpose:   credential.ApplicationPurpose,
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
 				},
 			},
 		},
 		{
 			name:      "multiple-valid-libraries",
 			convertFn: rc2dc,
-			requests: []credential.RequestDynamic{
+			requests: []credential.Request{
 				{
-					LibraryId: libs[libDB],
-					Purpose:   credential.ApplicationPurpose,
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
 				},
 				{
-					LibraryId: libs[libPKI],
-					Purpose:   credential.IngressPurpose,
+					SourceId: libs[libPKI],
+					Purpose:  credential.IngressPurpose,
 				},
 			},
 		},
 		{
 			name:      "one-library-that-errors",
 			convertFn: rc2dc,
-			requests: []credential.RequestDynamic{
+			requests: []credential.Request{
 				{
-					LibraryId: libs[libErrPKI],
-					Purpose:   credential.IngressPurpose,
+					SourceId: libs[libErrPKI],
+					Purpose:  credential.IngressPurpose,
 				},
 			},
 			wantErr: errors.VaultCredentialRequest,
@@ -155,14 +155,14 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		{
 			name:      "no-session-dynamic-credentials",
 			convertFn: rc2nil,
-			requests: []credential.RequestDynamic{
+			requests: []credential.Request{
 				{
-					LibraryId: libs[libDB],
-					Purpose:   credential.ApplicationPurpose,
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
 				},
 				{
-					LibraryId: libs[libPKI],
-					Purpose:   credential.IngressPurpose,
+					SourceId: libs[libPKI],
+					Purpose:  credential.IngressPurpose,
 				},
 			},
 			wantErr: errors.InvalidDynamicCredential,
@@ -181,7 +181,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				Endpoint:           "tcp://127.0.0.1:22",
 				DynamicCredentials: tt.convertFn(tt.requests),
 			})
-			got, err := repo.IssueCredentials(ctx, sess.GetPublicId(), tt.requests)
+			got, err := repo.Issue(ctx, sess.GetPublicId(), tt.requests)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

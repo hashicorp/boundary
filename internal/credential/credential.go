@@ -2,7 +2,11 @@
 // manage credentials for Boundary sessions.
 package credential
 
-import "github.com/hashicorp/boundary/internal/db/timestamp"
+import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+)
 
 // An Entity is an object distinguished by its identity, rather than its
 // attributes. It can contain value objects and other entities.
@@ -69,9 +73,22 @@ type Dynamic interface {
 	Purpose() Purpose
 }
 
-// A RequestDynamic represents a request for a dynamic credential from the
-// library for the given purpose.
-type RequestDynamic struct {
-	LibraryId string
-	Purpose   Purpose
+// A Request represents a request for a credential from the SourceId for
+// the given purpose. For dynamic credentials, the SourceId is the PublicId
+// of a credential library.
+type Request struct {
+	SourceId string
+	Purpose  Purpose
+}
+
+// Issuer issues dynamic credentials.
+type Issuer interface {
+	// Issue issues dynamic credentials for a session from the requested
+	// libraries and for the requested purposes. The sessionId must be a
+	// valid sessionId. The SourceId in each request must be the public id
+	// of a library the Issuer can issue credentials from.
+	//
+	// If Issue encounters an error, it returns no credentials and revokes
+	// any credentials issued before encountering the error.
+	Issue(ctx context.Context, sessionId string, requests []Request) ([]Dynamic, error)
 }

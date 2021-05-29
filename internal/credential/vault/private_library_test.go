@@ -132,7 +132,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 
 func TestRequestMap(t *testing.T) {
 	type args struct {
-		requests []credential.RequestDynamic
+		requests []credential.Request
 		libs     []*privateLibrary
 	}
 
@@ -150,10 +150,10 @@ func TestRequestMap(t *testing.T) {
 		{
 			name: "one",
 			args: args{
-				requests: []credential.RequestDynamic{
+				requests: []credential.Request{
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 				},
 				libs: []*privateLibrary{
@@ -175,14 +175,14 @@ func TestRequestMap(t *testing.T) {
 		{
 			name: "two-libs",
 			args: args{
-				requests: []credential.RequestDynamic{
+				requests: []credential.Request{
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 					{
-						LibraryId: "gary",
-						Purpose:   credential.EgressPurpose,
+						SourceId: "gary",
+						Purpose:  credential.EgressPurpose,
 					},
 				},
 				libs: []*privateLibrary{
@@ -213,14 +213,14 @@ func TestRequestMap(t *testing.T) {
 		{
 			name: "one-lib-two-purps",
 			args: args{
-				requests: []credential.RequestDynamic{
+				requests: []credential.Request{
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.EgressPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.EgressPurpose,
 					},
 				},
 				libs: []*privateLibrary{
@@ -248,14 +248,14 @@ func TestRequestMap(t *testing.T) {
 		{
 			name: "one-lib-dup-purps-error",
 			args: args{
-				requests: []credential.RequestDynamic{
+				requests: []credential.Request{
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 				},
 			},
@@ -264,14 +264,14 @@ func TestRequestMap(t *testing.T) {
 		{
 			name: "to-many-libs-to-map",
 			args: args{
-				requests: []credential.RequestDynamic{
+				requests: []credential.Request{
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.ApplicationPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.ApplicationPurpose,
 					},
 					{
-						LibraryId: "kaz",
-						Purpose:   credential.EgressPurpose,
+						SourceId: "kaz",
+						Purpose:  credential.EgressPurpose,
 					},
 				},
 				libs: []*privateLibrary{

@@ -11,13 +11,12 @@ import (
 	vault "github.com/hashicorp/vault/api"
 )
 
-// IssueCredentials issues and returns dynamic credentials for sessionId. A
-// dynamic credential is retrieved from Vault for each libraryId. The
-// number of credentials returned is equal to the number of requests. If
-// a credential cannot be retrieved for the one of the requests, an error
-// is returned with no credentials.
-func (r *Repository) IssueCredentials(ctx context.Context, sessionId string, requests []credential.RequestDynamic, _ ...Option) ([]credential.Dynamic, error) {
-	const op = "vault.(Repository).IssueCredentials"
+var _ credential.Issuer = (*Repository)(nil)
+
+// Issue issues and returns dynamic credentials from Vault for all of the
+// requests and assigns them to sessionId.
+func (r *Repository) Issue(ctx context.Context, sessionId string, requests []credential.Request) ([]credential.Dynamic, error) {
+	const op = "vault.(Repository).Issue"
 	if sessionId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no session id")
 	}
