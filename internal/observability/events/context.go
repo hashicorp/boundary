@@ -10,8 +10,8 @@ import (
 type key int
 
 const (
-	EventerKey key = iota
-	RequestInfoKey
+	eventerKey key = iota
+	requestInfoKey
 )
 
 func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
@@ -22,7 +22,16 @@ func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, 
 	if eventer == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
 	}
-	return context.WithValue(ctx, EventerKey, eventer), nil
+	return context.WithValue(ctx, eventerKey, eventer), nil
+}
+
+func EventerFromContext(ctx context.Context) (*Eventer, bool) {
+	const op = "event.EventerFromContext"
+	if ctx == nil {
+		return nil, false
+	}
+	eventer, ok := ctx.Value(eventerKey).(*Eventer)
+	return eventer, ok
 }
 
 func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Context, error) {
@@ -36,7 +45,16 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 	if info.Id == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing request info ID")
 	}
-	return context.WithValue(ctx, RequestInfoKey, info), nil
+	return context.WithValue(ctx, requestInfoKey, info), nil
+}
+
+func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
+	const op = "event.RequestInfoFromContext"
+	if ctx == nil {
+		return nil, false
+	}
+	reqInfo, ok := ctx.Value(requestInfoKey).(*RequestInfo)
+	return reqInfo, ok
 }
 
 // WriteObservation will write an observation event.  It will first check the
@@ -48,7 +66,7 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 // options are ignored.
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteObservation"
-	eventer, ok := ctx.Value(EventerKey).(*Eventer)
+	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
@@ -83,7 +101,7 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 // are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	const op = "event.WriteError"
-	eventer, ok := ctx.Value(EventerKey).(*Eventer)
+	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
@@ -123,7 +141,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 // All other options are ignored.
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteAudit"
-	eventer, ok := ctx.Value(EventerKey).(*Eventer)
+	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
@@ -153,7 +171,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 	retOpts := make([]Option, 0, len(opt))
 	retOpts = append(retOpts, opt...)
 	if opts.withRequestInfo == nil {
-		reqInfo, ok := ctx.Value(RequestInfoKey).(*RequestInfo)
+		reqInfo, ok := RequestInfoFromContext(ctx)
 		if !ok {
 			return nil, errors.New(errors.InvalidParameter, op, "context missing request info")
 		}
