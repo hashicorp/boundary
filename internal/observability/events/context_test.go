@@ -156,7 +156,7 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 	t.Helper()
 	require := require.New(t)
 
-	reqInfo, ok := ctx.Value(event.RequestInfoKey).(*event.RequestInfo)
+	reqInfo, ok := event.RequestInfoFromContext(ctx)
 	require.Truef(ok, "missing reqInfo in ctx")
 
 	j := eventJson{
