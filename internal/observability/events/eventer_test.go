@@ -142,3 +142,17 @@ func Test_NewEventer(t *testing.T) {
 	require.NoError(e.writeObservation(context.Background(), observationEvent))
 
 }
+
+func TestEventer_Reopen(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		require := require.New(t)
+
+		// with no defined config, it will default to a stdout sink
+		e, err := NewEventer(hclog.Default(), EventerConfig{})
+		require.NoError(err)
+		require.NoError(e.Reopen())
+
+		e.broker = nil
+		require.NoError(e.Reopen())
+	})
+}
