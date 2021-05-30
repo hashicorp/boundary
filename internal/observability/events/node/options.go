@@ -5,7 +5,7 @@ import (
 )
 
 // getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...option) options {
+func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -13,8 +13,8 @@ func getOpts(opt ...option) options {
 	return opts
 }
 
-// option - how Options are passed as arguments.
-type option func(*options)
+// Option - how Options are passed as arguments.
+type Option func(*options)
 
 // options = how options are represented
 type options struct {
@@ -27,19 +27,19 @@ func getDefaultOptions() options {
 	return options{}
 }
 
-func withWrapper(wrapper wrapping.Wrapper) option {
+func WithWrapper(wrapper wrapping.Wrapper) Option {
 	return func(o *options) {
 		o.withWrapper = wrapper
 	}
 }
 
-func withSalt(salt []byte) option {
+func WithSalt(salt []byte) Option {
 	return func(o *options) {
 		o.withSalt = salt
 	}
 }
 
-func withInfo(info []byte) option {
+func WithInfo(info []byte) Option {
 	return func(o *options) {
 		o.withInfo = info
 	}
