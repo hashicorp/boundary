@@ -38,11 +38,16 @@ const (
 	ErrPipeline                           = "err-pipeline"         // ErrPipeline is a pipeline for error events
 )
 
+type flushable interface {
+	FlushAll(ctx context.Context) error
+}
+
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
-	broker *eventlogger.Broker
-	conf   EventerConfig
-	logger hclog.Logger
+	broker         *eventlogger.Broker
+	flushableNodes []flushable
+	conf           EventerConfig
+	logger         hclog.Logger
 }
 
 // SinkConfig defines the configuration for a Eventer sink
@@ -107,6 +112,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		fmtId     eventlogger.NodeID
 		sinkId    eventlogger.NodeID
 	}
+	var flushableNodes []flushable
 	var auditPipelines, observationPipelines, errPipelines []pipeline
 
 	broker := eventlogger.NewBroker()
@@ -218,6 +224,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
+		flushableNodes = append(flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-audit")
 		if err != nil {
 			return nil, errors.Wrap(err, op)
@@ -244,6 +251,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
+		flushableNodes = append(flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-audit")
 		if err != nil {
 			return nil, errors.Wrap(err, op)
@@ -306,9 +314,10 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 
 	return &Eventer{
-		logger: log,
-		conf:   c,
-		broker: broker,
+		logger:         log,
+		conf:           c,
+		broker:         broker,
+		flushableNodes: flushableNodes,
 	}, nil
 }
 
@@ -368,4 +377,16 @@ func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 // file sinks.
 func (e *Eventer) Reopen() error {
 	return e.broker.Reopen(context.Background())
+}
+
+// FlushNodes will flush any of the eventer's flushable nodes.  This
+// needs to be called whenever Boundary is stopping (aka shutting down).
+func (e *Eventer) FlushNodes(ctx context.Context) error {
+	const op = "event.(Eventer).FlushAll"
+	for _, n := range e.flushableNodes {
+		if err := n.FlushAll(ctx); err != nil {
+			return errors.Wrap(err, op)
+		}
+	}
+	return nil
 }
