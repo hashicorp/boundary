@@ -9,7 +9,7 @@ func newId(prefix string) (string, error) {
 	const op = "event.newId"
 	id, err := db.NewPublicId(prefix)
 	if err != nil {
-		return "", errors.Wrap(err, "iam.newRoleId")
+		return "", errors.Wrap(err, op)
 	}
 	return id, nil
 }
