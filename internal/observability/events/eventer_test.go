@@ -113,6 +113,7 @@ func Test_InitSysEventer(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 			tt.want.broker = got.broker
+			tt.want.flushableNodes = got.flushableNodes
 			assert.Equal(tt.want, got)
 		})
 	}
