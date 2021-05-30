@@ -13,29 +13,29 @@ import (
 )
 
 const (
-	OpField          = "op"
-	RequestInfoField = "request_info"
-	VersionField     = "version"
-	DetailsField     = "details"
-	HeaderField      = "header"
-	IdField          = "id"
-	CreatedAtField   = "created_at"
-	TypeField        = "type"
+	OpField          = "op"           // OpField in an event.
+	RequestInfoField = "request_info" // RequestInfoField in an event.
+	VersionField     = "version"      // VersionField in an event
+	DetailsField     = "details"      // Details field in an event.
+	HeaderField      = "header"       // HeaderField in an event.
+	IdField          = "id"           // IdField in an event.
+	CreatedAtField   = "created_at"   // CreatedAtField in an event.
+	TypeField        = "type"         // TypeField in an event.
 )
 
-type SinkType string
-type SinkFormat string
-type DeliveryGuarantee string
+type SinkType string          // SinkType defines the type of sink in a config stanza (file, stdout)
+type SinkFormat string        // SinkFormat defines the formatting for a sink in a config file stanza (json)
+type DeliveryGuarantee string // DeliveryGuarantee defines the guarantees around delivery of an event type within config
 
 const (
-	StdoutSink          SinkType          = "stdout"
-	FileSink            SinkType          = "file"
-	JSONSinkFormat      SinkFormat        = "json"
-	Enforced            DeliveryGuarantee = "enforced"
-	BestEffort          DeliveryGuarantee = "best-effort"
-	AuditPipeline                         = "audit-pipeline"
-	ObservationPipeline                   = "observation-pipeline"
-	ErrPipeline                           = "err-pipeline"
+	StdoutSink          SinkType          = "stdout"               // StdoutSink is written to stdout
+	FileSink            SinkType          = "file"                 // FileSink is written to a file
+	JSONSinkFormat      SinkFormat        = "json"                 // JSONSinkFormat means the event is formatted as JSON
+	Enforced            DeliveryGuarantee = "enforced"             // Enforced means that a delivery guarantee is enforced
+	BestEffort          DeliveryGuarantee = "best-effort"          // BestEffort means that a best effort will be made to deliver an event
+	AuditPipeline                         = "audit-pipeline"       // AuditPipeline is a pipeline for audit events
+	ObservationPipeline                   = "observation-pipeline" // ObservationPipeline is a pipeline for observation events
+	ErrPipeline                           = "err-pipeline"         // ErrPipeline is a pipeline for error events
 )
 
 // Eventer provides a method to send events to pipelines of sinks
@@ -43,37 +43,32 @@ type Eventer struct {
 	broker *eventlogger.Broker
 	conf   EventerConfig
 	logger hclog.Logger
-	l      sync.Mutex
 }
 
 // SinkConfig defines the configuration for a Eventer sink
 type SinkConfig struct {
-	// Name defines a name for the sink.
-	Name string
-
-	// EventTypes defines a list of event types that will be sent to the sink.
-	// See the docs for EventTypes for a list of accepted values.
-	EventTypes     []Type
-	SinkType       SinkType
-	Format         SinkFormat
-	Path           string
-	FileName       string
-	RotateBytes    int
-	RotateDuration time.Duration
-	RotateMaxFiles int
+	Name           string        // Name defines a name for the sink.
+	EventTypes     []Type        // EventTypes defines a list of event types that will be sent to the sink. See the docs for EventTypes for a list of accepted values.
+	SinkType       SinkType      // SinkType defines the type of sink (StdoutSink or FileSink)
+	Format         SinkFormat    // Format defines the format for the sink (JSONSinkFormat)
+	Path           string        // Path defines the file path for the sink
+	FileName       string        // FileName defines the file name for the sink
+	RotateBytes    int           // RotateByes defines the number of bytes that should trigger rotation of a FileSink
+	RotateDuration time.Duration // RotateDuration defines how often a FileSink should be rotated
+	RotateMaxFiles int           // RotateMaxFiles defines how may historical rotated files should be kept for a FileSink
 }
 
 // EventerConfig supplies all the configuration needed to create/config an Eventer.
 type EventerConfig struct {
-	AuditDelivery       DeliveryGuarantee
-	ObservationDelivery DeliveryGuarantee
-	AuditEnabled        bool
-	ObservationsEnabled bool
-	Sinks               []SinkConfig
+	AuditDelivery       DeliveryGuarantee // AuditDelivery specifies the delivery guarantees for audit events (enforced or best effort).
+	ObservationDelivery DeliveryGuarantee // ObservationDelivery specifies the delivery guarantees for observation events (enforced or best effort).
+	AuditEnabled        bool              // AuditEnabled specifies if audit events should be emitted.
+	ObservationsEnabled bool              // ObservationsEnabled specifies if observation events should be emitted.
+	Sinks               []SinkConfig      // Sinks are all the configured sinks
 }
 
-var sysEventer *Eventer
-var sysEventerOnce sync.Once
+var sysEventer *Eventer      // sysEventer is the system-wide Eventer
+var sysEventerOnce sync.Once // sysEventerOnce ensures that the system-wide Eventer is only initialized once.
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
 // singleton for Boundary
@@ -334,7 +329,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
 	})
 	if err != nil {
-		e.logError("encountered an error sending an observation event", "error:", err.Error())
+		e.logger.Error("encountered an error sending an observation event", "error:", err.Error())
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -347,7 +342,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
 	})
 	if err != nil {
-		e.logError("encountered an error sending an error event", "error:", err.Error())
+		e.logger.Error("encountered an error sending an error event", "error:", err.Error())
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -363,7 +358,7 @@ func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 		return e.broker.Send(ctx, eventlogger.EventType(AuditType), event)
 	})
 	if err != nil {
-		e.logError("encountered an error sending an audit event", "error:", err.Error())
+		e.logger.Error("encountered an error sending an audit event", "error:", err.Error())
 		return errors.Wrap(err, op)
 	}
 	return nil
@@ -372,19 +367,5 @@ func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 // Reopen can used during a SIGHUP to reopen nodes, most importantly the underlying
 // file sinks.
 func (e *Eventer) Reopen() error {
-	e.l.Lock()
-	defer e.l.Unlock()
 	return e.broker.Reopen(context.Background())
-}
-
-func (e *Eventer) logError(msg string, args ...interface{}) {
-	if e.logger != nil {
-		e.logger.Error(msg, args)
-	}
-}
-
-func (e *Eventer) logWarning(msg string, args ...interface{}) {
-	if e.logger != nil {
-		e.logger.Warn(msg, args)
-	}
 }

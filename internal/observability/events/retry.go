@@ -55,7 +55,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 			for _, w := range attemptStatus.Warnings {
 				retryWarnings = multierror.Append(retryWarnings, w)
 			}
-			e.logWarning("%s: %w", op, retryWarnings)
+			e.logger.Error("%s: %w", op, retryWarnings)
 		}
 		if err != nil {
 			retryErrors = multierror.Append(retryErrors, errors.Wrap(err, op))
