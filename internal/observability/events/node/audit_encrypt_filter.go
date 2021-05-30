@@ -58,6 +58,23 @@ func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
 	return eventlogger.NodeTypeFilter
 }
 
+// Rotate supports rotating the filter's wrapper, salt and info via the options:
+// WithWrapper, WithSalt, WithInfo
+func (ef *AuditEncryptFilter) Rotate(opt ...Option) {
+	opts := getOpts(opt...)
+	ef.l.Lock()
+	defer ef.l.Unlock()
+	if opts.withWrapper != nil {
+		ef.Wrapper = opts.withWrapper
+	}
+	if opts.withSalt != nil {
+		ef.HmacSalt = opts.withSalt
+	}
+	if opts.withInfo != nil {
+		ef.HmacInfo = opts.withInfo
+	}
+}
+
 // Process will encrypt or hmac-sha256 string and []byte fields which are tagged
 // as SensitiveClassification.  Fields that are tagged SecretClassification will
 // be redacted.
@@ -91,7 +108,7 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 		return nil, nil
 	}
 
-	var opts []option
+	var opts []Option
 	var optWrapper wrapping.Wrapper
 	if i, ok := e.Payload.(EventWrapperInfo); ok {
 		ef.l.RLock()
@@ -101,9 +118,9 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 			return nil, errors.Wrap(err, op)
 		}
 		optWrapper := w
-		opts = append(opts, withWrapper(optWrapper))
-		opts = append(opts, withInfo(i.HmacInfo()))
-		opts = append(opts, withSalt(i.HmacSalt()))
+		opts = append(opts, WithWrapper(optWrapper))
+		opts = append(opts, WithInfo(i.HmacInfo()))
+		opts = append(opts, WithSalt(i.HmacSalt()))
 	}
 
 	if ef.Wrapper == nil && optWrapper == nil {
@@ -123,7 +140,7 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 
 // filterField will recursively iterate over all the field for a value and
 // filter them based on their DataClassification
-func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...option) error {
+func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...Option) error {
 	const op = "event.(AuditEncryptFilter).filterField"
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
@@ -182,7 +199,7 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 }
 
 // filterSlice will filter a slice reflect.Value
-func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...option) error {
+func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...Option) error {
 	const op = "event.(AuditEncryptFilter).filterSlice"
 	if classificationTag.Classification == PublicClassification {
 		return nil
@@ -203,7 +220,7 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag
 }
 
 // filterValue will filter a value based on it's DataClassification
-func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...option) error {
+func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...Option) error {
 	const op = "event.(AuditEncryptFilter).filterValue"
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
@@ -249,7 +266,7 @@ func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value,
 	return nil
 }
 
-func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...option) (string, error) {
+func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
 	ef.l.Lock()
 	defer ef.l.Unlock()
@@ -275,7 +292,7 @@ func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...
 	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob), nil
 }
 
-func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...option) (string, error) {
+func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).hmacField"
 	ef.l.Lock()
 	defer ef.l.Unlock()
