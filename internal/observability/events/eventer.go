@@ -376,7 +376,10 @@ func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 // Reopen can used during a SIGHUP to reopen nodes, most importantly the underlying
 // file sinks.
 func (e *Eventer) Reopen() error {
-	return e.broker.Reopen(context.Background())
+	if e.broker != nil {
+		return e.broker.Reopen(context.Background())
+	}
+	return nil
 }
 
 // FlushNodes will flush any of the eventer's flushable nodes.  This
