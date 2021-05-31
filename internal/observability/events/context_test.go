@@ -28,42 +28,12 @@ func Test_WriteObservation(t *testing.T) {
 		Name: "test",
 	})
 
-	tmpFile, err := ioutil.TempFile("./", "test_writeobservation-observation")
-	require.NoError(t, err)
+	c, tmpFile, tmpErrFile := event.TestEventerConfig(t, "WriteObservation")
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-
-	tmpErrFile, err := ioutil.TempFile("./", "test_writeobservation-err")
-	require.NoError(t, err)
 	tmpErrFile.Close()
 	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
 
-	c := event.EventerConfig{
-		ObservationsEnabled: true,
-		ObservationDelivery: event.Enforced,
-		Sinks: []event.SinkConfig{
-			{
-				Name:       "observation-file-sink",
-				EventTypes: []event.Type{event.EveryType},
-				Format:     event.JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpFile.Name(),
-			},
-			{
-				Name:       "stdout",
-				EventTypes: []event.Type{event.EveryType},
-				Format:     event.JSONSinkFormat,
-				SinkType:   event.StdoutSink,
-			},
-			{
-				Name:       "err-file-sink",
-				EventTypes: []event.Type{event.ErrorType},
-				Format:     event.JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpErrFile.Name(),
-			},
-		},
-	}
 	e, err := event.NewEventer(logger, c)
 	require.NoError(t, err)
 
@@ -210,42 +180,12 @@ func Test_WriteAudit(t *testing.T) {
 		Name: "test",
 	})
 
-	tmpFile, err := ioutil.TempFile("./", "test_writeaudit-audit")
-	require.NoError(t, err)
+	c, tmpFile, tmpErrFile := event.TestEventerConfig(t, "WriteAudit")
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-
-	tmpErrFile, err := ioutil.TempFile("./", "test_writeaudit-err")
-	require.NoError(t, err)
 	tmpErrFile.Close()
 	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
 
-	c := event.EventerConfig{
-		AuditEnabled:  true,
-		AuditDelivery: event.Enforced,
-		Sinks: []event.SinkConfig{
-			{
-				Name:       "audit-file-sink",
-				EventTypes: []event.Type{event.EveryType},
-				Format:     event.JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpFile.Name(),
-			},
-			{
-				Name:       "stdout",
-				EventTypes: []event.Type{event.EveryType},
-				Format:     event.JSONSinkFormat,
-				SinkType:   event.StdoutSink,
-			},
-			{
-				Name:       "err-file-sink",
-				EventTypes: []event.Type{event.ErrorType},
-				Format:     event.JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpErrFile.Name(),
-			},
-		},
-	}
 	e, err := event.NewEventer(logger, c, event.WithNow(now))
 	require.NoError(t, err)
 
