@@ -19,7 +19,13 @@ func testResetSystEventer(t *testing.T) {
 	sysEventer = nil
 }
 
-func TestEventerConfig(t *testing.T, testName string) (config EventerConfig, allEvents *os.File, errorEvents *os.File) {
+type TestConfig struct {
+	EventerConfig EventerConfig
+	AllEvents     *os.File
+	ErrorEvents   *os.File
+}
+
+func TestEventerConfig(t *testing.T, testName string) TestConfig {
 	t.Helper()
 	require := require.New(t)
 	tmpAllFile, err := ioutil.TempFile("./", "tmp-observations-"+testName)
@@ -28,32 +34,36 @@ func TestEventerConfig(t *testing.T, testName string) (config EventerConfig, all
 	tmpErrFile, err := ioutil.TempFile("./", "tmp-errors-"+testName)
 	require.NoError(err)
 
-	return EventerConfig{
-		ObservationsEnabled: true,
-		ObservationDelivery: Enforced,
-		AuditEnabled:        true,
-		AuditDelivery:       Enforced,
-		Sinks: []SinkConfig{
-			{
-				Name:       "every-type-file-sink",
-				EventTypes: []Type{EveryType},
-				Format:     JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpAllFile.Name(),
-			},
-			{
-				Name:       "stdout",
-				EventTypes: []Type{EveryType},
-				Format:     JSONSinkFormat,
-				SinkType:   StdoutSink,
-			},
-			{
-				Name:       "err-file-sink",
-				EventTypes: []Type{ErrorType},
-				Format:     JSONSinkFormat,
-				Path:       "./",
-				FileName:   tmpErrFile.Name(),
+	return TestConfig{
+		EventerConfig: EventerConfig{
+			ObservationsEnabled: true,
+			ObservationDelivery: Enforced,
+			AuditEnabled:        true,
+			AuditDelivery:       Enforced,
+			Sinks: []SinkConfig{
+				{
+					Name:       "every-type-file-sink",
+					EventTypes: []Type{EveryType},
+					Format:     JSONSinkFormat,
+					Path:       "./",
+					FileName:   tmpAllFile.Name(),
+				},
+				{
+					Name:       "stdout",
+					EventTypes: []Type{EveryType},
+					Format:     JSONSinkFormat,
+					SinkType:   StdoutSink,
+				},
+				{
+					Name:       "err-file-sink",
+					EventTypes: []Type{ErrorType},
+					Format:     JSONSinkFormat,
+					Path:       "./",
+					FileName:   tmpErrFile.Name(),
+				},
 			},
 		},
-	}, tmpAllFile, tmpErrFile
+		AllEvents:   tmpAllFile,
+		ErrorEvents: tmpErrFile,
+	}
 }

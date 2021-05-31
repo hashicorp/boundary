@@ -14,11 +14,9 @@ import (
 func Test_InitSysEventer(t *testing.T) {
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
-	testConfig, tmpFile, tmpErrFile := TestEventerConfig(t, "InitSysEventer")
-	tmpFile.Close()
-	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-	tmpErrFile.Close()
-	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
+	testConfig := TestEventerConfig(t, "InitSysEventer")
+	defer os.Remove(testConfig.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
+	defer os.Remove(testConfig.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
 	tests := []struct {
 		name         string
@@ -30,16 +28,16 @@ func Test_InitSysEventer(t *testing.T) {
 
 		{
 			name:         "missing-hclog",
-			config:       testConfig,
+			config:       testConfig.EventerConfig,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
 			name:   "success",
-			config: testConfig,
+			config: testConfig.EventerConfig,
 			log:    hclog.Default(),
 			want: &Eventer{
 				logger: hclog.Default(),
-				conf:   testConfig,
+				conf:   testConfig.EventerConfig,
 			},
 		},
 		{

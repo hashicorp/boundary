@@ -28,13 +28,11 @@ func Test_WriteObservation(t *testing.T) {
 		Name: "test",
 	})
 
-	c, tmpFile, tmpErrFile := event.TestEventerConfig(t, "WriteObservation")
-	tmpFile.Close()
-	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-	tmpErrFile.Close()
-	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
+	c := event.TestEventerConfig(t, "WriteObservation")
+	defer os.Remove(c.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
+	defer os.Remove(c.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
-	e, err := event.NewEventer(logger, c)
+	e, err := event.NewEventer(logger, c.EventerConfig)
 	require.NoError(t, err)
 
 	info := &event.RequestInfo{Id: "867-5309"}
@@ -83,8 +81,8 @@ func Test_WriteObservation(t *testing.T) {
 			details: map[string]interface{}{
 				"file": "temp-file.txt",
 			},
-			errSinkFileName:         tmpErrFile.Name(),
-			observationSinkFileName: tmpFile.Name(),
+			errSinkFileName:         c.ErrorEvents.Name(),
+			observationSinkFileName: c.AllEvents.Name(),
 		},
 	}
 	for _, tt := range tests {
@@ -180,13 +178,11 @@ func Test_WriteAudit(t *testing.T) {
 		Name: "test",
 	})
 
-	c, tmpFile, tmpErrFile := event.TestEventerConfig(t, "WriteAudit")
-	tmpFile.Close()
-	defer os.Remove(tmpFile.Name()) // just to be sure it's gone after all the tests are done.
-	tmpErrFile.Close()
-	defer os.Remove(tmpErrFile.Name()) // just to be sure it's gone after all the tests are done.
+	c := event.TestEventerConfig(t, "WriteAudit")
+	defer os.Remove(c.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
+	defer os.Remove(c.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
-	e, err := event.NewEventer(logger, c, event.WithNow(now))
+	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
 	require.NoError(t, err)
 
 	info := &event.RequestInfo{Id: "867-5309"}
@@ -255,8 +251,8 @@ func Test_WriteAudit(t *testing.T) {
 				Request:  testReq,
 				Response: testResp,
 			},
-			errSinkFileName:   tmpErrFile.Name(),
-			auditSinkFileName: tmpFile.Name(),
+			errSinkFileName:   c.ErrorEvents.Name(),
+			auditSinkFileName: c.AllEvents.Name(),
 		},
 	}
 	for _, tt := range tests {
