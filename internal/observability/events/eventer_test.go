@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -178,14 +179,29 @@ func Test_NewEventer(t *testing.T) {
 
 func TestEventer_Reopen(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
-		require := require.New(t)
+		assert, require := assert.New(t), require.New(t)
 
-		// with no defined config, it will default to a stdout sink
 		e, err := NewEventer(hclog.Default(), EventerConfig{})
 		require.NoError(err)
-		require.NoError(e.Reopen())
 
 		e.broker = nil
 		require.NoError(e.Reopen())
+
+		e.broker = &testReopenBroker{}
+		require.NoError(e.Reopen())
+		assert.True(e.broker.(*testReopenBroker).reopened)
 	})
+}
+
+type testReopenBroker struct {
+	reopened bool
+}
+
+func (b *testReopenBroker) Reopen(ctx context.Context) error {
+	b.reopened = true
+	return nil
+}
+
+func (b *testReopenBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+	return eventlogger.Status{}, nil
 }
