@@ -50,10 +50,21 @@ type Library interface {
 // Purpose is the purpose of the credential.
 type Purpose string
 
+// Credential purpose values.
 const (
+	// ApplicationPurpose is a credential used for application specific
+	// purposes. Application credentials are returned to the user.
 	ApplicationPurpose Purpose = "application"
-	IngressPurpose     Purpose = "ingress"
-	EgressPurpose      Purpose = "egress"
+
+	// IngressPurpose is a credential used by a boundary worker to secure
+	// the connection between the user and the worker. Ingress credentials
+	// are never returned to the user.
+	IngressPurpose Purpose = "ingress"
+
+	// EgressPurpose is a credential used by a boundary worker to secure
+	// the connection between the worker and the endpoint. Egress
+	// credentials are never returned to the user.
+	EgressPurpose Purpose = "egress"
 )
 
 // SecretData represents secret data.
