@@ -95,7 +95,7 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 }
 
-// NewService returns a user service which handles user related requests to boundary.
+// NewService returns a account service which handles account related requests to boundary.
 func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	const op = "accounts.NewService"
 	if pwRepo == nil {
@@ -433,7 +433,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	}
 	a, err := password.NewAccount(am.GetPublicId(), opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
@@ -449,7 +449,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 		return nil, errors.Wrap(err, op)
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 	}
 	return out, nil
 }
@@ -480,7 +480,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	}
 	a, err := oidc.NewAccount(am.GetPublicId(), attrs.GetSubject(), opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
@@ -489,10 +489,10 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 
 	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create user"))
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create account"))
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create user but no error returned from repository.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 	}
 	return out, nil
 }
@@ -510,7 +510,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 			return nil, errors.Wrap(err, op)
 		}
 		if am == nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 		}
 		out = am
 	case auth.OidcSubtype:
@@ -519,7 +519,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 			return nil, errors.Wrap(err, op)
 		}
 		if am == nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
 		}
 		out = am
 	}

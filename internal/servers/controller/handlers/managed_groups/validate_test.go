@@ -1,0 +1,195 @@
+package managed_groups
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+func fieldError(field, details string) string {
+	return fmt.Sprintf(`{name: %q, desc: %q}`, field, details)
+}
+
+func TestValidateCreateRequest(t *testing.T) {
+	cases := []struct {
+		name        string
+		item        *pb.ManagedGroup
+		errContains string
+	}{
+		{
+			name: "unrecognized authmethod prefix",
+			item: &pb.ManagedGroup{
+				AuthMethodId: "anything_1234567890",
+			},
+			errContains: fieldError(authMethodIdField, "Unknown auth method type from ID."),
+		},
+		{
+			name: "mismatched oidc authmethod pw type",
+			item: &pb.ManagedGroup{
+				Type:         "ldap",
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
+		},
+		{
+			name: "missing oidc attributes",
+			item: &pb.ManagedGroup{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			},
+			errContains: fieldError(attrFilterField, "This field is required."),
+		},
+		{
+			name: "bad oidc attributes",
+			item: &pb.ManagedGroup{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"filter": structpb.NewStringValue("foobar"),
+				}},
+			},
+			errContains: "Error evaluating submitted filter",
+		},
+		{
+			name: "no oidc errors",
+			item: &pb.ManagedGroup{
+				Type:         auth.OidcSubtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"filter": structpb.NewStringValue(`"/foo/bar" == "zipzap"`),
+				}},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &pbs.CreateManagedGroupRequest{Item: tc.item}
+			err := validateCreateRequest(req)
+			if tc.errContains == "" {
+				require.NoError(t, err)
+				return
+			}
+			assert.True(t, strings.Contains(err.Error(), tc.errContains),
+				"%q wasn't contained in %q", tc.errContains, err.Error())
+		})
+	}
+}
+
+/*
+func TestValidateUpdateRequest(t *testing.T) {
+	cases := []struct {
+		name        string
+		req         *pbs.UpdateManagedGroupRequest
+		errContains string
+	}{
+		{
+			name: "password to oidc change type",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: password.ManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Type: auth.OidcSubtype.String(),
+				},
+			},
+			errContains: fieldError(typeField, "Cannot modify the resource type."),
+		},
+		{
+			name: "oidc to password change type",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: oidc.ManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Type: auth.PasswordSubtype.String(),
+				},
+			},
+			errContains: fieldError(typeField, "Cannot modify the resource type."),
+		},
+		{
+			name: "password bad attributes",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: password.ManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"test": structpb.NewStringValue("something"),
+					}},
+				},
+			},
+			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+		},
+		{
+			name: "oidc bad attributes",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: oidc.ManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"test": structpb.NewStringValue("something"),
+					}},
+				},
+			},
+			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+		},
+		{
+			name: "no error",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id:         oidc.ManagedGroupPrefix + "_1234567890",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
+				Item: &pb.ManagedGroup{
+					Version: 1,
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateUpdateRequest(tc.req)
+			if tc.errContains == "" {
+				require.NoError(t, err)
+				return
+			}
+			assert.True(t, strings.Contains(err.Error(), tc.errContains),
+				"%q wasn't contained in %q", tc.errContains, err.Error())
+		})
+	}
+
+	t.Run("oidc read only fields", func(t *testing.T) {
+		readOnlyFields := []string{
+			emailClaimField,
+			nameClaimField,
+		}
+		err := validateUpdateRequest(&pbs.UpdateManagedGroupRequest{
+			Id:         oidc.ManagedGroupPrefix + "1234567890",
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
+		})
+
+		for _, f := range readOnlyFields {
+			expected := fieldError(f, "Field is read only.")
+			assert.True(t, strings.Contains(err.Error(), expected),
+				"%q wasn't contained in %q", expected, err.Error())
+		}
+	})
+
+	t.Run("oidc write only at create fields", func(t *testing.T) {
+		readOnlyFields := []string{
+			issuerField,
+			subjectField,
+		}
+		err := validateUpdateRequest(&pbs.UpdateManagedGroupRequest{
+			Id:         oidc.ManagedGroupPrefix + "1234567890",
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
+		})
+
+		for _, f := range readOnlyFields {
+			expected := fieldError(f, "Field cannot be updated.")
+			assert.True(t, strings.Contains(err.Error(), expected),
+				"%q wasn't contained in %q", expected, err.Error())
+		}
+	})
+}
+*/
