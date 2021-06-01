@@ -18,6 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestScheduler creates a mock controller and a new Scheduler attached to that controller id.
+// The Scheduler returned should only be used for tests.  The mock controller is not run.
+//
+// WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
+// the only valid options.
 func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 

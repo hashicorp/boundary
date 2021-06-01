@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
+	ua "go.uber.org/atomic"
 )
 
 const (
@@ -21,7 +22,8 @@ const (
 )
 
 // TokenRenewalJob is the recurring job that renews credential store Vault tokens that
-// are in the `current` and `maintaining` state
+// are in the `current` and `maintaining` state.  The TokenRenewalJob is not thread safe,
+// an attempt to Run the job concurrently will result in an JobAlreadyRunning error.
 type TokenRenewalJob struct {
 	reader db.Reader
 	writer db.Writer
@@ -29,7 +31,9 @@ type TokenRenewalJob struct {
 	logger hclog.Logger
 	limit  int
 
-	numTokens, numProcessed int
+	running      ua.Bool
+	numTokens    int
+	numProcessed int
 }
 
 // NewTokenRenewalJob creates a new in TokenRenewalJob
@@ -70,9 +74,17 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 }
 
 // Run queries the vault credential repo for tokens that need to be renewed, it then creates
-// a vault client and renews each token.
+// a vault client and renews each token.  Can not be run in parallel, if Run is invoked while
+// already running an error with code JobAlreadyRunning will be returned.
 func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRenewalJob).Run"
+
+	if !r.running.CAS(r.running.Load(), true) {
+		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+	}
+
+	// Clear running flag
+	defer r.running.Store(false)
 
 	// Verify context is not done before running
 	if err := ctx.Err(); err != nil {
