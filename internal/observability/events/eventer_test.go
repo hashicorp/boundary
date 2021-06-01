@@ -84,7 +84,7 @@ func Test_InitSysEventer(t *testing.T) {
 	}
 }
 
-func Test_Basic_Eventer(t *testing.T) {
+func TestEventer_writeObservation(t *testing.T) {
 	require := require.New(t)
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -108,14 +108,54 @@ func Test_Basic_Eventer(t *testing.T) {
 
 }
 
+// TODO -> jimlambrt: we need to complete this set of unit tests with coverage
+// for all the configuration possibilities.
 func Test_NewEventer(t *testing.T) {
+	t.Parallel()
+	testSetup := TestEventerConfig(t, "Test_NewEventer")
+	defer os.Remove(testSetup.AllEvents.Name())
+	defer os.Remove(testSetup.ErrorEvents.Name())
+
 	tests := []struct {
 		name         string
 		config       EventerConfig
 		logger       hclog.Logger
-		want         Eventer
+		want         *Eventer
 		wantErrMatch *errors.Template
-	}{}
+	}{
+		{
+			name:         "missing logger",
+			config:       testSetup.EventerConfig,
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:   "success-with-default-config",
+			config: EventerConfig{},
+			logger: hclog.Default(),
+			want: &Eventer{
+				logger: hclog.Default(),
+				conf: EventerConfig{
+					Sinks: []SinkConfig{
+						{
+							Name:       "default",
+							EventTypes: []Type{EveryType},
+							Format:     JSONSinkFormat,
+							SinkType:   StdoutSink,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "testSetup",
+			config: testSetup.EventerConfig,
+			logger: hclog.Default(),
+			want: &Eventer{
+				logger: hclog.Default(),
+				conf:   testSetup.EventerConfig,
+			},
+		},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -129,6 +169,8 @@ func Test_NewEventer(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
+			tt.want.broker = got.broker
+			tt.want.flushableNodes = got.flushableNodes
 			assert.Equal(tt.want, got)
 		})
 	}
