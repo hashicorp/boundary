@@ -16,7 +16,8 @@ type ManagedGroupMemberAccount struct {
 	tableName string
 }
 
-// NewManagedGroupMemberAccount creates a new in memory ManagedGroupMemberAccount assigned to OIDC
+// NewManagedGroupMemberAccount creates a new in memory
+// ManagedGroupMemberAccount assigned to a managed group within an OIDC
 // AuthMethod. Supported options are withName and withDescription.
 func NewManagedGroupMemberAccount(managedGroupId string, memberId string, opt ...Option) (*ManagedGroupMemberAccount, error) {
 	const op = "oidc.NewManagedGroupMemberAccount"
