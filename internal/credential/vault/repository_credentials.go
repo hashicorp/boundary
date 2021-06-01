@@ -76,20 +76,20 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			func(_ db.Reader, w db.Writer) error {
 				rowsInserted, err := w.Exec(ctx, insertQuery, insertQueryValues)
 				switch {
-				case err == nil && rowsInserted > 1:
-					return errors.New(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
 				case err != nil:
 					return errors.Wrap(err, op)
+				case rowsInserted > 1:
+					return errors.New(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
 				}
 
 				rowsUpdated, err := w.Exec(ctx, updateQuery, updateQueryValues)
 				switch {
-				case err == nil && rowsUpdated == 0:
-					return errors.New(errors.InvalidDynamicCredential, op, "no matching dynamic credential for session found")
-				case err == nil && rowsUpdated > 1:
-					return errors.New(errors.MultipleRecords, op, "more than 1 session credential would have been updated")
 				case err != nil:
 					return errors.Wrap(err, op)
+				case rowsUpdated == 0:
+					return errors.New(errors.InvalidDynamicCredential, op, "no matching dynamic credential for session found")
+				case rowsUpdated > 1:
+					return errors.New(errors.MultipleRecords, op, "more than 1 session credential would have been updated")
 				}
 				return nil
 			},
