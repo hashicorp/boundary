@@ -11,6 +11,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -84,23 +85,12 @@ func TestValidateCreateRequest(t *testing.T) {
 	}
 }
 
-/*
 func TestValidateUpdateRequest(t *testing.T) {
 	cases := []struct {
 		name        string
 		req         *pbs.UpdateManagedGroupRequest
 		errContains string
 	}{
-		{
-			name: "password to oidc change type",
-			req: &pbs.UpdateManagedGroupRequest{
-				Id: password.ManagedGroupPrefix + "_1234567890",
-				Item: &pb.ManagedGroup{
-					Type: auth.OidcSubtype.String(),
-				},
-			},
-			errContains: fieldError(typeField, "Cannot modify the resource type."),
-		},
 		{
 			name: "oidc to password change type",
 			req: &pbs.UpdateManagedGroupRequest{
@@ -110,18 +100,6 @@ func TestValidateUpdateRequest(t *testing.T) {
 				},
 			},
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
-		},
-		{
-			name: "password bad attributes",
-			req: &pbs.UpdateManagedGroupRequest{
-				Id: password.ManagedGroupPrefix + "_1234567890",
-				Item: &pb.ManagedGroup{
-					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"test": structpb.NewStringValue("something"),
-					}},
-				},
-			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
 		},
 		{
 			name: "oidc bad attributes",
@@ -142,6 +120,9 @@ func TestValidateUpdateRequest(t *testing.T) {
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.ManagedGroup{
 					Version: 1,
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"filter": structpb.NewStringValue(`"/foo/bar" == "zipzap"`),
+					}},
 				},
 			},
 		},
@@ -157,39 +138,4 @@ func TestValidateUpdateRequest(t *testing.T) {
 				"%q wasn't contained in %q", tc.errContains, err.Error())
 		})
 	}
-
-	t.Run("oidc read only fields", func(t *testing.T) {
-		readOnlyFields := []string{
-			emailClaimField,
-			nameClaimField,
-		}
-		err := validateUpdateRequest(&pbs.UpdateManagedGroupRequest{
-			Id:         oidc.ManagedGroupPrefix + "1234567890",
-			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
-		})
-
-		for _, f := range readOnlyFields {
-			expected := fieldError(f, "Field is read only.")
-			assert.True(t, strings.Contains(err.Error(), expected),
-				"%q wasn't contained in %q", expected, err.Error())
-		}
-	})
-
-	t.Run("oidc write only at create fields", func(t *testing.T) {
-		readOnlyFields := []string{
-			issuerField,
-			subjectField,
-		}
-		err := validateUpdateRequest(&pbs.UpdateManagedGroupRequest{
-			Id:         oidc.ManagedGroupPrefix + "1234567890",
-			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
-		})
-
-		for _, f := range readOnlyFields {
-			expected := fieldError(f, "Field cannot be updated.")
-			assert.True(t, strings.Contains(err.Error(), expected),
-				"%q wasn't contained in %q", expected, err.Error())
-		}
-	})
 }
-*/
