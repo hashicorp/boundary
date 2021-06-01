@@ -13,23 +13,24 @@ import (
 )
 
 const (
-	StdRetryCount = 3
+	// stdRetryCount is the standard number of times for retry when sending events
+	stdRetryCount = 3
 )
 
 type backoff interface {
-	Duration(attemptNumber uint) time.Duration
+	duration(attemptNumber uint) time.Duration
 }
 
 type expBackoff struct{}
 
-func (b expBackoff) Duration(attempt uint) time.Duration {
+func (b expBackoff) duration(attempt uint) time.Duration {
 	r := rand.Float64()
 	return time.Millisecond * time.Duration(math.Exp2(float64(attempt))*5*(r+0.5))
 }
 
 type retryInfo struct {
-	Retries int
-	Backoff time.Duration
+	retries int
+	backoff time.Duration
 }
 
 type sendHandler func() (eventlogger.Status, error)
@@ -59,9 +60,9 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 		}
 		if err != nil {
 			retryErrors = multierror.Append(retryErrors, errors.Wrap(err, op))
-			d := backOff.Duration(attempts)
-			info.Retries++
-			info.Backoff = info.Backoff + d
+			d := backOff.duration(attempts)
+			info.retries++
+			info.backoff = info.backoff + d
 			time.Sleep(d)
 			continue
 		}

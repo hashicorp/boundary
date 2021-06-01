@@ -327,7 +327,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 	if !e.conf.ObservationsEnabled {
 		return nil
 	}
-	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		if event.Header != nil {
 			event.Header[RequestInfoField] = event.RequestInfo
 			event.Header[VersionField] = event.Version
@@ -347,7 +347,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 // writeError writes/sends an Err event
 func (e *Eventer) writeError(ctx context.Context, event *err) error {
 	const op = "event.(Eventer).WriteError"
-	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
 	})
 	if err != nil {
@@ -363,7 +363,7 @@ func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 	if !e.conf.AuditEnabled {
 		return nil
 	}
-	err := e.retrySend(ctx, StdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(AuditType), event)
 	})
 	if err != nil {
