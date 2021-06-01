@@ -102,7 +102,7 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 	for i, v := range events {
 		gated, ok := v.Payload.(*Audit)
 		if !ok {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not a simple gated payload", i))
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not an audit payload", i))
 		}
 		if gated.RequestInfo != nil {
 			payload.RequestInfo = gated.RequestInfo
