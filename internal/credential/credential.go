@@ -2,7 +2,11 @@
 // manage credentials for Boundary sessions.
 package credential
 
-import "github.com/hashicorp/boundary/internal/db/timestamp"
+import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+)
 
 // An Entity is an object distinguished by its identity, rather than its
 // attributes. It can contain value objects and other entities.
@@ -43,6 +47,26 @@ type Library interface {
 	GetStoreId() string
 }
 
+// Purpose is the purpose of the credential.
+type Purpose string
+
+// Credential purpose values.
+const (
+	// ApplicationPurpose is a credential used for application specific
+	// purposes. Application credentials are returned to the user.
+	ApplicationPurpose Purpose = "application"
+
+	// IngressPurpose is a credential used by a boundary worker to secure
+	// the connection between the user and the worker. Ingress credentials
+	// are never returned to the user.
+	IngressPurpose Purpose = "ingress"
+
+	// EgressPurpose is a credential used by a boundary worker to secure
+	// the connection between the worker and the endpoint. Egress
+	// credentials are never returned to the user.
+	EgressPurpose Purpose = "egress"
+)
+
 // SecretData represents secret data.
 type SecretData interface{}
 
@@ -57,4 +81,25 @@ type Dynamic interface {
 	Credential
 	GetSessionId() string
 	Library() Library
+	Purpose() Purpose
+}
+
+// A Request represents a request for a credential from the SourceId for
+// the given purpose. For dynamic credentials, the SourceId is the PublicId
+// of a credential library.
+type Request struct {
+	SourceId string
+	Purpose  Purpose
+}
+
+// Issuer issues dynamic credentials.
+type Issuer interface {
+	// Issue issues dynamic credentials for a session from the requested
+	// libraries and for the requested purposes. The sessionId must be a
+	// valid sessionId. The SourceId in each request must be the public id
+	// of a library the Issuer can issue credentials from.
+	//
+	// If Issue encounters an error, it returns no credentials and revokes
+	// any credentials issued before encountering the error.
+	Issue(ctx context.Context, sessionId string, requests []Request) ([]Dynamic, error)
 }

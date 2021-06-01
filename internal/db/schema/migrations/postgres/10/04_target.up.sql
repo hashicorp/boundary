@@ -1,26 +1,5 @@
 begin;
 
-  create table target_credential_purpose_enm (
-    name text primary key
-      constraint only_predefined_credential_purposes_allowed
-      check (
-        name in (
-          'application',
-          'ingress',
-          'egress'
-        )
-      )
-  );
-  comment on table target_credential_purpose_enm is
-    'target_credential_purpose_enm is an enumeration table for credential purposes. '
-    'It contains rows for representing the application, egress, and ingress credential purposes.';
-
-  insert into target_credential_purpose_enm (name)
-  values
-    ('application'),
-    ('ingress'),
-    ('egress');
-
   create table target_credential_library (
     target_id wt_public_id not null
       constraint target_fkey
@@ -33,8 +12,8 @@ begin;
         on delete cascade
         on update cascade,
     credential_purpose text not null
-      constraint target_credential_purpose_enm_fkey
-        references target_credential_purpose_enm (name)
+      constraint credential_purpose_enm_fkey
+        references credential_purpose_enm (name)
         on delete restrict
         on update cascade,
     create_time wt_timestamp,

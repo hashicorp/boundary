@@ -5259,6 +5259,27 @@ create function wt_is_sentinel(string text)
     return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
+
+  create table credential_purpose_enm (
+    name text primary key
+      constraint only_predefined_credential_purposes_allowed
+      check (
+        name in (
+          'application',
+          'ingress',
+          'egress'
+        )
+      )
+  );
+  comment on table credential_purpose_enm is
+    'credential_purpose_enm is an enumeration table for credential purposes. '
+    'It contains rows for representing the application, egress, and ingress credential purposes.';
+
+  insert into credential_purpose_enm (name)
+  values
+    ('application'),
+    ('ingress'),
+    ('egress');
 `),
 			10003: []byte(`
 create table credential_vault_store (
@@ -5690,28 +5711,7 @@ create table credential_vault_store (
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 `),
 			10004: []byte(`
-create table target_credential_purpose_enm (
-    name text primary key
-      constraint only_predefined_credential_purposes_allowed
-      check (
-        name in (
-          'application',
-          'ingress',
-          'egress'
-        )
-      )
-  );
-  comment on table target_credential_purpose_enm is
-    'target_credential_purpose_enm is an enumeration table for credential purposes. '
-    'It contains rows for representing the application, egress, and ingress credential purposes.';
-
-  insert into target_credential_purpose_enm (name)
-  values
-    ('application'),
-    ('ingress'),
-    ('egress');
-
-  create table target_credential_library (
+create table target_credential_library (
     target_id wt_public_id not null
       constraint target_fkey
         references target (public_id)
@@ -5723,8 +5723,8 @@ create table target_credential_purpose_enm (
         on delete cascade
         on update cascade,
     credential_purpose text not null
-      constraint target_credential_purpose_enm_fkey
-        references target_credential_purpose_enm (name)
+      constraint credential_purpose_enm_fkey
+        references credential_purpose_enm (name)
         on delete restrict
         on update cascade,
     create_time wt_timestamp,
@@ -5757,27 +5757,28 @@ create table target_credential_purpose_enm (
 `),
 			10005: []byte(`
 create table session_credential_dynamic (
-    credential_id wt_public_id not null,
-    library_id wt_public_id not null,
-    constraint credential_dynamic_fkey
-      foreign key (credential_id, library_id)
-      references credential_dynamic (public_id, library_id)
-      on delete cascade
-      on update cascade,
     session_id wt_public_id not null
       constraint session_fkey
         references session (public_id)
         on delete cascade
         on update cascade,
+    library_id wt_public_id not null
+      constraint credential_library_fkey
+        references credential_library (public_id)
+        on delete cascade
+        on update cascade,
+    credential_id wt_public_id
+      constraint credential_dynamic_fkey
+        references credential_dynamic (public_id)
+        on delete cascade
+        on update cascade,
     credential_purpose text not null
-      constraint target_credential_purpose_fkey
-        references target_credential_purpose_enm (name)
+      constraint credential_purpose_fkey
+        references credential_purpose_enm (name)
         on delete restrict
         on update cascade,
+    primary key(session_id, library_id, credential_purpose),
     create_time wt_timestamp,
-    primary key(session_id, credential_id, library_id),
-    constraint session_credential_dynamic_library_id_credential_id_uq
-      unique(library_id, credential_id),
     constraint session_credential_dynamic_credential_id_uq
       unique(credential_id)
   );
@@ -5789,7 +5790,7 @@ create table session_credential_dynamic (
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on session_credential_dynamic
-    for each row execute procedure immutable_columns('session_id', 'credential_id', 'library_id', 'credential_purpose', 'create_time');
+    for each row execute procedure immutable_columns('session_id', 'library_id', 'credential_purpose', 'create_time');
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations

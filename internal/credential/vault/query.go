@@ -89,6 +89,16 @@ select *
  where public_id in (%s);
 `
 
+	updateSessionCredentialQuery = `
+update session_credential_dynamic
+   set credential_id = $1
+ where library_id = $2
+   and session_id = $3
+   and credential_purpose = $4
+   and credential_id is null
+returning *;
+`
+
 	updateTokenExpirationQuery = `
 update credential_vault_token 
   set last_renewal_time = now(),
