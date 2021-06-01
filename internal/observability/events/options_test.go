@@ -4,10 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -49,12 +46,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithRequestInfo", func(t *testing.T) {
 		assert := assert.New(t)
-		info := &RequestInfo{
-			Id:       "test-id",
-			Method:   "POST",
-			Path:     "/test/path",
-			PublicId: "public-id",
-		}
+		info := testRequestInfo(t)
 		opts := getOpts(WithRequestInfo(info))
 		testOpts := getDefaultOptions()
 		testOpts.withRequestInfo = info
@@ -70,13 +62,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithRequest", func(t *testing.T) {
 		assert := assert.New(t)
-		r := &Request{
-			Operation: "op",
-			Endpoint:  "/group/<id>",
-			Details: &pbs.GetGroupRequest{
-				Id: "group-id",
-			},
-		}
+		r := testRequest(t)
 		opts := getOpts(WithRequest(r))
 		testOpts := getDefaultOptions()
 		testOpts.withRequest = r
@@ -84,18 +70,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithResponse", func(t *testing.T) {
 		assert := assert.New(t)
-		r := &Response{
-			StatusCode: 200,
-			Details: &pbs.GetGroupResponse{
-				Item: &groups.Group{
-					Id:      "group-id",
-					ScopeId: "org-id",
-					Name: &wrapperspb.StringValue{
-						Value: "group-name",
-					},
-				},
-			},
-		}
+		r := testResponse(t)
 		opts := getOpts(WithResponse(r))
 		testOpts := getDefaultOptions()
 		testOpts.withResponse = r
@@ -103,13 +78,10 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithAuth", func(t *testing.T) {
 		assert := assert.New(t)
-		auth := Auth{
-			UserEmail: "alice@eve.com",
-			UserName:  "alice eve smith",
-		}
-		opts := getOpts(WithAuth(&auth))
+		auth := testAuth(t)
+		opts := getOpts(WithAuth(auth))
 		testOpts := getDefaultOptions()
-		testOpts.withAuth = &auth
+		testOpts.withAuth = auth
 		assert.Equal(opts, testOpts)
 	})
 }
