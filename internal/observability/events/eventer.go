@@ -38,13 +38,23 @@ const (
 	ErrPipeline                           = "err-pipeline"         // ErrPipeline is a pipeline for error events
 )
 
+// flushable defines an interface that all eventlogger Nodes must implement if
+// they are "flushable"
 type flushable interface {
 	FlushAll(ctx context.Context) error
 }
 
+// broker defines an interface for an eventlogger Broker... which will allow us
+// to substitute our our testing broker when needed to write tests for things
+// like event send retrying.
+type broker interface {
+	Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error)
+	Reopen(ctx context.Context) error
+}
+
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
-	broker         *eventlogger.Broker
+	broker         broker
 	flushableNodes []flushable
 	conf           EventerConfig
 	logger         hclog.Logger
