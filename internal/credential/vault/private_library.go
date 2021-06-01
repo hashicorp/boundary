@@ -216,6 +216,16 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	return libs, nil
 }
 
+// requestMap takes a slice of credential requests and provides of list of
+// library IDs with duplicate IDs removed. It also provides a way to lookup
+// the list of credential purposes for a particular library ID.
+//
+// A single library can be used to retrieve multiple credentials as long as
+// each credential is for a different purpose. When retrieving the private
+// libraries from the database, a list of library IDs with duplicates
+// removed is needed. When requesting credentials from vault, any library
+// being used for multiple purposes needs to be duplicated with the purpose
+// so multiple requests are made to vault using the same library.
 type requestMap struct {
 	ids map[string][]credential.Purpose
 }
