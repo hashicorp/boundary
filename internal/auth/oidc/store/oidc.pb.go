@@ -948,6 +948,77 @@ func (x *ManagedGroup) GetFilter() string {
 	return ""
 }
 
+// ManagedGroupMemberAccount contains a mapping between a managed group and a
+// member account.
+type ManagedGroupMemberAccount struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The create_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// managed_group_id is the fk to the oidc managed group public id
+	// @inject_tag: `gorm:"primary_key"`
+	ManagedGroupId string `protobuf:"bytes,20,opt,name=managed_group_id,json=managedGroupId,proto3" json:"managed_group_id,omitempty" gorm:"primary_key"`
+	// member_id is the fk to the oidc account public id
+	// @inject_tag: `gorm:"primary_key"`
+	MemberId string `protobuf:"bytes,30,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty" gorm:"primary_key"`
+}
+
+func (x *ManagedGroupMemberAccount) Reset() {
+	*x = ManagedGroupMemberAccount{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ManagedGroupMemberAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ManagedGroupMemberAccount) ProtoMessage() {}
+
+func (x *ManagedGroupMemberAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ManagedGroupMemberAccount.ProtoReflect.Descriptor instead.
+func (*ManagedGroupMemberAccount) Descriptor() ([]byte, []int) {
+	return file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ManagedGroupMemberAccount) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *ManagedGroupMemberAccount) GetManagedGroupId() string {
+	if x != nil {
+		return x.ManagedGroupId
+	}
+	return ""
+}
+
+func (x *ManagedGroupMemberAccount) GetMemberId() string {
+	if x != nil {
+		return x.MemberId
+	}
+	return ""
+}
+
 var File_controller_storage_auth_oidc_store_v1_oidc_proto protoreflect.FileDescriptor
 
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = []byte{
@@ -1159,11 +1230,22 @@ var file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc = []byte{
 	0x65, 0x74, 0x68, 0x6f, 0x64, 0x49, 0x64, 0x12, 0x2c, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x74, 0x65,
 	0x72, 0x18, 0x50, 0x20, 0x01, 0x28, 0x09, 0x42, 0x14, 0xc2, 0xdd, 0x29, 0x10, 0x0a, 0x06, 0x46,
 	0x69, 0x6c, 0x74, 0x65, 0x72, 0x12, 0x06, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x52, 0x06, 0x66,
-	0x69, 0x6c, 0x74, 0x65, 0x72, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f,
-	0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f,
-	0x61, 0x75, 0x74, 0x68, 0x2f, 0x6f, 0x69, 0x64, 0x63, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b,
-	0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6c, 0x74, 0x65, 0x72, 0x22, 0xaf, 0x01, 0x0a, 0x19, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65,
+	0x64, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x41, 0x63, 0x63, 0x6f,
+	0x75, 0x6e, 0x74, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69,
+	0x6d, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69,
+	0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73,
+	0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65,
+	0x12, 0x28, 0x0a, 0x10, 0x6d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x64, 0x5f, 0x67, 0x72, 0x6f, 0x75,
+	0x70, 0x5f, 0x69, 0x64, 0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6d, 0x61, 0x6e, 0x61,
+	0x67, 0x65, 0x64, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x6d, 0x65,
+	0x6d, 0x62, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6d,
+	0x65, 0x6d, 0x62, 0x65, 0x72, 0x49, 0x64, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f,
+	0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
+	0x6c, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x6f, 0x69, 0x64, 0x63, 0x2f, 0x73, 0x74, 0x6f, 0x72,
+	0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1178,35 +1260,37 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescGZIP() []byte 
 	return file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDescData
 }
 
-var file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_goTypes = []interface{}{
-	(*AuthMethod)(nil),          // 0: controller.storage.auth.oidc.store.v1.AuthMethod
-	(*Account)(nil),             // 1: controller.storage.auth.oidc.store.v1.Account
-	(*SigningAlg)(nil),          // 2: controller.storage.auth.oidc.store.v1.SigningAlg
-	(*AudClaim)(nil),            // 3: controller.storage.auth.oidc.store.v1.AudClaim
-	(*Certificate)(nil),         // 4: controller.storage.auth.oidc.store.v1.Certificate
-	(*ClaimsScope)(nil),         // 5: controller.storage.auth.oidc.store.v1.ClaimsScope
-	(*AccountClaimMap)(nil),     // 6: controller.storage.auth.oidc.store.v1.AccountClaimMap
-	(*ManagedGroup)(nil),        // 7: controller.storage.auth.oidc.store.v1.ManagedGroup
-	(*timestamp.Timestamp)(nil), // 8: controller.storage.timestamp.v1.Timestamp
+	(*AuthMethod)(nil),                // 0: controller.storage.auth.oidc.store.v1.AuthMethod
+	(*Account)(nil),                   // 1: controller.storage.auth.oidc.store.v1.Account
+	(*SigningAlg)(nil),                // 2: controller.storage.auth.oidc.store.v1.SigningAlg
+	(*AudClaim)(nil),                  // 3: controller.storage.auth.oidc.store.v1.AudClaim
+	(*Certificate)(nil),               // 4: controller.storage.auth.oidc.store.v1.Certificate
+	(*ClaimsScope)(nil),               // 5: controller.storage.auth.oidc.store.v1.ClaimsScope
+	(*AccountClaimMap)(nil),           // 6: controller.storage.auth.oidc.store.v1.AccountClaimMap
+	(*ManagedGroup)(nil),              // 7: controller.storage.auth.oidc.store.v1.ManagedGroup
+	(*ManagedGroupMemberAccount)(nil), // 8: controller.storage.auth.oidc.store.v1.ManagedGroupMemberAccount
+	(*timestamp.Timestamp)(nil),       // 9: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_auth_oidc_store_v1_oidc_proto_depIdxs = []int32{
-	8,  // 0: controller.storage.auth.oidc.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 1: controller.storage.auth.oidc.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 2: controller.storage.auth.oidc.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 3: controller.storage.auth.oidc.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 4: controller.storage.auth.oidc.store.v1.SigningAlg.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 5: controller.storage.auth.oidc.store.v1.AudClaim.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 6: controller.storage.auth.oidc.store.v1.Certificate.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 7: controller.storage.auth.oidc.store.v1.ClaimsScope.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 8: controller.storage.auth.oidc.store.v1.AccountClaimMap.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 9: controller.storage.auth.oidc.store.v1.ManagedGroup.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	8,  // 10: controller.storage.auth.oidc.store.v1.ManagedGroup.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	9,  // 0: controller.storage.auth.oidc.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 1: controller.storage.auth.oidc.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 2: controller.storage.auth.oidc.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 3: controller.storage.auth.oidc.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 4: controller.storage.auth.oidc.store.v1.SigningAlg.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 5: controller.storage.auth.oidc.store.v1.AudClaim.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 6: controller.storage.auth.oidc.store.v1.Certificate.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 7: controller.storage.auth.oidc.store.v1.ClaimsScope.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 8: controller.storage.auth.oidc.store.v1.AccountClaimMap.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 9: controller.storage.auth.oidc.store.v1.ManagedGroup.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 10: controller.storage.auth.oidc.store.v1.ManagedGroup.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	9,  // 11: controller.storage.auth.oidc.store.v1.ManagedGroupMemberAccount.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_auth_oidc_store_v1_oidc_proto_init() }
@@ -1311,6 +1395,18 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_auth_oidc_store_v1_oidc_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ManagedGroupMemberAccount); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1318,7 +1414,7 @@ func file_controller_storage_auth_oidc_store_v1_oidc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_auth_oidc_store_v1_oidc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

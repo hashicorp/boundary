@@ -203,6 +203,8 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
+	// Now we need to check filters and assign managed groups by filter.
+
 	// wow, we're getting close.  we just need to create a pending token for this
 	// successful authentication process, so it can be retrieved by the polling client
 	// that initialed the authentication attempt.

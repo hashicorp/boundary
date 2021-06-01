@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -193,5 +194,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withAccountClaimMap = acm
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithReader", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.Nil(testOpts.withReader)
+		var r db.Reader
+		opts := getOpts(WithReader(r))
+		assert.Equal(r, opts.withReader)
 	})
 }
