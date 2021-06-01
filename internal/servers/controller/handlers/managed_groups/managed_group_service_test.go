@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -605,17 +607,12 @@ func TestCreateOidc(t *testing.T) {
 	}
 }
 
-/*
-
 func TestUpdateOidc(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
-	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
-	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(rw, rw, kmsCache)
 	}
@@ -634,52 +631,57 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
-	require.NoError(t, err, "Error when getting new auth_method service.")
+	tested, err := managed_groups.NewService(oidcRepoFn)
+	require.NoError(t, err, "Error when getting new managed_groups service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer":  structpb.NewStringValue("https://www.alice.com"),
-		"subject": structpb.NewStringValue("test-subject"),
-	}}
-	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"issuer":  structpb.NewStringValue("https://www.changed.com"),
-		"subject": structpb.NewStringValue("changed"),
+		"filter": structpb.NewStringValue(testFakeManagedGroupFilter),
 	}}
 
-	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
+	modifiedFilter := `"/token/zip" == "zap"`
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"filter": structpb.NewStringValue(modifiedFilter),
+	}}
+
+	badFilter := `"foobar"`
+	badAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"filter": structpb.NewStringValue(badFilter),
+	}}
+
+	freshManagedGroup := func(t *testing.T) (*oidc.ManagedGroup, func()) {
 		t.Helper()
-		acc := oidc.TestAccount(t, conn, am, "test-subject", oidc.WithName("default"), oidc.WithDescription("default"))
+		mg := oidc.TestManagedGroup(t, conn, am, testFakeManagedGroupFilter, oidc.WithName("default"), oidc.WithDescription("default"))
 
 		clean := func() {
-			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
-				&pbs.DeleteAccountRequest{Id: acc.GetPublicId()})
+			_, err := tested.DeleteManagedGroup(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+				&pbs.DeleteManagedGroupRequest{Id: mg.GetPublicId()})
 			require.NoError(t, err)
 		}
 
-		return acc, clean
+		return mg, clean
 	}
 
 	cases := []struct {
 		name string
-		req  *pbs.UpdateAccountRequest
-		res  *pbs.UpdateAccountResponse
+		req  *pbs.UpdateManagedGroupRequest
+		res  *pbs.UpdateManagedGroupResponse
 		err  error
 	}{
 		{
 			name: "Update an Existing AuthMethod",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.NameField, globals.DescriptionField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        auth.OidcSubtype.String(),
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
@@ -692,18 +694,18 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Multiple Paths in single string",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        auth.OidcSubtype.String(),
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
@@ -716,8 +718,8 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "No Update Mask",
-			req: &pbs.UpdateAccountRequest{
-				Item: &pb.Account{
+			req: &pbs.UpdateManagedGroupRequest{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 					Attributes:  modifiedAttributes,
@@ -727,11 +729,11 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Cant change type",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.NameField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name: &wrapperspb.StringValue{Value: ""},
 					Type: "oidc",
 				},
@@ -740,9 +742,9 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "No Paths in Mask",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 					Attributes:  modifiedAttributes,
@@ -752,9 +754,9 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Only non-existant paths in Mask",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 					Attributes:  modifiedAttributes,
@@ -764,17 +766,17 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Unset Name",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.NameField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 					Attributes:  modifiedAttributes,
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              auth.OidcSubtype.String(),
@@ -786,18 +788,18 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Update Only Name",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.NameField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 					Attributes:  modifiedAttributes,
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
@@ -810,18 +812,18 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Update Only Description",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					Attributes:  modifiedAttributes,
 				},
 			},
-			res: &pbs.UpdateAccountResponse{
-				Item: &pb.Account{
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
@@ -833,27 +835,13 @@ func TestUpdateOidc(t *testing.T) {
 			},
 		},
 		{
-			name: "Update LoginName",
-			req: &pbs.UpdateAccountRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.login_name"},
-				},
-				Item: &pb.Account{
-					Name:        &wrapperspb.StringValue{Value: "ignored"},
-					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attributes:  modifiedAttributes,
-				},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Update a Non Existing Account",
-			req: &pbs.UpdateAccountRequest{
-				Id: password.AccountPrefix + "_DoesntExis",
+			name: "Update a Non Existing ManagedGroup",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: oidc.ManagedGroupPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -862,12 +850,12 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Cant change Id",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
-				Item: &pb.Account{
-					Id:          password.AccountPrefix + "_somethinge",
+				Item: &pb.ManagedGroup{
+					Id:          oidc.ManagedGroupPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -877,11 +865,11 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Cant specify Created Time",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					CreatedTime: timestamppb.Now(),
 				},
 			},
@@ -890,11 +878,11 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Cant specify Updated Time",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					UpdatedTime: timestamppb.Now(),
 				},
 			},
@@ -903,11 +891,11 @@ func TestUpdateOidc(t *testing.T) {
 		},
 		{
 			name: "Cant specify Type",
-			req: &pbs.UpdateAccountRequest{
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"type"},
 				},
-				Item: &pb.Account{
+				Item: &pb.ManagedGroup{
 					Type: "oidc",
 				},
 			},
@@ -915,53 +903,61 @@ func TestUpdateOidc(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Update Issuer",
-			req: &pbs.UpdateAccountRequest{
+			name: "Update Filter with Bad Value",
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.issuer"},
+					Paths: []string{"attributes.filter"},
 				},
-				Item: &pb.Account{
-					Name:       &wrapperspb.StringValue{Value: "ignored"},
-					Attributes: modifiedAttributes,
+				Item: &pb.ManagedGroup{
+					Attributes: badAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Update Subject",
-			req: &pbs.UpdateAccountRequest{
+			name: "Update Filter With Good Value",
+			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.subject"},
+					Paths: []string{"attributes.filter"},
 				},
-				Item: &pb.Account{
-					Name:       &wrapperspb.StringValue{Value: "ignored"},
+				Item: &pb.ManagedGroup{
 					Attributes: modifiedAttributes,
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			res: &pbs.UpdateManagedGroupResponse{
+				Item: &pb.ManagedGroup{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              auth.OidcSubtype.String(),
+					Attributes:        modifiedAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: oidcAuthorizedActions,
+				},
+			},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			acc, cleanup := freshAccount(t)
+			mg, cleanup := freshManagedGroup(t)
 			defer cleanup()
 
 			tc.req.Item.Version = 1
 
 			if tc.req.GetId() == "" {
-				tc.req.Id = acc.GetPublicId()
+				tc.req.Id = mg.GetPublicId()
 			}
 
 			if tc.res != nil && tc.res.Item != nil {
-				tc.res.Item.Id = acc.GetPublicId()
-				tc.res.Item.CreatedTime = acc.GetCreateTime().GetTimestamp()
+				tc.res.Item.Id = mg.GetPublicId()
+				tc.res.Item.CreatedTime = mg.GetCreateTime().GetTimestamp()
 			}
 
-			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateManagedGroup(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
-				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				assert.True(errors.Is(gErr, tc.err), "UpdateManagedGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
 
 			if tc.res == nil {
@@ -969,11 +965,11 @@ func TestUpdateOidc(t *testing.T) {
 			}
 
 			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateAccount response to be nil, but was %v", got)
+				assert.NotNilf(tc.res, "Expected UpdateManagedGroup response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime()
 				require.NoError(err, "Error converting proto to timestamp")
 
-				created := acc.GetCreateTime().GetTimestamp()
+				created := mg.GetCreateTime().GetTimestamp()
 				require.NoError(err, "Error converting proto to timestamp")
 
 				// Verify it is a auth_method updated after it was created
@@ -985,9 +981,7 @@ func TestUpdateOidc(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
-
-*/

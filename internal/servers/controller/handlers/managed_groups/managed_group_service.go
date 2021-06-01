@@ -366,6 +366,15 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	if item.GetDescription() != nil {
 		mg.Description = item.GetDescription().GetValue()
 	}
+	if apiAttr := item.GetAttributes(); apiAttr != nil {
+		attrs := &pb.OidcManagedGroupAttributes{}
+		if err := handlers.StructToProto(apiAttr, attrs); err != nil {
+			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+				map[string]string{attributesField: "Attribute fields do not match the expected format."})
+		}
+		// Set this regardless; it'll only take effect if the masks contain the value
+		mg.Filter = attrs.Filter
+	}
 
 	version := item.GetVersion()
 

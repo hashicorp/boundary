@@ -1057,7 +1057,7 @@ func TestUpdatePassword(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
-	require.NoError(t, err, "Error when getting new auth_method service.")
+	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
