@@ -58,6 +58,18 @@ var (
 	_ Account = (*password.Account)(nil)
 )
 
+type ManagedGroup interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetAuthMethodId() string
+	GetVersion() uint32
+}
+
+var _ ManagedGroup = (*oidc.ManagedGroup)(nil)
+
 // SubtypeFromType converts a string to a Subtype.
 // returns UnknownSubtype if no Subtype with that name is found.
 func SubtypeFromType(t string) Subtype {
@@ -79,7 +91,8 @@ func SubtypeFromId(id string) Subtype {
 		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
 		return PasswordSubtype
 	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix):
+		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), oidc.ManagedGroupPrefix):
 		return OidcSubtype
 	}
 	return UnknownSubtype

@@ -10,6 +10,8 @@ const (
 	AuthMethodPrefix = "amoidc"
 	// AccountPrefix defines the prefix for Account public ids.
 	AccountPrefix = "acctoidc"
+	// ManagedGroupPrefix defines the prefix for ManagedGroup public ids.
+	ManagedGroupPrefix = "mgoidc"
 )
 
 func newAuthMethodId() (string, error) {
@@ -33,6 +35,15 @@ func newAccountId(authMethodId, issuer, sub string) (string, error) {
 		return "", errors.New(errors.InvalidParameter, op, "missing subject")
 	}
 	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return id, nil
+}
+
+func newManagedGroupId() (string, error) {
+	const op = "oidc.newManagedGroupId"
+	id, err := db.NewPublicId(ManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

@@ -116,7 +116,10 @@ func TestFetchActionSetForId(t *testing.T) {
 
 func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		// Disable this to avoid having to deal with sorting them in the test
+		DisableOidcAuthMethodCreation: true,
+	})
 	defer tc.Shutdown()
 
 	conn := tc.DbConn()

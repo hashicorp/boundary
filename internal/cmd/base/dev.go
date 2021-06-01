@@ -119,8 +119,10 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return err
 	}
 
-	if err := b.CreateDevOidcAuthMethod(ctx); err != nil {
-		return err
+	if !opts.withSkipOidcAuthMethodCreation {
+		if err := b.CreateDevOidcAuthMethod(ctx); err != nil {
+			return err
+		}
 	}
 
 	if opts.withSkipScopesCreation {
@@ -225,7 +227,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 	// re-use it. This is a sort of hacky way to get around the chicken and egg
 	// of the auth method needing to know the discovery URL and the test
 	// provider needing to know the callback URL.
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", b.DevOidcSetup.hostAddr))
+	l, err := net.Listen("tcp", net.JoinHostPort(b.DevOidcSetup.hostAddr, "0"))
 	if err != nil {
 		return fmt.Errorf("error finding port for oidc test provider: %w", err)
 	}
@@ -233,7 +235,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 	if err := l.Close(); err != nil {
 		return fmt.Errorf("error closing initial test port: %w", err)
 	}
-	b.DevOidcSetup.callbackUrl, err = url.Parse(fmt.Sprintf("http://%s:%s", b.DevOidcSetup.hostAddr, b.DevOidcSetup.callbackPort))
+	b.DevOidcSetup.callbackUrl, err = url.Parse(fmt.Sprintf("http://%s", net.JoinHostPort(b.DevOidcSetup.hostAddr, b.DevOidcSetup.callbackPort)))
 	if err != nil {
 		return fmt.Errorf("error parsing oidc test provider callback url: %w", err)
 	}
