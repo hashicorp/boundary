@@ -75,6 +75,10 @@ func Test_Resource(t *testing.T) {
 			typeString: "session",
 			want:       Session,
 		},
+		{
+			typeString: "managed-group",
+			want:       ManagedGroup,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {

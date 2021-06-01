@@ -284,7 +284,7 @@ message ManagedGroup {
 
   // filter is a go-bexpr filter
   // @inject_tag: `gorm:"not_null"`
-  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "filter" }];
+  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "attributes.filter" }];
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a
