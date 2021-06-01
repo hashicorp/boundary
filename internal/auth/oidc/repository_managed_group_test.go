@@ -44,6 +44,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 
 	tests := []struct {
 		name            string
+		scopeId         string
 		in              *ManagedGroup
 		opts            []Option
 		want            *ManagedGroup
@@ -53,17 +54,20 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 	}{
 		{
 			name:       "nil-ManagedGroup",
+			scopeId:    org.GetPublicId(),
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing ManagedGroup: parameter violation: error #100",
 		},
 		{
 			name:       "nil-embedded-ManagedGroup",
+			scopeId:    org.GetPublicId(),
 			in:         &ManagedGroup{},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing embedded ManagedGroup: parameter violation: error #100",
 		},
 		{
-			name: "invalid-no-auth-method-id",
+			name:    "invalid-no-auth-method-id",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{},
 			},
@@ -71,7 +75,8 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing auth method id: parameter violation: error #100",
 		},
 		{
-			name: "invalid-no-filter",
+			name:    "invalid-no-filter",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -81,7 +86,8 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing filter: parameter violation: error #100",
 		},
 		{
-			name: "invalid-public-id-set",
+			name:    "invalid-public-id-set",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -93,7 +99,19 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).CreateManagedGroup: public id must be empty: parameter violation: error #100",
 		},
 		{
-			name: "valid-no-options",
+			name: "no-scope",
+			in: &ManagedGroup{
+				ManagedGroup: &store.ManagedGroup{
+					AuthMethodId: authMethod.PublicId,
+					Filter:       testFakeManagedGroupFilter,
+				},
+			},
+			wantIsErr:  errors.InvalidParameter,
+			wantErrMsg: "oidc.(Repository).CreateManagedGroup: missing scope id: parameter violation: error #100",
+		},
+		{
+			name:    "valid-no-options",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -108,7 +126,8 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			},
 		},
 		{
-			name: "valid-with-name",
+			name:    "valid-with-name",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -125,7 +144,8 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			},
 		},
 		{
-			name: "valid-with-description",
+			name:    "valid-with-description",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -144,7 +164,8 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			},
 		},
 		{
-			name: "duplicate-name",
+			name:    "duplicate-name",
+			scopeId: org.GetPublicId(),
 			in: &ManagedGroup{
 				ManagedGroup: &store.ManagedGroup{
 					AuthMethodId: authMethod.PublicId,
@@ -165,8 +186,9 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateManagedGroup(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateManagedGroup(context.Background(), tt.scopeId, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
+				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				if tt.wantErrContains != "" {
 					assert.True(strings.Contains(err.Error(), tt.wantErrContains))
