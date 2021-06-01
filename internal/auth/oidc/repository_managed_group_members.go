@@ -15,7 +15,9 @@ import (
 // cleared. It returns the set of managed group IDs.
 //
 // mgs contains the set of managed groups that matched. It must contain the
-// group's version as this is used to ensure consistency.
+// group's version as this is used to ensure consistency between when the filter
+// attached to the managed group was run and the point at which we are adding
+// the account to the group.
 func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]*ManagedGroupMemberAccount, int, error) {
 	const op = "oidc.(Repository).SetManagedGroupMemberships"
 	if am == nil {
@@ -108,7 +110,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 
 			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current managed group memberships before deletion"))
 			}
 
 			// Figure out which ones to delete and which ones we already have
@@ -178,7 +180,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 
 			currentMemberships, err = r.ListManagedGroupMembershipsByMember(ctx, acct.PublicId, WithReader(reader))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current principal roles after sets"))
+				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current managed group memberships after set"))
 			}
 			return nil
 		})

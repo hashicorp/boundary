@@ -71,16 +71,13 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 	// Fetch valid OIDC accounts. One will be "static" where we will simply
 	// ensure modifying the groups for the other doesn't affect it; the other
 	// will be used for testing.
-	rows, err := rw.Query(ctx, "select public_id from auth_oidc_account limit 2", nil)
+	var accts []*oidc.Account
+	err = rw.SearchWhere(ctx, &accts, "", nil, db.WithLimit(2))
 	require.NoError(t, err)
-	require.True(t, rows.Next())
-	var staticAccountId string
-	require.NoError(t, rows.Scan(&staticAccountId))
-	require.NotEmpty(t, staticAccountId)
-	require.True(t, rows.Next())
-	var accountId string
-	require.NoError(t, rows.Scan(&accountId))
-	require.NotEmpty(t, accountId)
+	require.Len(t, accts, 2)
+	staticAccountId := accts[0].PublicId
+	staticMembershipCount := 20
+	accountId := accts[1].PublicId
 
 	account := oidc.AllocAccount()
 	account.PublicId = accountId
@@ -145,6 +142,12 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 			account:         &oidc.Account{Account: &store.Account{}},
 			wantErr:         errors.InvalidParameter,
 			wantErrContains: "missing account id",
+		},
+		{
+			name:         "valid fixed, static",
+			validPrereqs: true,
+			accountId:    staticAccountId,
+			specificMgs:  mgs[0:staticMembershipCount],
 		},
 		{
 			name:         "valid fixed",
@@ -219,6 +222,11 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 				tt.authMethod = authMethod
 				tt.account = oidc.AllocAccount()
 				tt.account.PublicId = accountId
+				if tt.accountId != "" {
+					// This is for the test where we initially populate the
+					// static account
+					tt.account.PublicId = tt.accountId
+				}
 				mgsToTest = tt.specificMgs
 				if mgsToTest == nil {
 					// Select at random
@@ -255,7 +263,19 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 			}
 			assert.Len(finalMgs, 0)
 
-			// assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+			// Now check that the static account still has the same memberships
+			memberships, err = repo.ListManagedGroupMembershipsByMember(ctx, staticAccountId)
+			require.NoError(err)
+			assert.Len(memberships, staticMembershipCount)
+			finalMgs = make(map[string]*oidc.ManagedGroup, staticMembershipCount)
+			for _, mg := range mgs[0:staticMembershipCount] {
+				finalMgs[mg.PublicId] = mg
+			}
+			for _, mship := range memberships {
+				assert.Contains(finalMgs, mship.ManagedGroupId)
+				delete(finalMgs, mship.ManagedGroupId)
+			}
+			assert.Len(finalMgs, 0)
 		})
 	}
 }
