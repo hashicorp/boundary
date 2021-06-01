@@ -114,6 +114,13 @@ func New(conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(dbase, dbase, c.kms)
+	}
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new scheduler: %w", err)
+	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
 		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
@@ -126,7 +133,7 @@ func New(conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(dbase, dbase, c.kms)
+		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
@@ -146,14 +153,6 @@ func New(conf *Config) (*Controller, error) {
 
 	c.workerAuthCache = cache.New(0, 0)
 
-	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(dbase, dbase, c.kms)
-	}
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
-	if err != nil {
-		return nil, fmt.Errorf("error creating new scheduler: %w", err)
-	}
-
 	return c, nil
 }
 
@@ -163,10 +162,12 @@ func (c *Controller) Start() error {
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+	if err := c.registerJobs(); err != nil {
+		return fmt.Errorf("error registering jobs: %w", err)
+	}
 	if err := c.scheduler.Start(c.baseContext); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
-
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
@@ -176,6 +177,19 @@ func (c *Controller) Start() error {
 	c.startTerminateCompletedSessionsTicking(c.baseContext)
 	c.startCloseExpiredPendingTokens(c.baseContext)
 	c.started.Store(true)
+
+	return nil
+}
+
+func (c *Controller) registerJobs() error {
+	rw := db.New(c.conf.Database)
+	tokenRenewal, err := vault.NewTokenRenewalJob(rw, rw, c.kms, c.logger)
+	if err != nil {
+		return fmt.Errorf("error creating token renewal job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, tokenRenewal); err != nil {
+		return fmt.Errorf("error registering token renewal job: %w", err)
+	}
 
 	return nil
 }

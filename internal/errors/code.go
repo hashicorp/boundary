@@ -38,6 +38,7 @@ const (
 	AccountAlreadyAssociated Code = 114 // AccountAlreadyAssociated represents an attempt to associate an account failed since it was already associated.
 	InvalidJobRunState       Code = 115 // InvalidJobRunState represents that a JobRun was in an invalid state
 	InvalidDynamicCredential Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
+	JobAlreadyRunning        Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

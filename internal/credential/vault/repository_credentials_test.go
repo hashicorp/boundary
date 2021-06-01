@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,9 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := vault.NewRepository(rw, rw, kms)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
 
