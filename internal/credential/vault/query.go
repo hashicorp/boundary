@@ -103,19 +103,13 @@ update credential_vault_token
 `
 
 	tokenRenewalNextRunInQuery = `
-with 
-	renewable_tokens(expiration_time, renewal_time) as (
-        select 
-		  expiration_time,
-		  last_renewal_time + (expiration_time - last_renewal_time) / 2 as renewal_time
-		from credential_vault_token
-		where status in ('current', 'maintaining')
-	)
-	select extract(epoch from renewal_time - now())::int as renewal_in
-  	  from renewable_tokens
-     where expiration_time = (
-       select min(expiration_time)
-         from renewable_tokens
-     );
+select
+	extract(epoch from (last_renewal_time + (expiration_time - last_renewal_time) / 2) - now())::int as renewal_in
+  	from credential_vault_token
+ 	where expiration_time = (
+	  select min(expiration_time)
+  	    from credential_vault_token
+	    where status in ('current', 'maintaining')
+	);
 `
 )

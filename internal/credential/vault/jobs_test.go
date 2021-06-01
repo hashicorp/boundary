@@ -338,14 +338,16 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	err = rw.Create(context.Background(), cs)
 	require.NoError(t, err)
 
-	createTokens := func(name string, exp []time.Duration) {
+	createTokens := func(t *testing.T, name string, exp []time.Duration) {
+		t.Helper()
+		assert, require := assert.New(t), require.New(t)
 		for i, d := range exp {
 			databaseWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 			token, err := newToken(cs.GetPublicId(), []byte(fmt.Sprintf("%s-token%d", name, i)), []byte(fmt.Sprintf("%s-accessor%d", name, i)), d)
-			assert.NoError(t, err)
-			require.NotNil(t, token)
+			assert.NoError(err)
+			require.NotNil(token)
 
-			require.NoError(t, token.encrypt(context.Background(), databaseWrapper))
+			require.NoError(token.encrypt(context.Background(), databaseWrapper))
 
 			query := insertTokenQuery
 			queryValues := []interface{}{
@@ -370,8 +372,8 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			}
 
 			rows, err := rw.Exec(context.Background(), query, queryValues)
-			assert.Equal(t, 1, rows)
-			require.NoError(t, err)
+			assert.Equal(1, rows)
+			require.NoError(err)
 		}
 	}
 
@@ -419,7 +421,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(r)
 
-			createTokens(tt.name, tt.expirations)
+			createTokens(t, tt.name, tt.expirations)
 
 			got, err := r.NextRunIn()
 			require.NoError(err)
