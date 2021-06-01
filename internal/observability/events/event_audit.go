@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -73,7 +74,7 @@ func (a *Audit) EventType() string { return string(AuditType) }
 func (a *Audit) validate() error {
 	const op = "event.(audit).validate"
 	if a.Id == "" {
-		return errors.New(errors.InvalidParameter, op, "missing event id")
+		return errors.New(errors.InvalidParameter, op, "missing id")
 	}
 	return nil
 }
@@ -98,11 +99,25 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		return "", nil, errors.New(errors.InvalidParameter, op, "missing events")
 
 	}
+	var validId string
+	var initValidId sync.Once
 	payload := Audit{}
 	for i, v := range events {
 		gated, ok := v.Payload.(*Audit)
 		if !ok {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not an audit payload", i))
+		}
+		initValidId.Do(func() {
+			validId = gated.Id
+		})
+		if gated.Id != validId {
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid id: %s != %s", i, gated.Id, validId))
+		}
+		if gated.Version != AuditVersion {
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid version: %s != %s", i, gated.Version, AuditVersion))
+		}
+		if gated.Type != string(ApiRequest) {
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid type: %s != %s", i, gated.Type, string(AuditType)))
 		}
 		if gated.RequestInfo != nil {
 			payload.RequestInfo = gated.RequestInfo
@@ -119,9 +134,10 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		if !gated.Timestamp.IsZero() {
 			payload.Timestamp = gated.Timestamp
 		}
-		payload.Id = gated.Id
-		payload.Version = gated.Version
-		payload.Type = gated.Type
+
 	}
+	payload.Id = validId
+	payload.Version = AuditVersion
+	payload.Type = string(ApiRequest)
 	return eventlogger.EventType(a.EventType()), payload, nil
 }
