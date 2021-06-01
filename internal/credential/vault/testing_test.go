@@ -5,13 +5,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/target"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,48 +47,6 @@ func Test_TestCredentialLibraries(t *testing.T) {
 	assert.Len(libs, count)
 	for _, lib := range libs {
 		assert.NotEmpty(lib.GetPublicId())
-	}
-}
-
-func Test_TestCredentials(t *testing.T) {
-	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-
-	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	require.NotNil(prj)
-	assert.NotEmpty(prj.GetPublicId())
-
-	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	cl := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
-
-	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	uId := at.GetIamUserId()
-	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
-	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-
-	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
-	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
-
-	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
-		UserId:      uId,
-		HostId:      h.GetPublicId(),
-		TargetId:    tar.GetPublicId(),
-		HostSetId:   hs.GetPublicId(),
-		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
-		Endpoint:    "tcp://127.0.0.1:22",
-	})
-
-	count := 4
-	credentials := TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
-	assert.Len(credentials, count)
-	for _, credential := range credentials {
-		assert.NotEmpty(credential.GetPublicId())
 	}
 }
 

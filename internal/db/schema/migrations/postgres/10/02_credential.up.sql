@@ -237,4 +237,25 @@ begin;
   end;
   $$ language plpgsql;
 
+  create table credential_purpose_enm (
+    name text primary key
+      constraint only_predefined_credential_purposes_allowed
+      check (
+        name in (
+          'application',
+          'ingress',
+          'egress'
+        )
+      )
+  );
+  comment on table credential_purpose_enm is
+    'credential_purpose_enm is an enumeration table for credential purposes. '
+    'It contains rows for representing the application, egress, and ingress credential purposes.';
+
+  insert into credential_purpose_enm (name)
+  values
+    ('application'),
+    ('ingress'),
+    ('egress');
+
 commit;
