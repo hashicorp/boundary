@@ -37,8 +37,11 @@ type sendHandler func() (eventlogger.Status, error)
 
 func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, handler sendHandler) error {
 	const op = "event.(Eventer).retrySend"
-	if e.broker == nil {
-		return errors.New(errors.InvalidParameter, op, "missing broker")
+	if backOff == nil {
+		return errors.New(errors.InvalidParameter, op, "missing backoff")
+	}
+	if handler == nil {
+		return errors.New(errors.InvalidParameter, op, "missing handler")
 	}
 	success := false
 	var retryErrors error
@@ -56,7 +59,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 			for _, w := range attemptStatus.Warnings {
 				retryWarnings = multierror.Append(retryWarnings, w)
 			}
-			e.logger.Error("%s: %w", op, retryWarnings)
+			e.logger.Error("unable to send event", "operation", op, "warning", retryWarnings)
 		}
 		if err != nil {
 			retryErrors = multierror.Append(retryErrors, errors.Wrap(err, op))
