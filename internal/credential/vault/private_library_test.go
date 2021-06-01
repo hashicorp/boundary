@@ -220,7 +220,7 @@ func TestRequestMap(t *testing.T) {
 			}
 			assert.NoError(err)
 			require.NotNil(mapper)
-			assert.ElementsMatch(tt.wantLibIds, mapper.LibIds())
+			assert.ElementsMatch(tt.wantLibIds, mapper.libIds())
 		})
 	}
 }

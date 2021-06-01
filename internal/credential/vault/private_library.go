@@ -169,7 +169,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 		return nil, errors.Wrap(err, op)
 	}
 
-	libIds := mapper.LibIds()
+	libIds := mapper.libIds()
 
 	inClause := strings.TrimSuffix(strings.Repeat("?,", len(libIds)), ",")
 
@@ -191,7 +191,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 		if err := r.reader.ScanRows(rows, &lib); err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
 		}
-		purps := mapper.Get(lib.GetPublicId())
+		purps := mapper.get(lib.GetPublicId())
 		if len(purps) == 0 {
 			return nil, errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("unknown library"))
 		}
@@ -247,7 +247,7 @@ func newMapper(requests []credential.Request) (*requestMap, error) {
 	}, nil
 }
 
-func (m *requestMap) LibIds() []string {
+func (m *requestMap) libIds() []string {
 	var ids []string
 	for id := range m.ids {
 		ids = append(ids, id)
@@ -255,6 +255,6 @@ func (m *requestMap) LibIds() []string {
 	return ids
 }
 
-func (m *requestMap) Get(libraryId string) []credential.Purpose {
+func (m *requestMap) get(libraryId string) []credential.Purpose {
 	return m.ids[libraryId]
 }
