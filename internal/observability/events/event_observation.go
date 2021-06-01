@@ -18,7 +18,7 @@ type observation struct {
 func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 	const op = "event.newObservation"
 	if fromOperation == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
+		return nil, errors.New(errors.InvalidParameter, op, "missing operation")
 	}
 	opts := getOpts(opt...)
 	if opts.withId == "" {
@@ -56,10 +56,10 @@ func (i *observation) EventType() string { return string(ObservationType) }
 func (i *observation) validate() error {
 	const op = "event.(Observation).validate"
 	if i.ID == "" {
-		return errors.New(errors.InvalidParameter, op, "missing event id")
+		return errors.New(errors.InvalidParameter, op, "missing id")
 	}
 	if i.Op == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation which raised event")
+		return errors.New(errors.InvalidParameter, op, "missing operation")
 	}
 	return nil
 }
