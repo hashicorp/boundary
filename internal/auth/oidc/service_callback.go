@@ -194,6 +194,10 @@ func Callback(
 	}
 	if len(mgs) > 0 {
 		matchedMgs := make([]*ManagedGroup, 0, len(mgs))
+		evalData := map[string]interface{}{
+			"token":    idTkClaims,
+			"userinfo": userInfoClaims,
+		}
 		// Iterate through and check claims against filters
 		for _, mg := range mgs {
 			eval, err := bexpr.CreateEvaluator(mg.Filter)
@@ -204,10 +208,7 @@ func Callback(
 			}
 			// Properly it should probably be user_info but I'm taking pity on
 			// people typing out these filters :-D
-			match, err := eval.Evaluate(map[string]interface{}{
-				"token":    idTkClaims,
-				"userinfo": userInfoClaims,
-			})
+			match, err := eval.Evaluate(evalData)
 			if err != nil && !errors.Is(err, pointerstructure.ErrNotFound) {
 				return "", errors.Wrap(err, op)
 			}
