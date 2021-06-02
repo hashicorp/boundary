@@ -23,6 +23,7 @@ type Account struct {
 	Type              string                 `json:"type,omitempty"`
 	AuthMethodId      string                 `json:"auth_method_id,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
+	ManagedGroupIds   []string               `json:"managed_group_ids,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response

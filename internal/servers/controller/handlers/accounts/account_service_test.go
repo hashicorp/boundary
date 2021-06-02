@@ -148,6 +148,9 @@ func TestGet(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
+	// Create a managed group that will always match, so we can test that it is
+	// returned in results
+	mg := oidc.TestManagedGroup(t, conn, oidcAm, `"/token/sub" matches ".*"`)
 	oidcWireAccount := pb.Account{
 		Id:           oidcA.GetPublicId(),
 		AuthMethodId: oidcA.GetAuthMethodId(),
@@ -161,6 +164,7 @@ func TestGet(t *testing.T) {
 			"subject": structpb.NewStringValue("test-subject"),
 		}},
 		AuthorizedActions: oidcAuthorizedActions,
+		ManagedGroupIds:   []string{mg.GetPublicId()},
 	}
 
 	cases := []struct {
@@ -207,6 +211,18 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			if auth.SubtypeFromId(tc.req.Id) == auth.OidcSubtype {
+				// Set up managed groups before getting. First get the current
+				// managed group to make sure we have the right version.
+				oidcRepo, err := oidcRepoFn()
+				require.NoError(err)
+				currMg, err := oidcRepo.LookupManagedGroup(ctx, mg.GetPublicId())
+				require.NoError(err)
+				_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg})
+				require.NoError(err)
+			}
+
 			got, gErr := s.GetAccount(auth.DisabledAuthTestContext(iamRepoFn, org.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
@@ -622,7 +638,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), req)
 	assert.Error(gErr, "Second attempt")
-	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected permission denied for the second delete.")
+	assert.True(errors.Is(gErr, handlers.ApiErrorWithCode(codes.NotFound)), "Expected not found for the second delete.")
 }
 
 func TestCreatePassword(t *testing.T) {
@@ -1057,7 +1073,7 @@ func TestUpdatePassword(t *testing.T) {
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
-	require.NoError(t, err, "Error when getting new auth_method service.")
+	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{

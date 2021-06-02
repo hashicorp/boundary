@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -165,6 +166,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterSessionServiceHandlerServer(ctx, mux, ss); err != nil {
 		return nil, fmt.Errorf("failed to register session service handler: %w", err)
+	}
+	mgs, err := managed_groups.NewService(c.OidcRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create managed groups handler service: %w", err)
+	}
+	if err := services.RegisterManagedGroupServiceHandlerServer(ctx, mux, mgs); err != nil {
+		return nil, fmt.Errorf("failed to register managed groups service handler: %w", err)
 	}
 
 	return mux, nil

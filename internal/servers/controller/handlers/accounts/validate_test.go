@@ -21,6 +21,7 @@ func fieldError(field, details string) string {
 }
 
 func TestValidateCreateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		item        *pb.Account
@@ -132,6 +133,7 @@ func TestValidateCreateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			req := &pbs.CreateAccountRequest{Item: tc.item}
 			err := validateCreateRequest(req)
 			if tc.errContains == "" {
@@ -145,6 +147,7 @@ func TestValidateCreateRequest(t *testing.T) {
 }
 
 func TestValidateUpdateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		req         *pbs.UpdateAccountRequest
@@ -207,6 +210,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateUpdateRequest(tc.req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
@@ -218,6 +222,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 
 	t.Run("oidc read only fields", func(t *testing.T) {
+		t.Parallel()
 		readOnlyFields := []string{
 			emailClaimField,
 			nameClaimField,
@@ -235,6 +240,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	})
 
 	t.Run("oidc write only at create fields", func(t *testing.T) {
+		t.Parallel()
 		readOnlyFields := []string{
 			issuerField,
 			subjectField,

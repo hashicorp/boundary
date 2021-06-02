@@ -280,11 +280,11 @@ message ManagedGroup {
 
   // auth_method_id is the fk to the account's auth method.
   // @inject_tag: `gorm:"not_null"`
-  string auth_method_id = 70 [(custom_options.v1.mask_mapping) = { this: "AuthMethodId" that: "auth_method_id" }];
+  string auth_method_id = 70;
 
   // filter is a go-bexpr filter
   // @inject_tag: `gorm:"not_null"`
-  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "filter" }];
+  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "attributes.filter" }];
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a
