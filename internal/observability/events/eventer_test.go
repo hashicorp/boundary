@@ -249,7 +249,7 @@ func Test_NewEventer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testBroker := &testBroker{}
+			testBroker := &testMockBroker{}
 			got, err := NewEventer(tt.logger, tt.config, testWithBroker(testBroker))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
@@ -303,9 +303,9 @@ func TestEventer_Reopen(t *testing.T) {
 		e.broker = nil
 		require.NoError(e.Reopen())
 
-		e.broker = &testBroker{}
+		e.broker = &testMockBroker{}
 		require.NoError(e.Reopen())
-		assert.True(e.broker.(*testBroker).reopened)
+		assert.True(e.broker.(*testMockBroker).reopened)
 	})
 }
 

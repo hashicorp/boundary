@@ -183,7 +183,7 @@ func testWithAuditSink() Option {
 	}
 }
 
-type testBroker struct {
+type testMockBroker struct {
 	reopened          bool
 	stopTimeAt        time.Time
 	registeredNodeIds []eventlogger.NodeID
@@ -191,30 +191,30 @@ type testBroker struct {
 	pipelines         []eventlogger.Pipeline
 }
 
-func (b *testBroker) Reopen(ctx context.Context) error {
+func (b *testMockBroker) Reopen(ctx context.Context) error {
 	b.reopened = true
 	return nil
 }
 
-func (b *testBroker) RegisterPipeline(def eventlogger.Pipeline) error {
+func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error {
 	b.pipelines = append(b.pipelines, def)
 	return nil
 }
 
-func (b *testBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
 	panic("not-implemented")
 }
 
-func (b *testBroker) StopTimeAt(t time.Time) {
+func (b *testMockBroker) StopTimeAt(t time.Time) {
 	b.stopTimeAt = t
 }
 
-func (b *testBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error {
+func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error {
 	b.registeredNodeIds = append(b.registeredNodeIds, id)
 	return nil
 }
 
-func (b *testBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
+func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
 	if b.successThresholds == nil {
 		b.successThresholds = map[eventlogger.EventType]int{}
 	}
