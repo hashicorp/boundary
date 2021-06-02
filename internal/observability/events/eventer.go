@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
@@ -38,6 +39,10 @@ type flushable interface {
 type broker interface {
 	Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error)
 	Reopen(ctx context.Context) error
+	StopTimeAt(now time.Time)
+	RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error
+	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
+	RegisterPipeline(def eventlogger.Pipeline) error
 }
 
 // Eventer provides a method to send events to pipelines of sinks
@@ -76,7 +81,7 @@ func SysEventer() *Eventer {
 	return sysEventer
 }
 
-// NewEventer creates a new Eventer using the config
+// NewEventer creates a new Eventer using the config.  Supports options: WithNow
 func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
@@ -103,13 +108,25 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		fmtId     eventlogger.NodeID
 		sinkId    eventlogger.NodeID
 	}
-	var flushableNodes []flushable
 	var auditPipelines, observationPipelines, errPipelines []pipeline
 
-	broker := eventlogger.NewBroker()
 	opts := getOpts(opt...)
+	var b broker
+	switch {
+	case opts.withBroker != nil:
+		b = opts.withBroker
+	default:
+		b = eventlogger.NewBroker()
+	}
+
+	e := &Eventer{
+		logger: log,
+		conf:   c,
+		broker: b,
+	}
+
 	if !opts.withNow.IsZero() {
-		broker.StopTimeAt(opts.withNow)
+		e.broker.StopTimeAt(opts.withNow)
 	}
 
 	// Create JSONFormatter node
@@ -119,7 +136,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 	jsonfmtId := eventlogger.NodeID(id)
 	fmtNode := &eventlogger.JSONFormatter{}
-	err = broker.RegisterNode(jsonfmtId, fmtNode)
+	err = e.broker.RegisterNode(jsonfmtId, fmtNode)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to register json node")
 	}
@@ -153,7 +170,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			}
 			sinkId = eventlogger.NodeID(id)
 		}
-		err = broker.RegisterNode(sinkId, sinkNode)
+		err = e.broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to register sink node %s", sinkId)))
 		}
@@ -204,13 +221,13 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
-		flushableNodes = append(flushableNodes, &gatedFilterNode)
+		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-audit")
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		gatedFilterNodeId := eventlogger.NodeID(gateId)
-		if err := broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
 		}
 
@@ -218,7 +235,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		err = broker.RegisterPipeline(eventlogger.Pipeline{
+		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
 			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
@@ -231,13 +248,13 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
-		flushableNodes = append(flushableNodes, &gatedFilterNode)
-		gateId, err := newId("gated-audit")
+		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
+		gateId, err := newId("gated-observation")
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 		gatedFilterNodeId := eventlogger.NodeID(gateId)
-		if err := broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
 		}
 
@@ -245,7 +262,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		err = broker.RegisterPipeline(eventlogger.Pipeline{
+		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
 			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
@@ -261,7 +278,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		err = broker.RegisterPipeline(eventlogger.Pipeline{
+		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
 			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
@@ -276,29 +293,24 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	// specify which sink passed and which hasn't so we are unable to
 	// support multiple sinks with different delivery guarantees
 	if c.AuditDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
+		err = e.broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
 		}
 	}
 	if c.ObservationDelivery == Enforced {
-		err = broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
+		err = e.broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set success threshold for observation events")
 		}
 	}
 	// always enforce delivery of errors
-	err = broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set success threshold for error events")
 	}
 
-	return &Eventer{
-		logger:         log,
-		conf:           c,
-		broker:         broker,
-		flushableNodes: flushableNodes,
-	}, nil
+	return e, nil
 }
 
 // writeObservation writes/sends an Observation event.
