@@ -23,20 +23,11 @@ import (
 )
 
 const (
-	// general auth method field names
-	versionField      = "version"
-	authMethodIdField = "auth_method_id"
-	typeField         = "type"
-	attributesField   = "attributes"
-	filterField       = "filter"
-	idField           = "id"
-
 	// oidc field names
 	attrFilterField = "attributes.filter"
 )
 
 var (
-	pwMaskManager   handlers.MaskManager
 	oidcMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
@@ -370,7 +361,7 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 		attrs := &pb.OidcManagedGroupAttributes{}
 		if err := handlers.StructToProto(apiAttr, attrs); err != nil {
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-				map[string]string{attributesField: "Attribute fields do not match the expected format."})
+				map[string]string{globals.AttributesField: "Attribute fields do not match the expected format."})
 		}
 		// Set this regardless; it'll only take effect if the masks contain the value
 		mg.Filter = attrs.Filter
@@ -579,16 +570,16 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if req.GetItem().GetAuthMethodId() == "" {
-			badFields[authMethodIdField] = "This field is required."
+			badFields[globals.AuthMethodIdField] = "This field is required."
 		}
 		switch auth.SubtypeFromId(req.GetItem().GetAuthMethodId()) {
 		case auth.OidcSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
-				badFields[typeField] = "Doesn't match the parent resource's type."
+				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := &pb.OidcManagedGroupAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			}
 			if attrs.Filter == "" {
 				badFields[attrFilterField] = "This field is required."
@@ -598,7 +589,7 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 				}
 			}
 		default:
-			badFields[authMethodIdField] = "Unknown auth method type from ID."
+			badFields[globals.AuthMethodIdField] = "Unknown auth method type from ID."
 		}
 		return badFields
 	})
@@ -614,11 +605,11 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 		switch auth.SubtypeFromId(req.GetId()) {
 		case auth.OidcSubtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != auth.OidcSubtype.String() {
-				badFields[typeField] = "Cannot modify the resource type."
+				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 			attrs := &pb.OidcManagedGroupAttributes{}
 			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), attrFilterField) {
 				if attrs.Filter == "" {
@@ -649,10 +640,10 @@ func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {
-		badFields[authMethodIdField] = "Invalid formatted identifier."
+		badFields[globals.AuthMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
-		badFields[filterField] = fmt.Sprintf("This field could not be parsed. %v", err)
+		badFields[globals.FilterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)

@@ -54,4 +54,5 @@ const (
 	PrimaryAccountIdField            = "primary_account_id"
 	EmailField                       = "email"
 	ManagedGroupIdsField             = "managed_group_ids"
+	FilterField                      = "filter"
 )

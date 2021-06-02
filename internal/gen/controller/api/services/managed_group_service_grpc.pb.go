@@ -27,23 +27,23 @@ type ManagedGroupServiceClient interface {
 	// contains the ManagedGroups being listed. If missing or malformed an error
 	// is returned.
 	ListManagedGroups(ctx context.Context, in *ListManagedGroupsRequest, opts ...grpc.CallOption) (*ListManagedGroupsResponse, error)
-	// CreateManagedGroup creates and stores an ManagedGroup in boundary. The provided
-	// request must include the Auth Method ID in which the ManagedGroup will be
-	// created. If the Auth Method ID is missing, malformed, or references a non
-	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another ManagedGroup in the same Auth Method an
-	// error is returned.
+	// CreateManagedGroup creates and stores a ManagedGroup. The provided request
+	// must include the Auth Method ID in which the ManagedGroup will be created.
+	// If the Auth Method ID is missing, malformed, or references a non existing
+	// resource an error is returned. If a name or login_name is provided that is
+	// in use in another ManagedGroup in the same Auth Method an error is
+	// returned.
 	CreateManagedGroup(ctx context.Context, in *CreateManagedGroupRequest, opts ...grpc.CallOption) (*CreateManagedGroupResponse, error)
-	// UpdateManagedGroup updates an existing ManagedGroup in boundary. The
-	// provided ManagedGroup must not have any read only fields set. The update
-	// mask must be included in the request and contain at least 1 mutable field.
-	// To unset a field's value, include the field in the update mask and don't
-	// set it in the provided ManagedGroup. An error is returned if the
-	// ManagedGroup id is missing or references a non-existing resource. An error
-	// is also returned if the request attempts to update the name to one that is
-	// already in use in the containing Auth Method.
+	// UpdateManagedGroup updates an existing ManagedGroup. The provided
+	// ManagedGroup must not have any read only fields set. The update mask must
+	// be included in the request and contain at least 1 mutable field. To unset a
+	// field's value, include the field in the update mask and don't set it in the
+	// provided ManagedGroup. An error is returned if the ManagedGroup id is
+	// missing or references a non-existing resource. An error is also returned if
+	// the request attempts to update the name to one that is already in use in
+	// the containing Auth Method.
 	UpdateManagedGroup(ctx context.Context, in *UpdateManagedGroupRequest, opts ...grpc.CallOption) (*UpdateManagedGroupResponse, error)
-	// DeleteManagedGroup removes an ManagedGroup from Boundary. If the provided ManagedGroup Id
+	// DeleteManagedGroup removes a ManagedGroup. If the provided ManagedGroup Id
 	// is malformed or not provided an error is returned.
 	DeleteManagedGroup(ctx context.Context, in *DeleteManagedGroupRequest, opts ...grpc.CallOption) (*DeleteManagedGroupResponse, error)
 }
@@ -114,23 +114,23 @@ type ManagedGroupServiceServer interface {
 	// contains the ManagedGroups being listed. If missing or malformed an error
 	// is returned.
 	ListManagedGroups(context.Context, *ListManagedGroupsRequest) (*ListManagedGroupsResponse, error)
-	// CreateManagedGroup creates and stores an ManagedGroup in boundary. The provided
-	// request must include the Auth Method ID in which the ManagedGroup will be
-	// created. If the Auth Method ID is missing, malformed, or references a non
-	// existing resource an error is returned. If a name or login_name is
-	// provided that is in use in another ManagedGroup in the same Auth Method an
-	// error is returned.
+	// CreateManagedGroup creates and stores a ManagedGroup. The provided request
+	// must include the Auth Method ID in which the ManagedGroup will be created.
+	// If the Auth Method ID is missing, malformed, or references a non existing
+	// resource an error is returned. If a name or login_name is provided that is
+	// in use in another ManagedGroup in the same Auth Method an error is
+	// returned.
 	CreateManagedGroup(context.Context, *CreateManagedGroupRequest) (*CreateManagedGroupResponse, error)
-	// UpdateManagedGroup updates an existing ManagedGroup in boundary. The
-	// provided ManagedGroup must not have any read only fields set. The update
-	// mask must be included in the request and contain at least 1 mutable field.
-	// To unset a field's value, include the field in the update mask and don't
-	// set it in the provided ManagedGroup. An error is returned if the
-	// ManagedGroup id is missing or references a non-existing resource. An error
-	// is also returned if the request attempts to update the name to one that is
-	// already in use in the containing Auth Method.
+	// UpdateManagedGroup updates an existing ManagedGroup. The provided
+	// ManagedGroup must not have any read only fields set. The update mask must
+	// be included in the request and contain at least 1 mutable field. To unset a
+	// field's value, include the field in the update mask and don't set it in the
+	// provided ManagedGroup. An error is returned if the ManagedGroup id is
+	// missing or references a non-existing resource. An error is also returned if
+	// the request attempts to update the name to one that is already in use in
+	// the containing Auth Method.
 	UpdateManagedGroup(context.Context, *UpdateManagedGroupRequest) (*UpdateManagedGroupResponse, error)
-	// DeleteManagedGroup removes an ManagedGroup from Boundary. If the provided ManagedGroup Id
+	// DeleteManagedGroup removes a ManagedGroup. If the provided ManagedGroup Id
 	// is malformed or not provided an error is returned.
 	DeleteManagedGroup(context.Context, *DeleteManagedGroupRequest) (*DeleteManagedGroupResponse, error)
 	mustEmbedUnimplementedManagedGroupServiceServer()

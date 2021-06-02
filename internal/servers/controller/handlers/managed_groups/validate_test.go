@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
@@ -20,6 +21,7 @@ func fieldError(field, details string) string {
 }
 
 func TestValidateCreateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		item        *pb.ManagedGroup
@@ -30,7 +32,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.ManagedGroup{
 				AuthMethodId: "anything_1234567890",
 			},
-			errContains: fieldError(authMethodIdField, "Unknown auth method type from ID."),
+			errContains: fieldError(globals.AuthMethodIdField, "Unknown auth method type from ID."),
 		},
 		{
 			name: "mismatched oidc authmethod pw type",
@@ -38,7 +40,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				Type:         "ldap",
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 			},
-			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
+			errContains: fieldError(globals.TypeField, "Doesn't match the parent resource's type."),
 		},
 		{
 			name: "missing oidc attributes",
@@ -73,6 +75,7 @@ func TestValidateCreateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			req := &pbs.CreateManagedGroupRequest{Item: tc.item}
 			err := validateCreateRequest(req)
 			if tc.errContains == "" {
@@ -86,6 +89,7 @@ func TestValidateCreateRequest(t *testing.T) {
 }
 
 func TestValidateUpdateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		req         *pbs.UpdateManagedGroupRequest
@@ -99,7 +103,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 					Type: auth.PasswordSubtype.String(),
 				},
 			},
-			errContains: fieldError(typeField, "Cannot modify the resource type."),
+			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),
 		},
 		{
 			name: "oidc bad attributes",
@@ -111,7 +115,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 					}},
 				},
 			},
-			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+			errContains: fieldError(globals.AttributesField, "Attribute fields do not match the expected format."),
 		},
 		{
 			name: "no error",
@@ -129,6 +133,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateUpdateRequest(tc.req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
