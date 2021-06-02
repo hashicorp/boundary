@@ -2688,6 +2688,14 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific Account type."
         },
+        "managed_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

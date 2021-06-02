@@ -53,4 +53,5 @@ const (
 	FullNameField                    = "full_name"
 	PrimaryAccountIdField            = "primary_account_id"
 	EmailField                       = "email"
+	ManagedGroupIdsField             = "managed_group_ids"
 )

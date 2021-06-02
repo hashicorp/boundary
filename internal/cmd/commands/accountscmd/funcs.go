@@ -281,6 +281,14 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
+	if len(item.ManagedGroupIds) > 0 {
+		ret = append(ret,
+			"",
+			"  Managed Group IDs:",
+			base.WrapSlice(4, item.ManagedGroupIds),
+		)
+	}
+
 	if len(item.AuthorizedActions) > 0 {
 		ret = append(ret,
 			"",

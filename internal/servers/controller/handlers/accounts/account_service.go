@@ -180,7 +180,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	acct, err := s.getFromRepo(ctx, req.GetId())
+	acct, mgIds, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +197,9 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+	}
+	if outputFields.Has(globals.ManagedGroupIdsField) {
+		outputOpts = append(outputOpts, handlers.WithManagedGroupIds(mgIds))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -379,39 +382,49 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 	return &pbs.SetPasswordResponse{Item: item}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, error) {
+// getFromRepo returns the account and, if available, managed groups the account
+// belongs to within the auth method
+func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []string, error) {
 	var acct auth.Account
+	var mgIds []string
 	switch auth.SubtypeFromId(id) {
 	case auth.PasswordSubtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		a, err := repo.LookupAccount(ctx, id)
 		if err != nil {
 			if errors.IsNotFoundError(err) {
-				return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
+				return nil, nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 			}
-			return nil, err
+			return nil, nil, err
 		}
 		acct = a
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		a, err := repo.LookupAccount(ctx, id)
 		if err != nil {
 			if errors.IsNotFoundError(err) {
-				return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
+				return nil, nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 			}
-			return nil, err
+			return nil, nil, err
+		}
+		mgs, err := repo.ListManagedGroupMembershipsByMember(ctx, a.GetPublicId())
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, mg := range mgs {
+			mgIds = append(mgIds, mg.GetManagedGroupId())
 		}
 		acct = a
 	default:
-		return nil, handlers.NotFoundErrorf("Unrecognized id.")
+		return nil, nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	return acct, nil
+	return acct, mgIds, nil
 }
 
 func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
@@ -835,6 +848,9 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.ManagedGroupIdsField) {
+		out.ManagedGroupIds = opts.WithManagedGroupIds
 	}
 	switch i := in.(type) {
 	case *password.Account:

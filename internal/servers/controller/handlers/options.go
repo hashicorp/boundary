@@ -30,6 +30,7 @@ type options struct {
 	WithScope                       *scopes.ScopeInfo
 	WithAuthorizedActions           []string
 	WithAuthorizedCollectionActions map[string]*structpb.ListValue
+	WithManagedGroupIds             []string
 }
 
 func getDefaultOptions() options {
@@ -89,5 +90,13 @@ func WithAuthorizedActions(acts []string) Option {
 func WithAuthorizedCollectionActions(colActs map[string]*structpb.ListValue) Option {
 	return func(o *options) {
 		o.WithAuthorizedCollectionActions = colActs
+	}
+}
+
+// WithManagedGroupIds provides an option when creating responses to include the given
+// managed group IDs if allowed
+func WithManagedGroupIds(ids []string) Option {
+	return func(o *options) {
+		o.WithManagedGroupIds = ids
 	}
 }
