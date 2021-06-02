@@ -8,12 +8,16 @@ import (
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticStore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/target"
 	targetStore "github.com/hashicorp/boundary/internal/target/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -269,6 +273,13 @@ func TestRepository_CreateSession(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid-with-credentials",
+			args: args{
+				composedOf: testSessionCredentialParams(t, conn, wrapper, iamRepo),
+			},
+			wantErr: false,
+		},
+		{
 			name: "empty-userId",
 			args: args{
 				composedOf: func() ComposedOf {
@@ -345,15 +356,16 @@ func TestRepository_CreateSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
-				UserId:          tt.args.composedOf.UserId,
-				HostId:          tt.args.composedOf.HostId,
-				TargetId:        tt.args.composedOf.TargetId,
-				HostSetId:       tt.args.composedOf.HostSetId,
-				AuthTokenId:     tt.args.composedOf.AuthTokenId,
-				ScopeId:         tt.args.composedOf.ScopeId,
-				Endpoint:        "tcp://127.0.0.1:22",
-				ExpirationTime:  tt.args.composedOf.ExpirationTime,
-				ConnectionLimit: tt.args.composedOf.ConnectionLimit,
+				UserId:             tt.args.composedOf.UserId,
+				HostId:             tt.args.composedOf.HostId,
+				TargetId:           tt.args.composedOf.TargetId,
+				HostSetId:          tt.args.composedOf.HostSetId,
+				AuthTokenId:        tt.args.composedOf.AuthTokenId,
+				ScopeId:            tt.args.composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     tt.args.composedOf.ExpirationTime,
+				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
+				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 			}
 			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s)
 			if tt.wantErr {
@@ -370,6 +382,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.States[0].StartTime)
 			assert.Equal(ses.States[0].Status, StatusPending)
 			assert.Equal(wrapper.KeyID(), ses.KeyId)
+			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
 			assert.Equal(wrapper.KeyID(), foundSession.KeyId)
@@ -378,13 +391,20 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)
 			ses.ExpirationTime = foundSession.ExpirationTime
 
-			assert.Equal(foundSession, ses)
+			assert.Equal(ses, foundSession)
 
 			err = db.TestVerifyOplog(t, rw, ses.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 
 			require.Equal(1, len(foundSession.States))
 			assert.Equal(foundSession.States[0].Status, StatusPending)
+			assert.Equal(s.DynamicCredentials, foundSession.DynamicCredentials)
+			for _, cred := range foundSession.DynamicCredentials {
+				assert.Empty(cred.CredentialId)
+				assert.NotEmpty(cred.SessionId)
+				assert.NotEmpty(cred.LibraryId)
+				assert.NotEmpty(cred.CredentialPurpose)
+			}
 		})
 	}
 }
@@ -1620,4 +1640,31 @@ func TestRepository_DeleteSession(t *testing.T) {
 			assert.Error(err)
 		})
 	}
+}
+
+func testSessionCredentialParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+	t.Helper()
+	params := TestSessionParams(t, conn, wrapper, iamRepo)
+	require := require.New(t)
+	rw := db.New(conn)
+
+	ctx := context.Background()
+	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
+	libs := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	targetRepo, err := target.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	tcpTarget, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
+	require.NoError(err)
+	require.NotNil(tcpTarget)
+	_, _, _, err = targetRepo.AddTargetCredentialLibraries(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{libs[0].PublicId, libs[1].PublicId})
+	require.NoError(err)
+	creds := []*DynamicCredential{
+		NewDynamicCredential(libs[0].GetPublicId(), credential.ApplicationPurpose),
+		NewDynamicCredential(libs[0].GetPublicId(), credential.IngressPurpose),
+		NewDynamicCredential(libs[1].GetPublicId(), credential.EgressPurpose),
+	}
+	params.DynamicCredentials = creds
+	return params
 }

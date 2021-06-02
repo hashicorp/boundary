@@ -60,6 +60,9 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if cs.PublicId != "" {
 		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
 	}
+	if cs.clientCert != nil && len(cs.clientCert.CertificateKey) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "client certificate without private key")
+	}
 
 	cs = cs.clone()
 
@@ -180,6 +183,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil
 		},
 	)
+
+	// Best effort update next run time of token renewal job, but an error should not
+	// cause update to fail.
+	// TODO (lcr 05/2021): log error once repo has logger
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
@@ -314,8 +322,7 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 		return nil, errors.New(errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocPrivateStore()
-	ps.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, ps); err != nil {
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", publicId, StatusCurrent); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -355,6 +362,7 @@ type privateStore struct {
 	TokenUpdateTime      *timestamp.Timestamp
 	TokenLastRenewalTime *timestamp.Timestamp
 	TokenExpirationTime  *timestamp.Timestamp
+	TokenRenewalTime     *timestamp.Timestamp
 	TokenKeyId           string
 	TokenStatus          string
 	ClientCert           []byte
@@ -382,6 +390,20 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs.CaCert = ps.CaCert
 	cs.TlsServerName = ps.TlsServerName
 	cs.TlsSkipVerify = ps.TlsSkipVerify
+	cs.privateToken = ps.token()
+	if ps.ClientCert != nil {
+		cert := allocClientCertificate()
+		cert.StoreId = ps.StoreId
+		cert.Certificate = ps.ClientCert
+		cert.CtCertificateKey = ps.CtClientKey
+		cert.CertificateKeyHmac = ps.ClientCertKeyHmac
+		cert.KeyId = ps.ClientKeyId
+		cs.privateClientCert = cert
+	}
+	return cs
+}
+
+func (ps *privateStore) token() *Token {
 	if ps.TokenHmac != nil {
 		tk := allocToken()
 		tk.StoreId = ps.StoreId
@@ -393,18 +415,11 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 		tk.CtToken = ps.CtToken
 		tk.KeyId = ps.TokenKeyId
 		tk.Status = ps.TokenStatus
-		cs.privateToken = tk
+
+		return tk
 	}
-	if ps.ClientCert != nil {
-		cert := allocClientCertificate()
-		cert.StoreId = ps.StoreId
-		cert.Certificate = ps.ClientCert
-		cert.CtCertificateKey = ps.CtClientKey
-		cert.CertificateKeyHmac = ps.ClientCertKeyHmac
-		cert.KeyId = ps.ClientKeyId
-		cs.privateClientCert = cert
-	}
-	return cs
+
+	return nil
 }
 
 func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
@@ -808,6 +823,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return err
 		},
 	)
+
+	if updateToken {
+		// Best effort update next run time of token renewal job, but an error should not
+		// cause update to fail.
+		// TODO (lcr 05/2021): log error once repo has logger
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
+	}
 
 	if err != nil {
 		if errors.IsUniqueError(err) {

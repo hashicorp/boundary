@@ -3,6 +3,7 @@ package credentialstores
 import (
 	"context"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
@@ -569,15 +570,20 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	if attrs.GetVaultCaCert() != nil {
 		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
 	}
-	var cert, certKey []byte
-	if attrs.GetClientCertificate() != nil {
-		cert = []byte(attrs.GetClientCertificate().GetValue())
+	pemCerts, pemPk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+	if err != nil {
+		return nil, errors.Wrap(err, op)
 	}
-	if attrs.GetClientCertificateKey() != nil {
-		certKey = []byte(attrs.GetClientCertificateKey().GetValue())
-	}
-	if len(cert) != 0 && len(certKey) != 0 {
-		cc, err := vault.NewClientCertificate(cert, certKey)
+	if len(pemCerts) != 0 && pemPk != nil {
+		var cert []byte
+		for _, c := range pemCerts {
+			cert = append(cert, pem.EncodeToMemory(c)...)
+		}
+		var pk []byte
+		if pemPk != nil {
+			pk = pem.EncodeToMemory(pemPk)
+		}
+		cc, err := vault.NewClientCertificate(cert, pk)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -624,20 +630,20 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 			}
 
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
-				badFields[clientCertField] = "Incorrectly formatted value."
-			}
-			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificateKey().GetValue() == "" {
-				badFields[clientCertKeyField] = "Incorrectly formatted value."
-			}
-			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificateKey() == nil {
-				badFields[clientCertField] = fmt.Sprintf("This field can only be set when %q is also set.", clientCertKeyField)
-			}
-			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificate() == nil {
-				badFields[clientCertKeyField] = fmt.Sprintf("This field can only be set along with the %q field.", clientCertField)
-			}
-			if attrs.GetVaultCaCert() != nil && attrs.GetVaultCaCert().GetValue() == "" {
+			_, err := decodePemBlocks(attrs.GetVaultCaCert().GetValue())
+			if attrs.GetVaultCaCert() != nil && err != nil {
 				badFields[caCertsField] = "Incorrectly formatted value."
+			}
+
+			cs, pk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+			if err != nil {
+				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
+			}
+			if attrs.GetClientCertificate() == nil && attrs.GetClientCertificateKey() != nil {
+				badFields[clientCertKeyField] = "Cannot set a client certificate private key without the client certificate."
+			}
+			if len(cs) > 0 && pk == nil {
+				badFields[clientCertField] = "Cannot set a client certificate without a private key."
 			}
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
@@ -672,21 +678,14 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 			}
 
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificate().GetValue() == "" {
-				badFields[clientCertField] = "Incorrectly formatted value."
-			}
-			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificateKey().GetValue() == "" {
-				badFields[clientCertKeyField] = "Incorrectly formatted value."
-			}
-			if attrs.GetClientCertificate() != nil && attrs.GetClientCertificateKey() == nil {
-				badFields[clientCertField] = fmt.Sprintf("This field can only be set when %q is also set.", clientCertKeyField)
-			}
-			if attrs.GetClientCertificateKey() != nil && attrs.GetClientCertificate() == nil {
-				badFields[clientCertKeyField] = fmt.Sprintf("This field can only be set along with the %q field.", clientCertField)
+			_, err := decodePemBlocks(attrs.GetVaultCaCert().GetValue())
+			if attrs.GetVaultCaCert() != nil && err != nil {
+				badFields[caCertsField] = "Incorrectly formatted value."
 			}
 
-			if attrs.GetVaultCaCert() != nil && attrs.GetVaultCaCert().GetValue() == "" {
-				badFields[caCertsField] = "Incorrectly formatted value."
+			_, _, err = extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+			if err != nil {
+				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 			}
 		}
 		return badFields

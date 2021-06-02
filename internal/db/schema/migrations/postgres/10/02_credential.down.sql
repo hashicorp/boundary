@@ -1,5 +1,7 @@
 begin;
 
+  drop table credential_purpose_enm;
+
   drop function delete_credential_dynamic_subtype;
   drop function insert_credential_dynamic_subtype;
   drop table credential_dynamic;

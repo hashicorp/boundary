@@ -23,6 +23,7 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
+	withNextRunIn          time.Duration
 	withRunJobsLimit       uint
 	withRunJobInterval     time.Duration
 	withMonitorInterval    time.Duration
@@ -83,5 +84,14 @@ func WithInterruptThreshold(l time.Duration) Option {
 		if o.withInterruptThreshold == 0 {
 			o.withInterruptThreshold = defaultInterruptThreshold
 		}
+	}
+}
+
+// WithNextRunIn provides an option to provide the duration until the next run is scheduled.
+// If this option is not provided the NextScheduledRun of the job will default to the
+// current database time, and be available to run immediately.
+func WithNextRunIn(d time.Duration) Option {
+	return func(o *options) {
+		o.withNextRunIn = d
 	}
 }

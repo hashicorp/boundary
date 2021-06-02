@@ -3,6 +3,7 @@ package vault
 import (
 	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -102,5 +103,16 @@ func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 		query = insertCredentialWithExpirationQuery
 		queryValues = append(queryValues, int(c.expiration.Round(time.Second).Seconds()))
 	}
+	return
+}
+
+func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{}) {
+	queryValues = []interface{}{
+		c.PublicId,
+		c.LibraryId,
+		c.SessionId,
+		string(purpose),
+	}
+	query = updateSessionCredentialQuery
 	return
 }

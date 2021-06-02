@@ -94,6 +94,13 @@ func TestSession(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, c Compos
 	require.NoError(err)
 	err = rw.Create(context.Background(), s, opts.withDbOpts...)
 	require.NoError(err)
+
+	for _, cred := range s.DynamicCredentials {
+		cred.SessionId = s.PublicId
+		err := rw.Create(context.Background(), cred)
+		require.NoError(err)
+	}
+
 	ss, err := fetchStates(context.Background(), rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
@@ -121,9 +128,7 @@ func TestSessionParams(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, ia
 	org, proj := iam.TestScopes(t, iamRepo)
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-
 	hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
-
 	sets := static.TestSets(t, conn, cats[0].PublicId, 1)
 	_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
 

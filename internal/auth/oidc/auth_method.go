@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
@@ -411,12 +412,12 @@ func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	for from, to := range acms {
-		toClaim, err := ConvertToAccountToClaim(to)
+	for _, m := range acms {
+		toClaim, err := ConvertToAccountToClaim(m.To)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		obj, err := NewAccountClaimMap(am.PublicId, from, toClaim)
+		obj, err := NewAccountClaimMap(am.PublicId, m.From, toClaim)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -425,18 +426,36 @@ func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 	return newInterfaces, nil
 }
 
-func ParseAccountClaimMaps(m ...string) (map[string]string, error) {
+// ClaimMap defines the To and From of an oidc claim map
+type ClaimMap struct {
+	To   string
+	From string
+}
+
+// ParseAccountClaimMaps will parse the inbound claim maps
+func ParseAccountClaimMaps(m ...string) ([]ClaimMap, error) {
 	const op = "oidc.parseAccountClaimMaps"
 	var b kvbuilder.Builder
 	if err := b.Add(m...); err != nil {
 		return nil, errors.New(errors.InvalidParameter, op, "error parsing map", errors.WithWrap(err))
 	}
-	claimMap := map[string]string{}
-	for k, v := range b.Map() {
+	fromKeys := make([]string, 0, len(m))
+	for k := range b.Map() {
+		fromKeys = append(fromKeys, k)
+	}
+	sort.Strings(fromKeys)
+
+	claimMap := make([]ClaimMap, 0, len(fromKeys))
+	for _, from := range fromKeys {
 		var ok bool
-		if claimMap[k], ok = v.(string); !ok {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map key %s value %q is not a string", k, v))
+		to, ok := b.Map()[from].(string)
+		if !ok {
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map %s value %q is not a string", from, b.Map()[from]))
 		}
+		claimMap = append(claimMap, ClaimMap{
+			To:   to,
+			From: from,
+		})
 	}
 	return claimMap, nil
 }

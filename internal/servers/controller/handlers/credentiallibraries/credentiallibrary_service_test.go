@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -44,7 +46,7 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prjNoLibs := iam.TestScopes(t, iamRepo)
@@ -145,6 +147,7 @@ func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -152,7 +155,7 @@ func TestCreate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -445,6 +448,7 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -452,7 +456,7 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -530,6 +534,7 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -537,7 +542,7 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -588,6 +593,7 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -595,7 +601,7 @@ func TestUpdate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)

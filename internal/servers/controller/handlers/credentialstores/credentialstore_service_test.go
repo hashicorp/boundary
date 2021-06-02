@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -44,7 +46,7 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -139,6 +141,7 @@ func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -146,7 +149,7 @@ func TestCreate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -234,6 +237,26 @@ func TestCreate(t *testing.T) {
 						VaultToken:           token,
 						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
 						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Define key in both client cert payload and key field",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+				Type:    credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:              v.Addr,
+						VaultToken:           token,
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificateKey: wrapperspb.String(string(append(v.ClientCert, v.ClientKey...))),
+						ClientCertificate: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -480,6 +503,7 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -487,7 +511,7 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -566,6 +590,7 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -573,7 +598,7 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -623,6 +648,7 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -630,7 +656,7 @@ func TestUpdate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)

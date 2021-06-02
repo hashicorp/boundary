@@ -20,7 +20,7 @@ func TestSession_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
 
 	type args struct {
@@ -43,15 +43,16 @@ func TestSession_Create(t *testing.T) {
 				opt:        []Option{WithExpirationTime(exp)},
 			},
 			want: &Session{
-				UserId:          composedOf.UserId,
-				HostId:          composedOf.HostId,
-				TargetId:        composedOf.TargetId,
-				HostSetId:       composedOf.HostSetId,
-				AuthTokenId:     composedOf.AuthTokenId,
-				ScopeId:         composedOf.ScopeId,
-				Endpoint:        "tcp://127.0.0.1:22",
-				ExpirationTime:  composedOf.ExpirationTime,
-				ConnectionLimit: composedOf.ConnectionLimit,
+				UserId:             composedOf.UserId,
+				HostId:             composedOf.HostId,
+				TargetId:           composedOf.TargetId,
+				HostSetId:          composedOf.HostSetId,
+				AuthTokenId:        composedOf.AuthTokenId,
+				ScopeId:            composedOf.ScopeId,
+				Endpoint:           "tcp://127.0.0.1:22",
+				ExpirationTime:     composedOf.ExpirationTime,
+				ConnectionLimit:    composedOf.ConnectionLimit,
+				DynamicCredentials: composedOf.DynamicCredentials,
 			},
 			create: true,
 		},
