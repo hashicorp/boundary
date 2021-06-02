@@ -26,14 +26,16 @@ func testResetSystEventer(t *testing.T) {
 }
 
 type TestConfig struct {
-	EventerConfig EventerConfig
-	AllEvents     *os.File
-	ErrorEvents   *os.File
+	EventerConfig     EventerConfig
+	AllEvents         *os.File
+	ErrorEvents       *os.File
+	ObservationEvents *os.File
+	AuditEvents       *os.File
 }
 
 // TestEventerConfig creates a test config and registers a cleanup func for its
 // test tmp files.
-func TestEventerConfig(t *testing.T, testName string) TestConfig {
+func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig {
 	t.Helper()
 	require := require.New(t)
 	tmpAllFile, err := ioutil.TempFile("./", "tmp-all-events-"+testName)
@@ -47,7 +49,7 @@ func TestEventerConfig(t *testing.T, testName string) TestConfig {
 		os.Remove(tmpErrFile.Name())
 	})
 
-	return TestConfig{
+	c := TestConfig{
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
 			ObservationDelivery: Enforced,
@@ -81,6 +83,38 @@ func TestEventerConfig(t *testing.T, testName string) TestConfig {
 		AllEvents:   tmpAllFile,
 		ErrorEvents: tmpErrFile,
 	}
+	opts := getOpts(opt...)
+	if opts.withAuditSink {
+		tmpFile, err := ioutil.TempFile("./", "tmp-audit-"+testName)
+		require.NoError(err)
+		t.Cleanup(func() {
+			os.Remove(tmpFile.Name())
+		})
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+			Name:       "audit-file-sink",
+			SinkType:   FileSink,
+			EventTypes: []Type{AuditType},
+			Format:     JSONSinkFormat,
+			Path:       "./",
+			FileName:   tmpFile.Name(),
+		})
+	}
+	if opts.withObservationSink {
+		tmpFile, err := ioutil.TempFile("./", "tmp-observation-"+testName)
+		require.NoError(err)
+		t.Cleanup(func() {
+			os.Remove(tmpFile.Name())
+		})
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+			Name:       "err-observation-sink",
+			SinkType:   FileSink,
+			EventTypes: []Type{ObservationType},
+			Format:     JSONSinkFormat,
+			Path:       "./",
+			FileName:   tmpFile.Name(),
+		})
+	}
+	return c
 }
 
 func testRequestInfo(t *testing.T) *RequestInfo {
@@ -132,6 +166,20 @@ func testResponse(t *testing.T) *Response {
 func testWithBroker(b broker) Option {
 	return func(o *options) {
 		o.withBroker = b
+	}
+}
+
+// testWithObservationSink is an unexported and a test option
+func testWithObservationSink() Option {
+	return func(o *options) {
+		o.withObservationSink = true
+	}
+}
+
+// testWithAuditSink is an unexported and a test option
+func testWithAuditSink() Option {
+	return func(o *options) {
+		o.withAuditSink = true
 	}
 }
 
