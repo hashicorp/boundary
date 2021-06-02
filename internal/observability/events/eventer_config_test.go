@@ -43,6 +43,22 @@ func TestEventerConfig_validate(t *testing.T) {
 				ObservationDelivery: Enforced,
 			},
 		},
+		{
+			name: "invalid-sink",
+			c: EventerConfig{
+				Sinks: []SinkConfig{
+					{
+						SinkType: "invalid",
+					},
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "is not a valid sink type",
+		},
+		{
+			name: "valid-with-all-defaults",
+			c:    EventerConfig{},
+		},
 	}
 
 	for _, tt := range tests {
