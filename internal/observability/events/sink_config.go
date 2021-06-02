@@ -33,6 +33,14 @@ func (sc *SinkConfig) validate() error {
 	if sc.Name == "" {
 		return errors.New(errors.InvalidParameter, op, "missing sink name")
 	}
+	if len(sc.EventTypes) == 0 {
+		return errors.New(errors.InvalidParameter, op, "missing event types")
+	}
+	for _, et := range sc.EventTypes {
+		if err := et.validate(); err != nil {
+			return errors.Wrap(err, op)
+		}
+	}
 	return nil
 
 }
