@@ -3,10 +3,10 @@ package event
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,14 +119,24 @@ func Test_NewEventer(t *testing.T) {
 	defer os.Remove(testSetup.ErrorEvents.Name())
 
 	tests := []struct {
-		name         string
-		config       EventerConfig
-		logger       hclog.Logger
-		want         *Eventer
-		wantErrMatch *errors.Template
+		name           string
+		config         EventerConfig
+		opts           []Option
+		logger         hclog.Logger
+		want           *Eventer
+		wantRegistered []string
+		wantPipelines  []string
+		wantErrMatch   *errors.Template
 	}{
 		{
-			name:         "missing logger",
+			name: "invalid-config",
+			config: EventerConfig{
+				AuditDelivery: "invalid",
+			},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "missing-logger",
 			config:       testSetup.EventerConfig,
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -147,6 +157,17 @@ func Test_NewEventer(t *testing.T) {
 					},
 				},
 			},
+			wantRegistered: []string{
+				"json",              // fmt for everything
+				"stdout",            // stdout
+				"gated-observation", // stdout
+				"gated-audit",       // stdout
+			},
+			wantPipelines: []string{
+				"audit",       // stdout
+				"observation", // stdout
+				"error",       // stdout
+			},
 		},
 		{
 			name:   "testSetup",
@@ -156,13 +177,33 @@ func Test_NewEventer(t *testing.T) {
 				logger: hclog.Default(),
 				conf:   testSetup.EventerConfig,
 			},
+			wantRegistered: []string{
+				"json",              // fmt for everything
+				"stdout",            // stdout
+				"gated-observation", // stdout
+				"gated-audit",       // stdout
+				"tmp-all-events",    // every-type-file-sync
+				"gated-observation", //every-type-file-sync
+				"gated-audit",       //every-type-file-sync
+				"tmp-errors",        // error-file-sink
+			},
+			wantPipelines: []string{
+				"audit",       // every-type-file-sync
+				"audit",       // stdout
+				"observation", // every-type-file-sync
+				"observation", // stdout
+				"error",       // every-type-file-sync
+				"error",       // stdout
+				"error",       // error-file-sink
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewEventer(tt.logger, tt.config)
+			testBroker := &testBroker{}
+			got, err := NewEventer(tt.logger, tt.config, testWithBroker(testBroker))
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				require.Nil(got)
@@ -174,6 +215,30 @@ func Test_NewEventer(t *testing.T) {
 			tt.want.broker = got.broker
 			tt.want.flushableNodes = got.flushableNodes
 			assert.Equal(tt.want, got)
+
+			assert.Lenf(testBroker.registeredNodeIds, len(tt.wantRegistered), "got nodes: %q", testBroker.registeredNodeIds)
+			for _, want := range tt.wantRegistered {
+				found := false
+				for _, got := range testBroker.registeredNodeIds {
+					if strings.Contains(string(got), want) {
+						found = true
+						break
+					}
+				}
+				assert.Truef(found, "did not find %s in the registered nodes: %s", want, testBroker.registeredNodeIds)
+			}
+			assert.Lenf(testBroker.pipelines, len(tt.wantPipelines), "got pipelines: %q", testBroker.pipelines)
+			for _, want := range tt.wantPipelines {
+				found := false
+				for _, got := range testBroker.pipelines {
+					if strings.Contains(string(got.EventType), want) {
+						found = true
+						break
+					}
+				}
+				assert.Truef(found, "did not find %s in the registered pipelines: %s", want, testBroker.pipelines)
+			}
+
 		})
 	}
 }
@@ -189,23 +254,10 @@ func TestEventer_Reopen(t *testing.T) {
 		e.broker = nil
 		require.NoError(e.Reopen())
 
-		e.broker = &testReopenBroker{}
+		e.broker = &testBroker{}
 		require.NoError(e.Reopen())
-		assert.True(e.broker.(*testReopenBroker).reopened)
+		assert.True(e.broker.(*testBroker).reopened)
 	})
-}
-
-type testReopenBroker struct {
-	reopened bool
-}
-
-func (b *testReopenBroker) Reopen(ctx context.Context) error {
-	b.reopened = true
-	return nil
-}
-
-func (b *testReopenBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
-	return eventlogger.Status{}, nil
 }
 
 func TestEventer_FlushNodes(t *testing.T) {
@@ -222,7 +274,6 @@ func TestEventer_FlushNodes(t *testing.T) {
 
 		node.raiseError = true
 		require.Error(e.FlushNodes(context.Background()))
-
 		assert.True(node.flushed)
 	})
 }
