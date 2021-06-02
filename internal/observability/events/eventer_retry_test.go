@@ -18,8 +18,6 @@ func TestEventer_retrySend(t *testing.T) {
 	ctx := context.Background()
 
 	testConfig := TestEventerConfig(t, "TestEventer_retrySend")
-	defer os.Remove(testConfig.AllEvents.Name())
-	defer os.Remove(testConfig.ErrorEvents.Name())
 
 	eventer, err := NewEventer(hclog.Default(), testConfig.EventerConfig)
 	require.NoError(t, err)

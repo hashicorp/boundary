@@ -29,8 +29,6 @@ func Test_WriteObservation(t *testing.T) {
 	})
 
 	c := event.TestEventerConfig(t, "WriteObservation")
-	defer os.Remove(c.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
-	defer os.Remove(c.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
 	e, err := event.NewEventer(logger, c.EventerConfig)
 	require.NoError(t, err)
@@ -179,8 +177,6 @@ func Test_WriteAudit(t *testing.T) {
 	})
 
 	c := event.TestEventerConfig(t, "WriteAudit")
-	defer os.Remove(c.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
-	defer os.Remove(c.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
 	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
 	require.NoError(t, err)

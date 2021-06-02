@@ -31,6 +31,8 @@ type TestConfig struct {
 	ErrorEvents   *os.File
 }
 
+// TestEventerConfig creates a test config and registers a cleanup func for its
+// test tmp files.
 func TestEventerConfig(t *testing.T, testName string) TestConfig {
 	t.Helper()
 	require := require.New(t)
@@ -39,6 +41,11 @@ func TestEventerConfig(t *testing.T, testName string) TestConfig {
 
 	tmpErrFile, err := ioutil.TempFile("./", "tmp-errors-"+testName)
 	require.NoError(err)
+
+	t.Cleanup(func() {
+		os.Remove(tmpAllFile.Name())
+		os.Remove(tmpErrFile.Name())
+	})
 
 	return TestConfig{
 		EventerConfig: EventerConfig{

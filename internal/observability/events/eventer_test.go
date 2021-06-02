@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -16,8 +15,6 @@ func Test_InitSysEventer(t *testing.T) {
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	testConfig := TestEventerConfig(t, "InitSysEventer")
-	defer os.Remove(testConfig.AllEvents.Name())   // just to be sure it's gone after all the tests are done.
-	defer os.Remove(testConfig.ErrorEvents.Name()) // just to be sure it's gone after all the tests are done.
 
 	tests := []struct {
 		name         string
@@ -115,8 +112,6 @@ func TestEventer_writeObservation(t *testing.T) {
 func Test_NewEventer(t *testing.T) {
 	t.Parallel()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
-	defer os.Remove(testSetup.AllEvents.Name())
-	defer os.Remove(testSetup.ErrorEvents.Name())
 
 	tests := []struct {
 		name           string
@@ -133,6 +128,7 @@ func Test_NewEventer(t *testing.T) {
 			config: EventerConfig{
 				AuditDelivery: "invalid",
 			},
+			logger:       hclog.Default(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
