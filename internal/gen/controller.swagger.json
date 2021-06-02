@@ -3200,6 +3200,14 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific ManagedGroup type."
         },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of the current set of members (accounts) that are associated with this ManagedGroup.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

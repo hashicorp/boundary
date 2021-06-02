@@ -91,7 +91,7 @@ func (c *StaticCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "static-type host", flagsStaticMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "static-type host", flagsStaticMap, c.Func)
 
 	extraStaticFlagsFunc(c, set, f)
 

@@ -91,7 +91,7 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "oidc-type account", flagsOidcMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "oidc-type account", flagsOidcMap, c.Func)
 
 	extraOidcFlagsFunc(c, set, f)
 

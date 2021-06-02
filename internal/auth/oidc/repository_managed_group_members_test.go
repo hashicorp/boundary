@@ -258,6 +258,18 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 			// been in the finalMgs map, and when they are all removed there
 			// should be nothing left.
 			for _, mship := range memberships {
+				// Randomly check a few to ensure the MembershipsByGroup function works
+				members, err := repo.ListManagedGroupMembershipsByGroup(ctx, mship.ManagedGroupId)
+				require.NoError(err)
+				require.NotEmpty(members)
+				var found bool
+				for _, v := range members {
+					if v.MemberId == tt.account.GetPublicId() {
+						found = true
+						break
+					}
+				}
+				assert.True(found)
 				assert.Contains(finalMgs, mship.ManagedGroupId)
 				delete(finalMgs, mship.ManagedGroupId)
 			}

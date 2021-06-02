@@ -214,3 +214,28 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 	}
 	return mgs, nil
 }
+
+// ListManagedGroupMembershipsByGroup lists managed group memberships via the
+// group ID and supports WithLimit option.
+func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, withGroupId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
+	const op = "oidc.(Repository).ListManagedGroupMembershipsByGroup"
+	if withGroupId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing managed group id")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	reader := r.reader
+	if opts.withReader != nil {
+		reader = opts.withReader
+	}
+	var mgs []*ManagedGroupMemberAccount
+	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []interface{}{withGroupId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return mgs, nil
+}

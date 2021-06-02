@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
@@ -294,6 +295,28 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs:            []string{"account"},
+		parentTypeName:      "auth-method",
+		versionEnabled:      true,
+		createResponseTypes: true,
+	},
+	// Managed Groups
+	{
+		inProto:     &managedgroups.OidcManagedGroupAttributes{},
+		outFile:     "managedgroups/oidc_managed_group_attributes.gen.go",
+		subtypeName: "OidcManagedGroup",
+	},
+	{
+		inProto: &managedgroups.ManagedGroup{},
+		outFile: "managedgroups/managedgroups.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"managed-group"},
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
