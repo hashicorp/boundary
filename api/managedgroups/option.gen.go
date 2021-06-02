@@ -110,18 +110,6 @@ func WithOidcManagedGroupFilter(inFilter string) Option {
 	}
 }
 
-func DefaultOidcManagedGroupFilter() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["filter"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName

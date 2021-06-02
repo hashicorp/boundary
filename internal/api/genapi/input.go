@@ -88,6 +88,10 @@ type structInfo struct {
 	// conveyed within the item itself
 	extraOptions []fieldInfo
 
+	// fieldOverrides allows overriding some field behavior without making them
+	// "new" fields like with extraOptions
+	fieldOverrides []fieldInfo
+
 	// createResponseTypes controls for which structs response types are created
 	createResponseTypes bool
 
@@ -304,6 +308,12 @@ var inputStructs = []*structInfo{
 		inProto:     &managedgroups.OidcManagedGroupAttributes{},
 		outFile:     "managedgroups/oidc_managed_group_attributes.gen.go",
 		subtypeName: "OidcManagedGroup",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Filter",
+				SkipDefault: true,
+			},
+		},
 	},
 	{
 		inProto: &managedgroups.ManagedGroup{},
