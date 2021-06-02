@@ -106,18 +106,33 @@ func TestGet(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 	omg := oidc.TestManagedGroup(t, conn, oidcAm, testFakeManagedGroupFilter)
+
+	// Set up managed group before getting. First get the current
+	// managed group to make sure we have the right version, then ensure
+	// the account is a member so we can test that return value.
+	oidcRepo, err := oidcRepoFn()
+	require.NoError(t, err)
+	currMg, err := oidcRepo.LookupManagedGroup(ctx, omg.GetPublicId())
+	require.NoError(t, err)
+	_, _, err = oidcRepo.SetManagedGroupMemberships(ctx, oidcAm, oidcA, []*oidc.ManagedGroup{currMg})
+	require.NoError(t, err)
+	// Fetch the group once more to get the updated time
+	currMg, err = oidcRepo.LookupManagedGroup(ctx, omg.GetPublicId())
+	require.NoError(t, err)
 
 	oidcWireManagedGroup := pb.ManagedGroup{
 		Id:                omg.GetPublicId(),
 		AuthMethodId:      omg.GetAuthMethodId(),
 		CreatedTime:       omg.GetCreateTime().GetTimestamp(),
-		UpdatedTime:       omg.GetUpdateTime().GetTimestamp(),
+		UpdatedTime:       currMg.GetUpdateTime().GetTimestamp(),
 		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		Version:           1,
+		Version:           currMg.Version,
 		Type:              "oidc",
 		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"filter": structpb.NewStringValue(omg.GetFilter())}},
 		AuthorizedActions: oidcAuthorizedActions,
+		MemberIds:         []string{oidcA.GetPublicId()},
 	}
 
 	cases := []struct {

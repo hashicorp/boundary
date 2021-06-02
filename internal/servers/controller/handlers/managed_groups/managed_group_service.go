@@ -145,7 +145,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	mg, err := s.getFromRepo(ctx, req.GetId())
+	mg, memberIds, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +162,9 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, mg.GetPublicId(), IdActions[auth.SubtypeFromId(mg.GetPublicId())]).Strings()))
+	}
+	if outputFields.Has(globals.MemberIdsField) {
+		outputOpts = append(outputOpts, handlers.WithMemberIds(memberIds))
 	}
 
 	item, err := toProto(ctx, mg, outputOpts...)
@@ -266,26 +269,37 @@ func (s Service) DeleteManagedGroup(ctx context.Context, req *pbs.DeleteManagedG
 	return nil, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup, []string, error) {
 	var out auth.ManagedGroup
+	var memberIds []string
 	switch auth.SubtypeFromId(id) {
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		mg, err := repo.LookupManagedGroup(ctx, id)
 		if err != nil {
 			if errors.IsNotFoundError(err) {
-				return nil, handlers.NotFoundErrorf("ManagedGroup %q doesn't exist.", id)
+				return nil, nil, handlers.NotFoundErrorf("ManagedGroup %q doesn't exist.", id)
 			}
-			return nil, err
+			return nil, nil, err
+		}
+		ids, err := repo.ListManagedGroupMembershipsByGroup(ctx, mg.GetPublicId())
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(ids) > 0 {
+			memberIds = make([]string, len(ids))
+			for i, v := range ids {
+				memberIds[i] = v.MemberId
+			}
 		}
 		out = mg
 	default:
-		return nil, handlers.NotFoundErrorf("Unrecognized id.")
+		return nil, nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
-	return out, nil
+	return out, memberIds, nil
 }
 
 func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (*oidc.ManagedGroup, error) {
@@ -528,6 +542,9 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
+	}
+	if outputFields.Has(globals.MemberIdsField) {
+		out.MemberIds = opts.WithMemberIds
 	}
 	switch i := in.(type) {
 	case *oidc.ManagedGroup:

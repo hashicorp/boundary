@@ -72,4 +72,16 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithManagedGroupIds(out))
 		require.Equal(out, opts.WithManagedGroupIds)
 	})
+	t.Run("WithMemberIds", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithMemberIds)
+
+		out := []string{"foobar"}
+
+		opts = GetOpts(WithMemberIds(out))
+		require.Equal(out, opts.WithMemberIds)
+	})
 }

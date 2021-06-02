@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostsets"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
@@ -86,6 +87,10 @@ type structInfo struct {
 	// given type, e.g. arguments only valid for one call or purpose and not
 	// conveyed within the item itself
 	extraOptions []fieldInfo
+
+	// fieldOverrides allows overriding some field behavior without making them
+	// "new" fields like with extraOptions
+	fieldOverrides []fieldInfo
 
 	// createResponseTypes controls for which structs response types are created
 	createResponseTypes bool
@@ -294,6 +299,34 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs:            []string{"account"},
+		parentTypeName:      "auth-method",
+		versionEnabled:      true,
+		createResponseTypes: true,
+	},
+	// Managed Groups
+	{
+		inProto:     &managedgroups.OidcManagedGroupAttributes{},
+		outFile:     "managedgroups/oidc_managed_group_attributes.gen.go",
+		subtypeName: "OidcManagedGroup",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Filter",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &managedgroups.ManagedGroup{},
+		outFile: "managedgroups/managedgroups.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:            []string{"managed-group"},
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
