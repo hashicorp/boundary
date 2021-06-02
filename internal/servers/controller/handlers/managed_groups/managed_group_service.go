@@ -72,7 +72,7 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 }
 
-// NewService returns a user service which handles user related requests to boundary.
+// NewService returns a managed group service which handles managed group related requests to boundary.
 func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	const op = "managed_groups.NewService"
 	if oidcRepo == nil {
