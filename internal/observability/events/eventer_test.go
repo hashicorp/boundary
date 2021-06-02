@@ -86,6 +86,7 @@ func Test_InitSysEventer(t *testing.T) {
 }
 
 func TestEventer_writeObservation(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -178,6 +179,7 @@ func Test_NewEventer(t *testing.T) {
 }
 
 func TestEventer_Reopen(t *testing.T) {
+	t.Parallel()
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
@@ -204,4 +206,36 @@ func (b *testReopenBroker) Reopen(ctx context.Context) error {
 
 func (b *testReopenBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
 	return eventlogger.Status{}, nil
+}
+
+func TestEventer_FlushNodes(t *testing.T) {
+	t.Parallel()
+	t.Run("simple", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		e, err := NewEventer(hclog.Default(), EventerConfig{})
+		require.NoError(err)
+
+		node := &testFlushNode{}
+		e.flushableNodes = append(e.flushableNodes, node)
+		require.NoError(e.FlushNodes(context.Background()))
+
+		node.raiseError = true
+		require.Error(e.FlushNodes(context.Background()))
+
+		assert.True(node.flushed)
+	})
+}
+
+type testFlushNode struct {
+	flushed    bool
+	raiseError bool
+}
+
+func (t *testFlushNode) FlushAll(_ context.Context) error {
+	t.flushed = true
+	if t.raiseError {
+		return errors.New(errors.InvalidParameter, "flush-all", "test error")
+	}
+	return nil
 }
