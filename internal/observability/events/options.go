@@ -1,6 +1,8 @@
 package event
 
-import "time"
+import (
+	"time"
+)
 
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
@@ -25,6 +27,7 @@ type options struct {
 	withRequest     *Request
 	withResponse    *Response
 	withAuth        *Auth
+	withBroker      broker // test only option
 }
 
 func getDefaultOptions() options {
