@@ -38,12 +38,12 @@ service ManagedGroupService {
     };
   }
 
-  // CreateManagedGroup creates and stores an ManagedGroup in boundary. The provided
-  // request must include the Auth Method ID in which the ManagedGroup will be
-  // created. If the Auth Method ID is missing, malformed, or references a non
-  // existing resource an error is returned. If a name or login_name is
-  // provided that is in use in another ManagedGroup in the same Auth Method an
-  // error is returned.
+  // CreateManagedGroup creates and stores a ManagedGroup. The provided request
+  // must include the Auth Method ID in which the ManagedGroup will be created.
+  // If the Auth Method ID is missing, malformed, or references a non existing
+  // resource an error is returned. If a name or login_name is provided that is
+  // in use in another ManagedGroup in the same Auth Method an error is
+  // returned.
   rpc CreateManagedGroup(CreateManagedGroupRequest) returns (CreateManagedGroupResponse) {
     option (google.api.http) = {
       post: "/v1/managed-groups"
@@ -55,14 +55,14 @@ service ManagedGroupService {
     };
   }
 
-  // UpdateManagedGroup updates an existing ManagedGroup in boundary. The
-  // provided ManagedGroup must not have any read only fields set. The update
-  // mask must be included in the request and contain at least 1 mutable field.
-  // To unset a field's value, include the field in the update mask and don't
-  // set it in the provided ManagedGroup. An error is returned if the
-  // ManagedGroup id is missing or references a non-existing resource. An error
-  // is also returned if the request attempts to update the name to one that is
-  // already in use in the containing Auth Method.
+  // UpdateManagedGroup updates an existing ManagedGroup. The provided
+  // ManagedGroup must not have any read only fields set. The update mask must
+  // be included in the request and contain at least 1 mutable field. To unset a
+  // field's value, include the field in the update mask and don't set it in the
+  // provided ManagedGroup. An error is returned if the ManagedGroup id is
+  // missing or references a non-existing resource. An error is also returned if
+  // the request attempts to update the name to one that is already in use in
+  // the containing Auth Method.
   rpc UpdateManagedGroup(UpdateManagedGroupRequest) returns (UpdateManagedGroupResponse) {
     option (google.api.http) = {
       patch: "/v1/managed-groups/{id}"
@@ -74,7 +74,7 @@ service ManagedGroupService {
     };
   }
 
-  // DeleteManagedGroup removes an ManagedGroup from Boundary. If the provided ManagedGroup Id
+  // DeleteManagedGroup removes a ManagedGroup. If the provided ManagedGroup Id
   // is malformed or not provided an error is returned.
   rpc DeleteManagedGroup(DeleteManagedGroupRequest) returns (DeleteManagedGroupResponse) {
     option (google.api.http) = {
