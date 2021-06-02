@@ -865,3 +865,39 @@ func TestGroupRole_SetTableName(t *testing.T) {
 		})
 	}
 }
+
+func TestManagedGroupRole_SetTableName(t *testing.T) {
+	defaultTableName := managedGroupRoleDefaultTable
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := AllocManagedGroupRole()
+			require.Equal(defaultTableName, def.TableName())
+			s := &ManagedGroupRole{
+				ManagedGroupRole: &store.ManagedGroupRole{},
+				tableName:        tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}

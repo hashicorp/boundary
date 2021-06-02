@@ -13,10 +13,10 @@ import (
 type RoleType uint32
 
 const (
-	UnknownRoleType  RoleType = 0
-	UserRoleType     RoleType = 1
-	GroupRoleType    RoleType = 2
-	ManagedGroupType RoleType = 3
+	UnknownRoleType      RoleType = 0
+	UserRoleType         RoleType = 1
+	GroupRoleType        RoleType = 2
+	ManagedGroupRoleType RoleType = 3
 )
 
 // String returns a string representation of the role type.

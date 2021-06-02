@@ -162,11 +162,11 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
-	userIds, groupIds, _, err := splitPrincipals(principalIds)
+	userIds, groupIds, managedGroupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds)
+	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds, managedGroupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -219,7 +219,9 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			msgs = append(msgs, &roleOplogMsg)
 
-			if len(toSet.deleteUserRoles) > 0 || len(toSet.deleteGroupRoles) > 0 {
+			if len(toSet.deleteUserRoles) > 0 ||
+				len(toSet.deleteGroupRoles) > 0 ||
+				len(toSet.deleteManagedGroupRoles) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 				if len(toSet.deleteUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.deleteUserRoles))
@@ -245,8 +247,22 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, grpOplogMsgs...)
 				}
+				if len(toSet.deleteManagedGroupRoles) > 0 {
+					managedGrpOplogMsgs := make([]*oplog.Message, 0, len(toSet.deleteManagedGroupRoles))
+					rowsDeleted, err := w.DeleteItems(ctx, toSet.deleteManagedGroupRoles, db.NewOplogMsgs(&managedGrpOplogMsgs))
+					if err != nil {
+						return errors.Wrap(err, op, errors.WithMsg("unable to delete managed groups"))
+					}
+					if rowsDeleted != len(toSet.deleteManagedGroupRoles) {
+						return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(toSet.deleteManagedGroupRoles)))
+					}
+					totalRowsAffected += rowsDeleted
+					msgs = append(msgs, managedGrpOplogMsgs...)
+				}
 			}
-			if len(toSet.addUserRoles) > 0 || len(toSet.addGroupRoles) > 0 {
+			if len(toSet.addUserRoles) > 0 ||
+				len(toSet.addGroupRoles) > 0 ||
+				len(toSet.addManagedGroupRoles) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				if len(toSet.addUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.addUserRoles))
@@ -263,6 +279,14 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					}
 					totalRowsAffected += len(toSet.addGroupRoles)
 					msgs = append(msgs, grpOplogMsgs...)
+				}
+				if len(toSet.addManagedGroupRoles) > 0 {
+					managedGrpOplogMsgs := make([]*oplog.Message, 0, len(toSet.addManagedGroupRoles))
+					if err := w.CreateItems(ctx, toSet.addManagedGroupRoles, db.NewOplogMsgs(&managedGrpOplogMsgs)); err != nil {
+						return errors.Wrap(err, op, errors.WithMsg("unable to add managed groups"))
+					}
+					totalRowsAffected += len(toSet.addManagedGroupRoles)
+					msgs = append(msgs, managedGrpOplogMsgs...)
 				}
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
@@ -398,7 +422,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete managed groups"))
 				}
 				if rowsDeleted != len(deleteManagedGrpRoles) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(deleteGrpRoles)))
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(deleteManagedGrpRoles)))
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, managedGrpOplogMsgs...)
@@ -437,17 +461,19 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 }
 
 type principalSet struct {
-	addUserRoles     []interface{}
-	addGroupRoles    []interface{}
-	deleteUserRoles  []interface{}
-	deleteGroupRoles []interface{}
+	addUserRoles            []interface{}
+	addGroupRoles           []interface{}
+	addManagedGroupRoles    []interface{}
+	deleteUserRoles         []interface{}
+	deleteGroupRoles        []interface{}
+	deleteManagedGroupRoles []interface{}
 	// unchangedPrincipalRoles is set iff there are no changes, that is, the
 	// length of all other members is zero
 	unchangedPrincipalRoles []PrincipalRole
 }
 
 // TODO: Should this be moved inside the transaction, at this point?
-func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
+func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds, managedGroupIds []string) (*principalSet, error) {
 	const op = "iam.(Repository).principalsToSet"
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	if role == nil {
@@ -459,12 +485,15 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 	existingUsers := map[string]PrincipalRole{}
 	existingGroups := map[string]PrincipalRole{}
+	existingManagedGroups := map[string]PrincipalRole{}
 	for _, p := range existing {
 		switch p.GetType() {
 		case UserRoleType.String():
 			existingUsers[p.PrincipalId] = p
 		case GroupRoleType.String():
 			existingGroups[p.PrincipalId] = p
+		case ManagedGroupRoleType.String():
+			existingManagedGroups[p.PrincipalId] = p
 		default:
 			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
 		}
@@ -493,6 +522,18 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 			newGrpRoles = append(newGrpRoles, grpRole)
 		}
 	}
+	var newManagedGrpRoles []interface{}
+	managedGroupIdsMap := map[string]struct{}{}
+	for _, id := range managedGroupIds {
+		managedGroupIdsMap[id] = struct{}{}
+		if _, ok := existingManagedGroups[id]; !ok {
+			managedGrpRole, err := NewManagedGroupRole(role.PublicId, id)
+			if err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory managed group role for add"))
+			}
+			newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
+		}
+	}
 	var deleteUserRoles []interface{}
 	for _, p := range existingUsers {
 		if _, ok := userIdsMap[p.PrincipalId]; !ok {
@@ -513,15 +554,32 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteGrpRoles = append(deleteGrpRoles, grpRole)
 		}
 	}
-
-	toSet := &principalSet{
-		addUserRoles:     newUserRoles,
-		addGroupRoles:    newGrpRoles,
-		deleteUserRoles:  deleteUserRoles,
-		deleteGroupRoles: deleteGrpRoles,
+	var deleteManagedGrpRoles []interface{}
+	for _, p := range existingManagedGroups {
+		if _, ok := managedGroupIdsMap[p.PrincipalId]; !ok {
+			managedGrpRole, err := NewManagedGroupRole(p.GetRoleId(), p.GetPrincipalId())
+			if err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory managed group role for delete"))
+			}
+			deleteManagedGrpRoles = append(deleteManagedGrpRoles, managedGrpRole)
+		}
 	}
 
-	if len(toSet.addUserRoles) == 0 && len(toSet.addGroupRoles) == 0 && len(toSet.deleteUserRoles) == 0 && len(toSet.deleteGroupRoles) == 0 {
+	toSet := &principalSet{
+		addUserRoles:            newUserRoles,
+		addGroupRoles:           newGrpRoles,
+		addManagedGroupRoles:    newManagedGrpRoles,
+		deleteUserRoles:         deleteUserRoles,
+		deleteGroupRoles:        deleteGrpRoles,
+		deleteManagedGroupRoles: deleteManagedGrpRoles,
+	}
+
+	if len(toSet.addUserRoles) == 0 &&
+		len(toSet.addGroupRoles) == 0 &&
+		len(toSet.addManagedGroupRoles) == 0 &&
+		len(toSet.deleteUserRoles) == 0 &&
+		len(toSet.deleteGroupRoles) == 0 &&
+		len(toSet.deleteManagedGroupRoles) == 0 {
 		toSet.unchangedPrincipalRoles = existing
 	}
 

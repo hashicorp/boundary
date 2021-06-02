@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // This is in an iam_test package because managed groups are an abstract type so
@@ -250,23 +251,37 @@ func TestManagedGroupRole_Create(t *testing.T) {
 	}
 }
 
-/*
 func TestManagedGroupRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrapper)
-	org, _ := TestScopes(t, repo)
 	rw := db.New(conn)
+
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	repo := iam.TestRepo(t, conn, wrap)
+	org, _ := iam.TestScopes(t, repo)
+
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, org.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
 
 	t.Run("updates not allowed", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		r := TestRole(t, conn, org.PublicId)
-		g := TestManagedGroup(t, conn, org.PublicId)
-		g2 := TestManagedGroup(t, conn, org.PublicId)
-		ManagedGroupRole := TestManagedGroupRole(t, conn, r.PublicId, g.PublicId)
-		updateRole := ManagedGroupRole.Clone().(*ManagedGroupRole)
-		updateRole.PrincipalId = g2.PublicId
+		r := iam.TestRole(t, conn, org.PublicId)
+		mg := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter)
+		mg2 := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter)
+		mgr := iam.TestManagedGroupRole(t, conn, r.PublicId, mg.PublicId)
+		updateRole := mgr.Clone().(*iam.ManagedGroupRole)
+		updateRole.PrincipalId = mg2.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
 		require.Error(err)
 		assert.Equal(0, updatedRows)
@@ -276,31 +291,47 @@ func TestManagedGroupRole_Update(t *testing.T) {
 func TestManagedGroupRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
+
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	repo := iam.TestRepo(t, conn, wrap)
+	org, _ := iam.TestScopes(t, repo)
+
+	ctx := context.Background()
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, org.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	id := testId(t)
-	org, _ := TestScopes(t, repo)
-	g := TestManagedGroup(t, conn, org.PublicId)
-	r := TestRole(t, conn, org.PublicId)
+	mg := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter)
+	r := iam.TestRole(t, conn, org.PublicId)
 
 	tests := []struct {
 		name            string
-		role            *ManagedGroupRole
+		role            *iam.ManagedGroupRole
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
 	}{
 		{
 			name:            "valid",
-			role:            TestManagedGroupRole(t, conn, r.PublicId, g.PublicId),
+			role:            iam.TestManagedGroupRole(t, conn, r.PublicId, mg.PublicId),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name: "bad-id",
-			role: func() *ManagedGroupRole {
-				r := allocManagedGroupRole()
+			role: func() *iam.ManagedGroupRole {
+				r := iam.AllocManagedGroupRole()
 				r.PrincipalId = id
 				r.RoleId = id
 				return &r
@@ -312,7 +343,7 @@ func TestManagedGroupRole_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteRole := allocManagedGroupRole()
+			deleteRole := iam.AllocManagedGroupRole()
 			deleteRole.RoleId = tt.role.GetRoleId()
 			deleteRole.PrincipalId = tt.role.GetPrincipalId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
@@ -326,7 +357,7 @@ func TestManagedGroupRole_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			found := allocManagedGroupRole()
+			found := iam.AllocManagedGroupRole()
 			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
@@ -336,64 +367,21 @@ func TestManagedGroupRole_Delete(t *testing.T) {
 
 func TestManagedGroupRole_Clone(t *testing.T) {
 	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	repo := TestRepo(t, conn, wrapper)
-	org, proj := TestScopes(t, repo)
 	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
-		grp := TestManagedGroup(t, conn, org.PublicId)
-		role := TestRole(t, conn, org.PublicId)
-		grpRole := TestManagedGroupRole(t, conn, role.PublicId, grp.PublicId)
-		cp := grpRole.Clone()
-		assert.True(proto.Equal(cp.(*ManagedGroupRole).ManagedGroupRole, grpRole.ManagedGroupRole))
+		assert, require := assert.New(t), require.New(t)
+		mgr, err := iam.NewManagedGroupRole("r_abc", "mgoidc_abc")
+		require.NoError(err)
+		cp := mgr.Clone()
+		assert.True(proto.Equal(cp.(*iam.ManagedGroupRole).ManagedGroupRole, mgr.ManagedGroupRole))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
-		grp := TestManagedGroup(t, conn, org.PublicId)
-		grp2 := TestManagedGroup(t, conn, proj.PublicId)
-		role := TestRole(t, conn, org.PublicId)
-		role2 := TestRole(t, conn, proj.PublicId)
-		grpRole := TestManagedGroupRole(t, conn, role.PublicId, grp.PublicId)
-		grpRole2 := TestManagedGroupRole(t, conn, role2.PublicId, grp2.PublicId)
-		cp := grpRole.Clone()
-		assert.True(!proto.Equal(cp.(*ManagedGroupRole).ManagedGroupRole, grpRole2.ManagedGroupRole))
+		assert, require := assert.New(t), require.New(t)
+		mgr, err := iam.NewManagedGroupRole("r_abc", "mgoidc_abc")
+		require.NoError(err)
+		mgr2, err := iam.NewManagedGroupRole("r_xyz", "mgoidc_xyz")
+		require.NoError(err)
+		cp := mgr.Clone()
+
+		assert.True(!proto.Equal(cp.(*iam.ManagedGroupRole).ManagedGroupRole, mgr2.ManagedGroupRole))
 	})
 }
-
-func TestManagedGroupRole_SetTableName(t *testing.T) {
-	defaultTableName := ManagedGroupRoleDefaultTable
-	tests := []struct {
-		name        string
-		initialName string
-		setNameTo   string
-		want        string
-	}{
-		{
-			name:        "new-name",
-			initialName: "",
-			setNameTo:   "new-name",
-			want:        "new-name",
-		},
-		{
-			name:        "reset to default",
-			initialName: "initial",
-			setNameTo:   "",
-			want:        defaultTableName,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			def := allocManagedGroupRole()
-			require.Equal(defaultTableName, def.TableName())
-			s := &ManagedGroupRole{
-				ManagedGroupRole: &store.ManagedGroupRole{},
-				tableName:        tt.initialName,
-			}
-			s.SetTableName(tt.setNameTo)
-			assert.Equal(tt.want, s.TableName())
-		})
-	}
-}
-*/

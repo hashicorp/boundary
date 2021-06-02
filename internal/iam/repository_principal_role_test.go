@@ -700,6 +700,14 @@ func TestRepository_principalsToSet(t *testing.T) {
 		}
 		return results
 	}
+	createManagedGrpsFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			g := TestGroup(t, conn, proj.PublicId)
+			results = append(results, g.PublicId)
+		}
+		return results
+	}
 	setupFn := func() (*Role, []string, []string) {
 		users := createUsersFn()
 		grps := createGrpsFn()
