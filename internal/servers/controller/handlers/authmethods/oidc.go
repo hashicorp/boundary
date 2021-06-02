@@ -36,7 +36,7 @@ const (
 	stateField                             = "attributes.state"
 	callbackUrlField                       = "attributes.callback_url"
 	apiUrlPrefixField                      = "attributes.api_url_prefix"
-	caCertsField                           = "attributes.ca_certs"
+	idpCaCertsField                        = "attributes.idp_ca_certs"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"
@@ -483,14 +483,14 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			if len(acm) > 1 {
 				return nil, false, false, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
 			}
-			var from, rawTo string
-			for from, rawTo = range acm {
+			var m oidc.ClaimMap
+			for _, m = range acm {
 			}
-			to, err := oidc.ConvertToAccountToClaim(rawTo)
+			to, err := oidc.ConvertToAccountToClaim(m.To)
 			if err != nil {
 				return nil, false, false, errors.Wrap(err, op)
 			}
-			claimsMap[from] = to
+			claimsMap[m.From] = to
 		}
 		opts = append(opts, oidc.WithAccountClaimMap(claimsMap))
 	}
