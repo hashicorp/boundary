@@ -578,10 +578,10 @@ func Test_convertValueObjects(t *testing.T) {
 	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
 	acms, err := ParseAccountClaimMaps(testClaimMaps...)
 	require.NoError(t, err)
-	for from, to := range acms {
-		toClaim, err := ConvertToAccountToClaim(to)
+	for _, m := range acms {
+		toClaim, err := ConvertToAccountToClaim(m.To)
 		require.NoError(t, err)
-		obj, err := NewAccountClaimMap(testPublicId, from, toClaim)
+		obj, err := NewAccountClaimMap(testPublicId, m.From, toClaim)
 		require.NoError(t, err)
 		testAccountClaimMaps = append(testAccountClaimMaps, obj)
 	}
