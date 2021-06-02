@@ -2,15 +2,6 @@ package event
 
 import "google.golang.org/protobuf/proto"
 
-type Type string
-
-const (
-	EveryType       Type = "*"
-	ObservationType Type = "observation"
-	AuditType       Type = "audit"
-	ErrorType       Type = "error"
-)
-
 type Id string
 type Op string
 
