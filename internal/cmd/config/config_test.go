@@ -126,7 +126,7 @@ func TestDevController(t *testing.T) {
 		assert.NoError(t, err)
 		l0 = actual.Listeners[0]
 		assert.True(t, *l0.CorsEnabled)
-		assert.Equal(t, []string{desktopCorsOrigin}, l0.CorsAllowedOrigins)
+		assert.Equal(t, []string{"*"}, l0.CorsAllowedOrigins)
 		assert.Nil(t, l0.CorsDisableDefaultAllowedOriginValues)
 
 		// Disabled, default behavior
