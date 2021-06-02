@@ -10,7 +10,7 @@ type tagInfo struct {
 	Operation      FilterOperation
 }
 
-func getClassificationFromTag(f reflect.StructTag) *tagInfo {
+func getClassificationFromTag(f reflect.StructTag, opt ...Option) *tagInfo {
 	t, ok := f.Lookup(DataClassificationTagName)
 
 	if !ok {
@@ -19,10 +19,10 @@ func getClassificationFromTag(f reflect.StructTag) *tagInfo {
 			Operation:      UnknownOperation,
 		}
 	}
-	return getClassificationFromTagString(t)
+	return getClassificationFromTagString(t, opt...)
 }
 
-func getClassificationFromTagString(tag string) *tagInfo {
+func getClassificationFromTagString(tag string, opt ...Option) *tagInfo {
 	const op = "node.getClassificationFromTagString"
 	segs := strings.Split(tag, ",")
 
@@ -45,7 +45,16 @@ func getClassificationFromTagString(tag string) *tagInfo {
 		operation = NoOperation
 	}
 
-	switch DataClassification(segs[0]) {
+	classification := DataClassification(segs[0])
+	opts := getOpts(opt...)
+	if operationOverride, ok := opts.withFilterOperations[classification]; ok {
+		return &tagInfo{
+			Classification: classification,
+			Operation:      operationOverride,
+		}
+	}
+
+	switch classification {
 	case PublicClassification:
 		return &tagInfo{
 			Classification: PublicClassification,

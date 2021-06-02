@@ -45,6 +45,18 @@ type AuditEncryptFilter struct {
 	// specific event.
 	HmacInfo []byte
 
+	// FilterOperationOverrides provide an optional a set of runtime overrides
+	// for the FilterOperations to be applied to DataClassifications.
+	//
+	// Normally, the filter operation applied to a field is determined by the
+	// operation specified in it's "classified" tag. If no operation is
+	// specified in the tag, then a set of reasonable default filter operations
+	// are applied.
+	//
+	// FilterOperationOverrides provides the ability to override an event's
+	// "classified" tag settings.
+	FilterOperationOverrides map[DataClassification]FilterOperation
+
 	l sync.RWMutex
 }
 
