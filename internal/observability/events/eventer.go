@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
@@ -21,21 +20,10 @@ const (
 	IdField          = "id"           // IdField in an event.
 	CreatedAtField   = "created_at"   // CreatedAtField in an event.
 	TypeField        = "type"         // TypeField in an event.
-)
 
-type SinkType string          // SinkType defines the type of sink in a config stanza (file, stdout)
-type SinkFormat string        // SinkFormat defines the formatting for a sink in a config file stanza (json)
-type DeliveryGuarantee string // DeliveryGuarantee defines the guarantees around delivery of an event type within config
-
-const (
-	StdoutSink          SinkType          = "stdout"               // StdoutSink is written to stdout
-	FileSink            SinkType          = "file"                 // FileSink is written to a file
-	JSONSinkFormat      SinkFormat        = "json"                 // JSONSinkFormat means the event is formatted as JSON
-	Enforced            DeliveryGuarantee = "enforced"             // Enforced means that a delivery guarantee is enforced
-	BestEffort          DeliveryGuarantee = "best-effort"          // BestEffort means that a best effort will be made to deliver an event
-	AuditPipeline                         = "audit-pipeline"       // AuditPipeline is a pipeline for audit events
-	ObservationPipeline                   = "observation-pipeline" // ObservationPipeline is a pipeline for observation events
-	ErrPipeline                           = "err-pipeline"         // ErrPipeline is a pipeline for error events
+	AuditPipeline       = "audit-pipeline"       // AuditPipeline is a pipeline for audit events
+	ObservationPipeline = "observation-pipeline" // ObservationPipeline is a pipeline for observation events
+	ErrPipeline         = "err-pipeline"         // ErrPipeline is a pipeline for error events
 )
 
 // flushable defines an interface that all eventlogger Nodes must implement if
@@ -58,28 +46,6 @@ type Eventer struct {
 	flushableNodes []flushable
 	conf           EventerConfig
 	logger         hclog.Logger
-}
-
-// SinkConfig defines the configuration for a Eventer sink
-type SinkConfig struct {
-	Name           string        // Name defines a name for the sink.
-	EventTypes     []Type        // EventTypes defines a list of event types that will be sent to the sink. See the docs for EventTypes for a list of accepted values.
-	SinkType       SinkType      // SinkType defines the type of sink (StdoutSink or FileSink)
-	Format         SinkFormat    // Format defines the format for the sink (JSONSinkFormat)
-	Path           string        // Path defines the file path for the sink
-	FileName       string        // FileName defines the file name for the sink
-	RotateBytes    int           // RotateByes defines the number of bytes that should trigger rotation of a FileSink
-	RotateDuration time.Duration // RotateDuration defines how often a FileSink should be rotated
-	RotateMaxFiles int           // RotateMaxFiles defines how may historical rotated files should be kept for a FileSink
-}
-
-// EventerConfig supplies all the configuration needed to create/config an Eventer.
-type EventerConfig struct {
-	AuditDelivery       DeliveryGuarantee // AuditDelivery specifies the delivery guarantees for audit events (enforced or best effort).
-	ObservationDelivery DeliveryGuarantee // ObservationDelivery specifies the delivery guarantees for observation events (enforced or best effort).
-	AuditEnabled        bool              // AuditEnabled specifies if audit events should be emitted.
-	ObservationsEnabled bool              // ObservationsEnabled specifies if observation events should be emitted.
-	Sinks               []SinkConfig      // Sinks are all the configured sinks
 }
 
 var sysEventer *Eventer      // sysEventer is the system-wide Eventer
@@ -117,6 +83,21 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
 	}
 
+	// if there are no sinks in config, then we'll default to just one stdout
+	// sink.
+	if len(c.Sinks) == 0 {
+		c.Sinks = append(c.Sinks, SinkConfig{
+			Name:       "default",
+			EventTypes: []Type{EveryType},
+			Format:     JSONSinkFormat,
+			SinkType:   StdoutSink,
+		})
+	}
+
+	if err := c.validate(); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
 	type pipeline struct {
 		eventType Type
 		fmtId     eventlogger.NodeID
@@ -141,17 +122,6 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	err = broker.RegisterNode(jsonfmtId, fmtNode)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to register json node")
-	}
-
-	// if there are no sinks in config, then we'll default to just one stdout
-	// sink.
-	if len(c.Sinks) == 0 {
-		c.Sinks = append(c.Sinks, SinkConfig{
-			Name:       "default",
-			EventTypes: []Type{EveryType},
-			Format:     JSONSinkFormat,
-			SinkType:   StdoutSink,
-		})
 	}
 
 	for _, s := range c.Sinks {
