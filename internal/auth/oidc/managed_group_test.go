@@ -26,7 +26,7 @@ func Test_ManagedGroups_RepoValidate(t *testing.T) {
 	})
 	t.Run("valid", func(t *testing.T) {
 		mg.AuthMethodId = "amoidc_1234567890"
-		mg.Filter = testFakeFilter
+		mg.Filter = testFakeManagedGroupFilter
 		assert.NoError(mg.validate(op))
 	})
 }
