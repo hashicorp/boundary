@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
@@ -124,7 +125,8 @@ func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libr
 
 	ctx := context.Background()
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
 

@@ -3,6 +3,7 @@ package target
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
@@ -31,7 +32,7 @@ func NewCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*C
 		CredentialLibrary: &store.CredentialLibrary{
 			TargetId:            targetId,
 			CredentialLibraryId: credentialLibraryId,
-			CredentialPurpose:   "application", // application is the only purpose currently supported
+			CredentialPurpose:   string(credential.ApplicationPurpose), // application is the only purpose currently supported
 		},
 	}
 	return t, nil

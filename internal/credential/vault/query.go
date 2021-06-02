@@ -88,4 +88,38 @@ select *
   from credential_vault_library_private
  where public_id in (%s);
 `
+
+	updateSessionCredentialQuery = `
+update session_credential_dynamic
+   set credential_id = $1
+ where library_id = $2
+   and session_id = $3
+   and credential_purpose = $4
+   and credential_id is null
+returning *;
+`
+
+	updateTokenExpirationQuery = `
+update credential_vault_token 
+  set last_renewal_time = now(),
+  expiration_time = wt_add_seconds_to_now(?)
+  where token_hmac = ?;
+`
+
+	updateTokenStatusQuery = `
+update credential_vault_token 
+	set status = ? 
+	where token_hmac = ?;
+`
+
+	tokenRenewalNextRunInQuery = `
+select
+	extract(epoch from (last_renewal_time + (expiration_time - last_renewal_time) / 2) - now())::int as renewal_in
+  	from credential_vault_token
+ 	where expiration_time = (
+	  select min(expiration_time)
+  	    from credential_vault_token
+	    where status in ('current', 'maintaining')
+	);
+`
 )

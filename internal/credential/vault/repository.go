@@ -4,17 +4,16 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 )
-
-// RepositoryFactory is used by "service functions" to create a new oidc repo
-type RepositoryFactory func() (*Repository, error)
 
 // A Repository stores and retrieves the persistent types in the vault
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader db.Reader
-	writer db.Writer
-	kms    *kms.Kms
+	reader    db.Reader
+	writer    db.Writer
+	kms       *kms.Kms
+	scheduler *scheduler.Scheduler
 	// defaultLimit provides a default for limiting the number of results
 	// returned from the repo
 	defaultLimit int
@@ -24,7 +23,7 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, scheduler *scheduler.Scheduler, opt ...Option) (*Repository, error) {
 	const op = "vault.NewRepository"
 	switch {
 	case r == nil:
@@ -33,6 +32,8 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		return nil, errors.New(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "kms")
+	case scheduler == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "scheduler")
 	}
 
 	opts := getOpts(opt...)
@@ -45,6 +46,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		reader:       r,
 		writer:       w,
 		kms:          kms,
+		scheduler:    scheduler,
 		defaultLimit: opts.withLimit,
 	}, nil
 }

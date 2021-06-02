@@ -1,4 +1,4 @@
-package vault
+package vault_test
 
 import (
 	"context"
@@ -6,11 +6,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +24,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
 	v.MountDatabase(t)
 	v.MountPKI(t)
 
@@ -32,14 +35,16 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
 
-	secret := v.CreateToken(t, WithPolicies([]string{"default", "database", "pki"}))
+	secret := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
 	token := secret.Auth.ClientToken
 
-	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	assert.NoError(err)
 	require.NotNil(credStoreIn)
 	origStore, err := repo.CreateCredentialStore(ctx, credStoreIn)
@@ -56,7 +61,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	libs := make(map[libT]string)
 	{
 		libPath := path.Join("database", "creds", "opened")
-		libIn, err := NewCredentialLibrary(origStore.GetPublicId(), libPath)
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath)
 		assert.NoError(err)
 		require.NotNil(libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
@@ -66,7 +71,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	}
 	{
 		libPath := path.Join("pki", "issue", "boundary")
-		libIn, err := NewCredentialLibrary(origStore.GetPublicId(), libPath, WithMethod(MethodPost), WithRequestBody([]byte(`{"common_name":"boundary.com"}`)))
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, vault.WithMethod(vault.MethodPost), vault.WithRequestBody([]byte(`{"common_name":"boundary.com"}`)))
 		assert.NoError(err)
 		require.NotNil(libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
@@ -77,7 +82,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 
 		libPath := path.Join("pki", "issue", "boundary")
-		libIn, err := NewCredentialLibrary(origStore.GetPublicId(), libPath, WithMethod(MethodPost))
+		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, vault.WithMethod(vault.MethodPost))
 		assert.NoError(err)
 		require.NotNil(libIn)
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
@@ -95,163 +100,98 @@ func TestRepository_IssueCredentials(t *testing.T) {
 
 	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
 
+	rc2dc := func(rcs []credential.Request) []*session.DynamicCredential {
+		var dcs []*session.DynamicCredential
+		for _, rc := range rcs {
+			dc := &session.DynamicCredential{
+				LibraryId:         rc.SourceId,
+				CredentialPurpose: string(rc.Purpose),
+			}
+			dcs = append(dcs, dc)
+		}
+		return dcs
+	}
+
+	rc2nil := func(rcs []credential.Request) []*session.DynamicCredential { return nil }
+
 	tests := []struct {
-		name       string
-		libraryIds []string
-		wantErr    errors.Code
+		name      string
+		convertFn func(rcs []credential.Request) []*session.DynamicCredential
+		requests  []credential.Request
+		wantErr   errors.Code
 	}{
 		{
-			name:       "one-library-valid",
-			libraryIds: []string{libs[libDB]},
+			name:      "one-library-valid",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
+				},
+			},
 		},
 		{
-			name:       "multiple-valid-libraries",
-			libraryIds: []string{libs[libDB], libs[libPKI]},
+			name:      "multiple-valid-libraries",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
+				},
+				{
+					SourceId: libs[libPKI],
+					Purpose:  credential.IngressPurpose,
+				},
+			},
 		},
 		{
-			name:       "one-library-that-errors",
-			libraryIds: []string{libs[libErrPKI]},
-			wantErr:    errors.VaultCredentialRequest,
+			name:      "one-library-that-errors",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libErrPKI],
+					Purpose:  credential.IngressPurpose,
+				},
+			},
+			wantErr: errors.VaultCredentialRequest,
+		},
+		{
+			name:      "no-session-dynamic-credentials",
+			convertFn: rc2nil,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libDB],
+					Purpose:  credential.ApplicationPurpose,
+				},
+				{
+					SourceId: libs[libPKI],
+					Purpose:  credential.IngressPurpose,
+				},
+			},
+			wantErr: errors.InvalidDynamicCredential,
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
-				UserId:      uId,
-				HostId:      h.GetPublicId(),
-				TargetId:    tar.GetPublicId(),
-				HostSetId:   hs.GetPublicId(),
-				AuthTokenId: at.GetPublicId(),
-				ScopeId:     prj.GetPublicId(),
-				Endpoint:    "tcp://127.0.0.1:22",
+				UserId:             uId,
+				HostId:             h.GetPublicId(),
+				TargetId:           tar.GetPublicId(),
+				HostSetId:          hs.GetPublicId(),
+				AuthTokenId:        at.GetPublicId(),
+				ScopeId:            prj.GetPublicId(),
+				Endpoint:           "tcp://127.0.0.1:22",
+				DynamicCredentials: tt.convertFn(tt.requests),
 			})
-			got, err := repo.IssueCredentials(ctx, sess.GetPublicId(), tt.libraryIds)
+			got, err := repo.Issue(ctx, sess.GetPublicId(), tt.requests)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
 				return
 			}
-			assert.Len(got, len(tt.libraryIds))
+			assert.Len(got, len(tt.requests))
 			assert.NoError(err)
-		})
-	}
-}
-
-func TestRepository_getPrivateLibraries(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-
-	tests := []struct {
-		name string
-		tls  TestVaultTLS
-	}{
-		{
-			name: "no-tls-valid-token",
-		},
-		{
-			name: "server-tls-valid-token",
-			tls:  TestServerTLS,
-		},
-		{
-			name: "client-tls-valid-token",
-			tls:  TestClientTLS,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
-			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			kms := kms.TestKms(t, conn, wrapper)
-
-			repo, err := NewRepository(rw, rw, kms)
-			require.NoError(err)
-			require.NotNil(repo)
-
-			var opts []Option
-			if tt.tls == TestServerTLS {
-				opts = append(opts, WithCACert(v.CaCert))
-			}
-			if tt.tls == TestClientTLS {
-				opts = append(opts, WithCACert(v.CaCert))
-				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
-				require.NoError(err)
-				opts = append(opts, WithClientCert(clientCert))
-			}
-
-			secret := v.CreateToken(t)
-			token := secret.Auth.ClientToken
-
-			credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
-			assert.NoError(err)
-			require.NotNil(credStoreIn)
-			origStore, err := repo.CreateCredentialStore(ctx, credStoreIn)
-			assert.NoError(err)
-			require.NotNil(origStore)
-
-			origLookup, err := repo.LookupCredentialStore(ctx, origStore.GetPublicId())
-			assert.NoError(err)
-			require.NotNil(origLookup)
-			assert.NotNil(origLookup.Token())
-			assert.Equal(origStore.GetPublicId(), origLookup.GetPublicId())
-
-			libs := make(map[string]*CredentialLibrary, 3)
-			var libIds []string
-			{
-				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path")
-				assert.NoError(err)
-				require.NotNil(libIn)
-				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-				assert.NoError(err)
-				require.NotNil(lib)
-				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
-			}
-			{
-				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", WithMethod(MethodPost))
-				assert.NoError(err)
-				require.NotNil(libIn)
-				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-				assert.NoError(err)
-				require.NotNil(lib)
-				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
-			}
-			{
-				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", WithMethod(MethodPost), WithRequestBody([]byte(`{"common_name":"boundary.com"}`)))
-				assert.NoError(err)
-				require.NotNil(libIn)
-				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
-				assert.NoError(err)
-				require.NotNil(lib)
-				libs[lib.GetPublicId()] = lib
-				libIds = append(libIds, lib.GetPublicId())
-			}
-
-			gotLibs, err := repo.getPrivateLibraries(ctx, libIds)
-			assert.NoError(err)
-			require.NotNil(gotLibs)
-			assert.Len(gotLibs, len(libs))
-
-			for _, got := range gotLibs {
-				assert.Equal([]byte(token), got.Token)
-				if tt.tls == TestClientTLS {
-					require.NotNil(got.ClientKey)
-					assert.Equal(v.ClientKey, got.ClientKey)
-				}
-				want, ok := libs[got.PublicId]
-				require.True(ok)
-				assert.Equal(prj.GetPublicId(), got.ScopeId)
-				assert.Equal(want.StoreId, got.StoreId)
-				assert.Equal(want.VaultPath, got.VaultPath)
-				assert.Equal(want.HttpMethod, got.HttpMethod)
-				assert.Equal(want.HttpRequestBody, got.HttpRequestBody)
-			}
 		})
 	}
 }

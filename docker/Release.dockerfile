@@ -1,6 +1,6 @@
 FROM docker.mirror.hashicorp.services/alpine:3.10
 
-ARG VERSION=0.2.2
+ARG VERSION=0.2.3
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \

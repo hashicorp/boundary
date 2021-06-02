@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -1355,7 +1356,7 @@ func TestAddTargetLibraries(t *testing.T) {
 
 			wantTemplate := &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Purpose:           "application",
+				Purpose:           string(credential.ApplicationPurpose),
 			}
 			for _, cl := range got.GetItem().GetCredentialLibraries() {
 				cl.Id = ""
@@ -1459,7 +1460,7 @@ func TestSetTargetLibraries(t *testing.T) {
 		return &pb.CredentialLibrary{
 			Id:                id,
 			CredentialStoreId: store.GetPublicId(),
-			Purpose:           "application",
+			Purpose:           string(credential.ApplicationPurpose),
 		}
 	}
 

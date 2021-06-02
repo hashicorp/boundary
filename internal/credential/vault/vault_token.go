@@ -147,6 +147,27 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 	return
 }
 
+func (t *Token) updateStatusQuery(status Status) (query string, queryValues []interface{}) {
+	query = updateTokenStatusQuery
+
+	queryValues = []interface{}{
+		status,
+		t.TokenHmac,
+	}
+	return
+}
+
+func (t *Token) updateExpirationQuery() (query string, queryValues []interface{}) {
+	query = updateTokenExpirationQuery
+
+	exp := int(t.expiration.Round(time.Second).Seconds())
+	queryValues = []interface{}{
+		exp,
+		t.TokenHmac,
+	}
+	return
+}
+
 func (t *Token) oplogMessage(opType db.OpType) *oplog.Message {
 	msg := oplog.Message{
 		Message:  t.clone(),
@@ -163,4 +184,9 @@ func (t *Token) oplogMessage(opType db.OpType) *oplog.Message {
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	}
 	return &msg
+}
+
+func (t *Token) renewalIn() time.Duration {
+	// Token renewal should be attempted half way to expiration
+	return t.expiration / 2
 }

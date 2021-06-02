@@ -3,6 +3,7 @@ package target
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				CredentialLibrary: &store.CredentialLibrary{
 					TargetId:            "targ_0000000",
 					CredentialLibraryId: "lib_0000000",
-					CredentialPurpose:   "application",
+					CredentialPurpose:   string(credential.ApplicationPurpose),
 				},
 			},
 		},
