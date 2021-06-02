@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,6 +114,8 @@ func Test_NewEventer(t *testing.T) {
 	t.Parallel()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
 
+	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", testWithAuditSink(), testWithObservationSink())
+
 	tests := []struct {
 		name           string
 		config         EventerConfig
@@ -121,6 +124,7 @@ func Test_NewEventer(t *testing.T) {
 		want           *Eventer
 		wantRegistered []string
 		wantPipelines  []string
+		wantThresholds map[eventlogger.EventType]int
 		wantErrMatch   *errors.Template
 	}{
 		{
@@ -164,6 +168,9 @@ func Test_NewEventer(t *testing.T) {
 				"observation", // stdout
 				"error",       // stdout
 			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"error": 1,
+			},
 		},
 		{
 			name:   "testSetup",
@@ -191,6 +198,50 @@ func Test_NewEventer(t *testing.T) {
 				"error",       // every-type-file-sync
 				"error",       // stdout
 				"error",       // error-file-sink
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"audit":       2,
+				"error":       3,
+				"observation": 2,
+			},
+		},
+		{
+			name:   "testSetup-with-all-opts",
+			config: testSetupWithOpts.EventerConfig,
+			logger: hclog.Default(),
+			want: &Eventer{
+				logger: hclog.Default(),
+				conf:   testSetupWithOpts.EventerConfig,
+			},
+			wantRegistered: []string{
+				"json",              // fmt for everything
+				"stdout",            // stdout
+				"gated-observation", // stdout
+				"gated-audit",       // stdout
+				"tmp-all-events",    // every-type-file-sync
+				"gated-observation", // every-type-file-sync
+				"gated-audit",       // every-type-file-sync
+				"tmp-errors",        // error-file-sink
+				"gated-observation", // observation-file-sink
+				"tmp-observation",   // observations-file-sink
+				"gated-audit",       // audit-file-sink
+				"tmp-audit",         // audit-file-sink
+			},
+			wantPipelines: []string{
+				"audit",       // every-type-file-sync
+				"audit",       // stdout
+				"observation", // every-type-file-sync
+				"observation", // stdout
+				"error",       // every-type-file-sync
+				"error",       // stdout
+				"error",       // error-file-sink
+				"audit",       // audit-file-sink
+				"observation", // observation-file-sink
+			},
+			wantThresholds: map[eventlogger.EventType]int{
+				"audit":       3,
+				"error":       3,
+				"observation": 3,
 			},
 		},
 	}
@@ -234,6 +285,8 @@ func Test_NewEventer(t *testing.T) {
 				}
 				assert.Truef(found, "did not find %s in the registered pipelines: %s", want, testBroker.pipelines)
 			}
+
+			assert.Equal(tt.wantThresholds, testBroker.successThresholds)
 
 		})
 	}
