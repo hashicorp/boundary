@@ -85,6 +85,18 @@ func TestSinkConfig_validate(t *testing.T) {
 			wantErrContains: "not a valid sink format",
 		},
 		{
+			name: "invalid-format",
+			sc: SinkConfig{
+				Name:       "sink-name",
+				Format:     "invalid",
+				SinkType:   FileSink,
+				EventTypes: []Type{EveryType},
+				FileName:   "tmp.file",
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "not a valid sink format",
+		},
+		{
 			name: "file-sink-with-no-file-name",
 			sc: SinkConfig{
 				EventTypes: []Type{EveryType},
