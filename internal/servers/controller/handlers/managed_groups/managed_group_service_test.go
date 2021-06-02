@@ -115,7 +115,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:       omg.GetUpdateTime().GetTimestamp(),
 		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:           1,
-		Type:              "password",
+		Type:              "oidc",
 		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"filter": structpb.NewStringValue(omg.GetFilter())}},
 		AuthorizedActions: oidcAuthorizedActions,
 	}
