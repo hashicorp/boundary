@@ -24,7 +24,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleVersion == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "missing version")
 	}
-	userIds, groupIds, err := splitPrincipals(principalIds)
+	userIds, groupIds, managedGroupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -47,6 +47,14 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group role"))
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
+	}
+	newManagedGrpRoles := make([]interface{}, 0, len(managedGroupIds))
+	for _, id := range managedGroupIds {
+		managedGrpRole, err := NewManagedGroupRole(roleId, id)
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory managed group role"))
+		}
+		newManagedGrpRoles = append(newManagedGrpRoles, managedGrpRole)
 	}
 
 	role := allocRole()
@@ -98,6 +106,13 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 				}
 				msgs = append(msgs, grpOplogMsgs...)
 			}
+			if len(newManagedGrpRoles) > 0 {
+				managedGrpOplogMsgs := make([]*oplog.Message, 0, len(newManagedGrpRoles))
+				if err := w.CreateItems(ctx, newManagedGrpRoles, db.NewOplogMsgs(&managedGrpOplogMsgs)); err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to add managed groups"))
+				}
+				msgs = append(msgs, managedGrpOplogMsgs...)
+			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 				"scope-id":           []string{scope.PublicId},
@@ -147,7 +162,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
-	userIds, groupIds, err := splitPrincipals(principalIds)
+	userIds, groupIds, _, err := splitPrincipals(principalIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -282,7 +297,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if roleId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing role id")
 	}
-	userIds, groupIds, err := splitPrincipals(principalIds)
+	userIds, groupIds, managedGroupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
@@ -310,6 +325,14 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group role"))
 		}
 		deleteGrpRoles = append(deleteGrpRoles, grpRole)
+	}
+	deleteManagedGrpRoles := make([]interface{}, 0, len(managedGroupIds))
+	for _, id := range managedGroupIds {
+		managedGrpRole, err := NewManagedGroupRole(roleId, id)
+		if err != nil {
+			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory managed group role"))
+		}
+		deleteManagedGrpRoles = append(deleteManagedGrpRoles, managedGrpRole)
 	}
 
 	scope, err := role.GetScope(ctx, r.reader)
@@ -367,6 +390,18 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, grpOplogMsgs...)
+			}
+			if len(deleteManagedGrpRoles) > 0 {
+				managedGrpOplogMsgs := make([]*oplog.Message, 0, len(deleteManagedGrpRoles))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteManagedGrpRoles, db.NewOplogMsgs(&managedGrpOplogMsgs))
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to delete managed groups"))
+				}
+				if rowsDeleted != len(deleteManagedGrpRoles) {
+					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(deleteGrpRoles)))
+				}
+				totalRowsDeleted += rowsDeleted
+				msgs = append(msgs, managedGrpOplogMsgs...)
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
@@ -493,20 +528,20 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	return toSet, nil
 }
 
-func splitPrincipals(principals []string) ([]string, []string, error) {
+func splitPrincipals(principals []string) (users, groups, managedGroups []string, retErr error) {
 	const op = "iam.splitPrincipals"
-	var users, groups []string
 	for _, principal := range principals {
 		switch {
 		case strings.HasPrefix(principal, UserPrefix):
 			users = append(users, principal)
-		// TODO: This needs to handle all of the kinds of group prefixes (sg_, dg_, etc.)
 		case strings.HasPrefix(principal, GroupPrefix):
 			groups = append(groups, principal)
+		case strings.HasPrefix(principal, OidcManagedGroupPrefix):
+			managedGroups = append(managedGroups, principal)
 		default:
-			return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
+			return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
 		}
 	}
 
-	return users, groups, nil
+	return
 }

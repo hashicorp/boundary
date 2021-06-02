@@ -13,9 +13,10 @@ import (
 type RoleType uint32
 
 const (
-	UnknownRoleType RoleType = 0
-	UserRoleType    RoleType = 1
-	GroupRoleType   RoleType = 2
+	UnknownRoleType  RoleType = 0
+	UserRoleType     RoleType = 1
+	GroupRoleType    RoleType = 2
+	ManagedGroupType RoleType = 3
 )
 
 // String returns a string representation of the role type.
@@ -24,6 +25,7 @@ func (r RoleType) String() string {
 		"unknown",
 		"user",
 		"group",
+		"managed group",
 	}[r]
 }
 
@@ -31,6 +33,7 @@ const (
 	principalRoleViewDefaultTable = "iam_principal_role"
 	userRoleDefaultTable          = "iam_user_role"
 	groupRoleDefaultTable         = "iam_group_role"
+	managedGroupRoleDefaultTable  = "iam_managed_group_role"
 )
 
 // PrincipalRole provides a common way to return roles regardless of their
@@ -188,7 +191,7 @@ func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.O
 		return errors.New(errors.InvalidParameter, op, "missing role id")
 	}
 	if role.PrincipalId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing user id")
+		return errors.New(errors.InvalidParameter, op, "missing group id")
 	}
 	return nil
 }
@@ -208,6 +211,85 @@ func (r *GroupRole) SetTableName(n string) {
 	switch n {
 	case "":
 		r.tableName = groupRoleDefaultTable
+	default:
+		r.tableName = n
+	}
+}
+
+// ManagedGroupRole is a managed group assigned to a role
+type ManagedGroupRole struct {
+	*store.ManagedGroupRole
+	tableName string `gorm:"-"`
+}
+
+// ensure that GroupRole implements the interfaces of: Cloneable and
+// db.VetForWriter
+var (
+	_ Cloneable       = (*ManagedGroupRole)(nil)
+	_ db.VetForWriter = (*ManagedGroupRole)(nil)
+)
+
+// NewGroupRole creates a new group role in memory. No options are supported
+// currently.
+func NewManagedGroupRole(roleId, managedGroupId string, opt ...Option) (*ManagedGroupRole, error) {
+	const op = "iam.NewManagedGroupRole"
+	if roleId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+	}
+	if managedGroupId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+	}
+	return &ManagedGroupRole{
+		ManagedGroupRole: &store.ManagedGroupRole{
+			PrincipalId: managedGroupId,
+			RoleId:      roleId,
+		},
+	}, nil
+}
+
+// AllocManagedGroupRole returns a new ManagedGroupRole with an initialized
+// store.
+func AllocManagedGroupRole() ManagedGroupRole {
+	return ManagedGroupRole{
+		ManagedGroupRole: &store.ManagedGroupRole{},
+	}
+}
+
+// Clone creates a clone of the ManagedGroupRole.
+func (r *ManagedGroupRole) Clone() interface{} {
+	cp := proto.Clone(r.ManagedGroupRole)
+	return &ManagedGroupRole{
+		ManagedGroupRole: cp.(*store.ManagedGroupRole),
+	}
+}
+
+// VetForWrite implements db.VetForWrite() interface for managed group roles.
+func (role ManagedGroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	const op = "iam.(ManagedGroupRole).VetForWrite"
+	if role.RoleId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing role id")
+	}
+	if role.PrincipalId == "" {
+		return errors.New(errors.InvalidParameter, op, "missing managed group id")
+	}
+	return nil
+}
+
+// TableName returns the tablename to override the default gorm table name for
+// managed group roles.
+func (r *ManagedGroupRole) TableName() string {
+	if r.tableName != "" {
+		return r.tableName
+	}
+	return managedGroupRoleDefaultTable
+}
+
+// SetTableName sets the table name for the resource. If the caller attempts to
+// set the name to "" the name will be reset to the default name.
+func (r *ManagedGroupRole) SetTableName(n string) {
+	switch n {
+	case "":
+		r.tableName = managedGroupRoleDefaultTable
 	default:
 		r.tableName = n
 	}

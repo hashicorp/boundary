@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testFakeManagedGroupFilter = `"/foo" == "bar"`
-
 func Test_ManagedGroupMemberships(t *testing.T) {
 	// This tests both managed group membership functions (set/list) as list is
 	// always called as a return from set and we are validating the values that
@@ -62,7 +60,7 @@ func Test_ManagedGroupMemberships(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		mg := oidc.AllocManagedGroup()
 		mg.AuthMethodId = authMethod.PublicId
-		mg.Filter = testFakeManagedGroupFilter
+		mg.Filter = oidc.TestFakeManagedGroupFilter
 		got, err := repo.CreateManagedGroup(context.Background(), org.GetPublicId(), mg)
 		require.NoError(t, err)
 		mgs = append(mgs, got)

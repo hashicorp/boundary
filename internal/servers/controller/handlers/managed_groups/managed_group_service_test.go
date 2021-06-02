@@ -42,8 +42,6 @@ var oidcAuthorizedActions = []string{
 	action.Delete.String(),
 }
 
-const testFakeManagedGroupFilter = `"/foo" == "bar"`
-
 func TestNewService(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -107,7 +105,7 @@ func TestGet(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
-	omg := oidc.TestManagedGroup(t, conn, oidcAm, testFakeManagedGroupFilter)
+	omg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
 	// Set up managed group before getting. First get the current
 	// managed group to make sure we have the right version, then ensure
@@ -205,7 +203,7 @@ func TestListOidc(t *testing.T) {
 
 	var wantSomeManagedGroups []*pb.ManagedGroup
 	for i := 0; i < 3; i++ {
-		mg := oidc.TestManagedGroup(t, conn, amSomeManagedGroups, testFakeManagedGroupFilter, oidc.WithName(strconv.Itoa(i)))
+		mg := oidc.TestManagedGroup(t, conn, amSomeManagedGroups, oidc.TestFakeManagedGroupFilter, oidc.WithName(strconv.Itoa(i)))
 		wantSomeManagedGroups = append(wantSomeManagedGroups, &pb.ManagedGroup{
 			Id:           mg.GetPublicId(),
 			AuthMethodId: mg.GetAuthMethodId(),
@@ -216,7 +214,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"filter": structpb.NewStringValue(testFakeManagedGroupFilter),
+				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
@@ -224,7 +222,7 @@ func TestListOidc(t *testing.T) {
 
 	var wantOtherManagedGroups []*pb.ManagedGroup
 	for i := 0; i < 3; i++ {
-		mg := oidc.TestManagedGroup(t, conn, amOtherManagedGroups, testFakeManagedGroupFilter, oidc.WithName(strconv.Itoa(i)))
+		mg := oidc.TestManagedGroup(t, conn, amOtherManagedGroups, oidc.TestFakeManagedGroupFilter, oidc.WithName(strconv.Itoa(i)))
 		wantOtherManagedGroups = append(wantOtherManagedGroups, &pb.ManagedGroup{
 			Id:           mg.GetPublicId(),
 			AuthMethodId: mg.GetAuthMethodId(),
@@ -235,7 +233,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         auth.OidcSubtype.String(),
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"filter": structpb.NewStringValue(testFakeManagedGroupFilter),
+				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
 			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
@@ -352,7 +350,7 @@ func TestDelete(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, testFakeManagedGroupFilter)
+	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
 	s, err := managed_groups.NewService(oidcRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -423,7 +421,7 @@ func TestDelete_twice(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, testFakeManagedGroupFilter)
+	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
 	s, err := managed_groups.NewService(oidcRepoFn)
 	require.NoError(err, "Error when getting new user service")
@@ -465,7 +463,7 @@ func TestCreateOidc(t *testing.T) {
 	)
 
 	createAttr := func() *structpb.Struct {
-		attr := &pb.OidcManagedGroupAttributes{Filter: testFakeManagedGroupFilter}
+		attr := &pb.OidcManagedGroupAttributes{Filter: oidc.TestFakeManagedGroupFilter}
 		ret, err := handlers.ProtoToStruct(attr)
 		require.NoError(t, err, "Error converting proto to struct.")
 		return ret
@@ -499,7 +497,7 @@ func TestCreateOidc(t *testing.T) {
 					Type:         auth.OidcSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr()
-						a.Fields["filter"] = structpb.NewStringValue(testFakeManagedGroupFilter)
+						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
 						return a
 					}(),
 					AuthorizedActions: oidcAuthorizedActions,
@@ -523,7 +521,7 @@ func TestCreateOidc(t *testing.T) {
 					Type:         auth.OidcSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						a := createAttr()
-						a.Fields["filter"] = structpb.NewStringValue(testFakeManagedGroupFilter)
+						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
 						return a
 					}(),
 					AuthorizedActions: oidcAuthorizedActions,
@@ -651,7 +649,7 @@ func TestUpdateOidc(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"filter": structpb.NewStringValue(testFakeManagedGroupFilter),
+		"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
 	}}
 
 	modifiedFilter := `"/token/zip" == "zap"`
@@ -666,7 +664,7 @@ func TestUpdateOidc(t *testing.T) {
 
 	freshManagedGroup := func(t *testing.T) (*oidc.ManagedGroup, func()) {
 		t.Helper()
-		mg := oidc.TestManagedGroup(t, conn, am, testFakeManagedGroupFilter, oidc.WithName("default"), oidc.WithDescription("default"))
+		mg := oidc.TestManagedGroup(t, conn, am, oidc.TestFakeManagedGroupFilter, oidc.WithName("default"), oidc.WithDescription("default"))
 
 		clean := func() {
 			_, err := tested.DeleteManagedGroup(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),

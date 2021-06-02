@@ -26,6 +26,9 @@ func Test_PublicIds(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, GroupPrefix+"_"))
 	})
+	t.Run("oidc managed group", func(t *testing.T) {
+		assert.True(t, strings.HasPrefix("mgoidc_1234567890", OidcManagedGroupPrefix+"_"))
+	})
 	t.Run("scopes", func(t *testing.T) {
 		id, err := newScopeId(scope.Org)
 		require.NoError(t, err)
