@@ -116,7 +116,8 @@ func TestCrud(t *testing.T) {
 	lClient := credentiallibraries.NewClient(client)
 
 	r, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName("foo"),
-		credentiallibraries.WithVaultCredentialLibraryVaultPath("something"))
+		credentiallibraries.WithVaultCredentialLibraryVaultPath("something"),
+		credentiallibraries.WithAttributes(map[string]interface{}{"key": "value1"}))
 	checkResource(t, "create", r.Item, err, "foo", 1)
 
 	r, err = lClient.Read(tc.Context(), r.Item.Id)

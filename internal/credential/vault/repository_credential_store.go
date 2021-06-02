@@ -184,17 +184,18 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		},
 	)
 
-	// Best effort update next run time of token renewal job, but an error should not
-	// cause update to fail.
-	// TODO (lcr 05/2021): log error once repo has logger
-	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
-
 	if err != nil {
 		if errors.IsUniqueError(err) {
 			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", cs.ScopeId, cs.Name)))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", cs.ScopeId)))
 	}
+
+	// Best effort update next run time of token renewal job, but an error should not
+	// cause update to fail.
+	// TODO (lcr 05/2021): log error once repo has logger
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
+
 	return newCredentialStore, nil
 }
 
@@ -689,7 +690,15 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		// Return nil error and no rows affected indicates the resource cannot be found.
 		return nil, db.NoRowsAffected, nil
 	}
-	updatedStore := applyUpdate(ps.toCredentialStore(), cs, fieldMaskPaths)
+	updatedStore := ps.toCredentialStore()
+	updatedStore.inputToken = ps.Token
+	if len(ps.ClientCert) > 0 {
+		updatedStore.clientCert, err = NewClientCertificate(ps.ClientCert, ps.ClientKey)
+	}
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("can't recreate client certificate for vault client creation"))
+	}
+	updatedStore = applyUpdate(cs, updatedStore, fieldMaskPaths)
 	client, err := updatedStore.client()
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
@@ -776,6 +785,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				}
 			}
 
+			var token *Token
 			if updateToken {
 				renewedToken, err := client.renewToken()
 				if err != nil {
@@ -789,7 +799,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
 				}
-				token, err := newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires)
+				token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires)
 				if err != nil {
 					return err
 				}
@@ -820,16 +830,16 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
-			return err
+
+			if updateToken && token != nil {
+				// Best effort update next run time of token renewal job, but an error should not
+				// cause update to fail.
+				// TODO (lcr 05/2021): log error once repo has logger
+				_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
+			}
+			return nil
 		},
 	)
-
-	if updateToken {
-		// Best effort update next run time of token renewal job, but an error should not
-		// cause update to fail.
-		// TODO (lcr 05/2021): log error once repo has logger
-		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
-	}
 
 	if err != nil {
 		if errors.IsUniqueError(err) {

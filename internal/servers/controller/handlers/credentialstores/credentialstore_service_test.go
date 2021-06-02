@@ -665,24 +665,25 @@ func TestUpdate(t *testing.T) {
 	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 
+	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
+		return &fieldmaskpb.FieldMask{Paths: paths}
+	}
+
+	v := vault.NewTestVaultServer(t)
+	secret := v.CreateToken(t)
+	token := secret.Auth.ClientToken
+	// clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
+	// require.NoError(t, err)
+
 	freshStore := func() (*vault.CredentialStore, func()) {
 		t.Helper()
-		st := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		st := vault.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), v.Addr, token, vault.WithCACert(v.CaCert), vault.WithTlsSkipVerify(true))
 		clean := func() {
 			_, err := s.DeleteCredentialStore(ctx, &pbs.DeleteCredentialStoreRequest{Id: st.GetPublicId()})
 			require.NoError(t, err)
 		}
 		return st, clean
 	}
-
-	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
-		return &fieldmaskpb.FieldMask{Paths: paths}
-	}
-
-	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
-	_ = token
 
 	successCases := []struct {
 		name string
