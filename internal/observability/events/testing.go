@@ -46,6 +46,7 @@ func TestEventerConfig(t *testing.T, testName string) TestConfig {
 			Sinks: []SinkConfig{
 				{
 					Name:       "every-type-file-sink",
+					SinkType:   FileSink,
 					EventTypes: []Type{EveryType},
 					Format:     JSONSinkFormat,
 					Path:       "./",
@@ -53,12 +54,13 @@ func TestEventerConfig(t *testing.T, testName string) TestConfig {
 				},
 				{
 					Name:       "stdout",
+					SinkType:   StdoutSink,
 					EventTypes: []Type{EveryType},
 					Format:     JSONSinkFormat,
-					SinkType:   StdoutSink,
 				},
 				{
 					Name:       "err-file-sink",
+					SinkType:   FileSink,
 					EventTypes: []Type{ErrorType},
 					Format:     JSONSinkFormat,
 					Path:       "./",
