@@ -150,3 +150,12 @@ func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query strin
 	query = updateSessionCredentialQuery
 	return
 }
+
+func (c *Credential) updateExpirationQuery() (query string, queryValues []interface{}) {
+	queryValues = []interface{}{
+		int(c.expiration.Round(time.Second).Seconds()),
+		c.PublicId,
+	}
+	query = updateCredentialExpirationQuery
+	return
+}

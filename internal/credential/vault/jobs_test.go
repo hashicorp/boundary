@@ -3,15 +3,21 @@ package vault
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
@@ -116,7 +122,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 	}
 }
 
-func TestTokenRenewal_RunLimits(t *testing.T) {
+func TestTokenRenewalJob_RunLimits(t *testing.T) {
 	t.Parallel()
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -384,7 +390,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	}{
 		{
 			name: "default-duration",
-			want: defaultTokenRenewalInterval,
+			want: defaultNextRunIn,
 		},
 		{
 			name:        "1-hour-token",
@@ -430,6 +436,567 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 
 			// Set all tokens to revoked for next test
 			_, err = rw.Exec(context.Background(), "update credential_vault_token set status = 'revoked'", nil)
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestCredentialRenewalJob_Run(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
+	require.NoError(err)
+
+	secret := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+	token := secret.Auth.ClientToken
+
+	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	require.NoError(err)
+	origStore, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
+	require.NoError(err)
+
+	libPath := path.Join("database", "creds", "opened")
+	libIn, err := NewCredentialLibrary(origStore.GetPublicId(), libPath)
+	require.NoError(err)
+	libDb, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
+	require.NoError(err)
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+
+	dcs := []*session.DynamicCredential{{
+		LibraryId:         libDb.GetPublicId(),
+		CredentialPurpose: string(credential.ApplicationPurpose),
+	}}
+
+	requests := []credential.Request{{
+		SourceId: libDb.GetPublicId(),
+		Purpose:  credential.ApplicationPurpose,
+	}}
+
+	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:             uId,
+		HostId:             h.GetPublicId(),
+		TargetId:           tar.GetPublicId(),
+		HostSetId:          hs.GetPublicId(),
+		AuthTokenId:        at.GetPublicId(),
+		ScopeId:            prj.GetPublicId(),
+		Endpoint:           "tcp://127.0.0.1:22",
+		DynamicCredentials: dcs,
+	})
+	got, err := repo.Issue(context.Background(), sess.GetPublicId(), requests)
+	require.NoError(err)
+	assert.Len(got, len(requests))
+
+	credRenewal, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+	require.NoError(err)
+
+	err = credRenewal.Run(context.Background())
+	require.NoError(err)
+	// No credentials should have been renewed
+	assert.Equal(0, credRenewal.numCreds)
+
+	// Set expiration to 5 minutes from now to force renewal
+	cred := allocCredential()
+	cred.PublicId = got[0].GetPublicId()
+	cred.expiration = 5 * time.Minute
+	query, queryValues := cred.updateExpirationQuery()
+	count, err := rw.Exec(context.Background(), query, queryValues)
+	require.NoError(err)
+	assert.Equal(1, count)
+
+	// Lookup to get db expiration time
+	err = rw.LookupById(context.Background(), cred)
+	require.NoError(err)
+	origExpiration := cred.ExpirationTime.AsTime()
+
+	vc := v.client(t)
+	secret, err = vc.lookupLease(cred.ExternalId)
+	require.NoError(err)
+	// Secret should not have a last renewal time
+	assert.Nil(secret.Data["last_renewal"])
+
+	// Sleep to move clock
+	time.Sleep(2 * time.Second)
+
+	err = credRenewal.Run(context.Background())
+	require.NoError(err)
+	// The credential should have been renewed
+	assert.Equal(1, credRenewal.numCreds)
+
+	// New expiration time should be after origExpiration
+	err = rw.LookupById(context.Background(), cred)
+	require.NoError(err)
+	newExpiration := cred.ExpirationTime.AsTime()
+	assert.Truef(newExpiration.After(origExpiration), "expected expiration time to be updated")
+
+	secret, err = vc.lookupLease(cred.ExternalId)
+	require.NoError(err)
+	// Secret should have a last renewal time
+	assert.NotNil(secret.Data["last_renewal"])
+}
+
+func TestNewCredentialRenewalJob(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	type args struct {
+		r      db.Reader
+		w      db.Writer
+		kms    *kms.Kms
+		logger hclog.Logger
+	}
+	tests := []struct {
+		name        string
+		args        args
+		options     []Option
+		wantLimit   int
+		wantErr     bool
+		wantErrCode errors.Code
+	}{
+		{
+			name:        "nil reader",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "nil writer",
+			args: args{
+				r: rw,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "nil kms",
+			args: args{
+				r: rw,
+				w: rw,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "nil logger",
+			args: args{
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "valid-no-options",
+			args: args{
+				r:      rw,
+				w:      rw,
+				kms:    kmsCache,
+				logger: hclog.L(),
+			},
+			wantLimit: db.DefaultLimit,
+		},
+		{
+			name: "valid-with-limit",
+			args: args{
+				r:      rw,
+				w:      rw,
+				kms:    kmsCache,
+				logger: hclog.L(),
+			},
+			options:   []Option{WithLimit(100)},
+			wantLimit: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := NewCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Equal(tt.args.r, got.reader)
+			assert.Equal(tt.args.w, got.writer)
+			assert.Equal(tt.args.kms, got.kms)
+			require.NotNil(got.logger)
+			assert.Equal(tt.wantLimit, got.limit)
+		})
+	}
+}
+
+func TestCredentialRenewalJob_RunLimits(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	// Create dummy credential store linked to test vault server to avoid run timing
+	// on lease renewal network call
+	v := NewTestVaultServer(t)
+	cs, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte("token"))
+	require.NoError(t, err)
+	id, err := newCredentialStoreId()
+	require.NoError(t, err)
+	cs.PublicId = id
+	err = rw.Create(context.Background(), cs)
+	require.NoError(t, err)
+
+	testTokens(t, conn, wrapper, prj.PublicId, cs.PublicId, 1)
+
+	cl := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+
+	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ScopeId:     prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	count := 10
+
+	tests := []struct {
+		name    string
+		opts    []Option
+		wantLen int
+	}{
+		{
+			name:    "with-no-limits",
+			wantLen: count,
+		},
+		{
+			name:    "with-negative-limit",
+			opts:    []Option{WithLimit(-1)},
+			wantLen: count,
+		},
+		{
+			name:    "with-limit",
+			opts:    []Option{WithLimit(2)},
+			wantLen: 2,
+		},
+		{
+			name:    "with-limit-greater-than-count",
+			opts:    []Option{WithLimit(count + 5)},
+			wantLen: count,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			credentials := TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), count)
+			assert.Len(credentials, count)
+
+			r, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			require.NoError(err)
+
+			err = r.Run(context.Background())
+			require.NoError(err)
+			assert.Equal(tt.wantLen, r.numCreds)
+
+			// Set all credential isRenewable to false for next test
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set is_renewable = false", nil)
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	cl := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+
+	pendingSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ScopeId:     prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	activeSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ScopeId:     prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	_ = session.TestState(t, conn, activeSess.PublicId, session.StatusActive)
+	cancelingSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ScopeId:     prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusActive)
+	_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusCanceling)
+	terminatedSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ScopeId:     prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusActive)
+	_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusTerminated)
+
+	type args struct {
+		expiration time.Duration
+		sess       *session.Session
+	}
+	createCreds := func(t *testing.T, name string, args []args) {
+		t.Helper()
+		assert, require := assert.New(t), require.New(t)
+		for i, arg := range args {
+			token := cs.Token()
+			id, err := newCredentialId()
+			assert.NoError(err)
+			require.NotNil(id)
+
+			query := insertCredentialWithExpirationQuery
+			queryValues := []interface{}{
+				id,
+				cl.GetPublicId(),
+				arg.sess.GetPublicId(),
+				token.GetTokenHmac(),
+				fmt.Sprintf("vault/credential/%d", i),
+				true,
+			}
+
+			expire := int(arg.expiration.Seconds())
+			if expire < 0 {
+				// last_renewal_time must be before expiration_time, if we are testing a expiration in the past set
+				// lastRenew to 1 second before that
+				query = strings.Replace(query,
+					"$7, -- last_renewal_time",
+					"wt_add_seconds_to_now($7),  -- last_renewal_time",
+					-1)
+				queryValues = append(queryValues, expire-1, expire)
+			} else {
+				queryValues = append(queryValues, "now()", expire)
+			}
+
+			rows, err2 := rw.Exec(context.Background(), query, queryValues)
+			assert.Equal(1, rows)
+			assert.NoError(err2)
+		}
+	}
+
+	tests := []struct {
+		name string
+		args []args
+		want time.Duration
+	}{
+		{
+			name: "default-duration",
+			want: defaultNextRunIn,
+		},
+		{
+			name: "1-hour-pending-credential",
+			args: []args{
+				{sess: pendingSess, expiration: time.Hour},
+			},
+			want: 30 * time.Minute,
+		},
+		{
+			name: "1-hour-active-credential",
+			args: []args{
+				{sess: activeSess, expiration: time.Hour},
+			},
+			want: 30 * time.Minute,
+		},
+		{
+			name: "1-hour-cancelling-credential",
+			args: []args{
+				{sess: cancelingSess, expiration: time.Hour},
+			},
+			want: defaultNextRunIn,
+		},
+		{
+			name: "1-hour-terminated-credential",
+			args: []args{
+				{sess: terminatedSess, expiration: time.Hour},
+			},
+			want: defaultNextRunIn,
+		},
+		{
+			name: "multiple-all-active",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: activeSess, expiration: 6 * time.Hour},
+				{sess: activeSess, expiration: 8 * time.Hour},
+				{sess: activeSess, expiration: 10 * time.Hour},
+			},
+			// 6 hours is the soonest expiration time
+			want: 3 * time.Hour,
+		},
+		{
+			name: "multiple-all-pending",
+			args: []args{
+				{sess: pendingSess, expiration: 24 * time.Hour},
+				{sess: pendingSess, expiration: 6 * time.Hour},
+				{sess: pendingSess, expiration: 8 * time.Hour},
+				{sess: pendingSess, expiration: 10 * time.Hour},
+			},
+			// 6 hours is the soonest expiration time
+			want: 3 * time.Hour,
+		},
+		{
+			name: "multiple-mixed-active-pending",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: pendingSess, expiration: 6 * time.Hour},
+				{sess: activeSess, expiration: 8 * time.Hour},
+				{sess: pendingSess, expiration: 10 * time.Hour},
+			},
+			// 6 hours is the soonest expiration time
+			want: 3 * time.Hour,
+		},
+		{
+			name: "multiple-mixed-active-terminated",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: terminatedSess, expiration: 6 * time.Hour},
+				{sess: activeSess, expiration: 8 * time.Hour},
+				{sess: terminatedSess, expiration: 10 * time.Hour},
+			},
+			// 8 hours is the soonest expiration time that is not terminated
+			want: 4 * time.Hour,
+		},
+		{
+			name: "multiple-mixed-pending-cancelling",
+			args: []args{
+				{sess: pendingSess, expiration: 24 * time.Hour},
+				{sess: cancelingSess, expiration: 6 * time.Hour},
+				{sess: cancelingSess, expiration: 8 * time.Hour},
+				{sess: cancelingSess, expiration: 10 * time.Hour},
+			},
+			// 24 hours is the soonest expiration time that is not cancelling
+			want: 12 * time.Hour,
+		},
+		{
+			name: "overdue-active-renewal",
+			args: []args{
+				{sess: activeSess, expiration: -12 * time.Hour},
+			},
+			want: 0,
+		},
+		{
+			name: "multiple-active-with-single-active-overdue-renewal",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: activeSess, expiration: 6 * time.Hour},
+				{sess: activeSess, expiration: -12 * time.Hour},
+				{sess: activeSess, expiration: 10 * time.Hour},
+			},
+			want: 0,
+		},
+		{
+			name: "multiple-active-with-single-terminated-overdue-renewal",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: activeSess, expiration: 6 * time.Hour},
+				{sess: terminatedSess, expiration: -12 * time.Hour},
+				{sess: activeSess, expiration: 10 * time.Hour},
+			},
+			// The overdue terminated session should be ignored
+			want: 3 * time.Hour,
+		},
+		{
+			name: "multiple-active-with-single-cancelling-overdue-renewal",
+			args: []args{
+				{sess: activeSess, expiration: 24 * time.Hour},
+				{sess: activeSess, expiration: 6 * time.Hour},
+				{sess: cancelingSess, expiration: -12 * time.Hour},
+				{sess: activeSess, expiration: 10 * time.Hour},
+			},
+			// The overdue cancelling session should be ignored
+			want: 3 * time.Hour,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			r, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+			assert.NoError(err)
+			require.NotNil(r)
+
+			createCreds(t, tt.name, tt.args)
+
+			got, err := r.NextRunIn()
+			require.NoError(err)
+			// Round to time.Minute to account for lost time between creating tokens and determining next run
+			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
+
+			// Set all credential isRenewable to false for next test
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set is_renewable = false", nil)
 			assert.NoError(err)
 		})
 	}

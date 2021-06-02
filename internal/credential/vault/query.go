@@ -126,4 +126,21 @@ select
 	    where status in ('current', 'maintaining')
 	);
 `
+
+	credentialRenewalNextRunInQuery = `
+select
+	extract(epoch from (renewal_time - now()))::int as renewal_in
+  	from credential_renewable_vault_credential
+ 	where expiration_time = (
+	  select min(expiration_time)
+  	    from credential_renewable_vault_credential
+	);
+`
+
+	updateCredentialExpirationQuery = `
+update credential_vault_credential 
+  set last_renewal_time = now(),
+  expiration_time = wt_add_seconds_to_now(?)
+  where public_id = ?;
+`
 )

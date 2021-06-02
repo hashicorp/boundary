@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-rootcerts"
@@ -106,6 +107,34 @@ func (c *client) renewToken() (*vault.Secret, error) {
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return t, nil
+}
+
+// lookupLease calls the /sys/leases/lookup Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/system/leases#read-lease.
+func (c *client) lookupLease(leaseId string) (*vault.Secret, error) {
+	const op = "vault.(client).lookupLease"
+
+	credData := fmt.Sprintf(`{"lease_id":"%s"}`, leaseId)
+	s, err := c.cl.Logical().WriteBytes("sys/leases/lookup", []byte(credData))
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return s, nil
+}
+
+// renewLease calls the /sys/leases/renew Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+//// policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/system/leases#renew-lease.
+func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
+	const op = "vault.(client).renewLease"
+	t, err := c.cl.Sys().Renew(leaseId, int(leaseDuration.Round(time.Second).Seconds()))
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
