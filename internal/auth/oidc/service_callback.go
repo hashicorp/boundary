@@ -206,8 +206,6 @@ func Callback(
 				// but we validate anyways
 				return "", errors.Wrap(err, op)
 			}
-			// Properly it should probably be user_info but I'm taking pity on
-			// people typing out these filters :-D
 			match, err := eval.Evaluate(evalData)
 			if err != nil && !errors.Is(err, pointerstructure.ErrNotFound) {
 				return "", errors.Wrap(err, op)
