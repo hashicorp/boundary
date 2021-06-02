@@ -30,5 +30,9 @@ func (sc *SinkConfig) validate() error {
 	if sc.SinkType == FileSink && sc.FileName == "" {
 		return errors.New(errors.InvalidParameter, op, "missing sink file name")
 	}
+	if sc.Name == "" {
+		return errors.New(errors.InvalidParameter, op, "missing sink name")
+	}
 	return nil
+
 }
