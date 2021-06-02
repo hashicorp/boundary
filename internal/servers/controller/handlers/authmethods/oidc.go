@@ -36,7 +36,7 @@ const (
 	stateField                             = "attributes.state"
 	callbackUrlField                       = "attributes.callback_url"
 	apiUrlPrefixField                      = "attributes.api_url_prefix"
-	caCertsField                           = "attributes.ca_certs"
+	idpCaCertsField                        = "attributes.idp_ca_certs"
 	signingAlgorithmField                  = "attributes.signing_algorithms"
 	disableDiscoveredConfigValidationField = "attributes.disable_discovered_config_validation"
 	roundtripPayloadAttributesField        = "attributes.roundtrip_payload"

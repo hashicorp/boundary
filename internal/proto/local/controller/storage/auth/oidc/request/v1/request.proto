@@ -5,8 +5,6 @@ package controller.storage.auth.oidc.request.v1;
 option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/request;request";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/options.proto";
-import "google/protobuf/wrappers.proto";
 
 // State represents an oidc request state.  State will be marshaled and then
 // wrapped with an EncryptedState before that's marshaled and encrypted.

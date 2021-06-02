@@ -6,7 +6,6 @@ option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/store;stor
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
-import "google/protobuf/wrappers.proto";
 
 // AuthMethod represents an OIDC auth method.
 message AuthMethod {
