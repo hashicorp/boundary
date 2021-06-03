@@ -5600,7 +5600,7 @@ create table credential_vault_store (
     ('credential_vault_library', 1),
     ('credential_vault_credential', 1) ;
 
-     create view credential_vault_store_client_private as
+     create view credential_vault_store_private as
      with
      active_tokens as (
         select token_hmac,
@@ -5648,12 +5648,12 @@ create table credential_vault_store (
          on store.public_id = token.store_id
   left join credential_vault_client_certificate cert
          on store.public_id = cert.store_id;
-  comment on view credential_vault_store_client_private is
-    'credential_vault_store_client_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+  comment on view credential_vault_store_private is
+    'credential_vault_store_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
     'The view returns a separate row for each current and maintaining token, maintaining tokens should only be used for token/credential renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-     create view credential_vault_store_agg_public as
+     create view credential_vault_store_public as
      select public_id,
             scope_id,
             name,
@@ -5673,10 +5673,10 @@ create table credential_vault_store (
             token_expiration_time,
             client_cert,
             client_cert_key_hmac
-       from credential_vault_store_client_private
+       from credential_vault_store_private
       where token_status = 'current';
-  comment on view credential_vault_store_agg_public is
-    'credential_vault_store_agg_public is a view where each row contains a credential store. '
+  comment on view credential_vault_store_public is
+    'credential_vault_store_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
      create view credential_vault_library_private as
@@ -5703,7 +5703,7 @@ create table credential_vault_store (
             store.ct_client_key       as ct_client_key, -- encrypted
             store.client_key_id       as client_key_id
        from credential_vault_library library
-       join credential_vault_store_client_private store
+       join credential_vault_store_private store
          on library.store_id = store.public_id
         and store.token_status = 'current';
   comment on view credential_vault_library_private is
