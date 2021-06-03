@@ -1,6 +1,8 @@
 package event
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
@@ -30,7 +32,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 	}
 	for k := range opts.withHeader {
 		if strutil.StrListContains([]string{OpField, VersionField, RequestInfoField}, k) {
-			return nil, errors.New(errors.InvalidParameter, op, "%s: %s is a reserved field name")
+			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is a reserved field name", k))
 		}
 	}
 	i := &observation{
