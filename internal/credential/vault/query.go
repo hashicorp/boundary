@@ -29,8 +29,9 @@ insert into credential_vault_credential (
   token_hmac, -- $4
   external_id, -- $5
   is_renewable, -- $6
-  last_renewal_time, -- $7
-  expiration_time -- $8
+  status, -- $7
+  last_renewal_time, -- $8
+  expiration_time -- $9
 ) values (
   $1, -- public_id
   $2, -- library_id
@@ -38,8 +39,9 @@ insert into credential_vault_credential (
   $4, -- token_hmac
   $5, -- external_id
   $6, -- is_renewable
-  $7, -- last_renewal_time
-  wt_add_seconds_to_now($8)  -- expiration_time
+  $7, -- status
+  $8, -- last_renewal_time
+  wt_add_seconds_to_now($9)  -- expiration_time
 );
 `
 
@@ -51,7 +53,8 @@ insert into credential_vault_credential (
   token_hmac, -- $4
   external_id, -- $5
   is_renewable, -- $6
-  last_renewal_time, -- $7
+  status, -- $7
+  last_renewal_time, -- $8
   expiration_time -- infinity
 ) values (
   $1, -- public_id
@@ -60,7 +63,8 @@ insert into credential_vault_credential (
   $4, -- token_hmac
   $5, -- external_id
   $6, -- is_renewable
-  $7, -- last_renewal_time
+  $7, -- status
+  $8, -- last_renewal_time
   'infinity' -- expiration_time
 );
 `
