@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -21,6 +22,103 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func Test_NewEventerContext(t *testing.T) {
+	testSetup := event.TestEventerConfig(t, "Test_NewEventerContext")
+	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	require.NoError(t, err)
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		eventer         *event.Eventer
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-ctx",
+			eventer:         testEventer,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-eventer",
+			ctx:             context.Background(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing eventer",
+		},
+		{
+			name:    "valid",
+			ctx:     context.Background(),
+			eventer: testEventer,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx, err := event.NewEventerContext(tt.ctx, tt.eventer)
+			if tt.wantErrMatch != nil {
+				require.Errorf(err, "should have gotten an error")
+				assert.Nilf(ctx, "context should be nil")
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoErrorf(err, "should not have been a problem getting the eventer")
+			require.NotNilf(ctx, "cxt returned shouldn't be nil")
+			got, ok := event.EventerFromContext(ctx)
+			require.Truef(ok, "should be ok to get the eventer")
+			assert.Equal(tt.eventer, got)
+		})
+	}
+}
+
+func Test_EventerFromContext(t *testing.T) {
+	testSetup := event.TestEventerConfig(t, "Test_EventerFromContext")
+
+	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	require.NoError(t, err)
+
+	testEventerCtx, err := event.NewEventerContext(context.Background(), testEventer)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		ctx         context.Context
+		wantEventer *event.Eventer
+		wantNotOk   bool
+	}{
+		{
+			name:      "missing-ctx",
+			wantNotOk: true,
+		},
+		{
+			name:      "no-eventer",
+			ctx:       context.Background(),
+			wantNotOk: true,
+		},
+		{
+			name:        "valid",
+			ctx:         testEventerCtx,
+			wantEventer: testEventer,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, ok := event.EventerFromContext(tt.ctx)
+			if tt.wantNotOk {
+				require.Falsef(ok, "should not have returned ok for the eventer")
+				assert.Nilf(got, "should not have returned %q eventer", got)
+				return
+			}
+			require.Truef(ok, "should have been okay for getting an eventer")
+			require.NotNilf(got, "eventer should not be nil")
+			assert.Equal(tt.wantEventer, got)
+		})
+	}
+}
 
 func Test_WriteObservation(t *testing.T) {
 
