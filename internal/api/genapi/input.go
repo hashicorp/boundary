@@ -453,7 +453,8 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs: []string{"target"},
 		sliceSubtypes: map[string]string{
-			"HostSets": "hostSetIds",
+			"HostSets":            "hostSetIds",
+			"CredentialLibraries": "credentialLibraryIds",
 		},
 		extraOptions: []fieldInfo{
 			{
