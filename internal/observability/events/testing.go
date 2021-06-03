@@ -17,7 +17,8 @@ import (
 
 var testSysEventerLock sync.Mutex
 
-func testResetSystEventer(t *testing.T) {
+// TestResetSysEventer will reset event.syseventer to an uninitialized state.
+func TestResetSystEventer(t *testing.T) {
 	t.Helper()
 	testSysEventerLock.Lock()
 	defer testSysEventerLock.Unlock()
