@@ -473,6 +473,8 @@ type eventJson struct {
 }
 
 func Test_WriteAudit(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
 	now := time.Now()
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -678,6 +680,153 @@ func Test_WriteAudit(t *testing.T) {
 					wantEvent.Payload["response"] = tt.wantAudit.Response
 				}
 				wantJson, err := json.Marshal(wantEvent)
+				require.NoError(err)
+
+				assert.JSONEq(string(wantJson), string(actualJson))
+			}
+		})
+	}
+}
+
+func Test_WriteError(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+	now := time.Now()
+
+	logger := hclog.New(&hclog.LoggerOptions{
+		Name: "test",
+	})
+
+	c := event.TestEventerConfig(t, "WriteAudit")
+
+	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
+	require.NoError(t, err)
+
+	info := &event.RequestInfo{Id: "867-5309"}
+
+	testCtx, err := event.NewEventerContext(context.Background(), e)
+	require.NoError(t, err)
+	testCtx, err = event.NewRequestInfoContext(testCtx, info)
+	require.NoError(t, err)
+
+	testCtxNoInfoId, err := event.NewEventerContext(context.Background(), e)
+	require.NoError(t, err)
+	noId := &event.RequestInfo{Id: "867-5309"}
+	testCtxNoInfoId, err = event.NewRequestInfoContext(testCtxNoInfoId, noId)
+	require.NoError(t, err)
+	noId.Id = ""
+
+	testError := errors.New(errors.InvalidParameter, "test", "you lookin at me?")
+
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		e               error
+		info            *event.RequestInfo
+		setup           func() error
+		cleanup         func()
+		noOperation     bool
+		errSinkFileName string
+		noOutput        bool
+	}{
+		{
+			name:        "missing-caller",
+			ctx:         testCtx,
+			e:           testError,
+			noOperation: true,
+			noOutput:    true,
+		},
+		{
+			name:            "no-ctx-eventer-and-syseventer-not-initialized",
+			ctx:             context.Background(),
+			e:               testError,
+			errSinkFileName: c.ErrorEvents.Name(),
+			noOutput:        true,
+		},
+		{
+			name: "use-syseventer",
+			ctx:  context.Background(),
+			e:    testError,
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+			},
+			cleanup:         func() { event.TestResetSystEventer(t) },
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name: "no-info-id",
+			ctx:  testCtxNoInfoId,
+			e:    testError,
+			info: &event.RequestInfo{},
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+			},
+			cleanup:         func() { event.TestResetSystEventer(t) },
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+		{
+			name:            "simple",
+			ctx:             testCtx,
+			e:               testError,
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tt.setup != nil {
+				require.NoError(tt.setup())
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+			op := tt.name
+			if tt.noOperation {
+				op = ""
+			}
+			event.WriteError(tt.ctx, event.Op(op), tt.e)
+			if tt.errSinkFileName != "" {
+				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0666) }()
+				b, err := ioutil.ReadFile(tt.errSinkFileName)
+				require.NoError(err)
+
+				if tt.noOutput {
+					assert.Lenf(b, 0, "should be an empty file: %s", string(b))
+					return
+				}
+
+				gotError := &eventJson{}
+				err = json.Unmarshal(b, gotError)
+				require.NoErrorf(err, "json: %s", string(b))
+
+				actualJson, err := json.Marshal(gotError)
+				require.NoError(err)
+
+				wantError := eventJson{
+					CreatedAt: gotError.CreatedAt,
+					EventType: string(gotError.EventType),
+					Payload: map[string]interface{}{
+						"error": map[string]interface{}{
+							"Code":    tt.e.(*errors.Err).Code,
+							"Msg":     tt.e.(*errors.Err).Msg,
+							"Op":      tt.e.(*errors.Err).Op,
+							"Wrapped": tt.e.(*errors.Err).Wrapped,
+						},
+						"id":      gotError.Payload["id"],
+						"op":      op,
+						"version": event.ErrorVersion,
+					},
+				}
+				if tt.info != nil && tt.info.Id != "" {
+					wantError.Payload["id"] = tt.info.Id
+				}
+				if tt.info != nil {
+					wantError.Payload["request_info"] = tt.info
+
+				}
+				wantJson, err := json.Marshal(wantError)
 				require.NoError(err)
 
 				assert.JSONEq(string(wantJson), string(actualJson))
