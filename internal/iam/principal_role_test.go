@@ -571,7 +571,7 @@ func TestGroupRole_Create(t *testing.T) {
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
-			name: "missing-user-id",
+			name: "missing-group-id",
 			args: args{
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
@@ -584,7 +584,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing user id: parameter violation: error #100",
+			wantErrMsg: "db.Create: iam.(GroupRole).VetForWrite: missing group id: parameter violation: error #100",
 			wantIsErr:  errors.InvalidParameter,
 		},
 		{
