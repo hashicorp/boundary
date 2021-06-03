@@ -72,6 +72,12 @@ func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 // options are ignored.
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteObservation"
+	if ctx == nil {
+		return errors.New(errors.InvalidParameter, op, "missing context")
+	}
+	if caller == "" {
+		return errors.New(errors.InvalidParameter, op, "missing operation")
+	}
 	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
@@ -179,10 +185,38 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 	if opts.withRequestInfo == nil {
 		reqInfo, ok := RequestInfoFromContext(ctx)
 		if !ok {
-			return nil, errors.New(errors.InvalidParameter, op, "context missing request info")
+			// there's no RequestInfo, so there's no id associated with the
+			// observation and we'll generate one and flush the observation
+			// since there will never be another with the same id
+			id, err := newId(string(ObservationType))
+			if err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+			retOpts = append(retOpts, WithId(id))
+			if !opts.withFlush {
+				retOpts = append(retOpts, WithFlush())
+			}
+			return retOpts, nil
 		}
 		retOpts = append(retOpts, WithRequestInfo(reqInfo))
 		if reqInfo.Id != "" {
+			retOpts = append(retOpts, WithId(reqInfo.Id))
+		}
+		switch reqInfo.Id {
+		case "":
+			// there's no RequestInfo.Id associated with the observation, so we'll
+			// generate one and flush the observation since there will never be
+			// another with the same id
+			id, err := newId(string(ObservationType))
+			if err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+			retOpts = append(retOpts, WithId(id))
+			if !opts.withFlush {
+				retOpts = append(retOpts, WithFlush())
+			}
+			return retOpts, nil
+		default:
 			retOpts = append(retOpts, WithId(reqInfo.Id))
 		}
 	}
