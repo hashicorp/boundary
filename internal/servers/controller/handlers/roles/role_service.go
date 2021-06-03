@@ -6,12 +6,12 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -970,7 +970,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), oidc.ManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -996,7 +996,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), oidc.ManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1025,7 +1025,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), oidc.ManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}

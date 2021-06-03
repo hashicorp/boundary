@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -576,7 +577,7 @@ func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, oidc.ManagedGroupPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
@@ -639,7 +640,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 			}
 		}
 		return badFields
-	}, oidc.ManagedGroupPrefix)
+	}, intglobals.OidcManagedGroupPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
@@ -647,7 +648,7 @@ func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, oidc.ManagedGroupPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
 
 func validateListRequest(req *pbs.ListManagedGroupsRequest) error {

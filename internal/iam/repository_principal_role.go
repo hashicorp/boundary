@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -595,7 +596,7 @@ func splitPrincipals(principals []string) (users, groups, managedGroups []string
 			users = append(users, principal)
 		case strings.HasPrefix(principal, GroupPrefix):
 			groups = append(groups, principal)
-		case strings.HasPrefix(principal, OidcManagedGroupPrefix):
+		case strings.HasPrefix(principal, intglobals.OidcManagedGroupPrefix):
 			managedGroups = append(managedGroups, principal)
 		default:
 			return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))

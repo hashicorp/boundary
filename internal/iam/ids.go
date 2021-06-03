@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	UserPrefix             = "u"
-	GroupPrefix            = "g"
-	RolePrefix             = "r"
-	RoleGrantPrefix        = "rg"
-	OidcManagedGroupPrefix = "mgoidc"
+	UserPrefix      = "u"
+	GroupPrefix     = "g"
+	RolePrefix      = "r"
+	RoleGrantPrefix = "rg"
 )
 
 func newRoleId() (string, error) {
