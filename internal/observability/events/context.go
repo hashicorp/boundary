@@ -47,7 +47,7 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 		return nil, errors.New(errors.InvalidParameter, op, "missing request info")
 	}
 	if info.Id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing request info ID")
+		return nil, errors.New(errors.InvalidParameter, op, "missing request info id")
 	}
 	return context.WithValue(ctx, requestInfoKey, info), nil
 }
