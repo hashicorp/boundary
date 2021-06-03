@@ -25,6 +25,9 @@ import (
 
 func Test_NewRequestInfoContext(t *testing.T) {
 	testInfo := event.TestRequestInfo(t)
+	testInfoMissingId := event.TestRequestInfo(t)
+	testInfoMissingId.Id = ""
+
 	tests := []struct {
 		name            string
 		ctx             context.Context
@@ -43,6 +46,13 @@ func Test_NewRequestInfoContext(t *testing.T) {
 			ctx:             context.Background(),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing request info",
+		},
+		{
+			name:            "missing-request-info-id",
+			ctx:             context.Background(),
+			requestInfo:     testInfoMissingId,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing request info id",
 		},
 		{
 			name:        "valid",
