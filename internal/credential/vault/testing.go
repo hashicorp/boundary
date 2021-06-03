@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken string, opts... Option) *CredentialStore {
+func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts... Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -47,30 +47,18 @@ func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, 
 
 	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, iw db.Writer) error {
-			return iw.Create(ctx, cs)
+			require.NoError(t, iw.Create(ctx, cs))
+			cert := cs.clientCert
+			cert.StoreId = cs.GetPublicId()
+			require.NoError(t, cert.encrypt(ctx, databaseWrapper))
+			require.NoError(t, iw.Create(ctx, cert))
+			return nil
 		},
 	)
 	require.NoError(t, err2)
 
-	tokens := testTokens(t, conn, wrapper, scopeId, cs.GetPublicId(), 4)
-	// the last token added is the current one.
-	cs.outputToken = tokens[3]
+	cs.outputToken = createTestToken(t, conn, wrapper, scopeId, id, vaultToken, accessor)
 
-	inCert := testClientCert(t, testCaCert(t))
-	clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
-	require.NoError(t, err)
-	require.NotEmpty(t, clientCert)
-	clientCert.StoreId = id
-	require.NoError(t, clientCert.encrypt(ctx, databaseWrapper))
-
-	_, err3 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(_ db.Reader, iw db.Writer) error {
-			return iw.Create(ctx, clientCert)
-		},
-	)
-	require.NoError(t, err3)
-
-	cs.clientCert = clientCert
 	return cs
 }
 
@@ -80,9 +68,33 @@ func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, 
 // fail.
 func TestCredentialStores(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
 	t.Helper()
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	w := db.New(conn)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
-		cs := TestCredentialStore(t, conn, wrapper, scopeId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", scopeId, i))
+		cs := TestCredentialStore(t, conn, wrapper, scopeId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", scopeId, i), fmt.Sprintf("accessor-%s-%d", scopeId, i))
+
+		inCert := testClientCert(t, testCaCert(t))
+		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+		require.NoError(t, err)
+		require.NotEmpty(t, clientCert)
+		clientCert.StoreId = cs.GetPublicId()
+		require.NoError(t, clientCert.encrypt(ctx, databaseWrapper))
+
+		_, err3 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, clientCert)
+			},
+		)
+		require.NoError(t, err3)
+
+		cs.clientCert = clientCert
 		css = append(css, cs)
 	}
 	return css
@@ -167,6 +179,27 @@ func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libr
 	return credentials
 }
 
+func createTestToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
+	t.Helper()
+	w := db.New(conn)
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+
+	inToken, err := newToken(storeId, []byte(token), []byte(accessor), 5*time.Minute)
+	assert.NoError(t, err)
+	require.NotNil(t, inToken)
+
+	require.NoError(t, inToken.encrypt(ctx, databaseWrapper))
+	query, queryValues := inToken.insertQuery()
+
+	rows, err2 := w.Exec(ctx, query, queryValues)
+	assert.Equal(t, 1, rows)
+	require.NoError(t, err2)
+
+	return inToken
+}
+
 func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
@@ -180,17 +213,7 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken, err := newToken(storeId, []byte(fmt.Sprintf("vault-token-%s-%d", storeId, i)), []byte(fmt.Sprintf("accessor-%s-%d", storeId, i)), 5*time.Minute)
-		assert.NoError(err)
-		require.NotNil(inToken)
-
-		require.NoError(inToken.encrypt(ctx, databaseWrapper))
-		query, queryValues := inToken.insertQuery()
-
-		rows, err2 := w.Exec(ctx, query, queryValues)
-		assert.Equal(1, rows)
-		require.NoError(err2)
-
+		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d", storeId, i), fmt.Sprintf("accessor-%s-%d", storeId, i))
 		outToken := allocToken()
 		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
@@ -440,6 +463,7 @@ type testOptions struct {
 	roleName      string
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
+	testVaultPort int
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -453,6 +477,7 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		roleName:      "boundary",
 		vaultTLS:      TestNoTLS,
 		dockerNetwork: false,
+		testVaultPort: 8200,
 	}
 }
 
@@ -480,6 +505,13 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
+	}
+}
+
+func WithTestVaultPort(p int) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.testVaultPort = p
 	}
 }
 
