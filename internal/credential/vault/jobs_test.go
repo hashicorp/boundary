@@ -737,7 +737,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 			assert.Equal(tt.wantLen, r.numCreds)
 
 			// Set all credential isRenewable to false for next test
-			_, err = rw.Exec(context.Background(), "update credential_vault_credential set is_renewable = false", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set expiration_time = 'infinity'::date", nil)
 			assert.NoError(err)
 		})
 	}
@@ -782,7 +782,6 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 		ScopeId:     prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
-	_ = session.TestState(t, conn, activeSess.PublicId, session.StatusActive)
 	cancelingSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -792,8 +791,6 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 		ScopeId:     prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
-	_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusActive)
-	_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusCanceling)
 	terminatedSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -803,8 +800,6 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 		ScopeId:     prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
-	_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusActive)
-	_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusTerminated)
 
 	type args struct {
 		expiration time.Duration
@@ -827,6 +822,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				token.GetTokenHmac(),
 				fmt.Sprintf("vault/credential/%d", i),
 				true,
+				ActiveCredential,
 			}
 
 			expire := int(arg.expiration.Seconds())
@@ -834,8 +830,8 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				// last_renewal_time must be before expiration_time, if we are testing a expiration in the past set
 				// lastRenew to 1 second before that
 				query = strings.Replace(query,
-					"$7, -- last_renewal_time",
-					"wt_add_seconds_to_now($7),  -- last_renewal_time",
+					"$8, -- last_renewal_time",
+					"wt_add_seconds_to_now($8),  -- last_renewal_time",
 					-1)
 				queryValues = append(queryValues, expire-1, expire)
 			} else {
@@ -990,14 +986,26 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 
 			createCreds(t, tt.name, tt.args)
 
+			// Move sessions into states to trigger cred status update
+			_ = session.TestState(t, conn, activeSess.PublicId, session.StatusActive)
+			_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusActive)
+			_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusCanceling)
+			_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusActive)
+			_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusTerminated)
+
 			got, err := r.NextRunIn()
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
 
 			// Set all credential isRenewable to false for next test
-			_, err = rw.Exec(context.Background(), "update credential_vault_credential set is_renewable = false", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set expiration_time = 'infinity'::date", nil)
 			assert.NoError(err)
+
+			// Reset session status for next test
+			_ = session.TestState(t, conn, activeSess.PublicId, session.StatusPending)
+			_ = session.TestState(t, conn, cancelingSess.PublicId, session.StatusPending)
+			_ = session.TestState(t, conn, terminatedSess.PublicId, session.StatusPending)
 		})
 	}
 }

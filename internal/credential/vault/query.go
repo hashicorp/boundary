@@ -130,10 +130,11 @@ select
 	credentialRenewalNextRunInQuery = `
 select
 	extract(epoch from (renewal_time - now()))::int as renewal_in
-  	from credential_renewable_vault_credential
+  	from credential_vault_credential_private
  	where expiration_time = (
 	  select min(expiration_time)
-  	    from credential_renewable_vault_credential
+  	    from credential_vault_credential_private
+ 	    where status = 'active'
 	);
 `
 

@@ -489,6 +489,7 @@ begin;
             store.ca_cert                as ca_cert,
             store.tls_server_name        as tls_server_name,
             store.tls_skip_verify        as tls_skip_verify,
+            store.scope_id               as scope_id,
             cert.certificate             as client_cert,
             cert.certificate_key         as ct_client_key, -- encrypted
             cert.certificate_key_hmac    as client_cert_key_hmac,
@@ -505,5 +506,26 @@ begin;
     'credential_vault_credential_private is a view where each row contains a credential, '
     'the vault token used to issue the credential, and the credential store data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
+    -- update_credential_state() is a before insert trigger
+    -- function for subtypes of credential
+    create or replace function update_credential_state()
+        returns trigger
+    as $$
+    begin
+        if new.state in ('canceling', 'terminated') then
+            update credential_vault_credential
+               set status = 'revoke'
+             where session_id = new.session_id
+               and status = 'active';
+        end if;
+        return new;
+    end;
+    $$ language plpgsql;
+
+    create trigger
+        wh_update_credential_state
+    after insert on session_state
+        for each row execute procedure update_credential_state();
 
 commit;

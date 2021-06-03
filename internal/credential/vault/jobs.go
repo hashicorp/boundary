@@ -250,13 +250,13 @@ func (r *TokenRenewalJob) Description() string {
 
 type renewableCredential struct {
 	*Credential
-	Library     *privateLibrary `gorm:"embedded"`
+	Store       *privateStore `gorm:"embedded"`
 	RenewalTime *timestamp.Timestamp
 }
 
 // TableName returns the table name for gorm.
 func (c *renewableCredential) TableName() string {
-	return "credential_renewable_vault_credential"
+	return "credential_vault_credential_private"
 }
 
 // CredentialRenewalJob is the recurring job that renews Vault credentials issued to a session.
@@ -333,7 +333,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	// Fetch all credentials that will reach their renewal point within the renewalWindow.
 	// This is done to avoid constantly scheduling the credential renewal job when there are
 	// multiple credentials set to renew in sequence.
-	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?)`, []interface{}{renewalWindow.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?) and status = ?`, []interface{}{renewalWindow.Seconds(), ActiveCredential}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
@@ -360,16 +360,16 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *renewableCredential) error {
 	const op = "vault.(CredentialRenewalJob).renewCred"
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, c.Library.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.Store.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
-	if err = c.Library.decrypt(ctx, databaseWrapper); err != nil {
+	if err = c.Store.decrypt(ctx, databaseWrapper); err != nil {
 		return errors.Wrap(err, op)
 	}
 
-	vc, err := c.Library.client()
+	vc, err := c.Store.client()
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
