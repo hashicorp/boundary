@@ -237,7 +237,7 @@ func NewManagedGroupRole(roleId, managedGroupId string, opt ...Option) (*Managed
 		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
 	}
 	if managedGroupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.New(errors.InvalidParameter, op, "missing managed group id")
 	}
 	return &ManagedGroupRole{
 		ManagedGroupRole: &store.ManagedGroupRole{
