@@ -153,6 +153,12 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 // All other options are ignored.
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteAudit"
+	if ctx == nil {
+		return errors.New(errors.InvalidParameter, op, "missing context")
+	}
+	if caller == "" {
+		return errors.New(errors.InvalidParameter, op, "missing operation")
+	}
 	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
