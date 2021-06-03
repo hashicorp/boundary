@@ -85,31 +85,183 @@ func Test_InitSysEventer(t *testing.T) {
 
 func TestEventer_writeObservation(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
+	ctx := context.Background()
+	testSetup := TestEventerConfig(t, "TestEventer_writeObservation")
+	eventer, err := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	require.NoError(t, err)
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
+	testHeader := map[string]interface{}{"name": "header"}
+	testDetail := map[string]interface{}{"name": "details"}
+	testObservation, err := newObservation("Test_NewEventer", WithHeader(testHeader), WithDetails(testDetail))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		broker       broker
+		observation  *observation
+		wantErrMatch *errors.Template
+	}{
+		{
+			name:         "missing-observation",
+			broker:       &testMockBroker{},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "send-fails",
+			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
+			observation:  testObservation,
+			wantErrMatch: errors.T(errors.Io),
+		},
+		{
+			name:        "success",
+			broker:      &testMockBroker{},
+			observation: testObservation,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			eventer.broker = tt.broker
+
+			err = eventer.writeObservation(ctx, tt.observation)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				return
+			}
+			require.NoError(err)
+		})
+	}
+	t.Run("e2e", func(t *testing.T) {
+		require := require.New(t)
+
+		logger := hclog.New(&hclog.LoggerOptions{
+			Name: "test",
+		})
+		c := EventerConfig{
+			ObservationsEnabled: true,
+		}
+		// with no defined config, it will default to a stdout sink
+		e, err := NewEventer(logger, c)
+		require.NoError(err)
+
+		m := map[string]interface{}{
+			"name": "bar",
+			"list": []string{"1", "2"},
+		}
+		observationEvent, err := newObservation("Test_NewEventer", WithHeader(m))
+		require.NoError(err)
+
+		require.NoError(e.writeObservation(context.Background(), observationEvent))
 	})
-	c := EventerConfig{
-		ObservationsEnabled: true,
-	}
-	// with no defined config, it will default to a stdout sink
-	e, err := NewEventer(logger, c)
-	require.NoError(err)
-
-	m := map[string]interface{}{
-		"name": "bar",
-		"list": []string{"1", "2"},
-	}
-	observationEvent, err := newObservation("Test_NewEventer", WithHeader(m))
-	require.NoError(err)
-
-	require.NoError(e.writeObservation(context.Background(), observationEvent))
-
 }
 
-// TODO -> jimlambrt: we need to complete this set of unit tests with coverage
-// for all the configuration possibilities.
+func TestEventer_writeAudit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	testSetup := TestEventerConfig(t, "Test_NewEventer")
+	eventer, err := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	require.NoError(t, err)
+
+	testAudit, err := newAudit(
+		"TestEventer_writeAudit",
+		WithRequestInfo(testRequestInfo(t)),
+		WithAuth(testAuth(t)),
+		WithRequest(testRequest(t)),
+		WithResponse(testResponse(t)))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		broker       broker
+		audit        *Audit
+		wantErrMatch *errors.Template
+	}{
+		{
+			name:         "missing-audit",
+			broker:       &testMockBroker{},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "send-fails",
+			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
+			audit:        testAudit,
+			wantErrMatch: errors.T(errors.Io),
+		},
+		{
+			name:   "success",
+			broker: &testMockBroker{},
+			audit:  testAudit,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			eventer.broker = tt.broker
+
+			err = eventer.writeAudit(ctx, tt.audit)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func TestEventer_writeError(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	testSetup := TestEventerConfig(t, "Test_NewEventer")
+	eventer, er := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	require.NoError(t, er)
+
+	testError, er := newError("TestEventer_writeError", errors.New(errors.Io, "test", "no msg"))
+	require.NoError(t, er)
+
+	tests := []struct {
+		name         string
+		broker       broker
+		err          *err
+		wantErrMatch *errors.Template
+	}{
+		{
+			name:         "missing-error",
+			broker:       &testMockBroker{},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:         "send-fails",
+			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
+			err:          testError,
+			wantErrMatch: errors.T(errors.Io),
+		},
+		{
+			name:   "success",
+			broker: &testMockBroker{},
+			err:    testError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			eventer.broker = tt.broker
+
+			err := eventer.writeError(ctx, tt.err)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
 func Test_NewEventer(t *testing.T) {
 	t.Parallel()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
