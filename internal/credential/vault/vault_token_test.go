@@ -100,7 +100,7 @@ func TestToken_New(t *testing.T) {
 					StoreId:   cs.PublicId,
 					Token:     []byte("token"),
 					TokenHmac: hmac([]byte("token"), []byte("accessor")),
-					Status:    string(StatusCurrent),
+					Status:    string(CurrentToken),
 				},
 				expiration: 5 * time.Minute,
 			},
