@@ -6583,14 +6583,11 @@ create table iam_managed_group_role (
   );
 
 create trigger immutable_role_principal
-before
-update on iam_managed_group_role
+before update on iam_managed_group_role
   for each row execute procedure iam_immutable_role_principal();
 
-create trigger 
-  default_create_time_column
-before
-insert on iam_managed_group_role
+create trigger default_create_time_column
+before insert on iam_managed_group_role
   for each row execute procedure default_create_time();
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
