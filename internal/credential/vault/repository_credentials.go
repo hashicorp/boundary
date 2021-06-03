@@ -34,6 +34,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	// job.
 
 	var creds []credential.Dynamic
+	var minLease time.Duration
 	for _, lib := range libs {
 		// Get the credential ID early. No need to get a secret from Vault
 		// if there is no way to save it in the database.
@@ -63,7 +64,11 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			return nil, errors.Wrap(err, op)
 		}
 
-		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, time.Duration(secret.LeaseDuration)*time.Second)
+		leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
+		if minLease > leaseDuration {
+			minLease = leaseDuration
+		}
+		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, leaseDuration)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -105,6 +110,11 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			purpose:    lib.Purpose,
 		})
 	}
+
+	// Best effort update next run time of credential renewal job, but an error should not
+	// cause Issue to fail.
+	// TODO (lcr 05/2021): log error once repo has logger
+	_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialRenewalJobName, minLease)
 
 	return creds, nil
 }
