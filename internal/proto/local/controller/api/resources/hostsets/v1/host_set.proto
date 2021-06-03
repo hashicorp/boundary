@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/r
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/hosts/v1/host.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
