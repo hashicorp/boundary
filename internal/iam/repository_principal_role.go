@@ -593,10 +593,19 @@ func splitPrincipals(principals []string) (users, groups, managedGroups []string
 	for _, principal := range principals {
 		switch {
 		case strings.HasPrefix(principal, UserPrefix):
+			if users == nil {
+				users = make([]string, 0, len(principals))
+			}
 			users = append(users, principal)
 		case strings.HasPrefix(principal, GroupPrefix):
+			if groups == nil {
+				groups = make([]string, 0, len(principals))
+			}
 			groups = append(groups, principal)
 		case strings.HasPrefix(principal, intglobals.OidcManagedGroupPrefix):
+			if managedGroups == nil {
+				managedGroups = make([]string, 0, len(principals))
+			}
 			managedGroups = append(managedGroups, principal)
 		default:
 			return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
