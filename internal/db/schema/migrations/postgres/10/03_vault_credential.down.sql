@@ -1,5 +1,6 @@
 begin;
 
+  drop view credential_vault_credential_private,
   drop view credential_vault_library_private;
   drop view credential_vault_store_public;
   drop view credential_vault_store_private;
