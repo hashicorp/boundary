@@ -189,6 +189,8 @@ type testMockBroker struct {
 	registeredNodeIds []eventlogger.NodeID
 	successThresholds map[eventlogger.EventType]int
 	pipelines         []eventlogger.Pipeline
+
+	errorOnSend error
 }
 
 func (b *testMockBroker) Reopen(ctx context.Context) error {
@@ -202,7 +204,10 @@ func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error {
 }
 
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
-	panic("not-implemented")
+	if b.errorOnSend != nil {
+		return eventlogger.Status{}, b.errorOnSend
+	}
+	return eventlogger.Status{}, nil
 }
 
 func (b *testMockBroker) StopTimeAt(t time.Time) {
