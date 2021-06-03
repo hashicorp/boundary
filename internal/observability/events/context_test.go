@@ -23,6 +23,98 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+func Test_NewRequestInfoContext(t *testing.T) {
+	testInfo := event.TestRequestInfo(t)
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		requestInfo     *event.RequestInfo
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-ctx",
+			requestInfo:     testInfo,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing context",
+		},
+		{
+			name:            "missing-request-info",
+			ctx:             context.Background(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing request info",
+		},
+		{
+			name:        "valid",
+			ctx:         context.Background(),
+			requestInfo: testInfo,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx, err := event.NewRequestInfoContext(tt.ctx, tt.requestInfo)
+			if tt.wantErrMatch != nil {
+				require.Errorf(err, "should have gotten an error")
+				assert.Nilf(ctx, "context should be nil")
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoErrorf(err, "should not have been a problem getting the request info")
+			require.NotNilf(ctx, "cxt returned shouldn't be nil")
+			got, ok := event.RequestInfoFromContext(ctx)
+			require.Truef(ok, "should be ok to get the request info")
+			assert.Equal(tt.requestInfo, got)
+		})
+	}
+}
+
+func Test_RequestInfoFromContext(t *testing.T) {
+	testInfo := event.TestRequestInfo(t)
+
+	testCtx, err := event.NewRequestInfoContext(context.Background(), testInfo)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		ctx       context.Context
+		wantInfo  *event.RequestInfo
+		wantNotOk bool
+	}{
+		{
+			name:      "missing-ctx",
+			wantNotOk: true,
+		},
+		{
+			name:      "no-request-info",
+			ctx:       context.Background(),
+			wantNotOk: true,
+		},
+		{
+			name:     "valid",
+			ctx:      testCtx,
+			wantInfo: testInfo,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, ok := event.RequestInfoFromContext(tt.ctx)
+			if tt.wantNotOk {
+				require.Falsef(ok, "should not have returned ok for the request info")
+				assert.Nilf(got, "should not have returned %q request info", got)
+				return
+			}
+			require.Truef(ok, "should have been okay for getting the request info")
+			require.NotNilf(got, "request info should not be nil")
+			assert.Equal(tt.wantInfo, got)
+		})
+	}
+}
+
 func Test_NewEventerContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_NewEventerContext")
 	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
