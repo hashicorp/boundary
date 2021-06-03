@@ -51,7 +51,7 @@ func Test_newObservation(t *testing.T) {
 			fromOp: Op("valid-all-opts"),
 			opts: []Option{
 				WithId("valid-all-opts"),
-				WithRequestInfo(testRequestInfo(t)),
+				WithRequestInfo(TestRequestInfo(t)),
 				WithHeader(testHeader),
 				WithDetails(testDetails),
 				WithFlush(),
@@ -65,7 +65,7 @@ func Test_newObservation(t *testing.T) {
 				},
 				Version:     ErrorVersion,
 				Op:          Op("valid-all-opts"),
-				RequestInfo: testRequestInfo(t),
+				RequestInfo: TestRequestInfo(t),
 			},
 		},
 	}

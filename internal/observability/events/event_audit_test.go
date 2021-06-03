@@ -39,7 +39,7 @@ func Test_newAudit(t *testing.T) {
 			opts: []Option{
 				WithId("all-opts"),
 				WithNow(testNow),
-				WithRequestInfo(testRequestInfo(t)),
+				WithRequestInfo(TestRequestInfo(t)),
 				WithAuth(testAuth(t)),
 				WithRequest(testRequest(t)),
 				WithResponse(testResponse(t)),
@@ -50,7 +50,7 @@ func Test_newAudit(t *testing.T) {
 				Version:     AuditVersion,
 				Type:        string(ApiRequest),
 				Timestamp:   testNow,
-				RequestInfo: testRequestInfo(t),
+				RequestInfo: TestRequestInfo(t),
 				Auth:        testAuth(t),
 				Request:     testRequest(t),
 				Response:    testResponse(t),
@@ -219,7 +219,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 						Type:        string(ApiRequest),
 						Timestamp:   testNow,
 						Auth:        testAuth(t),
-						RequestInfo: testRequestInfo(t),
+						RequestInfo: TestRequestInfo(t),
 					},
 				},
 				{
@@ -249,7 +249,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 				Auth:        testAuth(t),
 				Request:     testRequest(t),
 				Response:    testResponse(t),
-				RequestInfo: testRequestInfo(t),
+				RequestInfo: TestRequestInfo(t),
 			},
 		},
 	}

@@ -166,7 +166,7 @@ func TestEventer_writeAudit(t *testing.T) {
 
 	testAudit, err := newAudit(
 		"TestEventer_writeAudit",
-		WithRequestInfo(testRequestInfo(t)),
+		WithRequestInfo(TestRequestInfo(t)),
 		WithAuth(testAuth(t)),
 		WithRequest(testRequest(t)),
 		WithResponse(testResponse(t)))

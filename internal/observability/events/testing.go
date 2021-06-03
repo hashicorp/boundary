@@ -117,7 +117,8 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 	return c
 }
 
-func testRequestInfo(t *testing.T) *RequestInfo {
+// TestRequestInfo provides a test RequestInfo
+func TestRequestInfo(t *testing.T) *RequestInfo {
 	t.Helper()
 	return &RequestInfo{
 		Id:       "test-request-info",

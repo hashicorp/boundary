@@ -46,7 +46,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithRequestInfo", func(t *testing.T) {
 		assert := assert.New(t)
-		info := testRequestInfo(t)
+		info := TestRequestInfo(t)
 		opts := getOpts(WithRequestInfo(info))
 		testOpts := getDefaultOptions()
 		testOpts.withRequestInfo = info
