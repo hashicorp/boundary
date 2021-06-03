@@ -14,6 +14,7 @@ const (
 	requestInfoKey
 )
 
+// NewEventerContext will return a context containing a value of the provided Eventer
 func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
 	const op = "event.NewEventerContext"
 	if ctx == nil {
@@ -25,6 +26,7 @@ func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, 
 	return context.WithValue(ctx, eventerKey, eventer), nil
 }
 
+// EventerFromContext attempts to get the eventer value from the context provided
 func EventerFromContext(ctx context.Context) (*Eventer, bool) {
 	const op = "event.EventerFromContext"
 	if ctx == nil {
@@ -34,6 +36,8 @@ func EventerFromContext(ctx context.Context) (*Eventer, bool) {
 	return eventer, ok
 }
 
+// NewRequestInfoContext will return a context containing a value for the
+// provided RequestInfo
 func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Context, error) {
 	const op = "event.NewRequestInfoContext"
 	if ctx == nil {
@@ -48,6 +52,8 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 	return context.WithValue(ctx, requestInfoKey, info), nil
 }
 
+// RequestInfoFromContext attempts to get the RequestInfo value from the context
+// provided
 func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 	const op = "event.RequestInfoFromContext"
 	if ctx == nil {
