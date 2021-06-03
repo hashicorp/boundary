@@ -241,6 +241,13 @@ func Test_WriteObservation(t *testing.T) {
 	testCtx, err = event.NewRequestInfoContext(testCtx, info)
 	require.NoError(t, err)
 
+	testCtxNoInfoId, err := event.NewEventerContext(context.Background(), e)
+	require.NoError(t, err)
+	noId := &event.RequestInfo{Id: "867-5309"}
+	testCtxNoInfoId, err = event.NewRequestInfoContext(testCtxNoInfoId, noId)
+	require.NoError(t, err)
+	noId.Id = ""
+
 	type observationPayload struct {
 		header  map[string]interface{}
 		details map[string]interface{}
@@ -287,6 +294,26 @@ func Test_WriteObservation(t *testing.T) {
 		wantErrMatch            *errors.Template
 		wantErrContains         string
 	}{
+		{
+			name:    "no-info-id",
+			noFlush: true,
+			ctx:     testCtxNoInfoId,
+			observationPayload: []observationPayload{
+				{
+					header: map[string]interface{}{
+						"name": "bar",
+					},
+				},
+			},
+			header: map[string]interface{}{
+				"name": "bar",
+			},
+			observationSinkFileName: c.AllEvents.Name(),
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+			},
+			cleanup: func() { event.TestResetSystEventer(t) },
+		},
 		{
 			name:               "missing-ctx",
 			observationPayload: testPayloads,
@@ -377,9 +404,8 @@ func Test_WriteObservation(t *testing.T) {
 			}
 
 			if tt.observationSinkFileName != "" {
-				defer os.Remove(tt.observationSinkFileName)
+				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0666) }()
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
-				fmt.Println("b: ", string(b))
 				assert.NoError(err)
 
 				gotObservation := &eventJson{}
@@ -505,9 +531,70 @@ func Test_WriteAudit(t *testing.T) {
 		auditOpts         [][]event.Option
 		wantAudit         *event.Audit
 		ctx               context.Context
-		errSinkFileName   string
 		auditSinkFileName string
+		setup             func() error
+		cleanup           func()
+		noOperation       bool
+		noFlush           bool
+		wantErrMatch      *errors.Template
+		wantErrContains   string
 	}{
+		{
+			name: "missing-ctx",
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing context",
+		},
+		{
+			name: "missing-op",
+			ctx:  ctx,
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			noOperation:     true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing operation",
+		},
+		{
+			name: "no-ctx-eventer-and-syseventer-not-initialized",
+			ctx:  context.Background(),
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing both context and system eventer",
+		},
+		{
+			name:    "use-syseventer",
+			noFlush: true,
+			ctx:     context.Background(),
+			auditOpts: [][]event.Option{
+				{
+					event.WithAuth(testAuth),
+					event.WithRequest(testReq),
+				},
+			},
+			wantAudit: &event.Audit{
+				Auth:    testAuth,
+				Request: testReq,
+			},
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+			},
+			cleanup:           func() { event.TestResetSystEventer(t) },
+			auditSinkFileName: c.AllEvents.Name(),
+		},
 		{
 			name: "simple",
 			ctx:  ctx,
@@ -526,27 +613,46 @@ func Test_WriteAudit(t *testing.T) {
 				Request:  testReq,
 				Response: testResp,
 			},
-			errSinkFileName:   c.ErrorEvents.Name(),
 			auditSinkFileName: c.AllEvents.Name(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			if tt.setup != nil {
+				require.NoError(tt.setup())
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+			op := tt.name
+			if tt.noOperation {
+				op = ""
+			}
+			require.Greater(len(tt.auditOpts), 0)
 			for _, opts := range tt.auditOpts {
 				opts := append(opts, event.WithNow(now))
-				err := event.WriteAudit(tt.ctx, event.Op(tt.name), opts...)
+				err := event.WriteAudit(tt.ctx, event.Op(op), opts...)
+				if tt.wantErrMatch != nil {
+					require.Errorf(err, "wanted error %q", tt.wantErrMatch)
+					if tt.wantErrContains != "" {
+						assert.Contains(err.Error(), tt.wantErrContains)
+					}
+					return
+				}
 				require.NoError(err)
 			}
-			require.NoError(event.WriteAudit(tt.ctx, event.Op(tt.name), event.WithFlush(), event.WithNow(now)))
-
+			if !tt.noFlush {
+				require.NoError(event.WriteAudit(tt.ctx, event.Op(op), event.WithFlush(), event.WithNow(now)))
+			}
 			if tt.auditSinkFileName != "" {
-				defer os.Remove(tt.auditSinkFileName)
+				defer func() { _ = os.WriteFile(tt.auditSinkFileName, nil, 0666) }()
+
 				b, err := ioutil.ReadFile(tt.auditSinkFileName)
 				require.NoError(err)
 				gotAudit := &eventJson{}
 				err = json.Unmarshal(b, gotAudit)
-				require.NoError(err)
+				require.NoErrorf(err, "json: %s", string(b))
 
 				actualJson, err := json.Marshal(gotAudit)
 				require.NoError(err)
@@ -556,29 +662,27 @@ func Test_WriteAudit(t *testing.T) {
 					EventType: string(gotAudit.EventType),
 					Payload: map[string]interface{}{
 						"auth":            tt.wantAudit.Auth,
-						"id":              tt.wantAudit.Id,
+						"id":              gotAudit.Payload["id"],
 						"timestamp":       now,
 						"request":         tt.wantAudit.Request,
-						"response":        tt.wantAudit.Response,
 						"serialized_hmac": "",
 						"type":            event.ApiRequest,
 						"version":         event.AuditVersion,
-						"request_info": event.RequestInfo{
-							Id: tt.wantAudit.Id,
-						},
 					},
+				}
+				if tt.wantAudit.Id != "" {
+					wantEvent.Payload["id"] = tt.wantAudit.Id
+					wantEvent.Payload["request_info"] = event.RequestInfo{
+						Id: tt.wantAudit.Id,
+					}
+				}
+				if tt.wantAudit.Response != nil {
+					wantEvent.Payload["response"] = tt.wantAudit.Response
 				}
 				wantJson, err := json.Marshal(wantEvent)
 				require.NoError(err)
 
 				assert.JSONEq(string(wantJson), string(actualJson))
-			}
-
-			if tt.errSinkFileName != "" {
-				defer os.Remove(tt.errSinkFileName)
-				b, err := ioutil.ReadFile(tt.errSinkFileName)
-				require.NoError(err)
-				assert.Equal(0, len(b))
 			}
 		})
 	}
