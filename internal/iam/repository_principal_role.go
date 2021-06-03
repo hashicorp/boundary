@@ -28,8 +28,8 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	if len(userIds) == 0 && len(groupIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing either user or groups to add")
+	if len(userIds) == 0 && len(groupIds) == 0 && len(managedGroupIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
 	}
 
 	newUserRoles := make([]interface{}, 0, len(userIds))
@@ -325,8 +325,8 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
-	if len(userIds) == 0 && len(groupIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing either user or groups to delete")
+	if len(userIds) == 0 && len(groupIds) == 0 && len(managedGroupIds) == 0 {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to delete")
 	}
 	if roleVersion == 0 {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
