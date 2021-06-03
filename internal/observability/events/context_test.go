@@ -223,7 +223,8 @@ func Test_EventerFromContext(t *testing.T) {
 }
 
 func Test_WriteObservation(t *testing.T) {
-
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name: "test",
 	})
@@ -235,83 +236,161 @@ func Test_WriteObservation(t *testing.T) {
 
 	info := &event.RequestInfo{Id: "867-5309"}
 
-	ctx, err := event.NewEventerContext(context.Background(), e)
+	testCtx, err := event.NewEventerContext(context.Background(), e)
 	require.NoError(t, err)
-	ctx, err = event.NewRequestInfoContext(ctx, info)
+	testCtx, err = event.NewRequestInfoContext(testCtx, info)
 	require.NoError(t, err)
+
 	type observationPayload struct {
 		header  map[string]interface{}
 		details map[string]interface{}
 	}
+
+	testPayloads := []observationPayload{
+		{
+			header: map[string]interface{}{
+				"name": "bar",
+			},
+		},
+		{
+			header: map[string]interface{}{
+				"list": []string{"1", "2"},
+			},
+		},
+		{
+			details: map[string]interface{}{
+				"file": "temp-file.txt",
+			},
+		},
+	}
+
+	testWantHeader := map[string]interface{}{
+		"name": "bar",
+		"list": []string{"1", "2"},
+	}
+
+	testWantDetails := map[string]interface{}{
+		"file": "temp-file.txt",
+	}
+
 	tests := []struct {
 		name                    string
+		noOperation             bool
+		noFlush                 bool
 		observationPayload      []observationPayload
 		header                  map[string]interface{}
 		details                 map[string]interface{}
 		ctx                     context.Context
-		errSinkFileName         string
 		observationSinkFileName string
+		setup                   func() error
+		cleanup                 func()
+		wantErrMatch            *errors.Template
+		wantErrContains         string
 	}{
 		{
-			name: "simple",
-			ctx:  ctx,
+			name:               "missing-ctx",
+			observationPayload: testPayloads,
+			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrContains:    "missing context",
+		},
+		{
+			name:               "missing-op",
+			ctx:                testCtx,
+			noOperation:        true,
+			observationPayload: testPayloads,
+			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrContains:    "missing operation",
+		},
+		{
+			name:    "no-header-or-details-in-payload",
+			noFlush: true,
+			ctx:     testCtx,
+			observationPayload: []observationPayload{
+				{},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "you must specify either header or details options",
+		},
+		{
+			name:               "no-ctx-eventer-and-syseventer-not-initialized",
+			ctx:                context.Background(),
+			observationPayload: testPayloads,
+			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrContains:    "missing both context and system eventer",
+		},
+		{
+			name:    "use-syseventer",
+			noFlush: true,
+			ctx:     context.Background(),
 			observationPayload: []observationPayload{
 				{
 					header: map[string]interface{}{
 						"name": "bar",
 					},
 				},
-				{
-					header: map[string]interface{}{
-						"list": []string{"1", "2"},
-					},
-				},
-				{
-					details: map[string]interface{}{
-						"file": "temp-file.txt",
-					},
-				},
 			},
 			header: map[string]interface{}{
 				"name": "bar",
-				"list": []string{"1", "2"},
 			},
-			details: map[string]interface{}{
-				"file": "temp-file.txt",
+			observationSinkFileName: c.AllEvents.Name(),
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
 			},
-			errSinkFileName:         c.ErrorEvents.Name(),
+			cleanup: func() { event.TestResetSystEventer(t) },
+		},
+		{
+			name:                    "simple",
+			ctx:                     testCtx,
+			observationPayload:      testPayloads,
+			header:                  testWantHeader,
+			details:                 testWantDetails,
 			observationSinkFileName: c.AllEvents.Name(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			if tt.setup != nil {
+				require.NoError(tt.setup())
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+			op := tt.name
+			if tt.noOperation {
+				op = ""
+			}
+			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
-				err := event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithHeader(p.header), event.WithDetails(p.details))
+				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header), event.WithDetails(p.details))
+				if tt.wantErrMatch != nil {
+					require.Errorf(err, "wanted error %q", tt.wantErrMatch)
+					if tt.wantErrContains != "" {
+						assert.Contains(err.Error(), tt.wantErrContains)
+					}
+					return
+				}
 				require.NoError(err)
 			}
-			require.NoError(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithFlush()))
+			if !tt.noFlush {
+				require.NoError(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithFlush()))
+			}
 
 			if tt.observationSinkFileName != "" {
 				defer os.Remove(tt.observationSinkFileName)
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
-				require.NoError(err)
+				fmt.Println("b: ", string(b))
+				assert.NoError(err)
+
 				gotObservation := &eventJson{}
 				err = json.Unmarshal(b, gotObservation)
-				require.NoError(err)
+				require.NoErrorf(err, "json: %s", string(b))
 
 				actualJson, err := json.Marshal(gotObservation)
 				require.NoError(err)
 				wantJson := testObservationJsonFromCtx(t, tt.ctx, event.Op(tt.name), gotObservation, tt.header, tt.details)
 
 				assert.JSONEq(string(wantJson), string(actualJson))
-			}
-
-			if tt.errSinkFileName != "" {
-				defer os.Remove(tt.errSinkFileName)
-				b, err := ioutil.ReadFile(tt.errSinkFileName)
-				require.NoError(err)
-				assert.Equal(0, len(b))
 			}
 		})
 	}
@@ -322,8 +401,8 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 	t.Helper()
 	require := require.New(t)
 
-	reqInfo, ok := event.RequestInfoFromContext(ctx)
-	require.Truef(ok, "missing reqInfo in ctx")
+	reqInfo, _ := event.RequestInfoFromContext(ctx)
+	// require.Truef(ok, "missing reqInfo in ctx")
 
 	j := eventJson{
 		CreatedAt: got.CreatedAt,
