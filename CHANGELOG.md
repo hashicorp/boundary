@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* mlock: Add a Docker entrypoint script and modify Dockerfiles to mimic Vault
+  ([PR](https://github.com/hashicorp/boundary/pull/1269))
+
 ## 0.2.3 (2021/05/21)
 
 ### Deprecations/Changes
@@ -26,9 +31,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * sessions: Return a `200` and session information when canceling an
   already-canceled or terminated session
   ([PR](https://github.com/hashicorp/boundary/pull/1243))
-
-* mlock: Add a Docker entrypoint script and modify Dockerfiles to mimic Vault 
-  ([PR](https://github.com/hashicorp/boundary/pull/1269))
 
 ### Bug Fixes
 
