@@ -145,7 +145,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		return nil, nil, fmt.Errorf("unable to set primary auth method for global scope: %w", err)
 	}
 
-	createUser := func(loginName, loginPassword, userId string, admin bool) (*iam.User, error) {
+	createUser := func(loginName, loginPassword, userId, accountId string, admin bool) (*iam.User, error) {
 		// Create the dev admin user
 		if loginName == "" {
 			return nil, fmt.Errorf("empty login name")
@@ -167,7 +167,13 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if err != nil {
 			return nil, fmt.Errorf("error creating new in memory password auth account: %w", err)
 		}
-		acct, err = pwRepo.CreateAccount(cancelCtx, scope.Global.String(), acct, password.WithPassword(loginPassword))
+		acct, err = pwRepo.CreateAccount(
+			cancelCtx,
+			scope.Global.String(),
+			acct,
+			password.WithPassword(loginPassword),
+			password.WithPublicId(accountId),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error saving auth account to the db: %w", err)
 		}
@@ -233,7 +239,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		b.DevUnprivilegedPassword == "",
 		b.DevUnprivilegedUserId == "":
 	default:
-		_, err := createUser(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, b.DevUnprivilegedUserId, false)
+		_, err := createUser(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, b.DevUnprivilegedUserId, b.DevUnprivilegedPasswordAccountId, false)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -257,7 +263,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
 		}
 	}
-	u, err := createUser(b.DevLoginName, b.DevPassword, b.DevUserId, true)
+	u, err := createUser(b.DevLoginName, b.DevPassword, b.DevUserId, b.DevPasswordAccountId, true)
 	if err != nil {
 		return nil, nil, err
 	}
