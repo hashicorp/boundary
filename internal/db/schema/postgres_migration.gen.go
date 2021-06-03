@@ -5539,6 +5539,31 @@ create table credential_vault_store (
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
 
+  create table credential_vault_credential_status_enm (
+    name text primary key
+      constraint only_predefined_credential_statuses_allowed
+      check (
+        name in (
+          'active',
+          'revoke',
+          'revoked',
+          'expired',
+          'unknown'
+        )
+      )
+  );
+  comment on table credential_vault_credential_status_enm is
+    'credential_vault_credential_status_enm is an enumeration table for the status of vault credentials. '
+    'It contains rows for representing the active, revoke, revoked, expired, and unknown statuses.';
+
+  insert into credential_vault_credential_status_enm (name)
+  values
+    ('active'),
+    ('revoke'),
+    ('revoked'),
+    ('expired'),
+    ('unknown');
+
   create table credential_vault_credential (
     public_id wt_public_id primary key,
     library_id wt_public_id not null
@@ -5565,6 +5590,11 @@ create table credential_vault_store (
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
     is_renewable boolean not null,
+    status text not null
+      constraint credential_vault_credential_status_enm_fkey
+        references credential_vault_credential_status_enm (name)
+        on delete restrict
+        on update cascade,
     constraint credential_dynamic_fkey
       foreign key (library_id, public_id)
       references credential_dynamic (library_id, public_id)
