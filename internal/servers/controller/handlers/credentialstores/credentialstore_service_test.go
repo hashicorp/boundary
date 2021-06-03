@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -33,6 +34,10 @@ import (
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+
+func TestSetup(t *testing.T) {
+	docker.StartDbInDocker("postgres")
+}
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")

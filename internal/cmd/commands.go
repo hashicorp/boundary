@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
+	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
@@ -321,6 +322,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"database migrate": func() (cli.Command, error) {
 			return &database.MigrateCommand{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"credential-stores": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"credential-stores read": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"credential-stores delete": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"credential-stores list": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"credential-stores create": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-stores create vault": func() (cli.Command, error) {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-stores update": func() (cli.Command, error) {
+			return &credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-stores update vault": func() (cli.Command, error) {
+			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 
