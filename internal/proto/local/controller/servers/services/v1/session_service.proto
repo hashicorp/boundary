@@ -5,7 +5,6 @@ package controller.servers.services.v1;
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
 
 import "google/protobuf/timestamp.proto";
-import "controller/servers/v1/servers.proto";
 import "controller/api/resources/targets/v1/target.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
 

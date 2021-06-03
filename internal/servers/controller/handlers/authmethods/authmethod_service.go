@@ -916,7 +916,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				}
 				if len(attrs.GetIdpCaCerts()) > 0 {
 					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
-						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
 				if len(attrs.GetClaimsScopes()) > 0 {
@@ -933,11 +933,11 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 					}
 					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
-					for from, rawTo := range acm {
-						if foundTo[rawTo] {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", from, rawTo, rawTo)
+					for _, m := range acm {
+						if foundTo[m.To] {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
 						}
-						foundTo[rawTo] = true
+						foundTo[m.To] = true
 					}
 				}
 			}
@@ -1037,7 +1037,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if len(attrs.GetIdpCaCerts()) > 0 {
 				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
-					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
 			if len(attrs.GetClaimsScopes()) > 0 {
@@ -1054,19 +1054,19 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
 				} else {
 					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
-					for from, rawTo := range acm {
-						if foundTo[rawTo] {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", from, rawTo, rawTo)
+					for _, m := range acm {
+						if foundTo[m.To] {
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
 						}
-						foundTo[rawTo] = true
+						foundTo[m.To] = true
 
-						to, err := oidc.ConvertToAccountToClaim(rawTo)
+						to, err := oidc.ConvertToAccountToClaim(m.To)
 						if err != nil {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", from, rawTo, err.Error())
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
 							break
 						}
 						if to == oidc.ToSubClaim {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", from, rawTo)
+							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", m.From, m.To)
 							break
 						}
 					}

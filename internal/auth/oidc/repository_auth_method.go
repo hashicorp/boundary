@@ -39,21 +39,21 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-		for from, to := range acms {
-			toClaim, err := ConvertToAccountToClaim(to)
+		for _, m := range acms {
+			toClaim, err := ConvertToAccountToClaim(m.To)
 			if err != nil {
 				return nil, errors.Wrap(err, op)
 			}
 			switch toClaim {
 			case ToSubClaim:
-				fromSub = from
+				fromSub = m.From
 			case ToEmailClaim:
-				fromEmail = from
+				fromEmail = m.From
 			case ToNameClaim:
-				fromName = from
+				fromName = m.From
 			default:
 				// should never happen, but including it just in case.
-				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s=%s is not a valid account claim map", from, to))
+				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s=%s is not a valid account claim map", m.From, m.To))
 			}
 		}
 	}
