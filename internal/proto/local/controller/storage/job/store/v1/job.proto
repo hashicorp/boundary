@@ -5,7 +5,6 @@ package controller.storage.job.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/scheduler/job/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/options.proto";
 
 message Job {
   // plugin_id is the primary key of the plugin that registered and owns the job
