@@ -15,5 +15,4 @@ func Test_newId(t *testing.T) {
 		require.NoError(err)
 		assert.True(strings.HasPrefix(got, "pre"))
 	})
-
 }

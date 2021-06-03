@@ -53,8 +53,10 @@ type Eventer struct {
 	logger         hclog.Logger
 }
 
-var sysEventer *Eventer      // sysEventer is the system-wide Eventer
-var sysEventerOnce sync.Once // sysEventerOnce ensures that the system-wide Eventer is only initialized once.
+var (
+	sysEventer     *Eventer  // sysEventer is the system-wide Eventer
+	sysEventerOnce sync.Once // sysEventerOnce ensures that the system-wide Eventer is only initialized once.
+)
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
 // singleton for Boundary

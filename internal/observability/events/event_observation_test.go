@@ -91,7 +91,6 @@ func Test_newObservation(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
-
 }
 
 func Test_observationvalidate(t *testing.T) {

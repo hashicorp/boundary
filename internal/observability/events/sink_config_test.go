@@ -132,5 +132,4 @@ func TestSinkConfig_validate(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
-
 }

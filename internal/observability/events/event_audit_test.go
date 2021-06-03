@@ -117,6 +117,7 @@ func TestAudit_validate(t *testing.T) {
 		})
 	}
 }
+
 func TestAudit_EventType(t *testing.T) {
 	t.Parallel()
 	a := &Audit{}

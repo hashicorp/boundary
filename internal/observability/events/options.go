@@ -42,6 +42,7 @@ func WithId(id string) Option {
 		o.withId = id
 	}
 }
+
 func WithDetails(d map[string]interface{}) Option {
 	return func(o *options) {
 		o.withDetails = d

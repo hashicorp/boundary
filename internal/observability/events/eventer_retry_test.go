@@ -111,7 +111,6 @@ func TestEventer_retrySend(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-
 		})
 	}
 }

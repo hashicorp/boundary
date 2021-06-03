@@ -404,7 +404,7 @@ func Test_WriteObservation(t *testing.T) {
 			}
 
 			if tt.observationSinkFileName != "" {
-				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0666) }()
+				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
 				assert.NoError(err)
 
@@ -420,7 +420,6 @@ func Test_WriteObservation(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *eventJson, hdr, details map[string]interface{}) []byte {
@@ -474,7 +473,6 @@ type eventJson struct {
 }
 
 func Test_WriteAudit(t *testing.T) {
-
 	now := time.Now()
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -646,7 +644,7 @@ func Test_WriteAudit(t *testing.T) {
 				require.NoError(event.WriteAudit(tt.ctx, event.Op(op), event.WithFlush(), event.WithNow(now)))
 			}
 			if tt.auditSinkFileName != "" {
-				defer func() { _ = os.WriteFile(tt.auditSinkFileName, nil, 0666) }()
+				defer func() { _ = os.WriteFile(tt.auditSinkFileName, nil, 0o666) }()
 
 				b, err := ioutil.ReadFile(tt.auditSinkFileName)
 				require.NoError(err)
@@ -686,5 +684,4 @@ func Test_WriteAudit(t *testing.T) {
 			}
 		})
 	}
-
 }

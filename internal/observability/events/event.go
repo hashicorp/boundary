@@ -2,8 +2,10 @@ package event
 
 import "google.golang.org/protobuf/proto"
 
-type Id string
-type Op string
+type (
+	Id string
+	Op string
+)
 
 // RequestInfo defines the fields captured about a Boundary request.
 type RequestInfo struct {

@@ -97,7 +97,6 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 	const op = "event.(audit).ComposedFrom"
 	if len(events) == 0 {
 		return "", nil, errors.New(errors.InvalidParameter, op, "missing events")
-
 	}
 	var validId string
 	var initValidId sync.Once

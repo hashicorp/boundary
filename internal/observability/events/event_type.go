@@ -23,5 +23,4 @@ func (et Type) validate() error {
 	default:
 		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("'%s' is not a valid event type", et))
 	}
-
 }

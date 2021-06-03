@@ -338,8 +338,8 @@ func Test_NewEventer(t *testing.T) {
 				"gated-observation", // stdout
 				"gated-audit",       // stdout
 				"tmp-all-events",    // every-type-file-sync
-				"gated-observation", //every-type-file-sync
-				"gated-audit",       //every-type-file-sync
+				"gated-observation", // every-type-file-sync
+				"gated-audit",       // every-type-file-sync
 				"tmp-errors",        // error-file-sink
 			},
 			wantPipelines: []string{
@@ -439,7 +439,6 @@ func Test_NewEventer(t *testing.T) {
 			}
 
 			assert.Equal(tt.wantThresholds, testBroker.successThresholds)
-
 		})
 	}
 }

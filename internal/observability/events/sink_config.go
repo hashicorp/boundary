@@ -42,5 +42,4 @@ func (sc *SinkConfig) validate() error {
 		}
 	}
 	return nil
-
 }

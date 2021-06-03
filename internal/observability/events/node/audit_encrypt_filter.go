@@ -367,5 +367,4 @@ func setValue(fv reflect.Value, newVal string) error {
 		return errors.New(errors.InvalidParameter, op, "unable to redact field value since is not a string or []byte")
 	}
 	return nil
-
 }

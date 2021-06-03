@@ -84,7 +84,6 @@ func Test_newError(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
-
 }
 
 func Test_errvalidate(t *testing.T) {
