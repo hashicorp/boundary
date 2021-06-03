@@ -139,7 +139,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 		},
 		{
 			name:      "no-tls-token-not-renewable",
-			tokenOpts: []TestOption{TestRenewable(false)},
+			tokenOpts: []TestOption{TestRenewableToken(false)},
 			wantErr:   errors.VaultTokenNotRenewable,
 		},
 		{
@@ -1075,7 +1075,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 		},
 		{
 			name:         "token-not-renewable",
-			newTokenOpts: []TestOption{TestRenewable(false)},
+			newTokenOpts: []TestOption{TestRenewableToken(false)},
 			wantErr:      errors.VaultTokenNotRenewable,
 		},
 		{

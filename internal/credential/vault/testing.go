@@ -118,10 +118,8 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 // TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
 // during the creation of the credentials , the test will fail.
-func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int, opt ...TestOption) []*Credential {
+func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
-
-	opts := getTestOpts(t, opt...)
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 
@@ -153,7 +151,7 @@ func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libr
 		assert.NoError(err)
 		require.NotNil(id)
 		credential.PublicId = id
-		credential.IsRenewable = opts.renewable
+		credential.IsRenewable = true
 
 		query, queryValues := credential.insertQuery()
 		rows, err2 := rw.Exec(ctx, query, queryValues)
@@ -524,9 +522,9 @@ func TestPeriodicToken(b bool) TestOption {
 	}
 }
 
-// TestRenewable sets the token renewable option to b.
+// TestRenewableToken sets the token renewable option to b.
 // The renewable option is true by default.
-func TestRenewable(b bool) TestOption {
+func TestRenewableToken(b bool) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.renewable = b

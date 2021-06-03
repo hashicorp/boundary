@@ -992,7 +992,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 
 			got, err := r.NextRunIn()
 			require.NoError(err)
-			// Round to time.Minute to account for lost time between creating tokens and determining next run
+			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
 
 			// Set all credential isRenewable to false for next test

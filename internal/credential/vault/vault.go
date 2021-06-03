@@ -128,7 +128,7 @@ func (c *client) lookupLease(leaseId string) (*vault.Secret, error) {
 
 // renewLease calls the /sys/leases/renew Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-//// policy in Vault 1.7.0. See
+// policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/system/leases#renew-lease.
 func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
 	const op = "vault.(client).renewLease"

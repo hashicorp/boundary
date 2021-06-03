@@ -38,7 +38,7 @@ type TokenRenewalJob struct {
 	numProcessed int
 }
 
-// NewTokenRenewalJob creates a new in TokenRenewalJob.
+// NewTokenRenewalJob creates a new in-memory TokenRenewalJob.
 //
 // WithLimit is the only supported option.
 func NewTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
@@ -274,7 +274,7 @@ type CredentialRenewalJob struct {
 	numProcessed int
 }
 
-// NewCredentialRenewalJob creates a new in CredentialRenewalJob.
+// NewCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
 //
 // WithLimit is the only supported option.
 func NewCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRenewalJob, error) {
@@ -358,7 +358,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 }
 
 func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *renewableCredential) error {
-	const op = "vault.(TokenRenewalJob).renewToken"
+	const op = "vault.(CredentialRenewalJob).renewCred"
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, c.Library.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -413,5 +413,5 @@ func (r *CredentialRenewalJob) Name() string {
 
 // Description is the human readable description of the job.
 func (r *CredentialRenewalJob) Description() string {
-	return "Periodically renews Vault credentials that are still attached to a non-terminated session."
+	return "Periodically renews Vault credentials that are attached to an active/pending session."
 }

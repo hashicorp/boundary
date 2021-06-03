@@ -145,7 +145,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		},
 		{
 			name:        "NotRenewable",
-			opts:        []TestOption{TestRenewable(false)},
+			opts:        []TestOption{TestRenewableToken(false)},
 			tokenChkFn:  combine(assertIsNotRenewable(), assertIsOrphan()),
 			lookupChkFn: assertIsPeriodic(),
 		},
