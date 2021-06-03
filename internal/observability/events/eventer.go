@@ -316,6 +316,9 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 // writeObservation writes/sends an Observation event.
 func (e *Eventer) writeObservation(ctx context.Context, event *observation) error {
 	const op = "event.(Eventer).WriteObservation"
+	if event == nil {
+		return errors.New(errors.InvalidParameter, op, "missing event")
+	}
 	if !e.conf.ObservationsEnabled {
 		return nil
 	}
@@ -339,6 +342,9 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 // writeError writes/sends an Err event
 func (e *Eventer) writeError(ctx context.Context, event *err) error {
 	const op = "event.(Eventer).WriteError"
+	if event == nil {
+		return errors.New(errors.InvalidParameter, op, "missing event")
+	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
 	})
@@ -352,6 +358,9 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 // writeAudit writes/send an audit event
 func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
 	const op = "event.(Eventer).WriteAudit"
+	if event == nil {
+		return errors.New(errors.InvalidParameter, op, "missing event")
+	}
 	if !e.conf.AuditEnabled {
 		return nil
 	}
