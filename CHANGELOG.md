@@ -27,6 +27,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   already-canceled or terminated session
   ([PR](https://github.com/hashicorp/boundary/pull/1243))
 
+* mlock: Add a Docker entrypoint script and modify Dockerfiles to mimic Vault 
+  ([PR](https://github.com/hashicorp/boundary/pull/1269))
+
 ### Bug Fixes
 
 * cors: Change the default allowed origins when `cors_enabled` is not specified
