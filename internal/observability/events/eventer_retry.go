@@ -52,7 +52,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 	info := retryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
-			retryErrors = multierror.Append(retryErrors, errors.New(errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1)))
+			retryErrors = multierror.Append(retryErrors, errors.New(errors.MaxRetries, op, fmt.Sprintf("Too many retries: reached max of %d", retries)))
 			return retryErrors
 		}
 		var err error
