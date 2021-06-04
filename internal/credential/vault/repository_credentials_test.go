@@ -24,7 +24,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
+	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true), vault.WithTestVaultTLS(vault.TestClientTLS))
 	v.MountDatabase(t)
 	v.MountPKI(t)
 
@@ -44,7 +44,13 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	secret := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
 	token := secret.Auth.ClientToken
 
-	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	var opts []vault.Option
+	opts = append(opts, vault.WithCACert(v.CaCert))
+	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
+	require.NoError(err)
+	opts = append(opts, vault.WithClientCert(clientCert))
+
+	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 	assert.NoError(err)
 	require.NotNil(credStoreIn)
 	origStore, err := repo.CreateCredentialStore(ctx, credStoreIn)
