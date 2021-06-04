@@ -92,29 +92,29 @@ func Test_errvalidate(t *testing.T) {
 		name            string
 		id              string
 		op              Op
-		wantErr         error
+		want            error
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
 		{
 			name:            "missing-id",
 			op:              Op("missing-id"),
-			wantErr:         errors.New(errors.InvalidParameter, "missing-id", "missing id"),
+			want:            errors.New(errors.InvalidParameter, "missing-id", "missing id"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing id",
 		},
 		{
 			name:            "missing-operation",
 			id:              "missing-operation",
-			wantErr:         errors.New(errors.InvalidParameter, "missing-operation", "missing operation"),
+			want:            errors.New(errors.InvalidParameter, "missing-operation", "missing operation"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing operation",
 		},
 		{
-			name:    "valid",
-			op:      Op("valid"),
-			id:      "valid",
-			wantErr: errors.New(errors.InvalidParameter, "valid", "valid error"),
+			name: "valid",
+			op:   Op("valid"),
+			id:   "valid",
+			want: errors.New(errors.InvalidParameter, "valid", "valid error"),
 		},
 	}
 	for _, tt := range tests {
@@ -123,7 +123,7 @@ func Test_errvalidate(t *testing.T) {
 			e := err{
 				Op:    tt.op,
 				Id:    Id(tt.id),
-				Error: tt.wantErr,
+				Error: tt.want,
 			}
 			err := e.validate()
 			if tt.wantErrMatch != nil {
@@ -135,7 +135,7 @@ func Test_errvalidate(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tt.wantErr, e.Error)
+			assert.Equal(tt.want, e.Error)
 		})
 	}
 }
