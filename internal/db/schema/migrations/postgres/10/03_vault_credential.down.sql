@@ -1,5 +1,6 @@
 begin;
 
+  drop view credential_vault_credential_private,
   drop view credential_vault_library_private;
   drop view credential_vault_store_public;
   drop view credential_vault_store_private;
@@ -10,6 +11,7 @@ begin;
                   'credential_vault_credential');
 
   drop table credential_vault_credential;
+  drop table credential_vault_credential_status_enm;
   drop table credential_vault_library;
   drop table credential_vault_http_method_enm;
   drop table credential_vault_client_certificate;
