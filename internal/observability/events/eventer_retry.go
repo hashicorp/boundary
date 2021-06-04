@@ -23,6 +23,7 @@ type backoff interface {
 
 type expBackoff struct{}
 
+// duration returns an exponential backing off time duration
 func (b expBackoff) duration(attempt uint) time.Duration {
 	r := rand.Float64()
 	return time.Millisecond * time.Duration(math.Exp2(float64(attempt))*5*(r+0.5))
