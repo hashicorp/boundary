@@ -34,7 +34,7 @@ type flushable interface {
 }
 
 // broker defines an interface for an eventlogger Broker... which will allow us
-// to substitute our our testing broker when needed to write tests for things
+// to substitute our testing broker when needed to write tests for things
 // like event send retrying.
 type broker interface {
 	Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error)
@@ -317,7 +317,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 
 // writeObservation writes/sends an Observation event.
 func (e *Eventer) writeObservation(ctx context.Context, event *observation) error {
-	const op = "event.(Eventer).WriteObservation"
+	const op = "event.(Eventer).writeObservation"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
@@ -343,7 +343,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 
 // writeError writes/sends an Err event
 func (e *Eventer) writeError(ctx context.Context, event *err) error {
-	const op = "event.(Eventer).WriteError"
+	const op = "event.(Eventer).writeError"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
@@ -359,7 +359,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 
 // writeAudit writes/send an audit event
 func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
-	const op = "event.(Eventer).WriteAudit"
+	const op = "event.(Eventer).writeAudit"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
@@ -388,7 +388,7 @@ func (e *Eventer) Reopen() error {
 // FlushNodes will flush any of the eventer's flushable nodes.  This
 // needs to be called whenever Boundary is stopping (aka shutting down).
 func (e *Eventer) FlushNodes(ctx context.Context) error {
-	const op = "event.(Eventer).FlushAll"
+	const op = "event.(Eventer).FlushNodes"
 	for _, n := range e.flushableNodes {
 		if err := n.FlushAll(ctx); err != nil {
 			return errors.Wrap(err, op)
