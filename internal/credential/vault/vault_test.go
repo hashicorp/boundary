@@ -1,9 +1,13 @@
 package vault
 
 import (
+	"encoding/json"
+	"net/http"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/errors"
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
@@ -115,6 +119,56 @@ func TestClient_LookupToken(t *testing.T) {
 	assert.True(t1.Equal(t2))
 }
 
+func TestClient_RevokeToken(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t)
+	require.NotNil(v)
+	secret := v.CreateToken(t)
+	require.NotNil(secret)
+
+	token, err := secret.TokenID()
+	require.NoError(err)
+	assert.NotEmpty(token)
+	require.Equal(token, secret.Auth.ClientToken)
+	secretLookup := v.LookupToken(t, token)
+	t.Log(testLogVaultSecret(t, secretLookup))
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      token,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	require.NoError(client.ping())
+
+	tokenLookup, err := client.lookupToken()
+	require.NoError(err)
+	require.NotNil(tokenLookup)
+
+	t.Log(testLogVaultSecret(t, tokenLookup))
+
+	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, tokenLookup)
+	assert.True(t1.Equal(t2))
+
+	err = client.revokeToken()
+	require.NoError(err)
+
+	// An attempt to lookup should now fail with a 403
+	tokenLookup, err = client.lookupToken()
+	require.Error(err)
+
+	var respErr *vault.ResponseError
+	ok := errors.As(err, &respErr)
+	require.True(ok)
+	assert.Equal(http.StatusForbidden, respErr.StatusCode)
+}
+
 func TestClient_Get(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
@@ -172,4 +226,95 @@ func TestClient_Post(t *testing.T) {
 		assert.Contains(err.Error(), "common_name field is required")
 		assert.Nil(cred)
 	})
+}
+
+func TestClient_LookupLease(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      v.RootToken,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	assert.NoError(client.ping())
+
+	// Create secret
+	credPath := path.Join("database", "creds", "opened")
+	cred, err := client.get(credPath)
+	require.NoError(err)
+
+	// Sleep to move ttl
+	time.Sleep(time.Second)
+
+	leaseLookup, err := client.lookupLease(cred.LeaseID)
+	require.NoError(err)
+	require.NotNil(leaseLookup)
+	require.NotNil(leaseLookup.Data)
+
+	id := leaseLookup.Data["id"]
+	require.NotEmpty(id)
+	assert.Equal(cred.LeaseID, id.(string))
+
+	ttl := leaseLookup.Data["ttl"]
+	require.NotEmpty(ttl)
+	newTtl, err := ttl.(json.Number).Int64()
+	require.NoError(err)
+	// New ttl should have moved and be lower than original lease duration
+	assert.True(cred.LeaseDuration > int(newTtl))
+}
+
+func TestClient_RenewLease(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      v.RootToken,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	assert.NoError(client.ping())
+
+	// Create secret
+	credPath := path.Join("database", "creds", "opened")
+	cred, err := client.get(credPath)
+	require.NoError(err)
+
+	leaseLookup, err := client.lookupLease(cred.LeaseID)
+	require.NoError(err)
+	require.NotNil(leaseLookup)
+	require.NotNil(leaseLookup.Data)
+
+	// Verify lease has not been renewed
+	require.Empty(leaseLookup.Data["last_renewal"])
+
+	renewedLease, err := client.renewLease(cred.LeaseID, time.Hour)
+	require.NoError(err)
+	require.NotNil(renewedLease)
+	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
+	assert.Equal(int(time.Hour.Seconds()), renewedLease.LeaseDuration)
+
+	leaseLookup, err = client.lookupLease(cred.LeaseID)
+	require.NoError(err)
+	require.NotNil(leaseLookup)
+	require.NotNil(leaseLookup.Data)
+
+	// Verify lease been renewed
+	require.NotEmpty(leaseLookup.Data["last_renewal"])
 }
