@@ -148,7 +148,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 }
 
 // WriteAudit will write an audit event.  It will first check the ctx for an
-// eventer, then try event.SysEventer() and if no eventer can be  found an error
+// eventer, then try event.SysEventer() and if no eventer can be found an error
 // is returned.
 //
 // At least one and any combination of the supported options may be used:
