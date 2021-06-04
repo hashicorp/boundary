@@ -2,8 +2,8 @@ package event
 
 import "github.com/hashicorp/boundary/internal/errors"
 
-// ErrorVersion defines the version of error events
-const ErrorVersion = "v0.1"
+// errorVersion defines the version of error events
+const errorVersion = "v0.1"
 
 type err struct {
 	Error       error        `json:"error"`
@@ -32,7 +32,7 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 	newErr := &err{
 		Id:          Id(opts.withId),
 		Op:          fromOperation,
-		Version:     ErrorVersion,
+		Version:     errorVersion,
 		RequestInfo: opts.withRequestInfo,
 		Error:       e,
 	}

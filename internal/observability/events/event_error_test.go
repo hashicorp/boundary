@@ -38,7 +38,7 @@ func Test_newError(t *testing.T) {
 			e:      errors.New(errors.InvalidParameter, "valid-no-opts", "valid no opts"),
 			want: &err{
 				Error:   errors.New(errors.InvalidParameter, "valid-no-opts", "valid no opts"),
-				Version: ErrorVersion,
+				Version: errorVersion,
 				Op:      Op("valid-no-opts"),
 			},
 		},
@@ -52,7 +52,7 @@ func Test_newError(t *testing.T) {
 			},
 			want: &err{
 				Error:       errors.New(errors.InvalidParameter, "valid-all-opts", "valid all opts"),
-				Version:     ErrorVersion,
+				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
 				Id:          "valid-all-opts",
 				RequestInfo: TestRequestInfo(t),

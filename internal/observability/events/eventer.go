@@ -22,9 +22,9 @@ const (
 	CreatedAtField   = "created_at"   // CreatedAtField in an event.
 	TypeField        = "type"         // TypeField in an event.
 
-	AuditPipeline       = "audit-pipeline"       // AuditPipeline is a pipeline for audit events
-	ObservationPipeline = "observation-pipeline" // ObservationPipeline is a pipeline for observation events
-	ErrPipeline         = "err-pipeline"         // ErrPipeline is a pipeline for error events
+	auditPipeline       = "audit-pipeline"       // auditPipeline is a pipeline for audit events
+	observationPipeline = "observation-pipeline" // observationPipeline is a pipeline for observation events
+	errPipeline         = "err-pipeline"         // errPipeline is a pipeline for error events
 )
 
 // flushable defines an interface that all eventlogger Nodes must implement if
@@ -233,7 +233,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
 		}
 
-		pipeId, err := newId(AuditPipeline)
+		pipeId, err := newId(auditPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -260,7 +260,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
 		}
 
-		pipeId, err := newId(ObservationPipeline)
+		pipeId, err := newId(observationPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -276,7 +276,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
-		pipeId, err := newId(ErrPipeline)
+		pipeId, err := newId(errPipeline)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -358,7 +358,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 }
 
 // writeAudit writes/send an audit event
-func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
+func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
 	const op = "event.(Eventer).writeAudit"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")

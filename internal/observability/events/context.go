@@ -29,7 +29,6 @@ func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, 
 
 // EventerFromContext attempts to get the eventer value from the context provided
 func EventerFromContext(ctx context.Context) (*Eventer, bool) {
-	const op = "event.EventerFromContext"
 	if ctx == nil {
 		return nil, false
 	}
@@ -56,7 +55,6 @@ func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Cont
 // RequestInfoFromContext attempts to get the RequestInfo value from the context
 // provided
 func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
-	const op = "event.RequestInfoFromContext"
 	if ctx == nil {
 		return nil, false
 	}

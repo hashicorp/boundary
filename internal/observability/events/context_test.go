@@ -23,6 +23,25 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const apiRequest = "APIRequest"
+
+const testAuditVersion = "v0.1"
+const testErrorVersion = "v0.1"
+const testObservationVersion = "v0.1"
+
+type testAudit struct {
+	Id             string             `json:"id"`                     // std audit/boundary field
+	Version        string             `json:"version"`                // std audit/boundary field
+	Type           string             `json:"type"`                   // std audit field
+	Timestamp      time.Time          `json:"timestamp"`              // std audit field
+	RequestInfo    *event.RequestInfo `json:"request_info,omitempty"` // boundary field
+	Auth           *event.Auth        `json:"auth,omitempty"`         // std audit field
+	Request        *event.Request     `json:"request,omitempty"`      // std audit field
+	Response       *event.Response    `json:"response,omitempty"`     // std audit field
+	SerializedHMAC string             `json:"serialized_hmac"`        // boundary field
+	Flush          bool               `json:"-"`
+}
+
 func Test_NewRequestInfoContext(t *testing.T) {
 	testInfo := event.TestRequestInfo(t)
 	testInfoMissingId := event.TestRequestInfo(t)
@@ -436,7 +455,7 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 			event.IdField: got.Payload[event.IdField].(string),
 			event.HeaderField: map[string]interface{}{
 				event.RequestInfoField: reqInfo,
-				event.VersionField:     event.ObservationVersion,
+				event.VersionField:     testObservationVersion,
 			},
 		},
 	}
@@ -529,7 +548,7 @@ func Test_WriteAudit(t *testing.T) {
 	tests := []struct {
 		name              string
 		auditOpts         [][]event.Option
-		wantAudit         *event.Audit
+		wantAudit         *testAudit
 		ctx               context.Context
 		auditSinkFileName string
 		setup             func() error
@@ -585,7 +604,7 @@ func Test_WriteAudit(t *testing.T) {
 					event.WithRequest(testReq),
 				},
 			},
-			wantAudit: &event.Audit{
+			wantAudit: &testAudit{
 				Auth:    testAuth,
 				Request: testReq,
 			},
@@ -607,7 +626,7 @@ func Test_WriteAudit(t *testing.T) {
 					event.WithResponse(testResp),
 				},
 			},
-			wantAudit: &event.Audit{
+			wantAudit: &testAudit{
 				Id:       "867-5309",
 				Auth:     testAuth,
 				Request:  testReq,
@@ -666,8 +685,8 @@ func Test_WriteAudit(t *testing.T) {
 						"timestamp":       now,
 						"request":         tt.wantAudit.Request,
 						"serialized_hmac": "",
-						"type":            event.ApiRequest,
-						"version":         event.AuditVersion,
+						"type":            apiRequest,
+						"version":         testAuditVersion,
 					},
 				}
 				if tt.wantAudit.Id != "" {
@@ -816,7 +835,7 @@ func Test_WriteError(t *testing.T) {
 						},
 						"id":      gotError.Payload["id"],
 						"op":      op,
-						"version": event.ErrorVersion,
+						"version": testErrorVersion,
 					},
 				}
 				if tt.info != nil && tt.info.Id != "" {

@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
-// ObservationVersion defines the version of observation events
-const ObservationVersion = "v0.1"
+// observationVersion defines the version of observation events
+const observationVersion = "v0.1"
 
 type observation struct {
 	*eventlogger.SimpleGatedPayload
@@ -45,7 +45,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		},
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
-		Version:     ObservationVersion,
+		Version:     observationVersion,
 	}
 	if err := i.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
