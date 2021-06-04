@@ -3,6 +3,7 @@ package oidc
 import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
 )
 
 const (
@@ -10,8 +11,6 @@ const (
 	AuthMethodPrefix = "amoidc"
 	// AccountPrefix defines the prefix for Account public ids.
 	AccountPrefix = "acctoidc"
-	// ManagedGroupPrefix defines the prefix for ManagedGroup public ids.
-	ManagedGroupPrefix = "mgoidc"
 )
 
 func newAuthMethodId() (string, error) {
@@ -43,7 +42,7 @@ func newAccountId(authMethodId, issuer, sub string) (string, error) {
 
 func newManagedGroupId() (string, error) {
 	const op = "oidc.newManagedGroupId"
-	id, err := db.NewPublicId(ManagedGroupPrefix)
+	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

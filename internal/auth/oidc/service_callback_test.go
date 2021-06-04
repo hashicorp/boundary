@@ -661,8 +661,8 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	// Create two managed groups. We'll use these in tests to set filters and
 	// then check that the user belongs to the ones we expect.
 	mgs := []*ManagedGroup{
-		TestManagedGroup(t, conn, testAuthMethod, testFakeManagedGroupFilter),
-		TestManagedGroup(t, conn, testAuthMethod, testFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, testAuthMethod, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, testAuthMethod, TestFakeManagedGroupFilter),
 	}
 
 	// A reusable oidc.Provider for the tests
@@ -697,15 +697,15 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 		{
 			name: "no match",
 			filters: []string{
-				testFakeManagedGroupFilter,
-				testFakeManagedGroupFilter,
+				TestFakeManagedGroupFilter,
+				TestFakeManagedGroupFilter,
 			},
 		},
 		{
 			name: "token match",
 			filters: []string{
 				`"/token/nonce" == "nonce"`,
-				testFakeManagedGroupFilter,
+				TestFakeManagedGroupFilter,
 			},
 			matchingMgs: mgs[0:1],
 		},

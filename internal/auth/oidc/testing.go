@@ -34,6 +34,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const TestFakeManagedGroupFilter = `"/foo" == "bar"`
+
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
 // WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
 // WithSigningAlgs options are supported.

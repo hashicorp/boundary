@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/intglobals"
 )
 
 type Subtype int
@@ -92,7 +93,7 @@ func SubtypeFromId(id string) Subtype {
 		return PasswordSubtype
 	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
 		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), oidc.ManagedGroupPrefix):
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.OidcManagedGroupPrefix):
 		return OidcSubtype
 	}
 	return UnknownSubtype

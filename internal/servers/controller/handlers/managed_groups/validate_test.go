@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/managedgroups"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -98,7 +99,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "oidc to password change type",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id: oidc.ManagedGroupPrefix + "_1234567890",
+				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
 					Type: auth.PasswordSubtype.String(),
 				},
@@ -108,7 +109,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "oidc bad attributes",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id: oidc.ManagedGroupPrefix + "_1234567890",
+				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"test": structpb.NewStringValue("something"),
@@ -120,7 +121,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "no error",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id:         oidc.ManagedGroupPrefix + "_1234567890",
+				Id:         intglobals.OidcManagedGroupPrefix + "_1234567890",
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.ManagedGroup{
 					Version: 1,
