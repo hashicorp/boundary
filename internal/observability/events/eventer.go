@@ -343,7 +343,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 
 // writeError writes/sends an Err event
 func (e *Eventer) writeError(ctx context.Context, event *err) error {
-	const op = "event.(Eventer).WriteError"
+	const op = "event.(Eventer).writeError"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
