@@ -317,7 +317,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 
 // writeObservation writes/sends an Observation event.
 func (e *Eventer) writeObservation(ctx context.Context, event *observation) error {
-	const op = "event.(Eventer).WriteObservation"
+	const op = "event.(Eventer).writeObservation"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
