@@ -12,9 +12,10 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-// GrantPair is simply a struct that can be reference from other code to return
+// GrantTuple is simply a struct that can be reference from other code to return
 // a set of scopes and grants to parse
-type GrantPair struct {
+type GrantTuple struct {
+	// RoleId  string
 	ScopeId string
 	Grant   string
 }
