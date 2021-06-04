@@ -75,10 +75,10 @@ insert into credential_vault_client_certificate
 values
   ($1, $2, $3, $4, $5)
 on conflict (store_id) do update
-  set certificate     = excluded.certificate,
-      certificate_key = excluded.certificate_key,
+  set certificate          = excluded.certificate,
+      certificate_key      = excluded.certificate_key,
       certificate_key_hmac = excluded.certificate_key_hmac,
-      key_id          = excluded.key_id
+      key_id               = excluded.key_id
 returning *;
 `
 
@@ -104,26 +104,25 @@ returning *;
 `
 
 	updateTokenExpirationQuery = `
-update credential_vault_token 
-  set last_renewal_time = now(),
-  expiration_time = wt_add_seconds_to_now(?)
-  where token_hmac = ?;
+update credential_vault_token
+   set last_renewal_time = now(),
+       expiration_time   = wt_add_seconds_to_now(?)
+ where token_hmac = ?;
 `
 
 	updateTokenStatusQuery = `
-update credential_vault_token 
-	set status = ? 
-	where token_hmac = ?;
+update credential_vault_token
+   set status = ?
+ where token_hmac = ?;
 `
 
 	tokenRenewalNextRunInQuery = `
-select
-	extract(epoch from (last_renewal_time + (expiration_time - last_renewal_time) / 2) - now())::int as renewal_in
-  	from credential_vault_token
- 	where expiration_time = (
-	  select min(expiration_time)
-  	    from credential_vault_token
-	    where status in ('current', 'maintaining')
-	);
+select extract(epoch from (last_renewal_time + (expiration_time - last_renewal_time) / 2) - now())::int as renewal_in
+  from credential_vault_token
+ where expiration_time = (
+         select min(expiration_time)
+           from credential_vault_token
+          where status in ('current', 'maintaining')
+       );
 `
 )
