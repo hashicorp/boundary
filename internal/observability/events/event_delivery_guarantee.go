@@ -15,7 +15,7 @@ const (
 type DeliveryGuarantee string // DeliveryGuarantee defines the guarantees around delivery of an event type within config
 
 func (g DeliveryGuarantee) validate() error {
-	const op = "event.(DeliveryGuarantee"
+	const op = "event.(DeliveryGuarantee).validate"
 	switch g {
 	case DefaultDeliveryGuarantee, BestEffort, Enforced:
 		return nil
