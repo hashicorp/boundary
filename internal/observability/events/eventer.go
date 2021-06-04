@@ -34,7 +34,7 @@ type flushable interface {
 }
 
 // broker defines an interface for an eventlogger Broker... which will allow us
-// to substitute our our testing broker when needed to write tests for things
+// to substitute our testing broker when needed to write tests for things
 // like event send retrying.
 type broker interface {
 	Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error)
