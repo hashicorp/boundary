@@ -1,4 +1,4 @@
-685ddeac7e9905dcb98660df60b426e9a64a4460 Merge pull request #549 from hashicorp/ICU-1335-close-session-on-cancel
+79f5db04413a44cadd4017a5fdb3197b3e4755be Merge pull request #587 from hashicorp/feature-oidc-array-fields-crud
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
