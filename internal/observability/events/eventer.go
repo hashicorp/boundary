@@ -388,7 +388,7 @@ func (e *Eventer) Reopen() error {
 // FlushNodes will flush any of the eventer's flushable nodes.  This
 // needs to be called whenever Boundary is stopping (aka shutting down).
 func (e *Eventer) FlushNodes(ctx context.Context) error {
-	const op = "event.(Eventer).FlushAll"
+	const op = "event.(Eventer).FlushNodes"
 	for _, n := range e.flushableNodes {
 		if err := n.FlushAll(ctx); err != nil {
 			return errors.Wrap(err, op)
