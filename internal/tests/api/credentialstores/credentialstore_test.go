@@ -41,7 +41,7 @@ func TestList(t *testing.T) {
 	}
 
 	cr, err := storeClient.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName(expected[0].Name),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(expected[0].Attributes["vault_token"].(string)))
+		credentialstores.WithVaultCredentialStoreVaultAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(expected[0].Attributes["vault_token"].(string)))
 	require.NoError(err)
 	expected[0] = cr.Item
 
@@ -51,7 +51,7 @@ func TestList(t *testing.T) {
 
 	for i := 1; i < 10; i++ {
 		cr, err = storeClient.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName(expected[i].Name),
-			credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(expected[i].Attributes["vault_token"].(string)))
+			credentialstores.WithVaultCredentialStoreVaultAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(expected[i].Attributes["vault_token"].(string)))
 		require.NoError(err)
 		expected[i] = cr.Item
 	}
@@ -107,7 +107,7 @@ func TestCrud(t *testing.T) {
 	csClient := credentialstores.NewClient(client)
 
 	cs, err := csClient.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName("foo"),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreVaultAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
 	checkResource("create", cs.Item, err, "foo", 1)
@@ -146,7 +146,7 @@ func TestErrors(t *testing.T) {
 	c := credentialstores.NewClient(client)
 
 	vs, err := c.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName("foo"),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreVaultAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
 	require.NoError(err)
 	apiErr := api.AsServerError(err)
 	assert.Nil(apiErr)
@@ -161,7 +161,7 @@ func TestErrors(t *testing.T) {
 
 	// same token
 	_, err = c.Create(tc.Context(), "vault", proj.GetPublicId(),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreVaultAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

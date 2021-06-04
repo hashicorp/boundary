@@ -2,14 +2,14 @@
 package credentialstores
 
 type VaultCredentialStoreAttributes struct {
-	Address                  string `json:"address,omitempty"`
-	Namespace                string `json:"namespace,omitempty"`
-	VaultCaCert              string `json:"vault_ca_cert,omitempty"`
-	TlsServerName            string `json:"tls_server_name,omitempty"`
-	TlsSkipVerify            bool   `json:"tls_skip_verify,omitempty"`
-	VaultToken               string `json:"vault_token,omitempty"`
-	VaultTokenHmac           string `json:"vault_token_hmac,omitempty"`
-	ClientCertificate        string `json:"client_certificate,omitempty"`
-	ClientCertificateKey     string `json:"client_certificate_key,omitempty"`
-	ClientCertificateKeyHmac string `json:"client_certificate_key_hmac,omitempty"`
+	VaultAddress                  string `json:"vault_address,omitempty"`
+	VaultNamespace                string `json:"vault_namespace,omitempty"`
+	VaultCaCert                   string `json:"vault_ca_cert,omitempty"`
+	VaultTlsServerName            string `json:"vault_tls_server_name,omitempty"`
+	VaultTlsSkipVerify            bool   `json:"vault_tls_skip_verify,omitempty"`
+	VaultToken                    string `json:"vault_token,omitempty"`
+	VaultTokenHmac                string `json:"vault_token_hmac,omitempty"`
+	VaultClientCertificate        string `json:"vault_client_certificate,omitempty"`
+	VaultClientCertificateKey     string `json:"vault_client_certificate_key,omitempty"`
+	VaultClientCertificateKeyHmac string `json:"vault_client_certificate_key_hmac,omitempty"`
 }

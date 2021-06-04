@@ -87,30 +87,6 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
-func WithVaultCredentialStoreAddress(inAddress string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["address"] = inAddress
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreAddress() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["address"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes
@@ -120,54 +96,6 @@ func WithAttributes(inAttributes map[string]interface{}) Option {
 func DefaultAttributes() Option {
 	return func(o *options) {
 		o.postMap["attributes"] = nil
-	}
-}
-
-func WithVaultCredentialStoreClientCertificate(inClientCertificate string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_certificate"] = inClientCertificate
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreClientCertificate() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_certificate"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithVaultCredentialStoreClientCertificateKey(inClientCertificateKey string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_certificate_key"] = inClientCertificateKey
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreClientCertificateKey() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["client_certificate_key"] = nil
-		o.postMap["attributes"] = val
 	}
 }
 
@@ -195,74 +123,26 @@ func DefaultName() Option {
 	}
 }
 
-func WithVaultCredentialStoreNamespace(inNamespace string) Option {
+func WithVaultCredentialStoreVaultAddress(inVaultAddress string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["namespace"] = inNamespace
+		val["vault_address"] = inVaultAddress
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultVaultCredentialStoreNamespace() Option {
+func DefaultVaultCredentialStoreVaultAddress() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["namespace"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithVaultCredentialStoreTlsServerName(inTlsServerName string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["tls_server_name"] = inTlsServerName
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreTlsServerName() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["tls_server_name"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithVaultCredentialStoreTlsSkipVerify(inTlsSkipVerify bool) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["tls_skip_verify"] = inTlsSkipVerify
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreTlsSkipVerify() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["tls_skip_verify"] = nil
+		val["vault_address"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -287,6 +167,126 @@ func DefaultVaultCredentialStoreVaultCaCert() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["vault_ca_cert"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialStoreVaultClientCertificate(inVaultClientCertificate string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_client_certificate"] = inVaultClientCertificate
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreVaultClientCertificate() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_client_certificate"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialStoreVaultClientCertificateKey(inVaultClientCertificateKey string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_client_certificate_key"] = inVaultClientCertificateKey
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreVaultClientCertificateKey() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_client_certificate_key"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialStoreVaultNamespace(inVaultNamespace string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_namespace"] = inVaultNamespace
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreVaultNamespace() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_namespace"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialStoreVaultTlsServerName(inVaultTlsServerName string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_tls_server_name"] = inVaultTlsServerName
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreVaultTlsServerName() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_tls_server_name"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialStoreVaultTlsSkipVerify(inVaultTlsSkipVerify bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_tls_skip_verify"] = inVaultTlsSkipVerify
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreVaultTlsSkipVerify() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["vault_tls_skip_verify"] = nil
 		o.postMap["attributes"] = val
 	}
 }

@@ -16,10 +16,10 @@ const (
 	namespaceFlagName            = "vault-namespace"
 	vaultCaCertFlagName          = "vault-ca-cert"
 	tlsServerNameFlagName        = "vault-tls-server-name"
-	tlsSkipVerifyFlagName        = "tls-skip-verify"
+	tlsSkipVerifyFlagName        = "vault-tls-skip-verify"
 	vaultTokenFlagName           = "vault-token"
-	clientCertificateFlagName    = "client-certificate"
-	clientCertificateKeyFlagName = "client-certificate-key"
+	clientCertificateFlagName    = "vault-client-certificate"
+	clientCertificateKeyFlagName = "vault-client-certificate-key"
 )
 
 type extraVaultCmdVars struct {
@@ -111,16 +111,16 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	switch c.flagAddress {
 	case "":
 	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreAddress())
+		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreVaultAddress())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreAddress(c.flagAddress))
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreVaultAddress(c.flagAddress))
 	}
 	switch c.flagNamespace {
 	case "":
 	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreNamespace())
+		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreVaultNamespace())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreNamespace(c.flagNamespace))
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreVaultNamespace(c.flagNamespace))
 	}
 	switch c.flagVaultToken {
 	case "":
@@ -139,19 +139,19 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	switch c.flagClientCert {
 	case "":
 	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificate())
+		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreVaultClientCertificate())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificate(c.flagClientCert))
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreVaultClientCertificate(c.flagClientCert))
 	}
 	switch c.flagClientCertKey {
 	case "":
 	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificateKey())
+		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreVaultClientCertificateKey())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificateKey(c.flagClientCertKey))
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreVaultClientCertificateKey(c.flagClientCertKey))
 	}
 	if c.flagTlsSkipVerify {
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreTlsSkipVerify(c.flagTlsSkipVerify))
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreVaultTlsSkipVerify(c.flagTlsSkipVerify))
 	}
 
 	return true

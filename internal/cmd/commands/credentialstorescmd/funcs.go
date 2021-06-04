@@ -192,12 +192,12 @@ func printItemTable(result api.GenericResult) string {
 }
 
 var keySubstMap = map[string]string{
-	"address":                     "Address",
-	"namespace":                   "Namespace",
-	"vault_ca_cert":               "VaultCaCert",
-	"tls_server_name":             "TlsServername",
-	"tls_skip_verify":             "TlsSkipVerify",
-	"vault_token_hmac":            "VaultTokenHmac",
-	"client_certificate":          "ClientCertificate",
-	"client_certificate_key_hmac": "ClientCertificateKeyHmac",
+	"vault_address":                     "VaultAddress",
+	"vault_namespace":                   "VaultNamespace",
+	"vault_ca_cert":                     "VaultCaCert",
+	"vault_tls_server_name":             "VaultTlsServername",
+	"vault_tls_skip_verify":             "VaultTlsSkipVerify",
+	"vault_token_hmac":                  "VaultTokenHmac",
+	"vault_client_certificate":          "ClientCertificate",
+	"vault_client_certificate_key_hmac": "ClientCertificateKeyHmac",
 }
