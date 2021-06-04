@@ -36,6 +36,8 @@ type retryInfo struct {
 
 type sendHandler func() (eventlogger.Status, error)
 
+// retrySend will attempt sendHandler (which is intended to be a closure that
+// sends an event) the specified number of retries using the specified backoff.
 func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, handler sendHandler) error {
 	const op = "event.(Eventer).retrySend"
 	if backOff == nil {
