@@ -316,7 +316,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	// Verify token was expired in repo
 	token := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
-	assert.Equal(string(StatusExpired), token.Status)
+	assert.Equal(string(ExpiredToken), token.Status)
 }
 
 func TestTokenRenewalJob_NextRunIn(t *testing.T) {

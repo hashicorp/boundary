@@ -10,7 +10,35 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const externalIdSentinel = "\ufffenone"
+// A CredentialStatus represents the status of a vault credential.
+type CredentialStatus string
+
+const (
+	// ActiveCredential represents a vault credential that is being used in
+	// an active session. Credentials in this state are renewed before they
+	// expire.
+	ActiveCredential CredentialStatus = "active"
+
+	// RevokeCredential represents a vault credential that needs to be
+	// revoked.
+	RevokeCredential CredentialStatus = "revoke"
+
+	// RevokedCredential represents a credential that has been revoked. This is a
+	// terminal status. It does not transition to ExpiredCredential.
+	RevokedCredential CredentialStatus = "revoked"
+
+	// ExpiredCredential represents a credential that expired. This is a terminal
+	// status. It does not transition to RevokedCredential.
+	ExpiredCredential CredentialStatus = "expired"
+)
+
+const (
+	externalIdSentinel = "\ufffenone"
+
+	// UnknownCredentialStatus represents a credential that has an unknown
+	// status.
+	UnknownCredentialStatus CredentialStatus = "unknown"
+)
 
 // A Credential contains the data for a Vault lease. It is owned by a credential library.
 type Credential struct {
@@ -31,8 +59,10 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 		return nil, errors.New(errors.InvalidParameter, op, "no tokenHmac")
 	}
 
+	status := string(ActiveCredential)
 	if externalId == "" {
 		externalId = externalIdSentinel
+		status = string(UnknownCredentialStatus)
 	}
 
 	l := &Credential{
@@ -42,6 +72,7 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 			SessionId:  sessionId,
 			ExternalId: externalId,
 			TokenHmac:  tokenHmac,
+			Status:     status,
 		},
 	}
 	return l, nil
@@ -94,6 +125,7 @@ func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 		c.TokenHmac,
 		c.ExternalId,
 		c.IsRenewable,
+		c.Status,
 		"now()",
 	}
 	switch {
