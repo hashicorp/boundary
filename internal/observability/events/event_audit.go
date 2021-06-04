@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/eventlogger"
 )
 
-// AuditEventType defines the version of audit events
+// AuditVersion defines the version of audit events
 const AuditVersion = "v0.1"
 
 // AuditEventType defines the type of audit event
