@@ -9,14 +9,17 @@ import (
 	"github.com/hashicorp/eventlogger"
 )
 
+// AuditEventType defines the version of audit events
 const AuditVersion = "v0.1"
 
+// AuditEventType defines the type of audit event
 type AuditEventType string
 
 const (
-	ApiRequest AuditEventType = "APIRequest"
+	ApiRequest AuditEventType = "APIRequest" // ApiRequest defines an API request audit event type
 )
 
+// Audit defines the data of audit events
 type Audit struct {
 	Id             string       `json:"id"`                     // std audit/boundary field
 	Version        string       `json:"version"`                // std audit/boundary field

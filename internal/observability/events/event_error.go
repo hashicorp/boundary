@@ -2,6 +2,7 @@ package event
 
 import "github.com/hashicorp/boundary/internal/errors"
 
+// ErrorVersion defines the version of error events
 const ErrorVersion = "v0.1"
 
 type err struct {
