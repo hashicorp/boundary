@@ -22,7 +22,7 @@ require (
 	github.com/hashicorp/cap v0.0.0-20210518163718-e72205e8eaae
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
-	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746 // indirect
+	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746
 	github.com/hashicorp/go-bexpr v0.1.7
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.1
