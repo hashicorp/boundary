@@ -6590,7 +6590,7 @@ create trigger default_create_time_column
 before insert on iam_managed_group_role
   for each row execute procedure default_create_time();
 
--- iam_principle_role provides a consolidated view all principal roles assigned
+-- iam_principal_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
 create or replace view iam_principal_role as
 select
