@@ -124,21 +124,6 @@ func (c *client) revokeToken() error {
 	return nil
 }
 
-// lookupLease calls the /sys/leases/lookup Vault endpoint and returns
-// the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
-// https://www.vaultproject.io/api-docs/system/leases#read-lease.
-func (c *client) lookupLease(leaseId string) (*vault.Secret, error) {
-	const op = "vault.(client).lookupLease"
-
-	credData := fmt.Sprintf(`{"lease_id":"%s"}`, leaseId)
-	s, err := c.cl.Logical().WriteBytes("sys/leases/lookup", []byte(credData))
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
-	}
-	return s, nil
-}
-
 // renewLease calls the /sys/leases/renew Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
