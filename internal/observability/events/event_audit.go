@@ -2,14 +2,13 @@ package event
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 )
 
-// AuditEventType defines the version of audit events
+// AuditVersion defines the version of audit events
 const AuditVersion = "v0.1"
 
 // AuditEventType defines the type of audit event
@@ -102,16 +101,20 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		return "", nil, errors.New(errors.InvalidParameter, op, "missing events")
 	}
 	var validId string
-	var initValidId sync.Once
 	payload := Audit{}
 	for i, v := range events {
 		gated, ok := v.Payload.(*Audit)
 		if !ok {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not an audit payload", i))
 		}
-		initValidId.Do(func() {
+		if gated.Id == "" {
+			// can't really happen since it has to have an id to be gated, but
+			// I'll add this check in the name of completeness
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d: id is required", i))
+		}
+		if validId == "" {
 			validId = gated.Id
-		})
+		}
 		if gated.Id != validId {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid id: %s != %s", i, gated.Id, validId))
 		}

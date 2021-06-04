@@ -99,29 +99,25 @@ func Test_observationvalidate(t *testing.T) {
 		name            string
 		id              string
 		op              Op
-		wantErr         error
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
 		{
 			name:            "missing-id",
 			op:              Op("missing-id"),
-			wantErr:         errors.New(errors.InvalidParameter, "missing-id", "missing id"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing id",
 		},
 		{
 			name:            "missing-operation",
 			id:              "missing-operation",
-			wantErr:         errors.New(errors.InvalidParameter, "missing-operation", "missing operation"),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing operation",
 		},
 		{
-			name:    "valid",
-			op:      Op("valid"),
-			id:      "valid",
-			wantErr: errors.New(errors.InvalidParameter, "valid", "valid error"),
+			name: "valid",
+			op:   Op("valid"),
+			id:   "valid",
 		},
 	}
 	for _, tt := range tests {
