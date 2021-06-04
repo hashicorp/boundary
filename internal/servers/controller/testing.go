@@ -27,12 +27,16 @@ import (
 )
 
 const (
-	DefaultTestPasswordAuthMethodId  = "ampw_1234567890"
-	DefaultTestOidcAuthMethodId      = "amoidc_1234567890"
-	DefaultTestLoginName             = "admin"
-	DefaultTestUnprivilegedLoginName = "user"
-	DefaultTestPassword              = "passpass"
-	DefaultTestUserId                = "u_1234567890"
+	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
+	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
+	DefaultTestLoginName                     = "admin"
+	DefaultTestUnprivilegedLoginName         = "user"
+	DefaultTestPassword                      = "passpass"
+	DefaultTestUserId                        = "u_1234567890"
+	DefaultTestPasswordAccountId             = "apw_1234567890"
+	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
+	DefaultTestUnprivilegedPasswordAccountId = "apw_0987654321"
+	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -429,6 +433,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevPassword = DefaultTestPassword
 		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
+	tc.b.DevPasswordAccountId = DefaultTestPasswordAccountId
+	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
+	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
+	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
 
 	// Start a logger
 	tc.b.Logger = opts.Logger

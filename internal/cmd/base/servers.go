@@ -67,24 +67,28 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevPasswordAuthMethodId         string
-	DevOidcAuthMethodId             string
-	DevLoginName                    string
-	DevPassword                     string
-	DevUserId                       string
-	DevUnprivilegedLoginName        string
-	DevUnprivilegedPassword         string
-	DevUnprivilegedUserId           string
-	DevOrgId                        string
-	DevProjectId                    string
-	DevHostCatalogId                string
-	DevHostSetId                    string
-	DevHostId                       string
-	DevTargetId                     string
-	DevHostAddress                  string
-	DevTargetDefaultPort            int
-	DevTargetSessionMaxSeconds      int
-	DevTargetSessionConnectionLimit int
+	DevPasswordAuthMethodId          string
+	DevOidcAuthMethodId              string
+	DevLoginName                     string
+	DevPassword                      string
+	DevUserId                        string
+	DevPasswordAccountId             string
+	DevOidcAccountId                 string
+	DevUnprivilegedLoginName         string
+	DevUnprivilegedPassword          string
+	DevUnprivilegedUserId            string
+	DevUnprivilegedPasswordAccountId string
+	DevUnprivilegedOidcAccountId     string
+	DevOrgId                         string
+	DevProjectId                     string
+	DevHostCatalogId                 string
+	DevHostSetId                     string
+	DevHostId                        string
+	DevTargetId                      string
+	DevHostAddress                   string
+	DevTargetDefaultPort             int
+	DevTargetSessionMaxSeconds       int
+	DevTargetSessionConnectionLimit  int
 
 	DevOidcSetup oidcSetup
 

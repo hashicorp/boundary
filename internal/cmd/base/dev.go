@@ -193,7 +193,8 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 	switch {
 	case b.DevUnprivilegedLoginName == "",
 		b.DevUnprivilegedPassword == "",
-		b.DevUnprivilegedUserId == "":
+		b.DevUnprivilegedUserId == "",
+		b.DevUnprivilegedOidcAccountId == "":
 
 	default:
 		b.DevOidcSetup.createUnpriv = true
@@ -390,7 +391,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 
 	// Create accounts
 	{
-		createAndLinkAccount := func(loginName, userId, typ string) error {
+		createAndLinkAccount := func(loginName, userId, accountId, typ string) error {
 			acct, err := oidc.NewAccount(
 				b.DevOidcSetup.authMethod.GetPublicId(),
 				loginName,
@@ -403,6 +404,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 				cancelCtx,
 				b.DevOidcSetup.authMethod.GetScopeId(),
 				acct,
+				oidc.WithPublicId(accountId),
 			)
 			if err != nil {
 				return fmt.Errorf("error creating %s oidc account: %w", typ, err)
@@ -425,11 +427,11 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 			return nil
 		}
 
-		if err := createAndLinkAccount(b.DevLoginName, b.DevUserId, "admin"); err != nil {
+		if err := createAndLinkAccount(b.DevLoginName, b.DevUserId, b.DevOidcAccountId, "admin"); err != nil {
 			return nil, err
 		}
 		if b.DevOidcSetup.createUnpriv {
-			if err := createAndLinkAccount(b.DevUnprivilegedLoginName, b.DevUnprivilegedUserId, "unprivileged"); err != nil {
+			if err := createAndLinkAccount(b.DevUnprivilegedLoginName, b.DevUnprivilegedUserId, b.DevUnprivilegedOidcAccountId, "unprivileged"); err != nil {
 				return nil, err
 			}
 		}

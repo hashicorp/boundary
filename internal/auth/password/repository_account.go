@@ -14,14 +14,15 @@ import (
 )
 
 // CreateAccount inserts a into the repository and returns a new Account
-// containing the account's PublicId. a is not changed. a must contain a
-// valid AuthMethodId. a must not contain a PublicId. The PublicId is
-// generated and assigned by this method.
+// containing the account's PublicId. a is not changed. a must contain a valid
+// AuthMethodId. a must not contain a PublicId. The PublicId is generated and
+// assigned by this method.
 //
 // a must contain a valid LoginName. a.LoginName must be unique within
 // a.AuthMethodId.
 //
-// WithPassword is the only valid option. All other options are ignored.
+// WithPassword and WithPublicId are the only valid options. All other options
+// are ignored.
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
@@ -55,21 +56,28 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, errors.New(errors.TooShort, op, fmt.Sprintf("username: %s, must be longer than %d", a.LoginName, cc.MinLoginNameLength))
 	}
 
-	a = a.clone()
-	id, err := newAccountId()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	a.PublicId = id
-
 	opts := getOpts(opt...)
+
+	a = a.clone()
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, AccountPrefix+"_") {
+			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
+		}
+		a.PublicId = opts.withPublicId
+	} else {
+		id, err := newAccountId()
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		a.PublicId = id
+	}
 
 	var cred *Argon2Credential
 	if opts.withPassword {
 		if cc.MinPasswordLength > len(opts.password) {
 			return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("must be longer than %v", cc.MinPasswordLength))
 		}
-		if cred, err = newArgon2Credential(id, opts.password, cc.argon2()); err != nil {
+		if cred, err = newArgon2Credential(a.PublicId, opts.password, cc.argon2()); err != nil {
 			return nil, errors.Wrap(err, op)
 		}
 	}
