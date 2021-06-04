@@ -33,54 +33,63 @@ func getDefaultOptions() options {
 	return options{}
 }
 
+// WithId allows an optional Id
 func WithId(id string) Option {
 	return func(o *options) {
 		o.withId = id
 	}
 }
 
+// WithDetails allows an optional map as details
 func WithDetails(d map[string]interface{}) Option {
 	return func(o *options) {
 		o.withDetails = d
 	}
 }
 
+// WithHeader allows an optional map as a header
 func WithHeader(d map[string]interface{}) Option {
 	return func(o *options) {
 		o.withHeader = d
 	}
 }
 
+// WithFlush allows an optional flush option.
 func WithFlush() Option {
 	return func(o *options) {
 		o.withFlush = true
 	}
 }
 
+// WithRequestInfo allows an optional RequestInfo
 func WithRequestInfo(i *RequestInfo) Option {
 	return func(o *options) {
 		o.withRequestInfo = i
 	}
 }
 
+// WithNow allows an option time.Time to represent now.
 func WithNow(now time.Time) Option {
 	return func(o *options) {
 		o.withNow = now
 	}
 }
 
+// WithRequest allows an optional request
 func WithRequest(r *Request) Option {
 	return func(o *options) {
 		o.withRequest = r
 	}
 }
 
+// WithResponse allows an optional response
 func WithResponse(r *Response) Option {
 	return func(o *options) {
 		o.withResponse = r
 	}
 }
 
+// WithAuth allows an optional Auth
 func WithAuth(a *Auth) Option {
 	return func(o *options) {
 		o.withAuth = a
