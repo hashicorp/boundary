@@ -359,7 +359,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 
 // writeAudit writes/send an audit event
 func (e *Eventer) writeAudit(ctx context.Context, event *Audit) error {
-	const op = "event.(Eventer).WriteAudit"
+	const op = "event.(Eventer).writeAudit"
 	if event == nil {
 		return errors.New(errors.InvalidParameter, op, "missing event")
 	}
