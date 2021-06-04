@@ -33,8 +33,6 @@ const (
 )
 
 const (
-	// TODO(mgaffney) 06/2021: credentials with an externalIdSentinel value
-	// should have a status of unknown.
 	externalIdSentinel = "\ufffenone"
 
 	// UnknownCredentialStatus represents a credential that has an unknown

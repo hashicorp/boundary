@@ -479,6 +479,7 @@ begin;
             token.expiration_time        as token_expiration_time,
             token.key_id                 as token_key_id,
             token.status                 as token_status,
+            store.scope_id               as scope_id,
             store.vault_address          as vault_address,
             store.namespace              as namespace,
             store.ca_cert                as ca_cert,
