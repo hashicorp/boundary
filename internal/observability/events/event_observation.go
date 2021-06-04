@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
+// ObservationVersion defines the version of observation events
 const ObservationVersion = "v0.1"
 
 type observation struct {
