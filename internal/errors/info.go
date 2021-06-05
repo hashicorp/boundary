@@ -202,15 +202,19 @@ var errorCodeInfo = map[Code]Info{
 	},
 	VaultTokenNotOrphan: {
 		Message: "vault token is not an orphan token",
-		Kind:    External,
+		Kind:    VaultToken,
 	},
 	VaultTokenNotPeriodic: {
 		Message: "vault token is not a periodic token",
-		Kind:    External,
+		Kind:    VaultToken,
 	},
 	VaultTokenNotRenewable: {
 		Message: "vault token is not renewable",
-		Kind:    External,
+		Kind:    VaultToken,
+	},
+	VaultTokenMissingCapabilities: {
+		Message: "vault token is missing capabilities",
+		Kind:    VaultToken,
 	},
 	VaultCredentialRequest: {
 		Message: "request for a new credential from vault failed",
