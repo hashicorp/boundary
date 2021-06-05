@@ -92,10 +92,12 @@ func (c *client) ping() error {
 	case err != nil:
 		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
-		return errors.New(errors.Unavailable, op, fmt.Sprintf("vault: %s", c.cl.Address()))
-	default:
-		return nil
+		return errors.New(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
+	case !h.Initialized || h.Sealed:
+		return errors.New(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
 	}
+
+	return nil
 }
 
 // renewToken calls the /auth/token/renew-self Vault endpoint and returns
