@@ -439,6 +439,32 @@ func Test_WriteObservation(t *testing.T) {
 			}
 		})
 	}
+	t.Run("not-enabled", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		logger := hclog.New(&hclog.LoggerOptions{
+			Name: "test",
+		})
+
+		c := event.TestEventerConfig(t, "WriteObservation")
+		c.EventerConfig.ObservationsEnabled = false
+
+		e, err := event.NewEventer(logger, c.EventerConfig)
+		require.NoError(err)
+
+		testCtx, err := event.NewEventerContext(context.Background(), e)
+		require.NoError(err)
+		testCtx, err = event.NewRequestInfoContext(testCtx, info)
+		require.NoError(err)
+
+		hdr := map[string]interface{}{
+			"list": []string{"1", "2"},
+		}
+		require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(hdr), event.WithFlush()))
+
+		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		assert.NoError(err)
+		assert.Len(b, 0)
+	})
 }
 
 func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *eventJson, hdr, details map[string]interface{}) []byte {
@@ -705,6 +731,28 @@ func Test_WriteAudit(t *testing.T) {
 			}
 		})
 	}
+	t.Run("not-enabled", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		logger := hclog.New(&hclog.LoggerOptions{
+			Name: "test",
+		})
+
+		c := event.TestEventerConfig(t, "WriteAudit")
+		c.EventerConfig.AuditEnabled = false
+
+		e, err := event.NewEventer(logger, c.EventerConfig)
+		require.NoError(err)
+
+		testCtx, err := event.NewEventerContext(context.Background(), e)
+		require.NoError(err)
+		testCtx, err = event.NewRequestInfoContext(testCtx, info)
+		require.NoError(err)
+
+		require.NoError(event.WriteAudit(testCtx, "not-enabled", event.WithRequest(testReq), event.WithFlush()))
+		b, err := ioutil.ReadFile(c.AllEvents.Name())
+		assert.NoError(err)
+		assert.Len(b, 0)
+	})
 }
 
 func Test_WriteError(t *testing.T) {
