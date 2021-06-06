@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 	"testing"
@@ -268,4 +269,54 @@ func TestClient_RenewLease(t *testing.T) {
 
 	// Verify lease been renewed
 	require.NotEmpty(leaseLookup.Data["last_renewal"])
+}
+
+func TestClient_capabilities(t *testing.T) {
+	t.Parallel()
+	v := NewTestVaultServer(t)
+
+	tests := []struct {
+		name        string
+		polices     []string
+		require     pathCapabilities
+		wantMissing pathCapabilities
+	}{
+		{
+			polices:     []string{"default"},
+			require:     requiredCapabilities,
+			wantMissing: pathCapabilities{"sys/leases/revoke": updateCapability},
+		},
+		{
+			polices: []string{"default", "boundary-controller"},
+			require: requiredCapabilities,
+		},
+		{
+			polices: []string{"boundary-controller"},
+			require: requiredCapabilities,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		if tt.name == "" {
+			tt.name = fmt.Sprintf("%v", tt.polices)
+		}
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			secret := v.CreateToken(t, WithPolicies(tt.polices))
+			token, err := secret.TokenID()
+			require.NoError(err)
+			require.NotEmpty(token)
+
+			var paths []string
+			for path := range tt.require {
+				paths = append(paths, path)
+			}
+
+			client := v.clientUsingToken(t, token)
+			have, err := client.capabilities(paths)
+			assert.NoError(err)
+			got := have.missing(tt.require)
+			assert.Equalf(tt.wantMissing, got, "pathCapabilities: want: {%s} got: {%s}", tt.wantMissing, got)
+		})
+	}
 }

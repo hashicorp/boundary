@@ -1,14 +1,17 @@
 package vault
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
+	"github.com/mitchellh/mapstructure"
 )
 
 type clientConfig struct {
@@ -182,4 +185,47 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
+}
+
+// capabilities calls the /sys/capabilities-self Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
+func (c *client) capabilities(paths []string) (pathCapabilities, error) {
+	const op = "vault.(client).capabilities"
+	if len(paths) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "empty paths")
+	}
+	body := map[string]string{
+		"paths": strings.Join(paths, ","),
+	}
+	reqPath := "/v1/sys/capabilities-self"
+
+	r := c.cl.NewRequest("POST", reqPath)
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+	resp, err := c.cl.RawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	secret, err := vault.ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Data == nil {
+		return nil, errors.New(errors.Unknown, op, "data from Vault is empty")
+	}
+
+	var res map[string][]string
+	if err := mapstructure.Decode(secret.Data, &res); err != nil {
+		return nil, err
+	}
+
+	return newPathCapabilities(res), nil
 }
