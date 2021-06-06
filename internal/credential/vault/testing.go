@@ -532,10 +532,15 @@ func TestRenewableToken(b bool) TestOption {
 
 func (v *TestVaultServer) client(t *testing.T) *client {
 	t.Helper()
+	return v.clientUsingToken(t, v.RootToken)
+}
+
+func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
+	t.Helper()
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
-		Token:      v.RootToken,
+		Token:      token,
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
