@@ -42,7 +42,7 @@ func Test_newObservation(t *testing.T) {
 			fromOp: Op("valid-no-opts"),
 			want: &observation{
 				SimpleGatedPayload: &eventlogger.SimpleGatedPayload{},
-				Version:            ErrorVersion,
+				Version:            errorVersion,
 				Op:                 Op("valid-no-opts"),
 			},
 		},
@@ -63,7 +63,7 @@ func Test_newObservation(t *testing.T) {
 					Detail: testDetails,
 					Flush:  true,
 				},
-				Version:     ErrorVersion,
+				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),
 				RequestInfo: TestRequestInfo(t),
 			},

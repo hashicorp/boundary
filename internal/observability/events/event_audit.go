@@ -8,18 +8,18 @@ import (
 	"github.com/hashicorp/eventlogger"
 )
 
-// AuditVersion defines the version of audit events
-const AuditVersion = "v0.1"
+// auditVersion defines the version of audit events
+const auditVersion = "v0.1"
 
-// AuditEventType defines the type of audit event
-type AuditEventType string
+// auditEventType defines the type of audit event
+type auditEventType string
 
 const (
-	ApiRequest AuditEventType = "APIRequest" // ApiRequest defines an API request audit event type
+	apiRequest auditEventType = "APIRequest" // ApiRequest defines an API request audit event type
 )
 
-// Audit defines the data of audit events
-type Audit struct {
+// audit defines the data of audit events
+type audit struct {
 	Id             string       `json:"id"`                     // std audit/boundary field
 	Version        string       `json:"version"`                // std audit/boundary field
 	Type           string       `json:"type"`                   // std audit field
@@ -32,7 +32,7 @@ type Audit struct {
 	Flush          bool         `json:"-"`
 }
 
-func newAudit(fromOperation Op, opt ...Option) (*Audit, error) {
+func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	const op = "event.newAudit"
 	if fromOperation == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
@@ -53,10 +53,10 @@ func newAudit(fromOperation Op, opt ...Option) (*Audit, error) {
 		dtm = time.Now()
 	}
 
-	a := &Audit{
+	a := &audit{
 		Id:          opts.withId,
-		Version:     AuditVersion,
-		Type:        string(ApiRequest),
+		Version:     auditVersion,
+		Type:        string(apiRequest),
 		Timestamp:   dtm,
 		RequestInfo: opts.withRequestInfo,
 		Auth:        opts.withAuth,
@@ -71,9 +71,9 @@ func newAudit(fromOperation Op, opt ...Option) (*Audit, error) {
 }
 
 // EventType is required for all event types by the eventlogger broker
-func (a *Audit) EventType() string { return string(AuditType) }
+func (a *audit) EventType() string { return string(AuditType) }
 
-func (a *Audit) validate() error {
+func (a *audit) validate() error {
 	const op = "event.(audit).validate"
 	if a.Id == "" {
 		return errors.New(errors.InvalidParameter, op, "missing id")
@@ -83,27 +83,27 @@ func (a *Audit) validate() error {
 
 // GetID is part of the eventlogger.Gateable interface and returns the audit
 // event's id.
-func (a *Audit) GetID() string {
+func (a *audit) GetID() string {
 	return a.Id
 }
 
 // FlushEvent is part of the eventlogger.Gateable interface and returns the
 // value of the audit event's flush field
-func (a *Audit) FlushEvent() bool {
+func (a *audit) FlushEvent() bool {
 	return a.Flush
 }
 
 // ComposedFrom is part of the eventlogger.Gatable interface.  It's important to
 // remember that the receiver will always be nil when this is called by the eventlogger.GatedFilter
-func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, interface{}, error) {
+func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, interface{}, error) {
 	const op = "event.(audit).ComposedFrom"
 	if len(events) == 0 {
 		return "", nil, errors.New(errors.InvalidParameter, op, "missing events")
 	}
 	var validId string
-	payload := Audit{}
+	payload := audit{}
 	for i, v := range events {
-		gated, ok := v.Payload.(*Audit)
+		gated, ok := v.Payload.(*audit)
 		if !ok {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not an audit payload", i))
 		}
@@ -118,10 +118,10 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		if gated.Id != validId {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid id: %s != %s", i, gated.Id, validId))
 		}
-		if gated.Version != AuditVersion {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid version: %s != %s", i, gated.Version, AuditVersion))
+		if gated.Version != auditVersion {
+			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid version: %s != %s", i, gated.Version, auditVersion))
 		}
-		if gated.Type != string(ApiRequest) {
+		if gated.Type != string(apiRequest) {
 			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid type: %s != %s", i, gated.Type, string(AuditType)))
 		}
 		if gated.RequestInfo != nil {
@@ -142,7 +142,7 @@ func (a *Audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 
 	}
 	payload.Id = validId
-	payload.Version = AuditVersion
-	payload.Type = string(ApiRequest)
+	payload.Version = auditVersion
+	payload.Type = string(apiRequest)
 	return eventlogger.EventType(a.EventType()), payload, nil
 }

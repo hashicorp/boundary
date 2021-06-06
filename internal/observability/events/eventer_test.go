@@ -175,7 +175,7 @@ func TestEventer_writeAudit(t *testing.T) {
 	tests := []struct {
 		name         string
 		broker       broker
-		audit        *Audit
+		audit        *audit
 		wantErrMatch *errors.Template
 	}{
 		{
