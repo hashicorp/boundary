@@ -301,8 +301,6 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 	require.NoError(err)
 	require.NotEmpty(s)
 
-	// Create the role named `warehouse` that creates credentials with
-
 	const (
 		vaultOpenedCreationStatement = `
 create role "{{name}}"
@@ -335,7 +333,6 @@ grant closed_role to "{{name}}";
 	_, err = vc.Logical().Write(closedRolePath, closedRoleOptions)
 	require.NoError(err)
 
-	// Add policies to vault?
 }
 
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
