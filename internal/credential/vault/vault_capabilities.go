@@ -255,3 +255,11 @@ func (pc pathCapabilities) vaultPolicy() string {
 	}
 	return b.String()
 }
+
+var requiredCapabilities = pathCapabilities{
+	"auth/token/lookup-self": readCapability,
+	"auth/token/renew-self":  updateCapability,
+	"auth/token/revoke-self": updateCapability,
+	"sys/leases/renew":       updateCapability,
+	"sys/leases/revoke":      updateCapability,
+}
