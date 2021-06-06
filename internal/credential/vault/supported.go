@@ -182,6 +182,8 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 		return nil
 	})
 	require.NoError(err)
+
+	server.addPolicy(t, "boundary-controller", requiredCapabilities)
 	return server
 }
 
@@ -272,7 +274,11 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 		mountPath = "database/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
-	v.addPolicy(t, "database", mountPath)
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "database", pc)
 
 	vaultContainer, ok := v.vaultContainer.(*dockertest.Resource)
 	require.True(ok)

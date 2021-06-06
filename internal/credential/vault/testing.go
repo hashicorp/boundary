@@ -443,7 +443,7 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		orphan:        true,
 		periodic:      true,
 		renewable:     true,
-		policies:      []string{"default"},
+		policies:      []string{"default", "boundary-controller"},
 		mountPath:     "",
 		roleName:      "boundary",
 		vaultTLS:      TestNoTLS,
@@ -609,15 +609,11 @@ func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secre
 	return secret
 }
 
-func (v *TestVaultServer) addPolicy(t *testing.T, name string, mountPath string) {
-	const template = `
-		path "%s*" {
-			capabilities = ["create", "read", "update", "delete", "list"]
-		}`
-
+func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabilities) {
 	t.Helper()
 	require := require.New(t)
-	policy := fmt.Sprintf(template, mountPath)
+	policy := pc.vaultPolicy()
+	require.NotEmpty(policy)
 	vc := v.client(t).cl
 	require.NoError(vc.Sys().PutPolicy(name, policy))
 }
@@ -664,7 +660,11 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 		mountPath = "pki/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
-	v.addPolicy(t, "pki", mountPath)
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "pki", pc)
 
 	// Generate a root CA
 	caPath := path.Join(mountPath, "root/generate/internal")

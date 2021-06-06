@@ -365,7 +365,7 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
-		token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+		token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 		vc.SetToken(token.Auth.ClientToken)
 
 		dbCredPath := path.Join("database", "creds", "opened")
