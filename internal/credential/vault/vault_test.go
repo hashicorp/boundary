@@ -320,3 +320,27 @@ func TestClient_capabilities(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_revokeLease(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
+	testDatabase := v.MountDatabase(t)
+
+	secret := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
+	token := secret.Auth.ClientToken
+	client := v.clientUsingToken(t, token)
+
+	credPath := path.Join("database", "creds", "opened")
+	cred, err := client.get(credPath)
+	assert.NoError(err)
+	require.NotNil(cred)
+
+	// verify the database credentials work
+	assert.NoError(testDatabase.ValidateCredential(t, cred))
+
+	// revoke the database credentials
+	assert.NoError(client.revokeLease(cred.LeaseID))
+
+	// verify the database credentials no longer work
+	assert.Error(testDatabase.ValidateCredential(t, cred))
+}

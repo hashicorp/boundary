@@ -142,6 +142,17 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 	return t, nil
 }
 
+// revokeLease calls the /sys/leases/revoke Vault endpoint. This endpoint
+// is NOT accessible with the default policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/system/leases#revoke-lease.
+func (c *client) revokeLease(leaseId string) error {
+	const op = "vault.(client).revokeLease"
+	if err := c.cl.Sys().Revoke(leaseId); err != nil {
+		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return nil
+}
+
 // lookupToken calls the /auth/token/lookup-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
