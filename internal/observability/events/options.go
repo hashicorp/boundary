@@ -27,6 +27,10 @@ type options struct {
 	withRequest     *Request
 	withResponse    *Response
 	withAuth        *Auth
+
+	withBroker          broker // test only option
+	withAuditSink       bool   // test only option
+	withObservationSink bool   // test only option
 }
 
 func getDefaultOptions() options {
