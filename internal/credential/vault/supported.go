@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const DefaultVaultVersion = "1.7.2"
+
 func init() {
 	newVaultServer = gotNewServer
 	mountDatabase = gotMountDatabase
@@ -73,7 +75,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
-		Tag:        "1.7.1",
+		Tag:        DefaultVaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
 
