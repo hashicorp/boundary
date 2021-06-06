@@ -226,7 +226,7 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 		createOpened = `create table boundary_opened ( name text primary key )`
 		createClosed = `create table boundary_closed ( name text primary key )`
 
-		createVaultAccount = `create role vault with login createrole password 'vault-password'`
+		createVaultAccount = `create role vault with superuser login createrole password 'vault-password'`
 		createOpenedRole   = `create role opened_role noinherit`
 		createClosedRole   = `create role closed_role noinherit`
 
