@@ -26,40 +26,22 @@ func Test_newClient(t *testing.T) {
 
 func TestClient_RenewToken(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
+	assert := assert.New(t)
 	v := NewTestVaultServer(t)
-	require.NotNil(v)
+
 	secret := v.CreateToken(t)
-	require.NotNil(secret)
-
-	token, err := secret.TokenID()
-	require.NoError(err)
-	assert.NotEmpty(token)
-	require.Equal(token, secret.Auth.ClientToken)
+	token := secret.Auth.ClientToken
 	secretLookup := v.LookupToken(t, token)
-	t.Log(testLogVaultSecret(t, secretLookup))
-
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      token,
-	}
 
 	// need to sleep so the expiration times will be different
 	time.Sleep(100 * time.Millisecond)
 
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	require.NoError(client.ping())
-
+	client := v.clientUsingToken(t, token)
 	renewedToken, err := client.renewToken()
-	require.NoError(err)
-	require.NotNil(renewedToken)
+	assert.NoError(err)
+	assert.NotNil(renewedToken)
+
 	renewedLookup := v.LookupToken(t, token)
-	t.Log(testLogVaultSecret(t, renewedLookup))
 
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, renewedLookup)
 	assert.False(t1.Equal(t2))
@@ -84,35 +66,15 @@ func TestClient_LookupToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
-	require.NotNil(v)
+
 	secret := v.CreateToken(t)
-	require.NotNil(secret)
-
-	token, err := secret.TokenID()
-	require.NoError(err)
-	assert.NotEmpty(token)
-	require.Equal(token, secret.Auth.ClientToken)
+	token := secret.Auth.ClientToken
 	secretLookup := v.LookupToken(t, token)
-	t.Log(testLogVaultSecret(t, secretLookup))
 
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      token,
-	}
-
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	require.NoError(client.ping())
-
+	client := v.clientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken()
-	require.NoError(err)
+	assert.NoError(err)
 	require.NotNil(tokenLookup)
-
-	t.Log(testLogVaultSecret(t, tokenLookup))
 
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, tokenLookup)
 	assert.True(t1.Equal(t2))
@@ -122,41 +84,16 @@ func TestClient_RevokeToken(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
-	require.NotNil(v)
+
 	secret := v.CreateToken(t)
-	require.NotNil(secret)
+	token := secret.Auth.ClientToken
 
-	token, err := secret.TokenID()
-	require.NoError(err)
-	assert.NotEmpty(token)
-	require.Equal(token, secret.Auth.ClientToken)
-	secretLookup := v.LookupToken(t, token)
-	t.Log(testLogVaultSecret(t, secretLookup))
-
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      token,
-	}
-
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	require.NoError(client.ping())
-
+	client := v.clientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken()
-	require.NoError(err)
-	require.NotNil(tokenLookup)
+	assert.NoError(err)
+	assert.NotNil(tokenLookup)
 
-	t.Log(testLogVaultSecret(t, tokenLookup))
-
-	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, tokenLookup)
-	assert.True(t1.Equal(t2))
-
-	err = client.revokeToken()
-	require.NoError(err)
+	require.NoError(client.revokeToken())
 
 	// An attempt to lookup should now fail with a 403
 	tokenLookup, err = client.lookupToken()
@@ -170,56 +107,32 @@ func TestClient_RevokeToken(t *testing.T) {
 
 func TestClient_Get(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
+	assert := assert.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
 
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      v.RootToken,
-	}
+	client := v.client(t)
 
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	require.NoError(client.ping())
-
-	credPath := path.Join("database", "creds", "opened")
-	cred, err := client.get(credPath)
+	cred, err := client.get(path.Join("database", "creds", "opened"))
 	assert.NoError(err)
 	assert.NotNil(cred)
 }
 
 func TestClient_Post(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
-	v := NewTestVaultServer(t)
+	v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 	v.MountPKI(t)
-
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      v.RootToken,
-	}
-
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	require.NoError(client.ping())
-
+	client := v.client(t)
 	credPath := path.Join("pki", "issue", "boundary")
 	t.Run("post-body", func(t *testing.T) {
+		assert := assert.New(t)
 		credData := []byte(`{"common_name":"boundary.com"}`)
 		cred, err := client.post(credPath, credData)
 		assert.NoError(err)
 		assert.NotNil(cred)
 	})
 	t.Run("nil-body", func(t *testing.T) {
+		assert := assert.New(t)
 		cred, err := client.post(credPath, nil)
 		assert.Error(err)
 		assert.Contains(err.Error(), "common_name field is required")
@@ -233,42 +146,31 @@ func TestClient_RenewLease(t *testing.T) {
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
 
-	conf := &clientConfig{
-		Addr:       v.Addr,
-		CaCert:     v.CaCert,
-		ClientCert: v.ClientCert,
-		ClientKey:  v.ClientKey,
-		Token:      v.RootToken,
-	}
-
-	client, err := newClient(conf)
-	require.NoError(err)
-	require.NotNil(client)
-	assert.NoError(client.ping())
+	secret := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
+	token := secret.Auth.ClientToken
+	client := v.clientUsingToken(t, token)
 
 	// Create secret
-	credPath := path.Join("database", "creds", "opened")
-	cred, err := client.get(credPath)
-	require.NoError(err)
+	cred, err := client.get(path.Join("database", "creds", "opened"))
+	assert.NoError(err)
+	require.NotNil(cred)
 
 	leaseLookup := v.LookupLease(t, cred.LeaseID)
-	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
 	// Verify lease has not been renewed
-	require.Empty(leaseLookup.Data["last_renewal"])
+	assert.Empty(leaseLookup.Data["last_renewal"])
 
 	renewedLease, err := client.renewLease(cred.LeaseID, time.Hour)
-	require.NoError(err)
+	assert.NoError(err)
 	require.NotNil(renewedLease)
 	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
 
 	leaseLookup = v.LookupLease(t, cred.LeaseID)
-	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
 	// Verify lease been renewed
-	require.NotEmpty(leaseLookup.Data["last_renewal"])
+	assert.NotEmpty(leaseLookup.Data["last_renewal"])
 }
 
 func TestClient_capabilities(t *testing.T) {
@@ -301,18 +203,16 @@ func TestClient_capabilities(t *testing.T) {
 			tt.name = fmt.Sprintf("%v", tt.polices)
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			secret := v.CreateToken(t, WithPolicies(tt.polices))
-			token, err := secret.TokenID()
-			require.NoError(err)
-			require.NotEmpty(token)
-
 			var paths []string
 			for path := range tt.require {
 				paths = append(paths, path)
 			}
 
+			assert := assert.New(t)
+			secret := v.CreateToken(t, WithPolicies(tt.polices))
+			token := secret.Auth.ClientToken
 			client := v.clientUsingToken(t, token)
+
 			have, err := client.capabilities(paths)
 			assert.NoError(err)
 			got := have.missing(tt.require)
@@ -322,6 +222,7 @@ func TestClient_capabilities(t *testing.T) {
 }
 
 func TestClient_revokeLease(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
 	testDatabase := v.MountDatabase(t)
@@ -330,8 +231,7 @@ func TestClient_revokeLease(t *testing.T) {
 	token := secret.Auth.ClientToken
 	client := v.clientUsingToken(t, token)
 
-	credPath := path.Join("database", "creds", "opened")
-	cred, err := client.get(credPath)
+	cred, err := client.get(path.Join("database", "creds", "opened"))
 	assert.NoError(err)
 	require.NotNil(cred)
 
