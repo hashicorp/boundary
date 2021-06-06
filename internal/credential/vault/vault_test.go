@@ -261,7 +261,6 @@ func TestClient_RenewLease(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(renewedLease)
 	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
-	assert.Equal(int(time.Hour.Seconds()), renewedLease.LeaseDuration)
 
 	leaseLookup = v.LookupLease(t, cred.LeaseID)
 	require.NotNil(leaseLookup)
