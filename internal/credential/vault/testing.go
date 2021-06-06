@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -732,7 +733,50 @@ func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 //   path "mountPath/*" {
 //     capabilities = ["create", "read", "update", "delete", "list"]
 //   }
-func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
+//
+// MountDatabase returns a TestDatabase for testing credentials from the
+// mount.
+func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) *TestDatabase {
 	t.Helper()
-	mountDatabase(t, v, opt...)
+	return mountDatabase(t, v, opt...)
+}
+
+// TestDatabaseURL is a connection string with place holders for username
+// and password to the database started by MountDatabase.
+type TestDatabaseURL string
+
+// Encode encodes the username and password credentials from s into u.
+func (u TestDatabaseURL) Encode(t *testing.T, s *vault.Secret) string {
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(s, "vault.Secret")
+	username, ok := s.Data["username"].(string)
+	require.True(ok, "username")
+	password, ok := s.Data["password"].(string)
+	require.True(ok, "password")
+	return fmt.Sprintf(string(u), username, password)
+}
+
+// TestDatabase is returned from MountDatabase and can be used to test
+// database credentials returned by Vault for that mount.
+type TestDatabase struct {
+	URL TestDatabaseURL
+}
+
+// ValidateCredential tests the credentials in s against d. An error is
+// returned if the credentials are not valid.
+func (d *TestDatabase) ValidateCredential(t *testing.T, s *vault.Secret) error {
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(s)
+	dburl := d.URL.Encode(t, s)
+	db, err := sql.Open("postgres", dburl)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		return err
+	}
+	return nil
 }

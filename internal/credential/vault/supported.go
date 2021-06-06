@@ -187,7 +187,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 	return server
 }
 
-func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
+func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *TestDatabase {
 	require := require.New(t)
 	require.Nil(v.postgresContainer, "postgres container exists")
 	require.NotNil(v.network, "Vault server must be created with docker network")
@@ -211,7 +211,8 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 	})
 	v.postgresContainer = resource
 
-	dburl := fmt.Sprintf("postgres://postgres:password@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
+	dbUrlTemplate := fmt.Sprintf("postgres://%%s:%%s@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
+	dburl := fmt.Sprintf(dbUrlTemplate, "postgres", "password")
 	err = pool.Retry(func() error {
 		var err error
 		db, err := sql.Open("postgres", dburl)
@@ -333,6 +334,9 @@ grant closed_role to "{{name}}";
 	_, err = vc.Logical().Write(closedRolePath, closedRoleOptions)
 	require.NoError(err)
 
+	return &TestDatabase{
+		URL: TestDatabaseURL(dbUrlTemplate),
+	}
 }
 
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {

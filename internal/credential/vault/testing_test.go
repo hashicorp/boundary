@@ -349,29 +349,37 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
-		require.NotNil(v)
-
 		vc := v.client(t).cl
+
 		mounts, err := vc.Sys().ListMounts()
 		assert.NoError(err)
 		require.NotEmpty(mounts)
 		beforeCount := len(mounts)
 
-		v.MountDatabase(t)
+		testDatabase := v.MountDatabase(t)
 
 		mounts, err = vc.Sys().ListMounts()
 		assert.NoError(err)
 		require.NotEmpty(mounts)
 		afterCount := len(mounts)
+
 		assert.Greater(afterCount, beforeCount)
 
 		token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 		vc.SetToken(token.Auth.ClientToken)
 
-		dbCredPath := path.Join("database", "creds", "opened")
-		dbSecret, err := vc.Logical().Read(dbCredPath)
+		dbSecret, err := vc.Logical().Read(path.Join("database", "creds", "opened"))
 		assert.NoError(err)
 		require.NotEmpty(dbSecret)
+
+		// verify the database credentials work
+		assert.NoError(testDatabase.ValidateCredential(t, dbSecret))
+
+		// revoke the database credentials
+		assert.NoError(vc.Sys().Revoke(dbSecret.LeaseID))
+
+		// verify the database credentials no longer work
+		assert.Error(testDatabase.ValidateCredential(t, dbSecret))
 	})
 }
 
