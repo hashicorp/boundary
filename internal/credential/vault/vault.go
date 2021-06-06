@@ -122,8 +122,7 @@ func (c *client) renewToken() (*vault.Secret, error) {
 func (c *client) revokeToken() error {
 	const op = "vault.(client).revokeToken"
 	// The `token` parameter  s kept for backwards compatibility but is ignored, so use ""
-	err := c.cl.Auth().Token().RevokeSelf("")
-	if err != nil {
+	if err := c.cl.Auth().Token().RevokeSelf(""); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
