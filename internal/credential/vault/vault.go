@@ -113,8 +113,8 @@ func (c *client) renewToken() (*vault.Secret, error) {
 	return t, nil
 }
 
-// revokeToken calls the /auth/token/revoke-self Vault endpoint. This endpoint
-// is accessible with the default policy in Vault 1.7.0. See
+// revokeToken calls the /auth/token/revoke-self Vault endpoint. This
+// endpoint is accessible with the default policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
 func (c *client) revokeToken() error {
 	const op = "vault.(client).revokeToken"
@@ -126,8 +126,8 @@ func (c *client) revokeToken() error {
 	return nil
 }
 
-// renewLease calls the /sys/leases/renew Vault endpoint and returns
-// the vault.Secret response. This endpoint is accessible with the default
+// renewLease calls the /sys/leases/renew Vault endpoint and returns the
+// vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.0. See
 // https://www.vaultproject.io/api-docs/system/leases#renew-lease.
 func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
