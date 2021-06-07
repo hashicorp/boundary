@@ -198,8 +198,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	v := NewTestVaultServer(t)
 
-	secret := v.CreateToken(t)
-	ct := secret.Auth.ClientToken
+	_, ct := v.CreateToken(t)
 
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	assert.NoError(err)
