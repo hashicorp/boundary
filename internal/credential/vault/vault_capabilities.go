@@ -112,28 +112,14 @@ func (c capabilities) strings() []string {
 }
 
 func (c capabilities) String() string {
-	const sep = ", "
-	caps := c.strings()
-	switch len(caps) {
-	case 0:
+	if c == noCapabilities {
 		return "[]"
-	case 1:
-		return fmt.Sprintf("[%q]", caps[0])
 	}
-	n := len(sep) * (len(caps) - 1)
-	for i := 0; i < len(caps); i++ {
-		n += len(caps[i])
-	}
-
-	b := new(strings.Builder)
-	b.Grow(n)
-	b.WriteByte('[')
-	fmt.Fprintf(b, "%q", caps[0])
-	for _, s := range caps[1:] {
-		fmt.Fprintf(b, "%s", sep)
-		fmt.Fprintf(b, "%q", s)
-	}
-	b.WriteByte(']')
+	caps := c.strings()
+	var b strings.Builder
+	b.WriteString(`["`)
+	b.WriteString(strings.Join(caps, `", "`))
+	b.WriteString(`"]`)
 	return b.String()
 }
 
