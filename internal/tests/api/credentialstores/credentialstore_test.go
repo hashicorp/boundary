@@ -33,7 +33,7 @@ func TestList(t *testing.T) {
 
 	var expected []*credentialstores.CredentialStore
 	for i := 0; i < 10; i++ {
-		tok := vaultServ.CreateToken(t).Auth.ClientToken
+		_, tok := vaultServ.CreateToken(t)
 		expected = append(expected, &credentialstores.CredentialStore{Name: fmt.Sprint(i), Attributes: map[string]interface{}{
 			"address":     vaultServ.Addr,
 			"vault_token": tok,
@@ -87,7 +87,7 @@ func TestCrud(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
-	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
+	_, vaultTok := vaultServ.CreateToken(t)
 
 	client := tc.Client()
 	token := tc.Token()
@@ -137,7 +137,7 @@ func TestErrors(t *testing.T) {
 	defer tc.Shutdown()
 
 	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
-	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
+	_, vaultTok := vaultServ.CreateToken(t)
 
 	client := tc.Client()
 	token := tc.Token()
