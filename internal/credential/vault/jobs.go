@@ -148,7 +148,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		// or malformed.  Set status to "expired" so credentials created with token can be
 		// cleaned up.
 
-		query, values := token.updateStatusQuery(StatusExpired)
+		query, values := token.updateStatusQuery(ExpiredToken)
 		numRows, err := r.writer.Exec(ctx, query, values)
 		if err != nil {
 			return errors.Wrap(err, op)
@@ -156,7 +156,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		if numRows != 1 {
 			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
 		}
-		if s.TokenStatus == string(StatusCurrent) {
+		if s.TokenStatus == string(CurrentToken) {
 			r.logger.Info("Vault credential store current token has expired", "credential store id", s.StoreId)
 		}
 

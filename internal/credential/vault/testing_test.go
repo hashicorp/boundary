@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -372,4 +373,46 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 		assert.NoError(err)
 		require.NotEmpty(dbSecret)
 	})
+}
+
+func TestTestVaultServer_LookupLease(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+	v.MountDatabase(t)
+
+	conf := &clientConfig{
+		Addr:       v.Addr,
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+		Token:      v.RootToken,
+	}
+
+	client, err := newClient(conf)
+	require.NoError(err)
+	require.NotNil(client)
+	assert.NoError(client.ping())
+
+	// Create secret
+	credPath := path.Join("database", "creds", "opened")
+	cred, err := client.get(credPath)
+	require.NoError(err)
+
+	// Sleep to move ttl
+	time.Sleep(time.Second)
+
+	leaseLookup := v.LookupLease(t, cred.LeaseID)
+	require.NotNil(leaseLookup.Data)
+
+	id := leaseLookup.Data["id"]
+	require.NotEmpty(id)
+	assert.Equal(cred.LeaseID, id.(string))
+
+	ttl := leaseLookup.Data["ttl"]
+	require.NotEmpty(ttl)
+	newTtl, err := ttl.(json.Number).Int64()
+	require.NoError(err)
+	// New ttl should have moved and be lower than original lease duration
+	assert.True(cred.LeaseDuration > int(newTtl))
 }
