@@ -385,7 +385,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantPair, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
@@ -433,15 +433,16 @@ roles (role_id, grant_scope_id) as (
          user_group_roles
    where public_id in (user_group_roles.role_id)
 ),
-final (role_scope, role_grant) as (
-  select roles.grant_scope_id,
+final (role_id, role_scope, role_grant) as (
+  select roles.role_id,
+         roles.grant_scope_id,
          iam_role_grant.canonical_grant
     from roles
    inner
     join iam_role_grant
       on roles.role_id = iam_role_grant.role_id
 )
-select role_scope as scope_id, role_grant as grant from final;
+select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
 	`
 	)
 
@@ -453,14 +454,14 @@ select role_scope as scope_id, role_grant as grant from final;
 		query = fmt.Sprintf(grantsQuery, authUser)
 	}
 
-	var grants []perms.GrantPair
+	var grants []perms.GrantTuple
 	rows, err := r.reader.Query(ctx, query, []interface{}{userId})
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g perms.GrantPair
+		var g perms.GrantTuple
 		if err := r.reader.ScanRows(rows, &g); err != nil {
 			return nil, errors.Wrap(err, op)
 		}
