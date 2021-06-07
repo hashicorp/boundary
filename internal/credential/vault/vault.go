@@ -86,7 +86,7 @@ func newClient(c *clientConfig) (*client, error) {
 
 // ping calls the /sys/health Vault endpoint and returns an error if no
 // response is returned. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
 func (c *client) ping() error {
 	const op = "vault.(client).ping"
@@ -105,7 +105,7 @@ func (c *client) ping() error {
 
 // renewToken calls the /auth/token/renew-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
 func (c *client) renewToken() (*vault.Secret, error) {
 	const op = "vault.(client).renewToken"
@@ -117,7 +117,7 @@ func (c *client) renewToken() (*vault.Secret, error) {
 }
 
 // revokeToken calls the /auth/token/revoke-self Vault endpoint. This
-// endpoint is accessible with the default policy in Vault 1.7.0. See
+// endpoint is accessible with the default policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
 func (c *client) revokeToken() error {
 	const op = "vault.(client).revokeToken"
@@ -130,7 +130,7 @@ func (c *client) revokeToken() error {
 
 // renewLease calls the /sys/leases/renew Vault endpoint and returns the
 // vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/leases#renew-lease.
 func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
 	const op = "vault.(client).renewLease"
@@ -142,7 +142,7 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 }
 
 // revokeLease calls the /sys/leases/revoke Vault endpoint. This endpoint
-// is NOT accessible with the default policy in Vault 1.7.0. See
+// is NOT accessible with the default policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/leases#revoke-lease.
 func (c *client) revokeLease(leaseId string) error {
 	const op = "vault.(client).revokeLease"
@@ -154,7 +154,7 @@ func (c *client) revokeLease(leaseId string) error {
 
 // lookupToken calls the /auth/token/lookup-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
 func (c *client) lookupToken() (*vault.Secret, error) {
 	const op = "vault.(client).lookupToken"
@@ -199,8 +199,8 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 
 // capabilities calls the /sys/capabilities-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
-// https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
+// policy in Vault 1.7.2. See
+// https://www.vaultproject.io/api-docs/system/capabilities-self.
 func (c *client) capabilities(paths []string) (pathCapabilities, error) {
 	const op = "vault.(client).capabilities"
 	if len(paths) == 0 {
