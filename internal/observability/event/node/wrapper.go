@@ -54,7 +54,7 @@ type EventWrapperInfo interface {
 	HmacInfo() []byte
 }
 
-// NewEventWrapper is used by the AuditEncryptFilter to derive a wrapper to use
+// NewEventWrapper is used by the EncryptFilter to derive a wrapper to use
 // for a specific event.  The event must implement the WrapperPayload interface
 // for per event wrappers to be derived.
 func NewEventWrapper(wrapper wrapping.Wrapper, eventId string) (wrapping.Wrapper, error) {

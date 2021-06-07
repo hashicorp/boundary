@@ -15,11 +15,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestAuditEncryptFilter_Process(t *testing.T) {
+func TestEncryptFilter_Process(t *testing.T) {
 	ctx := context.Background()
 	wrapper := node.TestWrapper(t)
 	now := time.Now()
-	testEncryptingFilter := &node.AuditEncryptFilter{
+	testEncryptingFilter := &node.EncryptFilter{
 		Wrapper:  wrapper,
 		HmacSalt: []byte("salt"),
 		HmacInfo: []byte("info"),
@@ -27,7 +27,7 @@ func TestAuditEncryptFilter_Process(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		filter          *node.AuditEncryptFilter
+		filter          *node.EncryptFilter
 		testEvent       *eventlogger.Event
 		setupWantEvent  func(*eventlogger.Event)
 		wantEvent       *eventlogger.Event

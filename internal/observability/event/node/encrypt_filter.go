@@ -17,11 +17,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// AuditEncryptFilter is an eventlogger Filter Node which will filter string and
+// EncryptFilter is an eventlogger Filter Node which will filter string and
 // []byte fields in an event.  Fields with tags that designate
 // SecretClassification will be redacted. Fields with tags that designate
 // SensitiveClassification will either be encrypted or hmac-sha256.
-type AuditEncryptFilter struct {
+type EncryptFilter struct {
 	// Wrapper to encrypt or hmac-sha256 string and []byte fields which are
 	// tagged as SensitiveClassification.  This may be rotated with an event
 	// that has a payload satisfying the RotateWrapper interface.  If an
@@ -60,19 +60,19 @@ type AuditEncryptFilter struct {
 	l sync.RWMutex
 }
 
-// Reopen is a no op for AuditEncryptFilters.
-func (af *AuditEncryptFilter) Reopen() error {
+// Reopen is a no op for EncryptFilters.
+func (af *EncryptFilter) Reopen() error {
 	return nil
 }
 
 // Type describes the type of the node as a Filter.
-func (ef *AuditEncryptFilter) Type() eventlogger.NodeType {
+func (ef *EncryptFilter) Type() eventlogger.NodeType {
 	return eventlogger.NodeTypeFilter
 }
 
 // Rotate supports rotating the filter's wrapper, salt and info via the options:
 // WithWrapper, WithSalt, WithInfo
-func (ef *AuditEncryptFilter) Rotate(opt ...Option) {
+func (ef *EncryptFilter) Rotate(opt ...Option) {
 	opts := getOpts(opt...)
 	ef.l.Lock()
 	defer ef.l.Unlock()
@@ -100,7 +100,7 @@ func (ef *AuditEncryptFilter) Rotate(opt ...Option) {
 // If the event payload satisfies the EventWrapperInfo interface, then the
 // payload's EventId(), HmacSalt() and HmacInfo() will be used to for filtering
 // operations for just the single event being processed.
-func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
+func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(EncryptFilter).Process"
 	if e == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing event")
@@ -152,8 +152,8 @@ func (ef *AuditEncryptFilter) Process(ctx context.Context, e *eventlogger.Event)
 
 // filterField will recursively iterate over all the field for a value and
 // filter them based on their DataClassification
-func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...Option) error {
-	const op = "event.(AuditEncryptFilter).filterField"
+func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...Option) error {
+	const op = "event.(EncryptFilter).filterField"
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
 		fkind := field.Kind()
@@ -215,8 +215,8 @@ func (ef *AuditEncryptFilter) filterField(ctx context.Context, v reflect.Value, 
 }
 
 // filterSlice will filter a slice reflect.Value
-func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...Option) error {
-	const op = "event.(AuditEncryptFilter).filterSlice"
+func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...Option) error {
+	const op = "event.(EncryptFilter).filterSlice"
 	if classificationTag.Classification == PublicClassification {
 		return nil
 	}
@@ -236,8 +236,8 @@ func (ef *AuditEncryptFilter) filterSlice(ctx context.Context, classificationTag
 }
 
 // filterValue will filter a value based on it's DataClassification
-func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...Option) error {
-	const op = "event.(AuditEncryptFilter).filterValue"
+func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...Option) error {
+	const op = "event.(EncryptFilter).filterValue"
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
@@ -282,7 +282,7 @@ func (ef *AuditEncryptFilter) filterValue(ctx context.Context, fv reflect.Value,
 	return nil
 }
 
-func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Option) (string, error) {
+func (ef *EncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
 	ef.l.Lock()
 	defer ef.l.Unlock()
@@ -308,7 +308,7 @@ func (ef *AuditEncryptFilter) encrypt(ctx context.Context, value []byte, opt ...
 	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob), nil
 }
 
-func (ef *AuditEncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Option) (string, error) {
+func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).hmacField"
 	ef.l.Lock()
 	defer ef.l.Unlock()
