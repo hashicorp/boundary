@@ -32,66 +32,66 @@ $ boundary dev
 
 1. Open the Boundary Desktop application
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-open.png)
+![](/img/desktop/macos/boundary-desktop-open.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-open.png)
+![](/img/desktop/windows/boundary-desktop-open.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. You'll be prompted for the Boundary server origin, this is the URL for the client
    to connect to the Boundary API. If you are running a local `dev` mode server, this
    URL will be `http://localhost:9200`
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-origin.png)
+![](/img/desktop/macos/boundary-desktop-origin.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-origin.png)
+![](/img/desktop/windows/boundary-desktop-origin.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. You can now login to Boundary. We're using a `dev` mode server in this example with the
    username `admin` and the password `password`
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-login.png)
+![](/img/desktop/macos/boundary-desktop-login.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-login.png)
+![](/img/desktop/windows/boundary-desktop-login.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. After logging in, you should see the targets your user is authorized to connect to. Since
    we are using a `dev` mode server we see the default generated target for `127.0.0.1:22`
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-landing.png)
+![](/img/desktop/macos/boundary-desktop-landing.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-landing.png)
+![](/img/desktop/windows/boundary-desktop-landing.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 ### Connect!
@@ -101,33 +101,33 @@ $ boundary dev
 1. Click on `connect` next to the default target. A pop-up window will display the local
    address of the proxy and the ephemeral port for the session
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-connect.png)
+![](/img/desktop/macos/boundary-desktop-connect.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-connect.png)
+![](/img/desktop/windows/boundary-desktop-connect.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. Navigate to the `Sessions` pane and you'll see this session is in `pending` state because we
    haven't made a connection to it yet (but will!)
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-pending.png)
+![](/img/desktop/macos/boundary-desktop-pending.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-pending.png)
+![](/img/desktop/windows/boundary-desktop-pending.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 -> The next step assumes you have a SSH server running that the default target will connect to.
@@ -147,32 +147,32 @@ $
 
 1. Navigate back to the sessions view and you'll see this session is now active
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-active.png)
+![](/img/desktop/macos/boundary-desktop-active.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-active.png)
+![](/img/desktop/windows/boundary-desktop-active.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. Click `Cancel` to cancel the session and you'll see the status go to `canceling` briefly, then `terminated`
 
-   <Tabs>
+<Tabs>
 <Tab heading="MacOS">
 
-   ![](/img/desktop/macos/boundary-desktop-terminated.png)
+![](/img/desktop/macos/boundary-desktop-terminated.png)
 
-   </Tab>
+</Tab>
 <Tab heading="Windows">
 
-   ![](/img/desktop/windows/boundary-desktop-terminated.png)
+![](/img/desktop/windows/boundary-desktop-terminated.png)
 
-   </Tab>
+</Tab>
 </Tabs>
 
 1. Navigate back to the CLI and you'll see your SSH session has closed
