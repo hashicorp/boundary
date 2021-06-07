@@ -407,6 +407,24 @@ user_groups (id) as (
          users
    where member_id in (users.id)
 ),
+user_accounts (id) as (
+  select public_id
+    from auth_account,
+         users
+   where iam_user_id in (users.id)
+),
+user_managed_groups (id) as (
+  select managed_group_id
+    from auth_managed_group_member_account,
+         user_accounts
+   where member_id in (user_accounts.id)
+),
+managed_group_roles (role_id) as (
+  select role_id
+    from iam_managed_group_role,
+         user_managed_groups
+   where principal_id in (user_managed_groups.id)
+),
 group_roles (role_id) as (
   select role_id
     from iam_group_role,
@@ -425,6 +443,9 @@ user_group_roles (role_id) as (
    union
   select role_id
     from user_roles
+   union
+  select role_id
+    from managed_group_roles
 ),
 roles (role_id, grant_scope_id) as (
   select iam_role.public_id,
