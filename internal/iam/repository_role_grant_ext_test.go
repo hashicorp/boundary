@@ -2,11 +2,13 @@ package iam_test
 
 import (
 	"context"
+	"fmt"
 	mathrand "math/rand"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,82 +16,60 @@ import (
 func TestGrantsForUser(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	// conn.LogMode(true)
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	userCount := 1
-	groupCount := 1
-	roleCount := 1
+	userCount := 10
+	groupCount := 30
+	roleCount := 30
 	// probFactor acts as a mod value; increasing means less probability. 2 =
 	// 50%, 5 = 20%, etc.
-	probFactor := 1
+	probFactor := 4
 
-	/*
-		o, p := iam.TestScopes(
-			t,
-			iamRepo,
-			iam.WithSkipAdminRoleCreation(true),
-			iam.WithSkipDefaultRoleCreation(true),
-		)
-
-			kmsCache := kms.TestKms(t, conn, wrap)
-			databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
-			require.NoError(t, err)
-
-			authMethod := oidc.TestAuthMethod(
-				t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
-				"alice-rp", "fido",
-				oidc.WithSigningAlgs(oidc.RS256),
-				oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
-				oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
-			)
-	*/
+	o, p := iam.TestScopes(
+		t,
+		iamRepo,
+		iam.WithSkipAdminRoleCreation(true),
+		iam.WithSkipDefaultRoleCreation(true),
+	)
 
 	// We're going to generate a bunch of users, groups, and managed groups.
 	// These will be randomly assigned and we will record assignations.
-	scopeId := "global"
-	// scopeId := o.GetPublicId()
 	users := func() (ret []*iam.User) {
 		ret = make([]*iam.User, 0, userCount)
+		scopeId := scope.Global.String()
+		if mathrand.Int()%2 == 0 {
+			scopeId = o.GetPublicId()
+		}
 		for i := 0; i < userCount; i++ {
-			ret = append(ret, iam.TestUser(t, iamRepo, scopeId))
+			ret = append(ret, iam.TestUser(t, iamRepo, scopeId, iam.WithName(fmt.Sprintf("testuser%d", i))))
 		}
 		return
 	}()
 	groups := func() (ret []*iam.Group) {
 		ret = make([]*iam.Group, 0, groupCount)
-		// scopeId := o.GetPublicId()
+		scopeId := o.GetPublicId()
 		if mathrand.Int()%2 == 0 {
-			// scopeId = p.GetPublicId()
+			scopeId = p.GetPublicId()
 		}
 		for i := 0; i < groupCount; i++ {
-			ret = append(ret, iam.TestGroup(t, conn, scopeId))
+			ret = append(ret, iam.TestGroup(t, conn, scopeId, iam.WithName(fmt.Sprintf("testgroup%d", i))))
 		}
 		return
 	}()
 	roles := func() (ret []*iam.Role) {
 		ret = make([]*iam.Role, 0, roleCount)
-		// scopeId := o.GetPublicId()
+		scopeId := o.GetPublicId()
 		if mathrand.Int()%2 == 0 {
-			// scopeId = p.GetPublicId()
+			scopeId = p.GetPublicId()
 		}
 		for i := 0; i < roleCount; i++ {
-			role := iam.TestRole(t, conn, scopeId)
-			t.Log("created role", role.PublicId)
+			role := iam.TestRole(t, conn, scopeId, iam.WithName(fmt.Sprintf("testrole%d", i)))
+			iam.TestRoleGrant(t, conn, role.PublicId, "id=*;type=*;actions=*")
 			ret = append(ret, role)
 		}
 		return
 	}()
-	/*
-		managedGroups := func() (ret []*oidc.ManagedGroup) {
-			ret = make([]*oidc.ManagedGroup, 0, 30)
-			for i := 0; i < 30; i++ {
-				ret = append(ret, oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter))
-			}
-			return
-		}()
-	*/
 
 	// This variable stores an easy way to lookup, given a group ID, whether a
 	// user is in that group.
@@ -108,7 +88,6 @@ func TestGrantsForUser(t *testing.T) {
 				}
 				currentMapping[groupId] = true
 				userToGroupsMapping[userId] = currentMapping
-				t.Log("added user to group", userId, groupId)
 			}
 		}
 	}
@@ -131,12 +110,8 @@ func TestGrantsForUser(t *testing.T) {
 				}
 				currentMapping[roleId] = true
 				userToRolesMapping[userId] = currentMapping
-				t.Log("added user to role", userId, roleId)
 			}
 		}
-		rs, err := iamRepo.ListPrincipalRoles(ctx, role.PublicId)
-		require.NoError(t, err)
-		t.Log("roles for user", rs)
 	}
 	for _, role := range roles {
 		for _, group := range groups {
@@ -152,12 +127,8 @@ func TestGrantsForUser(t *testing.T) {
 				}
 				currentMapping[roleId] = true
 				groupToRolesMapping[groupId] = currentMapping
-				t.Log("added group to role", groupId, roleId)
 			}
 		}
-		rs, err := iamRepo.ListPrincipalRoles(ctx, role.PublicId)
-		require.NoError(t, err)
-		t.Log("roles for group", rs)
 	}
 
 	// Now, fetch the set of grants. We're going to be testing this by looking
@@ -169,8 +140,7 @@ func TestGrantsForUser(t *testing.T) {
 		// De-dupe role IDs
 		roleIds := make(map[string]bool, len(tuples))
 		for _, tuple := range tuples {
-			// roleIds[tuple.RoleId] = true
-			roleIds[tuple.ScopeId] = true
+			roleIds[tuple.RoleId] = true
 		}
 
 		// Now, using the previous maps, figure out which roles we _expect_ to

@@ -433,15 +433,16 @@ roles (role_id, grant_scope_id) as (
          user_group_roles
    where public_id in (user_group_roles.role_id)
 ),
-final (role_scope, role_grant) as (
-  select roles.grant_scope_id,
+final (role_id, role_scope, role_grant) as (
+  select roles.role_id,
+         roles.grant_scope_id,
          iam_role_grant.canonical_grant
     from roles
    inner
     join iam_role_grant
       on roles.role_id = iam_role_grant.role_id
 )
-select role_scope as scope_id, role_grant as grant from final;
+select role_id as role_id, role_scope as scope_id, role_grant as grant from final;
 	`
 	)
 

@@ -15,7 +15,7 @@ import (
 // GrantTuple is simply a struct that can be reference from other code to return
 // a set of scopes and grants to parse
 type GrantTuple struct {
-	// RoleId  string
+	RoleId  string
 	ScopeId string
 	Grant   string
 }
