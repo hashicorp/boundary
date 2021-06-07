@@ -23,6 +23,7 @@ type Options struct {
 	withSkipTargetCreation        bool
 	withContainerImage            string
 	withDialect                   string
+	withAttributeFieldPrefix      string
 }
 
 func getDefaultOptions() Options {
@@ -100,5 +101,13 @@ func WithContainerImage(name string) Option {
 func withDialect(dialect string) Option {
 	return func(o *Options) {
 		o.withDialect = dialect
+	}
+}
+
+// WithAttributeFieldPrefix tells the command what prefix
+// to attach to attribute fields when they are returned as errors.
+func WithAttributeFieldPrefix(p string) Option {
+	return func(o *Options) {
+		o.withAttributeFieldPrefix = p
 	}
 }

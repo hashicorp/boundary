@@ -508,28 +508,28 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential store")
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{
-				VaultAddress: wrapperspb.String(vaultIn.GetVaultAddress()),
+				Address: wrapperspb.String(vaultIn.GetVaultAddress()),
 			}
 			if vaultIn.GetNamespace() != "" {
-				attrs.VaultNamespace = wrapperspb.String(vaultIn.GetNamespace())
+				attrs.Namespace = wrapperspb.String(vaultIn.GetNamespace())
 			}
 			if len(vaultIn.GetCaCert()) != 0 {
-				attrs.VaultCaCert = wrapperspb.String(string(vaultIn.GetCaCert()))
+				attrs.CaCert = wrapperspb.String(string(vaultIn.GetCaCert()))
 			}
 			if vaultIn.GetTlsServerName() != "" {
-				attrs.VaultTlsServerName = wrapperspb.String(vaultIn.GetTlsServerName())
+				attrs.TlsServerName = wrapperspb.String(vaultIn.GetTlsServerName())
 			}
 			if vaultIn.GetTlsSkipVerify() {
-				attrs.VaultTlsSkipVerify = wrapperspb.Bool(vaultIn.GetTlsSkipVerify())
+				attrs.TlsSkipVerify = wrapperspb.Bool(vaultIn.GetTlsSkipVerify())
 			}
 			if vaultIn.Token() != nil {
-				attrs.VaultTokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
+				attrs.TokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
 			}
 			if cc := vaultIn.ClientCertificate(); cc != nil {
 				if len(cc.GetCertificate()) != 0 {
-					attrs.VaultClientCertificate = wrapperspb.String(string(cc.GetCertificate()))
+					attrs.ClientCertificate = wrapperspb.String(string(cc.GetCertificate()))
 				}
-				attrs.VaultClientCertificateKeyHmac = base64.RawURLEncoding.EncodeToString(cc.GetCertificateKeyHmac())
+				attrs.ClientCertificateKeyHmac = base64.RawURLEncoding.EncodeToString(cc.GetCertificateKeyHmac())
 			}
 
 			var err error
@@ -555,22 +555,22 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse the attributes"))
 	}
-	if attrs.GetVaultTlsServerName() != nil {
-		opts = append(opts, vault.WithTlsServerName(attrs.GetVaultTlsServerName().GetValue()))
+	if attrs.GetTlsServerName() != nil {
+		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
 	}
-	if attrs.GetVaultTlsSkipVerify().GetValue() {
-		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetVaultTlsSkipVerify().GetValue()))
+	if attrs.GetTlsSkipVerify().GetValue() {
+		opts = append(opts, vault.WithTlsSkipVerify(attrs.GetTlsSkipVerify().GetValue()))
 	}
-	if attrs.GetVaultNamespace().GetValue() != "" {
-		opts = append(opts, vault.WithNamespace(attrs.GetVaultNamespace().GetValue()))
+	if attrs.GetNamespace().GetValue() != "" {
+		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
 	}
 
 	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
 	//  accepting x509.Certificate instead of []byte
-	if attrs.GetVaultCaCert() != nil {
-		opts = append(opts, vault.WithCACert([]byte(attrs.GetVaultCaCert().GetValue())))
+	if attrs.GetCaCert() != nil {
+		opts = append(opts, vault.WithCACert([]byte(attrs.GetCaCert().GetValue())))
 	}
-	pemCerts, pemPk, err := extractClientCertAndPk(attrs.GetVaultClientCertificate().GetValue(), attrs.GetVaultClientCertificateKey().GetValue())
+	pemCerts, pemPk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
@@ -590,7 +590,7 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 		opts = append(opts, vault.WithClientCert(cc))
 	}
 
-	cs, err := vault.NewCredentialStore(scopeId, attrs.GetVaultAddress().GetValue(), []byte(attrs.GetVaultToken().GetValue()), opts...)
+	cs, err := vault.NewCredentialStore(scopeId, attrs.GetAddress().GetValue(), []byte(attrs.GetToken().GetValue()), opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential store for creation"))
 	}
@@ -619,27 +619,27 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 				badFields[globals.AttributesField] = fmt.Sprintf("Attribute fields do not match the expected format. Got %#v", req.GetItem().GetAttributes().AsMap())
 				break
 			}
-			if attrs.GetVaultAddress().GetValue() == "" {
+			if attrs.GetAddress().GetValue() == "" {
 				badFields[addressField] = "Field required for creating a vault credential store."
 			}
-			if attrs.GetVaultToken().GetValue() == "" {
+			if attrs.GetToken().GetValue() == "" {
 				badFields[vaultTokenField] = "Field required for creating a vault credential store."
 			}
-			if attrs.GetVaultTokenHmac() != "" {
+			if attrs.GetTokenHmac() != "" {
 				badFields[vaultTokenHmacField] = "This is a read only field."
 			}
 
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-			_, err := decodePemBlocks(attrs.GetVaultCaCert().GetValue())
-			if attrs.GetVaultCaCert() != nil && err != nil {
+			_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
+			if attrs.GetCaCert() != nil && err != nil {
 				badFields[caCertsField] = "Incorrectly formatted value."
 			}
 
-			cs, pk, err := extractClientCertAndPk(attrs.GetVaultClientCertificate().GetValue(), attrs.GetVaultClientCertificateKey().GetValue())
+			cs, pk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 			if err != nil {
 				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 			}
-			if attrs.GetVaultClientCertificate() == nil && attrs.GetVaultClientCertificateKey() != nil {
+			if attrs.GetClientCertificate() == nil && attrs.GetClientCertificateKey() != nil {
 				badFields[clientCertKeyField] = "Cannot set a client certificate private key without the client certificate."
 			}
 			if len(cs) > 0 && pk == nil {
@@ -666,24 +666,24 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 				break
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), addressField) &&
-				attrs.GetVaultAddress().GetValue() == "" {
+				attrs.GetAddress().GetValue() == "" {
 				badFields[addressField] = "This is a required field and cannot be unset."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultTokenField) &&
-				attrs.GetVaultToken().GetValue() == "" {
+				attrs.GetToken().GetValue() == "" {
 				badFields[vaultTokenField] = "This is a required field and cannot be unset."
 			}
-			if attrs.GetVaultTokenHmac() != "" {
+			if attrs.GetTokenHmac() != "" {
 				badFields[vaultTokenHmacField] = "This is a read only field."
 			}
 
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-			_, err := decodePemBlocks(attrs.GetVaultCaCert().GetValue())
-			if attrs.GetVaultCaCert() != nil && err != nil {
+			_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
+			if attrs.GetCaCert() != nil && err != nil {
 				badFields[caCertsField] = "Incorrectly formatted value."
 			}
 
-			_, _, err = extractClientCertAndPk(attrs.GetVaultClientCertificate().GetValue(), attrs.GetVaultClientCertificateKey().GetValue())
+			_, _, err = extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 			if err != nil {
 				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 			}
