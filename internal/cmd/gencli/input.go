@@ -63,6 +63,10 @@ type cmdInfo struct {
 	// an argument to a create call. Targets need this, accounts do not, etc.
 	NeedsSubtypeInCreate bool
 
+	// PrefixAttributeFieldErrorsWithSubactionPrefix will prepend the value in
+	// SubActionPrefix when reporting errors which are reported in flag format.
+	// This allows the flags to be defined differently from the the attribute
+	// names in the API.
 	PrefixAttributeFieldErrorsWithSubactionPrefix bool
 }
 
@@ -183,6 +187,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:            "Scope",
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
 	},
 	"groups": {

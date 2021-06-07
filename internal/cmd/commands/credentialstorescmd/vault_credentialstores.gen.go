@@ -202,6 +202,8 @@ func (c *VaultCommand) Run(args []string) int {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			var opts []base.Option
 
+			opts = append(opts, base.WithAttributeFieldPrefix("vault"))
+
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
 		}
