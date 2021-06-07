@@ -62,6 +62,8 @@ type cmdInfo struct {
 	// NeedsSubtypeInCreate controls whether the sub-type must be passed in as
 	// an argument to a create call. Targets need this, accounts do not, etc.
 	NeedsSubtypeInCreate bool
+
+	PrefixAttributeFieldErrorsWithSubactionPrefix bool
 }
 
 var inputStructs = map[string][]*cmdInfo{

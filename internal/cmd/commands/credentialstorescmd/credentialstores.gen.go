@@ -193,7 +193,9 @@ func (c *Command) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+			var opts []base.Option
+
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
