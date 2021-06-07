@@ -34,7 +34,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
   "listener": [
     {
       "tcp": {
-        "address": "0.0.0.0:%d",
+        "address": "0.0.0.0:8200",
         "tls_disable": "false",
         "tls_cert_file": "/vault/config/certificates/certificate.pem",
         "tls_key_file": "/vault/config/certificates/key.pem"
@@ -48,7 +48,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
   "listener": [
     {
       "tcp": {
-        "address": "0.0.0.0:%d",
+        "address": "0.0.0.0:8200",
         "tls_disable": "false",
         "tls_cert_file": "/vault/config/certificates/certificate.pem",
         "tls_key_file": "/vault/config/certificates/key.pem",
@@ -84,9 +84,9 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 
 		switch opts.vaultTLS {
 		case TestServerTLS:
-			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", fmt.Sprintf(serverTlsTemplate, opts.testVaultPort)))
+			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", serverTlsTemplate))
 		case TestClientTLS:
-			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", fmt.Sprintf(clientTlsTemplate, opts.testVaultPort)))
+			dockerOptions.Env = append(dockerOptions.Env, fmt.Sprintf("VAULT_LOCAL_CONFIG=%s", clientTlsTemplate))
 		}
 
 		serverCert := testServerCert(t, testCaCert(t), "localhost")
@@ -161,9 +161,9 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 
 	switch opts.vaultTLS {
 	case TestNoTLS:
-		server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort(fmt.Sprintf("%d/tcp", opts.testVaultPort)))
+		server.Addr = fmt.Sprintf("http://localhost:%s", resource.GetPort("8200/tcp"))
 	case TestServerTLS, TestClientTLS:
-		server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort(fmt.Sprintf("%d/tcp", opts.testVaultPort)))
+		server.Addr = fmt.Sprintf("https://localhost:%s", resource.GetPort("8200/tcp"))
 	default:
 		t.Fatal("unknown TLS option")
 	}

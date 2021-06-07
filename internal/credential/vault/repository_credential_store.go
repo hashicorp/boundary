@@ -774,6 +774,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				if updatedStore.clientCert == nil {
 					return errors.New(errors.InvalidParameter, op, "updated cert")
 				}
+				updatedStore.clientCert.StoreId = ps.StoreId
 				updatedStore.clientCert.encrypt(ctx, databaseWrapper)
 				query, values := updatedStore.clientCert.insertQuery()
 				rows, err := w.Exec(ctx, query, values)

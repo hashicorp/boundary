@@ -463,7 +463,6 @@ type testOptions struct {
 	roleName      string
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
-	testVaultPort int
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -477,7 +476,6 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		roleName:      "boundary",
 		vaultTLS:      TestNoTLS,
 		dockerNetwork: false,
-		testVaultPort: 8200,
 	}
 }
 
@@ -505,13 +503,6 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
-	}
-}
-
-func WithTestVaultPort(p int) TestOption {
-	return func(t *testing.T, o *testOptions) {
-		t.Helper()
-		o.testVaultPort = p
 	}
 }
 

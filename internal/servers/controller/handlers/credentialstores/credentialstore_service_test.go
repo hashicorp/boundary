@@ -676,10 +676,15 @@ func TestUpdate(t *testing.T) {
 	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
 	require.NoError(t, err)
 
-	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithTestVaultPort(8216))
+	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	secret2 := v2.CreateToken(t)
 	token2 := secret2.Auth.ClientToken
 	clientCert2, err := vault.NewClientCertificate(v2.ClientCert, v2.ClientKey)
+	require.NoError(t, err)
+
+	v3 := vault.NewTestVaultServer(t)
+	secret3 := v3.CreateToken(t)
+	token3 := secret3.Auth.ClientToken
 	require.NoError(t, err)
 
 	freshStore := func() (*vault.CredentialStore, func()) {
@@ -716,7 +721,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "update connection info",
 			req: &pbs.UpdateCredentialStoreRequest{
-				UpdateMask: fieldmask("attributes.address", "attributes.client_certificate", "attributes.client_certificate_key", "attributes.ca_certificate"),
+				UpdateMask: fieldmask("attributes.address", "attributes.client_certificate", "attributes.client_certificate_key", "attributes.vault_ca_cert", "attributes.vault_token"),
 				Item: &pb.CredentialStore{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
@@ -734,9 +739,35 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["address"] = structpb.NewStringValue(v2.Addr)
-				out.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
 				out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(clientCert2.Certificate))
-				out.Attributes.Fields["vault_ca_certificate"] = structpb.NewStringValue(string(v2.CaCert))
+				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v2.CaCert))
+				out.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
+				out.Attributes.Fields["client_certificate_key_hmac"] = structpb.NewStringValue("<hmac>")
+				return out
+			},
+		},
+		{
+			name: "unset certificate",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.address", "attributes.client_certificate", "attributes.client_certificate_key", "attributes.vault_ca_cert", "attributes.vault_token"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							Address: v3.Addr,
+							VaultToken: token3,
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["address"] = structpb.NewStringValue(v3.Addr)
+				out.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
+				delete(out.Attributes.Fields, "client_certificate")
+				delete(out.Attributes.Fields, "client_certificate_key_hmac")
+				delete(out.Attributes.Fields, "vault_ca_cert")
 				return out
 			},
 		},
@@ -853,6 +884,13 @@ func TestUpdate(t *testing.T) {
 
 			assert.EqualValues(2, got.Item.Version)
 			want.Item.Version = 2
+
+			if v, ok := want.Item.GetAttributes().AsMap()["vault_token_hmac"]; ok && v.(string) == "<hmac>" {
+				got.Item.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
+			}
+			if v, ok := want.Item.GetAttributes().AsMap()["client_certificate_key_hmac"]; ok && v.(string) == "<hmac>"  {
+				got.Item.Attributes.Fields["client_certificate_key_hmac"] = structpb.NewStringValue("<hmac>")
+			}
 
 			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
 		})
