@@ -29,7 +29,7 @@ func TestList(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
 
@@ -97,7 +97,7 @@ func TestCrud(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
 
@@ -152,7 +152,7 @@ func TestErrors(t *testing.T) {
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
 	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
 
