@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-rootcerts"
@@ -106,6 +107,32 @@ func (c *client) renewToken() (*vault.Secret, error) {
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return t, nil
+}
+
+// revokeToken calls the /auth/token/revoke-self Vault endpoint. This endpoint
+// is accessible with the default policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
+func (c *client) revokeToken() error {
+	const op = "vault.(client).revokeToken"
+	// The `token` parameter  s kept for backwards compatibility but is ignored, so use ""
+	err := c.cl.Auth().Token().RevokeSelf("")
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return nil
+}
+
+// renewLease calls the /sys/leases/renew Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.0. See
+// https://www.vaultproject.io/api-docs/system/leases#renew-lease.
+func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
+	const op = "vault.(client).renewLease"
+	t, err := c.cl.Sys().Renew(leaseId, int(leaseDuration.Round(time.Second).Seconds()))
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }

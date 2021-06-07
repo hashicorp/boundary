@@ -1064,13 +1064,13 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 	tests := []struct {
 		name               string
 		newTokenOpts       []TestOption
-		wantOldTokenStatus Status
+		wantOldTokenStatus TokenStatus
 		wantCount          int
 		wantErr            errors.Code
 	}{
 		{
 			name:               "valid",
-			wantOldTokenStatus: StatusMaintaining,
+			wantOldTokenStatus: MaintainingToken,
 			wantCount:          1,
 		},
 		{

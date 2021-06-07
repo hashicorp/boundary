@@ -916,7 +916,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 				}
 				if len(attrs.GetIdpCaCerts()) > 0 {
 					if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
-						badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 					}
 				}
 				if len(attrs.GetClaimsScopes()) > 0 {
@@ -994,7 +994,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 					if err != nil {
 						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
 					}
-					if !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+					if iss != nil && !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
 						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
 					}
 				}
@@ -1037,7 +1037,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 			}
 			if len(attrs.GetIdpCaCerts()) > 0 {
 				if _, err := oidc.ParseCertificates(attrs.GetIdpCaCerts()...); err != nil {
-					badFields[caCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
 				}
 			}
 			if len(attrs.GetClaimsScopes()) > 0 {

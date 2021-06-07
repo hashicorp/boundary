@@ -333,6 +333,73 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	return target, nil
 }
 
+func (c *Client) AddCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if targetId == "" {
+		return nil, fmt.Errorf("empty targetId value passed into AddCredentialLibraries request")
+	}
+	if len(credentialLibraryIds) == 0 {
+		return nil, errors.New("empty credentialLibraryIds passed into AddCredentialLibraries request")
+	}
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into AddCredentialLibraries request")
+		}
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["credential_library_ids"] = credentialLibraryIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", targetId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AddCredentialLibraries request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during AddCredentialLibraries call: %w", err)
+	}
+
+	target := new(TargetUpdateResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding AddCredentialLibraries response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
 func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
 	if targetId == "" {
 		return nil, fmt.Errorf("empty targetId value passed into AddHostSets request")
@@ -400,6 +467,71 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	return target, nil
 }
 
+func (c *Client) SetCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if targetId == "" {
+		return nil, fmt.Errorf("empty targetId value passed into SetCredentialLibraries request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into SetCredentialLibraries request")
+		}
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["credential_library_ids"] = credentialLibraryIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", targetId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SetCredentialLibraries request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during SetCredentialLibraries call: %w", err)
+	}
+
+	target := new(TargetUpdateResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding SetCredentialLibraries response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
 func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
 	if targetId == "" {
 		return nil, fmt.Errorf("empty targetId value passed into SetHostSets request")
@@ -457,6 +589,73 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding SetHostSets response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) RemoveCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if targetId == "" {
+		return nil, fmt.Errorf("empty targetId value passed into RemoveCredentialLibraries request")
+	}
+	if len(credentialLibraryIds) == 0 {
+		return nil, errors.New("empty credentialLibraryIds passed into RemoveCredentialLibraries request")
+	}
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into RemoveCredentialLibraries request")
+		}
+		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+	opts.postMap["credential_library_ids"] = credentialLibraryIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", targetId), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating RemoveCredentialLibraries request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during RemoveCredentialLibraries call: %w", err)
+	}
+
+	target := new(TargetUpdateResult)
+	target.Item = new(Target)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding RemoveCredentialLibraries response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

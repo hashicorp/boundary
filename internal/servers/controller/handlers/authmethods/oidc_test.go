@@ -431,6 +431,25 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid-issuer-port",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.issuer"},
+				},
+				Item: &pb.AuthMethod{
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:7dddd")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "No Update Mask",
 			req: &pbs.UpdateAuthMethodRequest{
 				Item: &pb.AuthMethod{

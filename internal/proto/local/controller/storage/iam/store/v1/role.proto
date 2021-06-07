@@ -4,7 +4,6 @@ package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/storage/iam/store/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
 message Role {

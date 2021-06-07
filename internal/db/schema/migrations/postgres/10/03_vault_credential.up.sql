@@ -257,6 +257,31 @@ begin;
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
 
+  create table credential_vault_credential_status_enm (
+    name text primary key
+      constraint only_predefined_credential_statuses_allowed
+      check (
+        name in (
+          'active',
+          'revoke',
+          'revoked',
+          'expired',
+          'unknown'
+        )
+      )
+  );
+  comment on table credential_vault_credential_status_enm is
+    'credential_vault_credential_status_enm is an enumeration table for the status of vault credentials. '
+    'It contains rows for representing the active, revoke, revoked, expired, and unknown statuses.';
+
+  insert into credential_vault_credential_status_enm (name)
+  values
+    ('active'),
+    ('revoke'),
+    ('revoked'),
+    ('expired'),
+    ('unknown');
+
   create table credential_vault_credential (
     public_id wt_public_id primary key,
     library_id wt_public_id not null
@@ -283,6 +308,11 @@ begin;
       constraint last_renewal_time_must_be_before_expiration_time
         check(last_renewal_time < expiration_time),
     is_renewable boolean not null,
+    status text not null
+      constraint credential_vault_credential_status_enm_fkey
+        references credential_vault_credential_status_enm (name)
+        on delete restrict
+        on update cascade,
     constraint credential_dynamic_fkey
       foreign key (library_id, public_id)
       references credential_dynamic (library_id, public_id)
@@ -318,7 +348,7 @@ begin;
     ('credential_vault_library', 1),
     ('credential_vault_credential', 1) ;
 
-     create view credential_vault_store_client_private as
+     create view credential_vault_store_private as
      with
      active_tokens as (
         select token_hmac,
@@ -366,12 +396,12 @@ begin;
          on store.public_id = token.store_id
   left join credential_vault_client_certificate cert
          on store.public_id = cert.store_id;
-  comment on view credential_vault_store_client_private is
-    'credential_vault_store_client_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+  comment on view credential_vault_store_private is
+    'credential_vault_store_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
     'The view returns a separate row for each current and maintaining token, maintaining tokens should only be used for token/credential renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-     create view credential_vault_store_agg_public as
+     create view credential_vault_store_public as
      select public_id,
             scope_id,
             name,
@@ -391,10 +421,10 @@ begin;
             token_expiration_time,
             client_cert,
             client_cert_key_hmac
-       from credential_vault_store_client_private
+       from credential_vault_store_private
       where token_status = 'current';
-  comment on view credential_vault_store_agg_public is
-    'credential_vault_store_agg_public is a view where each row contains a credential store. '
+  comment on view credential_vault_store_public is
+    'credential_vault_store_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
      create view credential_vault_library_private as
@@ -421,11 +451,55 @@ begin;
             store.ct_client_key       as ct_client_key, -- encrypted
             store.client_key_id       as client_key_id
        from credential_vault_library library
-       join credential_vault_store_client_private store
+       join credential_vault_store_private store
          on library.store_id = store.public_id
         and store.token_status = 'current';
   comment on view credential_vault_library_private is
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+
+     create view credential_vault_credential_private as
+     select credential.public_id         as public_id,
+            credential.library_id        as library_id,
+            credential.session_id        as session_id,
+            credential.create_time       as create_time,
+            credential.update_time       as update_time,
+            credential.version           as version,
+            credential.external_id       as external_id,
+            credential.last_renewal_time as last_renewal_time,
+            credential.expiration_time   as expiration_time,
+            credential.is_renewable      as is_renewable,
+            credential.status            as status,
+            credential.last_renewal_time + (credential.expiration_time - credential.last_renewal_time) / 2 as renewal_time,
+            token.token_hmac             as token_hmac,
+            token.token                  as ct_token, -- encrypted
+            token.create_time            as token_create_time,
+            token.update_time            as token_update_time,
+            token.last_renewal_time      as token_last_renewal_time,
+            token.expiration_time        as token_expiration_time,
+            token.key_id                 as token_key_id,
+            token.status                 as token_status,
+            store.scope_id               as scope_id,
+            store.vault_address          as vault_address,
+            store.namespace              as namespace,
+            store.ca_cert                as ca_cert,
+            store.tls_server_name        as tls_server_name,
+            store.tls_skip_verify        as tls_skip_verify,
+            cert.certificate             as client_cert,
+            cert.certificate_key         as ct_client_key, -- encrypted
+            cert.certificate_key_hmac    as client_cert_key_hmac,
+            cert.key_id                  as client_key_id
+       from credential_vault_credential credential
+       join credential_vault_token token
+         on credential.token_hmac = token.token_hmac
+       join credential_vault_store store
+         on token.store_id = store.public_id
+  left join credential_vault_client_certificate cert
+         on store.public_id = cert.store_id
+      where credential.expiration_time != 'infinity'::date;
+  comment on view credential_vault_credential_private is
+    'credential_vault_credential_private is a view where each row contains a credential, '
+    'the vault token used to issue the credential, and the credential store data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
 commit;

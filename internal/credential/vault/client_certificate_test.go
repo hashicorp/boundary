@@ -49,10 +49,10 @@ func TestClientCertificate_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *ClientCertificate
-		wantErr bool
+		name           string
+		args           args
+		want           *ClientCertificate
+		wantErr        bool
 		wantEncryptErr bool
 	}{
 		{
@@ -70,7 +70,7 @@ func TestClientCertificate_New(t *testing.T) {
 			},
 			want: &ClientCertificate{
 				ClientCertificate: &store.ClientCertificate{
-					Certificate:    []byte(certPem),
+					Certificate: []byte(certPem),
 				},
 			},
 			wantEncryptErr: true,

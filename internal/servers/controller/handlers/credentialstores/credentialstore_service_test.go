@@ -256,7 +256,7 @@ func TestCreate(t *testing.T) {
 						VaultToken:           token,
 						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
 						ClientCertificateKey: wrapperspb.String(string(append(v.ClientCert, v.ClientKey...))),
-						ClientCertificate: wrapperspb.String(string(v.ClientKey)),
+						ClientCertificate:    wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
 					return attrs

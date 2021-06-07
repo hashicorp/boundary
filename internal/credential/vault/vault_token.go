@@ -16,31 +16,31 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A Status represents the status of a vault token.
-type Status string
+// A TokenStatus represents the status of a vault token.
+type TokenStatus string
 
 const (
-	// StatusCurrent represents a vault token for a credential store that
-	// is used for retrieving credentials. Tokens in this state are renewed
+	// CurrentToken represents a vault token for a credential store that is
+	// used for retrieving credentials. Tokens in this state are renewed
 	// before they expire. A credential store can have only one current
 	// token.
-	StatusCurrent Status = "current"
+	CurrentToken TokenStatus = "current"
 
-	// StatusMaintaining represents a vault token that is no longer being
+	// MaintainingToken represents a vault token that is no longer being
 	// used for retrieving credentials but is being renewed because it was
 	// used to retrieve credentials which are still being used in a
 	// session. After the dependent sessions are terminated, the token is
-	// revoked in Vault and the status transitions to StatusRevoked. but is
+	// revoked in Vault and the status transitions to RevokedToken. but is
 	// no longer being used for retrieving credentials.
-	StatusMaintaining Status = "maintaining"
+	MaintainingToken TokenStatus = "maintaining"
 
-	// StatusRevoked represents a token that has been revoked. This is a
-	// terminal status. It does not transition to StatusExpired.
-	StatusRevoked Status = "revoked"
+	// RevokedToken represents a token that has been revoked. This is a
+	// terminal status. It does not transition to ExpiredToken.
+	RevokedToken TokenStatus = "revoked"
 
-	// StatusExpired represents a token that expired. This is a terminal
-	// status. It does not transition to StatusRevoked.
-	StatusExpired Status = "expired"
+	// ExpiredToken represents a token that expired. This is a terminal
+	// status. It does not transition to RevokedToken.
+	ExpiredToken TokenStatus = "expired"
 )
 
 // Token contains a vault token. It is owned by a credential store.
@@ -81,7 +81,7 @@ func newToken(storeId string, token, accessor []byte, expiration time.Duration) 
 			StoreId:   storeId,
 			TokenHmac: hmac,
 			Token:     tokenCopy,
-			Status:    string(StatusCurrent),
+			Status:    string(CurrentToken),
 		},
 	}
 	return t, nil
@@ -147,7 +147,7 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 	return
 }
 
-func (t *Token) updateStatusQuery(status Status) (query string, queryValues []interface{}) {
+func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []interface{}) {
 	query = updateTokenStatusQuery
 
 	queryValues = []interface{}{
