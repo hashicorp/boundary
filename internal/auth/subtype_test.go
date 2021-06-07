@@ -30,7 +30,13 @@ func TestSubtype(t *testing.T) {
 		},
 		{
 			subtype:     PasswordSubtype,
-			id:          password.AccountPrefix + "1234567890",
+			id:          password.OldAccountPrefix + "1234567890",
+			wantString:  "password",
+			wantSubtype: PasswordSubtype,
+		},
+		{
+			subtype:     PasswordSubtype,
+			id:          password.NewAccountPrefix + "1234567890",
 			wantString:  "password",
 			wantSubtype: PasswordSubtype,
 		},

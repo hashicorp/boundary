@@ -154,9 +154,19 @@ func TestValidateUpdateRequest(t *testing.T) {
 		errContains string
 	}{
 		{
-			name: "password to oidc change type",
+			name: "password to oidc change type, old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.AccountPrefix + "_1234567890",
+				Id: password.OldAccountPrefix + "_1234567890",
+				Item: &pb.Account{
+					Type: auth.OidcSubtype.String(),
+				},
+			},
+			errContains: fieldError(typeField, "Cannot modify the resource type."),
+		},
+		{
+			name: "password to oidc change type, new prefix",
+			req: &pbs.UpdateAccountRequest{
+				Id: password.NewAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: auth.OidcSubtype.String(),
 				},
@@ -176,7 +186,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password bad attributes",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.AccountPrefix + "_1234567890",
+				Id: password.NewAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"test": structpb.NewStringValue("something"),

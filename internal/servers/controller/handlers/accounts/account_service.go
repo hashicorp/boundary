@@ -926,7 +926,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.NewAccountPrefix, oidc.AccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -1022,7 +1022,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	}, password.AccountPrefix, oidc.AccountPrefix)
+	}, password.NewAccountPrefix, oidc.AccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
@@ -1030,7 +1030,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	if req == nil {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.NewAccountPrefix, oidc.AccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
@@ -1057,7 +1057,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), password.NewAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1081,7 +1081,7 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 		return errors.New(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), password.AccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), password.NewAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

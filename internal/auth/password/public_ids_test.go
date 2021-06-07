@@ -17,6 +17,6 @@ func Test_PublicIds(t *testing.T) {
 	t.Run("account", func(t *testing.T) {
 		id, err := newAccountId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AccountPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, NewAccountPrefix+"_"))
 	})
 }

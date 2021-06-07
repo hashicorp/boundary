@@ -298,7 +298,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 
-	_, err = accountClient.Read(tc.Context(), password.AccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), password.NewAccountPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)

@@ -8,7 +8,8 @@ import (
 // PublicId prefixes for the resources in the password package.
 const (
 	AuthMethodPrefix = "ampw"
-	AccountPrefix    = "apw"
+	OldAccountPrefix = "apw"
+	NewAccountPrefix = "acctpw"
 )
 
 func newAuthMethodId() (string, error) {
@@ -22,7 +23,7 @@ func newAuthMethodId() (string, error) {
 
 func newAccountId() (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(AccountPrefix)
+	id, err := db.NewPublicId(NewAccountPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
