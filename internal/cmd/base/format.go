@@ -139,7 +139,8 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 }
 
 // PrintApiError prints the given API error, optionally with context
-// information, to the UI in the appropriate format
+// information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
+// used, all other options are ignored.
 func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
 	opts := getOpts(opt...)
 	switch Format(c.UI) {
