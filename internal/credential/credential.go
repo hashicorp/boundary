@@ -103,3 +103,9 @@ type Issuer interface {
 	// any credentials issued before encountering the error.
 	Issue(ctx context.Context, sessionId string, requests []Request) ([]Dynamic, error)
 }
+
+// Revoker revokes dynamic credentials.
+type Revoker interface {
+	// Revoke revokes the dynamic credentials issued for sessionid.
+	Revoke(ctx context.Context, sessionId string) error
+}

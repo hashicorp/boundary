@@ -118,7 +118,7 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 
 // TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
-// during the creation of the credentials , the test will fail.
+// during the creation of the credentials, the test will fail.
 func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
