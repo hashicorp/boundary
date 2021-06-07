@@ -555,9 +555,10 @@ func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
 }
 
 // CreateToken creates a new Vault token by calling /auth/token/create on v
-// using v.RootToken. See
+// using v.RootToken. It returns the vault secret containing the token and
+// the token itself. See
 // https://www.vaultproject.io/api-docs/auth/token#create-token.
-func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Secret {
+func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.Secret, string) {
 	t.Helper()
 	require := require.New(t)
 	opts := getTestOpts(t, opt...)
@@ -577,11 +578,14 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Se
 		Policies:    opts.policies,
 	}
 	vc := v.client(t).cl
-	token, err := vc.Auth().Token().Create(req)
+	secret, err := vc.Auth().Token().Create(req)
+	require.NoError(err)
+	require.NotNil(secret)
+	token, err := secret.TokenID()
 	require.NoError(err)
 	require.NotNil(token)
 
-	return token
+	return secret, token
 }
 
 // LookupToken calls /auth/token/lookup on v for token. See

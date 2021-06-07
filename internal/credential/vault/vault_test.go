@@ -29,8 +29,7 @@ func TestClient_RenewToken(t *testing.T) {
 	assert := assert.New(t)
 	v := NewTestVaultServer(t)
 
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
 
 	// need to sleep so the expiration times will be different
@@ -67,8 +66,7 @@ func TestClient_LookupToken(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
 
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
 
 	client := v.clientUsingToken(t, token)
@@ -85,8 +83,7 @@ func TestClient_RevokeToken(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
 
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t)
 
 	client := v.clientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken()
@@ -146,8 +143,7 @@ func TestClient_RenewLease(t *testing.T) {
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
 
-	secret := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
 	client := v.clientUsingToken(t, token)
 
 	// Create secret
@@ -209,8 +205,7 @@ func TestClient_capabilities(t *testing.T) {
 			}
 
 			assert := assert.New(t)
-			secret := v.CreateToken(t, WithPolicies(tt.polices))
-			token := secret.Auth.ClientToken
+			_, token := v.CreateToken(t, WithPolicies(tt.polices))
 			client := v.clientUsingToken(t, token)
 
 			have, err := client.capabilities(paths)
@@ -227,8 +222,7 @@ func TestClient_revokeLease(t *testing.T) {
 	v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
 	testDatabase := v.MountDatabase(t)
 
-	secret := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
 	client := v.clientUsingToken(t, token)
 
 	cred, err := client.get(path.Join("database", "creds", "opened"))

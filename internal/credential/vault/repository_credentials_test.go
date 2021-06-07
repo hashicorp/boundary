@@ -41,8 +41,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 
-	secret := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
 
 	var opts []vault.Option
 	opts = append(opts, vault.WithCACert(v.CaCert))
