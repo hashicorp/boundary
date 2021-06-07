@@ -33,7 +33,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Create a vault-type credential store:",
 			"",
-			`      $ boundary credential-stores create vault -name prodops -description "For ProdOps usage"`,
+			`      $ boundary credential-stores create vault -vault-address "http://localhost:55002" -vault-token"s.s0m3t0k3n"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -192,12 +192,12 @@ func printItemTable(result api.GenericResult) string {
 }
 
 var keySubstMap = map[string]string{
-	"vault_address":                     "VaultAddress",
-	"vault_namespace":                   "VaultNamespace",
-	"vault_ca_cert":                     "VaultCaCert",
-	"vault_tls_server_name":             "VaultTlsServername",
-	"vault_tls_skip_verify":             "VaultTlsSkipVerify",
-	"vault_token_hmac":                  "VaultTokenHmac",
-	"vault_client_certificate":          "ClientCertificate",
-	"vault_client_certificate_key_hmac": "ClientCertificateKeyHmac",
+	"address":                     "Address",
+	"namespace":                   "Namespace",
+	"ca_cert":                     "CaCert",
+	"tls_server_name":             "TlsServerName",
+	"tls_skip_verify":             "TlsSkipVerify",
+	"token_hmac":                  "TokenHmac",
+	"client_certificate":          "ClientCertificate",
+	"client_certificate_key_hmac": "ClientCertificateKeyHmac",
 }

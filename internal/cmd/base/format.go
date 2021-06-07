@@ -205,14 +205,14 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option)
 						// TODO: Report useful error messages related to "update_mask".
 						continue
 					}
-					var fNamePart []string
-					if opts.withAttributeFieldPrefix != "" {
-						fNamePart = append(fNamePart, opts.withAttributeFieldPrefix)
+					var fNameParts []string
+					if opts.withAttributeFieldPrefix != "" && strings.HasPrefix(field.Name, "attributes.") {
+						fNameParts = append(fNameParts, opts.withAttributeFieldPrefix)
 					}
-					fNamePart = append(fNamePart, strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-"))
-					fname := strings.Join(fNamePart, "-")
+					fNameParts = append(fNameParts, strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-"))
+					fName := strings.Join(fNameParts, "-")
 					output = append(output,
-						fmt.Sprintf("    Name:              -%s", fname),
+						fmt.Sprintf("    Name:              -%s", fName),
 						fmt.Sprintf("      Error:           %s", field.Description),
 					)
 				}

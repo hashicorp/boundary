@@ -28,12 +28,12 @@ import (
 )
 
 const (
-	addressField        = "attributes.vault_address"
-	vaultTokenField     = "attributes.vault_token"
-	vaultTokenHmacField = "attributes.vault_token_hmac"
-	caCertsField        = "attributes.vault_ca_cert"
-	clientCertField     = "attributes.vault_client_certificate"
-	clientCertKeyField  = "attributes.vault_certificate_key"
+	addressField        = "attributes.address"
+	vaultTokenField     = "attributes.token"
+	vaultTokenHmacField = "attributes.token_hmac"
+	caCertsField        = "attributes.ca_cert"
+	clientCertField     = "attributes.client_certificate"
+	clientCertKeyField  = "attributes.certificate_key"
 )
 
 var (

@@ -166,7 +166,7 @@ func (c *VaultCommand) extraVaultHelpFunc(helpMap map[string]func() string) stri
 			"",
 			"  Create a vault-type credential store. Example:",
 			"",
-			`    $ boundary credential-stores create vault -name prodops -description "Vault credential-store for ProdOps"`,
+			`    $ boundary credential-stores create vault -vault-address "http://localhost:55002" -vault-token"s.s0m3t0k3n"`,
 			"",
 			"",
 		})
@@ -177,7 +177,7 @@ func (c *VaultCommand) extraVaultHelpFunc(helpMap map[string]func() string) stri
 			"",
 			"  Update a vault-type credential store given its ID. Example:",
 			"",
-			`    $ boundary credential-stores update vault -id hcst_1234567890 -name "devops" -description "Vault credential-store for DevOps"`,
+			`    $ boundary credential-stores update vault -id csvlt_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"",
 		})
