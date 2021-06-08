@@ -8,7 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * `password` account IDs: When the `oidc` auth method came out, accounts were
   given the prefix `acctoidc`. Unfortunately, accounts in the `password` method
-  were using `apw`...oops. We've standardizing on `acct` and have updated the
+  were using `apw`...oops. We're standardizing on `acct` and have updated the
   `password` method to generate new IDs with `acctpw` prefixes.
   Previously-generated prefixes will continue to work.
 

@@ -229,7 +229,28 @@ func Test_ACLAllowed(t *testing.T) {
 			userId: "u_abcd1234",
 		},
 		{
-			name:        "bad templated account id",
+			name:        "bad templated old account id",
+			resource:    Resource{ScopeId: "o_c"},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.List},
+				{action: action.Authenticate},
+				{action: action.Delete},
+			},
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+		},
+		{
+			name:        "good templated old account id",
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix)},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.ChangePassword, authorized: true},
+				{action: action.Update},
+			},
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+		},
+		{
+			name:        "bad templated new account id",
 			resource:    Resource{ScopeId: "o_c"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
@@ -240,7 +261,7 @@ func Test_ACLAllowed(t *testing.T) {
 			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 		},
 		{
-			name:        "good templated account id",
+			name:        "good templated new account id",
 			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix)},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{

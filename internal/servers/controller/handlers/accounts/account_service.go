@@ -1023,7 +1023,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	}, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	}, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {

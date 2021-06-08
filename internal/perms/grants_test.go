@@ -654,13 +654,35 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
-			name:      "bad account id template",
+			name:      "bad old account id template",
+			input:     `id={{superman}};actions=read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
+		},
+		{
+			name:      "bad new account id template",
 			input:     `id={{superman}};actions=read`,
 			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
-			name:      "good account id template",
+			name:      "good old account id template",
+			input:     `id={{    account.id}};actions=update,read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+				actions: map[action.Type]bool{
+					action.Update: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:      "good new account id template",
 			input:     `id={{    account.id}};actions=update,read`,
 			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 			expected: Grant{

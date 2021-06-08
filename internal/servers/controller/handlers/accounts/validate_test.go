@@ -185,7 +185,19 @@ func TestValidateUpdateRequest(t *testing.T) {
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
 		},
 		{
-			name: "password bad attributes",
+			name: "password bad attributes old prefix",
+			req: &pbs.UpdateAccountRequest{
+				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
+				Item: &pb.Account{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"test": structpb.NewStringValue("something"),
+					}},
+				},
+			},
+			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+		},
+		{
+			name: "password bad attributes new prefix",
 			req: &pbs.UpdateAccountRequest{
 				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
