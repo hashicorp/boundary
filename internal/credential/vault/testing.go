@@ -49,9 +49,11 @@ func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, 
 		func(_ db.Reader, iw db.Writer) error {
 			require.NoError(t, iw.Create(ctx, cs))
 			cert := cs.clientCert
-			cert.StoreId = cs.GetPublicId()
-			require.NoError(t, cert.encrypt(ctx, databaseWrapper))
-			require.NoError(t, iw.Create(ctx, cert))
+			if cert != nil {
+				cert.StoreId = cs.GetPublicId()
+				require.NoError(t, cert.encrypt(ctx, databaseWrapper))
+				require.NoError(t, iw.Create(ctx, cert))
+			}
 			return nil
 		},
 	)

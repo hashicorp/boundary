@@ -153,8 +153,17 @@ func TestCreate(t *testing.T) {
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
-	defaultCs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	defaultCreated := defaultCs.GetCreateTime().GetTimestamp()
+	defaultCreated := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0].GetCreateTime().GetTimestamp()
+
+	cleanup := func(s Service) {
+		ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
+		r, err := s.ListCredentialStores(ctx, &pbs.ListCredentialStoresRequest{ScopeId: prj.GetPublicId()})
+		require.NoError(t, err)
+		for _, i := range r.GetItems() {
+			_, err := s.DeleteCredentialStore(ctx, &pbs.DeleteCredentialStoreRequest{Id: i.GetId()})
+			require.NoError(t, err)
+		}
+	}
 
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	secret := v.CreateToken(t)
@@ -403,7 +412,45 @@ func TestCreate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
-		// This must be executed last
+		{
+			name: "Create a valid vault CredentialStore with client cert and key in same field",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Type:        credential.VaultSubtype.String(),
+				Attributes: func() *structpb.Struct {
+					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+						Address:              v.Addr,
+						VaultToken:           token,
+						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						ClientCertificate:    wrapperspb.String(string(v.ClientCert) + string(v.ClientKey)),
+					})
+					require.NoError(t, err)
+					return attrs
+				}(),
+			}},
+			idPrefix: vault.CredentialStorePrefix + "_",
+			res: &pbs.CreateCredentialStoreResponse{
+				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Item: &pb.CredentialStore{
+					ScopeId:     prj.GetPublicId(),
+					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:     1,
+					Type:        credential.VaultSubtype.String(),
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							VaultCaCert:              wrapperspb.String(string(v.CaCert)),
+							Address:                  v.Addr,
+							VaultTokenHmac:           "<hmac>",
+							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
+							ClientCertificateKeyHmac: "<hmac>",
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 		{
 			name: "Create a valid vault CredentialStore",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
@@ -427,10 +474,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateCredentialStoreResponse{
 				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
 				Item: &pb.CredentialStore{
-					Id:          defaultCs.GetPublicId(),
 					ScopeId:     prj.GetPublicId(),
-					CreatedTime: defaultCs.GetCreateTime().GetTimestamp(),
-					UpdatedTime: defaultCs.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Scope:       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -458,6 +502,7 @@ func TestCreate(t *testing.T) {
 
 			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
+			defer cleanup(s)
 
 			got, gErr := s.CreateCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.wantErr || tc.err != nil {
