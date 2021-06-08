@@ -196,6 +196,20 @@ func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string
 	return mg
 }
 
+// TestManagedGroupMember adds given account IDs to a managed group
+func TestManagedGroupMember(t *testing.T, conn *gorm.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg, err := NewManagedGroupMemberAccount(managedGroupId, memberId, opt...)
+	require.NoError(err)
+
+	require.NoError(rw.Create(ctx, mg))
+	return mg
+}
+
 // TestConvertToUrls will convert URL string representations to a slice of
 // *url.URL
 func TestConvertToUrls(t *testing.T, urls ...string) []*url.URL {
