@@ -60,8 +60,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				opts = append(opts, WithClientCert(clientCert))
 			}
 
-			secret := v.CreateToken(t)
-			token := secret.Auth.ClientToken
+			_, token := v.CreateToken(t)
 
 			credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 			assert.NoError(err)

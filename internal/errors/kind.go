@@ -14,6 +14,7 @@ const (
 	Encoding
 	State
 	External
+	VaultToken
 )
 
 func (e Kind) String() string {
@@ -28,5 +29,6 @@ func (e Kind) String() string {
 		Encoding:    "encoding issue",
 		State:       "state violation",
 		External:    "external system issue",
+		VaultToken:  "vault token issue",
 	}[e]
 }

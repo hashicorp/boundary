@@ -29,8 +29,6 @@ func Test_TestCredentials(t *testing.T) {
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
 
-	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	uId := at.GetIamUserId()
 	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
@@ -38,6 +36,9 @@ func Test_TestCredentials(t *testing.T) {
 
 	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	uId := at.GetIamUserId()
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,

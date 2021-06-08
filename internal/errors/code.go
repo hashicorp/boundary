@@ -90,10 +90,11 @@ const (
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 
 	// Vault specific errors
-	VaultTokenNotOrphan    Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
-	VaultTokenNotPeriodic  Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
-	VaultTokenNotRenewable Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
-	VaultCredentialRequest Code = 3013 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
+	VaultTokenNotOrphan           Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
+	VaultTokenNotPeriodic         Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
+	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
+	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
+	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint

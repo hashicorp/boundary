@@ -125,4 +125,11 @@ select extract(epoch from (last_renewal_time + (expiration_time - last_renewal_t
           where status in ('current', 'maintaining')
        );
 `
+
+	revokeCredentialsQuery = `
+update credential_vault_credential
+   set status = 'revoke'
+ where session_id = $1
+   and status = 'active';
+`
 )

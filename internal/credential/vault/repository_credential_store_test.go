@@ -35,8 +35,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 		v := NewTestVaultServer(t)
-		secret := v.CreateToken(t)
-		token := secret.Auth.ClientToken
+		_, token := v.CreateToken(t)
 
 		in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), WithName("gary"), WithDescription("46"))
 		assert.NoError(err)
@@ -70,8 +69,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 
 		v := NewTestVaultServer(t)
 
-		secret1 := v.CreateToken(t)
-		token1 := secret1.Auth.ClientToken
+		_, token1 := v.CreateToken(t)
 		in1, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token1), WithName("gary"), WithDescription("46"))
 		assert.NoError(err)
 		require.NotNil(in1)
@@ -85,8 +83,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert.Equal(in1.Description, got1.Description)
 		assert.Equal(got1.CreateTime, got1.UpdateTime)
 
-		secret2 := v.CreateToken(t)
-		token2 := secret2.Auth.ClientToken
+		_, token2 := v.CreateToken(t)
 		in2, err := NewCredentialStore(org.GetPublicId(), v.Addr, []byte(token2), WithName("gary"), WithDescription("46"))
 		assert.NoError(err)
 		require.NotNil(in2)
@@ -166,8 +163,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 			v := NewTestVaultServer(t, WithTestVaultTLS(tt.tls))
-			secret := v.CreateToken(t, tt.tokenOpts...)
-			token := secret.Auth.ClientToken
+			_, token := v.CreateToken(t, tt.tokenOpts...)
 
 			var opts []Option
 			if tt.tls == TestServerTLS {
@@ -347,8 +343,7 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 				opts = append(opts, WithClientCert(clientCert))
 			}
 
-			secret := v.CreateToken(t)
-			token := secret.Auth.ClientToken
+			_, token := v.CreateToken(t)
 
 			credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 			assert.NoError(err)
@@ -830,10 +825,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 				tt.want.VaultAddress = vs.Addr
 			}
 
-			secret := vs.CreateToken(t)
-			token, err := secret.TokenID()
-			require.NoError(err)
-			require.NotEmpty(token)
+			_, token := vs.CreateToken(t)
 			tt.orig.inputToken = []byte(token)
 
 			orig, err := repo.CreateCredentialStore(ctx, tt.orig)
@@ -903,10 +895,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 
 		vs := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 
-		secret := vs.CreateToken(t)
-		token, err := secret.TokenID()
-		require.NoError(err)
-		require.NotEmpty(token)
+		_, token := vs.CreateToken(t)
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &CredentialStore{
@@ -984,13 +973,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 
 		vs := NewTestVaultServer(t)
 
-		token1, err := vs.CreateToken(t).TokenID()
-		require.NoError(err)
-		require.NotEmpty(token1)
-
-		token2, err := vs.CreateToken(t).TokenID()
-		require.NoError(err)
-		require.NotEmpty(token2)
+		_, token1 := vs.CreateToken(t)
+		_, token2 := vs.CreateToken(t)
 
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &CredentialStore{
@@ -1102,8 +1086,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 			v := NewTestVaultServer(t)
-			origSecret := v.CreateToken(t)
-			origToken := origSecret.Auth.ClientToken
+			_, origToken := v.CreateToken(t)
 
 			// create
 			origIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(origToken))
@@ -1115,8 +1098,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			require.NotNil(orig)
 
 			// update
-			updateSecret := v.CreateToken(t, tt.newTokenOpts...)
-			updateToken := updateSecret.Auth.ClientToken
+			_, updateToken := v.CreateToken(t, tt.newTokenOpts...)
 
 			updateIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(updateToken))
 			assert.NoError(err)
@@ -1248,8 +1230,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 				opts = append(opts, WithClientCert(clientCert))
 			}
 
-			origSecret := v.CreateToken(t)
-			origToken := origSecret.Auth.ClientToken
+			_, origToken := v.CreateToken(t)
 			origClientCert := tt.origFn(t, v)
 			opts = append(opts, WithClientCert(origClientCert))
 

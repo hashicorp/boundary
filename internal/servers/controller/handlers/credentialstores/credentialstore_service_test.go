@@ -166,8 +166,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t)
 
 	cases := []struct {
 		name     string
@@ -873,6 +872,26 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.Attributes.Fields["tls_skip_verify"] = structpb.NewBoolValue(true)
+				return out
+			},
+		},
+		{
+			name: "update ca cert",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.vault_ca_cert"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							VaultCaCert: wrapperspb.String(string(v.CaCert)),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v.CaCert))
 				return out
 			},
 		},
