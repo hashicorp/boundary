@@ -1,9 +1,5 @@
 package globals
 
-// This set of consts is intended to be a place to collect commonly-used field
-// names. Since these might be used outside of the internal code (e.g. by SDK or
-// CLI), it's outside internal/ here in globals. Some of these are already const
-// elsewhere in the code but we should migrate to using a single source.
 const (
 	IdField                          = "id"
 	VersionField                     = "version"
@@ -53,4 +49,6 @@ const (
 	FullNameField                    = "full_name"
 	PrimaryAccountIdField            = "primary_account_id"
 	EmailField                       = "email"
+	ManagedGroupIdsField             = "managed_group_ids"
+	FilterField                      = "filter"
 )

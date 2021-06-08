@@ -3,6 +3,7 @@ package oidc
 import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
 )
 
 const (
@@ -33,6 +34,15 @@ func newAccountId(authMethodId, issuer, sub string) (string, error) {
 		return "", errors.New(errors.InvalidParameter, op, "missing subject")
 	}
 	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	return id, nil
+}
+
+func newManagedGroupId() (string, error) {
+	const op = "oidc.newManagedGroupId"
+	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}

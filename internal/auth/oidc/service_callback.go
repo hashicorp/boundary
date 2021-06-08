@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/go-bexpr"
+	"github.com/mitchellh/pointerstructure"
 )
 
 // Callback is an oidc domain service function for processing a successful OIDC
@@ -185,6 +187,40 @@ func Callback(
 		return "", errors.Wrap(err, op)
 	}
 
+	// Get the set of all managed groups so we can filter
+	mgs, err := r.ListManagedGroups(ctx, am.GetPublicId())
+	if err != nil {
+		return "", errors.Wrap(err, op)
+	}
+	if len(mgs) > 0 {
+		matchedMgs := make([]*ManagedGroup, 0, len(mgs))
+		evalData := map[string]interface{}{
+			"token":    idTkClaims,
+			"userinfo": userInfoClaims,
+		}
+		// Iterate through and check claims against filters
+		for _, mg := range mgs {
+			eval, err := bexpr.CreateEvaluator(mg.Filter)
+			if err != nil {
+				// We check all filters on ingress so this should never happen,
+				// but we validate anyways
+				return "", errors.Wrap(err, op)
+			}
+			match, err := eval.Evaluate(evalData)
+			if err != nil && !errors.Is(err, pointerstructure.ErrNotFound) {
+				return "", errors.Wrap(err, op)
+			}
+			if match {
+				matchedMgs = append(matchedMgs, mg)
+			}
+		}
+		// We always pass it in, even if none match, because in that case we
+		// need to remove any mappings that exist
+		if _, _, err := r.SetManagedGroupMemberships(ctx, am, acct, matchedMgs); err != nil {
+			return "", errors.Wrap(err, op)
+		}
+	}
+
 	// before searching for the iam.User associated with the account,
 	// we need to see if this particular auth method is allowed to
 	// autovivify users for the scope.
@@ -202,6 +238,8 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
+
+	// Now we need to check filters and assign managed groups by filter.
 
 	// wow, we're getting close.  we just need to create a pending token for this
 	// successful authentication process, so it can be retrieved by the polling client

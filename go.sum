@@ -452,8 +452,8 @@ github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746 h1:uFLAYWBCufq4idhqjltAWb4s2JuJt1oE1hDRixwWqwY=
 github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746/go.mod h1:LG0lqGlYKC9FD5m5Umh7FW8SeJlciNUZv400J4+j094=
-github.com/hashicorp/go-bexpr v0.1.7 h1:z48qzCgJkvdnMO/LDy3XHNyCyxnHiFGx9uTKLv0jW2Y=
-github.com/hashicorp/go-bexpr v0.1.7/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
+github.com/hashicorp/go-bexpr v0.1.8 h1:ETfuLF1bBAuHW/Qg6l1xCdV8WJ7lfatLtJ1N1w0IsfE=
+github.com/hashicorp/go-bexpr v0.1.8/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
 github.com/hashicorp/go-cleanhttp v0.5.0/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=

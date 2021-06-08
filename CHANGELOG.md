@@ -4,9 +4,27 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* `password` account IDs: When the `oidc` auth method came out, accounts were
+  given the prefix `acctoidc`. Unfortunately, accounts in the `password` method
+  were using `apw`...oops. We're standardizing on `acct` and have updated the
+  `password` method to generate new IDs with `acctpw` prefixes.
+  Previously-generated prefixes will continue to work.
+
 ### New and Improved
 
-* mlock: Add a Docker entrypoint script and modify Dockerfiles to mimic Vault
+* oidc: The new Managed Groups feature allows groups of accounts to be created
+  based on an authenticating user's JWT or User Info data. This data uses the
+  same filtering syntax found elsewhere in Boundary to provide a rich way to
+  specify the criteria for group membership. Once defined, authenticated users
+  are added to or removed from these groups as appropriateds each time they
+  authenticate. These groups are treated like other role principals and can be
+  added to roles to provide grants to users.
+* dev: Predictable IDs in `boundary dev` mode now extend to the accounts created
+  in the default `password` and `oidc` auth methods.
+* mlock: Add a Docker entrypoint script and modify Dockerfiles to handle mlock
+  in a fashion similar to Vault
   ([PR](https://github.com/hashicorp/boundary/pull/1269))
 
 ## 0.2.3 (2021/05/21)

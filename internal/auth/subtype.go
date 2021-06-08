@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/intglobals"
 )
 
 type Subtype int
@@ -58,6 +59,18 @@ var (
 	_ Account = (*password.Account)(nil)
 )
 
+type ManagedGroup interface {
+	GetPublicId() string
+	GetCreateTime() *timestamp.Timestamp
+	GetUpdateTime() *timestamp.Timestamp
+	GetName() string
+	GetDescription() string
+	GetAuthMethodId() string
+	GetVersion() uint32
+}
+
+var _ ManagedGroup = (*oidc.ManagedGroup)(nil)
+
 // SubtypeFromType converts a string to a Subtype.
 // returns UnknownSubtype if no Subtype with that name is found.
 func SubtypeFromType(t string) Subtype {
@@ -76,10 +89,12 @@ func SubtypeFromType(t string) Subtype {
 func SubtypeFromId(id string) Subtype {
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), password.AccountPrefix):
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.OldPasswordAccountPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.NewPasswordAccountPrefix):
 		return PasswordSubtype
 	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix):
+		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.OidcManagedGroupPrefix):
 		return OidcSubtype
 	}
 	return UnknownSubtype
