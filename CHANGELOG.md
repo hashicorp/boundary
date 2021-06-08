@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.3.0 (2021/06/08)
+
 ### Deprecations/Changes
 
 * `password` account IDs: When the `oidc` auth method came out, accounts were
