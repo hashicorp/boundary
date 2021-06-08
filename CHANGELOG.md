@@ -23,6 +23,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   added to roles to provide grants to users.
 * dev: Predictable IDs in `boundary dev` mode now extend to the accounts created
   in the default `password` and `oidc` auth methods.
+* mlock: Add a Docker entrypoint script and modify Dockerfiles to handle mlock
+  in a fashion similar to Vault
+  ([PR](https://github.com/hashicorp/boundary/pull/1269))
 
 ## 0.2.3 (2021/05/21)
 
