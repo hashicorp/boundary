@@ -487,13 +487,6 @@ func (ps *privateStore) TableName() string {
 	return "credential_vault_store_private"
 }
 
-// TODO: DO NOT SUBMIT: figure out if these should be in library or store.
-const (
-)
-
-const (
-)
-
 // applyUpdate takes the new and applies it to the orig using the field masks
 func applyUpdate(new, orig *CredentialStore, fieldMaskPaths []string) *CredentialStore {
 	cp := orig.clone()
