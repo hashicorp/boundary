@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* mlock: Add a Docker entrypoint script and modify Dockerfiles to mimic Vault
+  ([PR](https://github.com/hashicorp/boundary/pull/1269))
+
 ## 0.2.3 (2021/05/21)
 
 ### Deprecations/Changes
