@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "author": "HashiCorp",
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "9.0.6",
+    "@apidevtools/json-schema-ref-parser": "9.0.9",
     "@hashicorp/mktg-global-styles": "3.0.1",
     "@hashicorp/mktg-logos": "1.0.2",
     "@hashicorp/nextjs-scripts": "18.1.0",
