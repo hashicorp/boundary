@@ -714,22 +714,18 @@ func TestUpdate(t *testing.T) {
 	}
 
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	secret, token := v.CreateToken(t)
 	accessor := secret.Auth.Accessor
 	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
 	require.NoError(t, err)
 
 	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
-	secret2 := v2.CreateToken(t)
-	token2 := secret2.Auth.ClientToken
+	_, token2 := v2.CreateToken(t)
 	clientCert2, err := vault.NewClientCertificate(v2.ClientCert, v2.ClientKey)
 	require.NoError(t, err)
 
 	v3 := vault.NewTestVaultServer(t)
-	secret3 := v3.CreateToken(t)
-	token3 := secret3.Auth.ClientToken
-	require.NoError(t, err)
+	_, token3 := v3.CreateToken(t)
 
 	freshStore := func() (*vault.CredentialStore, func()) {
 		t.Helper()
@@ -882,7 +878,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.CredentialStore{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							VaultCaCert: wrapperspb.String(string(v.CaCert)),
+							VaultCaCert: wrapperspb.String(string(v2.CaCert)),
 						})
 						require.NoError(t, err)
 						return attrs
@@ -891,33 +887,30 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
-				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v.CaCert))
+				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v2.CaCert))
 				return out
 			},
 		},
-		// TODO(ICU-1488): Fix field masks to treat certificate and key as a single value
-		// {
-		// 	name: "update client cert",
-		// 	req: &pbs.UpdateCredentialStoreRequest{
-		// 		UpdateMask: fieldmask("attributes.client_certificate", "attributes.client_certificate_key"),
-		// 		Item: &pb.CredentialStore{
-		// 			Attributes: func() *structpb.Struct {
-		// 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-		// 					ClientCertificate: wrapperspb.String(string(v.ClientCert)),
-		// 					CertificateKey: wrapperspb.String(string(v.ClientKey)),
-		// 				})
-		// 				require.NoError(t, err)
-		// 				return attrs
-		// 			}(),
-		// 		},
-		// 	},
-		// 	res: func(in *pb.CredentialStore) *pb.CredentialStore {
-		// 		out := proto.Clone(in).(*pb.CredentialStore)
-		// 		out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v.ClientCert))
-		// 		out.Attributes.Fields["client_certificate_key"] = structpb.NewStringValue(string(v.ClientKey))
-		// 		return out
-		// 	},
-		// },
+		{
+			name: "update client cert",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("attributes.client_certificate"),
+				Item: &pb.CredentialStore{
+					Attributes: func() *structpb.Struct {
+						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
+							ClientCertificate: wrapperspb.String(string(v2.ClientCert)),
+						})
+						require.NoError(t, err)
+						return attrs
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v2.ClientCert))
+				return out
+			},
+		},
 	}
 
 	for _, tc := range successCases {

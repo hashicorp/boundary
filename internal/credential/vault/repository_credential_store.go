@@ -489,31 +489,21 @@ func (ps *privateStore) TableName() string {
 
 // TODO: DO NOT SUBMIT: figure out if these should be in library or store.
 const (
-	NameField        = "Name"
-	DescriptionField = "Description"
 )
 
 const (
-	certificateField    = "Certificate"
-	certificateKeyField = "CertificateKey"
-	vaultAddressField   = "VaultAddress"
-	namespaceField      = "Namespace"
-	caCertField         = "CaCert"
-	tlsServerNameField  = "TlsServerName"
-	tlsSkipVerifyField  = "TlsSkipVerify"
-	tokenField          = "Token"
 )
 
 // applyUpdate takes the new and applies it to the orig using the field masks
 func applyUpdate(new, orig *CredentialStore, fieldMaskPaths []string) *CredentialStore {
 	cp := orig.clone()
 	for _, f := range fieldMaskPaths {
-		switch f {
-		case NameField:
+		switch {
+		case strings.EqualFold(nameField, f):
 			cp.Name = new.Name
-		case DescriptionField:
+		case strings.EqualFold(descriptionField, f):
 			cp.Description = new.Description
-		case certificateField:
+		case strings.EqualFold(certificateField, f):
 			if new.clientCert == nil {
 				cp.clientCert = nil
 				continue
@@ -522,7 +512,7 @@ func applyUpdate(new, orig *CredentialStore, fieldMaskPaths []string) *Credentia
 				cp.clientCert = allocClientCertificate()
 			}
 			cp.clientCert.Certificate = new.clientCert.GetCertificate()
-		case certificateKeyField:
+		case strings.EqualFold(certificateKeyField, f):
 			if new.clientCert == nil {
 				cp.clientCert = nil
 				continue
@@ -531,39 +521,22 @@ func applyUpdate(new, orig *CredentialStore, fieldMaskPaths []string) *Credentia
 				cp.clientCert = allocClientCertificate()
 			}
 			cp.clientCert.CertificateKey = new.clientCert.GetCertificateKey()
-		case vaultAddressField:
+		case strings.EqualFold(vaultAddressField, f):
 			cp.VaultAddress = new.VaultAddress
-		case namespaceField:
+		case strings.EqualFold(namespaceField, f):
 			cp.Namespace = new.Namespace
-		case caCertField:
+		case strings.EqualFold(caCertField, f):
 			cp.CaCert = new.CaCert
-		case tlsServerNameField:
+		case strings.EqualFold(tlsServerNameField, f):
 			cp.TlsServerName = new.TlsServerName
-		case tlsSkipVerifyField:
+		case strings.EqualFold(tlsSkipVerifyField, f):
 			cp.TlsSkipVerify = new.TlsSkipVerify
-		case tokenField:
+		case strings.EqualFold(tokenField, f):
 			cp.inputToken = new.inputToken
 		}
 	}
 	return cp
 }
-
-// func updateRequiresVaultConnectionCheck(paths []string) bool {
-// 	for _, f := range paths {
-// 		switch {
-// 		case strings.EqualFold(namespaceField, f),
-// 			strings.EqualFold(tlsServerNameField, f),
-// 			strings.EqualFold(tlsSkipVerifyField, f),
-// 			strings.EqualFold(caCertField, f),
-// 			strings.EqualFold(vaultAddressField, f),
-// 			strings.EqualFold(certificateField, f),
-// 			strings.EqualFold(certificateKeyField, f),
-// 			strings.EqualFold(tokenField, f):
-// 				return true
-// 		}
-// 	}
-// 	return false
-// }
 
 // UpdateCredentialStore updates the repository entry for cs.PublicId with
 // the values in cs for the fields listed in fieldMaskPaths. It returns a
@@ -602,7 +575,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	updateToken := false
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold(NameField, f):
+		case strings.EqualFold(nameField, f):
 		case strings.EqualFold(descriptionField, f):
 		case strings.EqualFold(namespaceField, f):
 		case strings.EqualFold(tlsServerNameField, f):
@@ -687,8 +660,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to lookup private credential store"))
 	}
 	if ps == nil {
-		// Return nil error and no rows affected indicates the resource cannot be found.
-		return nil, db.NoRowsAffected, nil
+		return nil, db.NoRowsAffected, errors.New(errors.RecordNotFound, op, fmt.Sprintf("credential store %s", cs.PublicId))
 	}
 	updatedStore := ps.toCredentialStore()
 	updatedStore.inputToken = ps.Token
@@ -699,17 +671,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("can't recreate client certificate for vault client creation"))
 	}
 	updatedStore = applyUpdate(cs, updatedStore, fieldMaskPaths)
-	client, err := updatedStore.client()
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
-	}
-	tokenLookup, err := client.lookupToken()
-	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
-	}
-	if err := validateTokenLookup(op, tokenLookup); err != nil {
-		return nil, db.NoRowsAffected, err
-	}
 
 	var rowsUpdated int
 	var returnedCredentialStore *CredentialStore
@@ -788,6 +749,17 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 
 			var token *Token
 			if updateToken {
+				client, err := updatedStore.client()
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
+				}
+				tokenLookup, err := client.lookupToken()
+				if err != nil {
+					return errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
+				}
+				if err := validateTokenLookup(op, tokenLookup); err != nil {
+					return err
+				}
 				renewedToken, err := client.renewToken()
 				if err != nil {
 					return errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))

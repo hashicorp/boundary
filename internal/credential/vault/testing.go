@@ -259,6 +259,49 @@ type testCert struct {
 	priv        *ecdsa.PrivateKey
 }
 
+// RegenerateCert uses the same private key and creates a new x509.Certificate
+// using the CA that is passed in.
+func (tc *testCert) RegenerateCert(t *testing.T, ca *x509.Certificate) {
+	require.NotNil(t, tc.Key)
+	require.NotNil(t, tc.priv)
+
+	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
+	// KeyUsage bits set in the x509.Certificate template
+	keyUsage := x509.KeyUsageDigitalSignature
+
+	notBefore, notAfter := time.Now(), time.Now().Add(24*time.Hour)
+	if deadLine, ok := t.Deadline(); ok {
+		notAfter = deadLine
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	require.NoError(t, err)
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Clients Inc"},
+		},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+
+		KeyUsage:              keyUsage,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		IsCA:                  false,
+		BasicConstraintsValid: true,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, tc.priv.PublicKey, tc.priv)
+	require.NoError(t, err)
+
+	c, err := x509.ParseCertificate(derBytes)
+	require.NoError(t, err)
+
+	tc.certificate = c
+	tc.Cert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+}
+
 func (tc *testCert) ClientCertificate(t *testing.T) *ClientCertificate {
 	t.Helper()
 	c, err := NewClientCertificate(tc.Cert, tc.Key)
@@ -582,6 +625,16 @@ func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
 	require.NotNil(client)
 	require.NoError(client.ping())
 	return client
+}
+
+func (v *TestVaultServer) ChangeClientCert(t *testing.T) {
+	require.NotNil(t, v.clientCertBundle)
+	require.NotNil(t, v.ClientCert)
+	require.NotNil(t, v.clientCertBundle.Cert)
+	require.NotNil(t, v.clientCertBundle.CA)
+	require.NotNil(t, v.clientCertBundle.CA.certificate)
+	v.clientCertBundle.Cert.RegenerateCert(t, v.clientCertBundle.CA.certificate)
+	v.ClientCert = v.clientCertBundle.Cert.Cert
 }
 
 // CreateToken creates a new Vault token by calling /auth/token/create on v

@@ -574,7 +574,7 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	if len(pemCerts) != 0 && pemPk != nil {
+	if len(pemCerts) != 0 {
 		var cert []byte
 		for _, c := range pemCerts {
 			cert = append(cert, pem.EncodeToMemory(c)...)
