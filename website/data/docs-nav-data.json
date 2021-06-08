@@ -140,6 +140,10 @@
             "path": "concepts/domain-model/host-sets"
           },
           {
+            "title": "Managed Groups",
+            "path": "concepts/domain-model/managed-groups"
+          },
+          {
             "title": "Scopes",
             "path": "concepts/domain-model/scopes"
           },
@@ -167,6 +171,10 @@
           {
             "title": "Overview",
             "path": "concepts/filtering"
+          },
+          {
+            "title": "OIDC Managed Groups",
+            "path": "concepts/filtering/oidc-managed-groups"
           },
           {
             "title": "Resource Listing",
