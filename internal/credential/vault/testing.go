@@ -590,28 +590,22 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.S
 
 // LookupToken calls /auth/token/lookup on v for token. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
-func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret {
+func (v *TestVaultServer) LookupToken(t *testing.T, token string) (*vault.Secret, error) {
 	t.Helper()
-	require := require.New(t)
 	vc := v.client(t).cl
 	secret, err := vc.Auth().Token().Lookup(token)
-	require.NoError(err)
-	require.NotNil(secret)
-	return secret
+	return secret, err
 }
 
 // LookupLease calls the /sys/leases/lookup Vault endpoint and returns
 // the vault.Secret response.  See
 // https://www.vaultproject.io/api-docs/system/leases#read-lease.
-func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secret {
+func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) (*vault.Secret, error) {
 	t.Helper()
-	require := require.New(t)
 	vc := v.client(t).cl
 	credData := map[string]interface{}{"lease_id": leaseId}
 	secret, err := vc.Logical().Write("sys/leases/lookup", credData)
-	require.NoError(err)
-	require.NotNil(secret)
-	return secret
+	return secret, err
 }
 
 func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabilities) {

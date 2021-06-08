@@ -185,10 +185,31 @@ func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
 	tokenRenewal, err := vault.NewTokenRenewalJob(rw, rw, c.kms, c.logger)
 	if err != nil {
-		return fmt.Errorf("error creating token renewal job: %w", err)
+		return fmt.Errorf("error creating Vault token renewal job: %w", err)
 	}
 	if err = c.scheduler.RegisterJob(c.baseContext, tokenRenewal); err != nil {
-		return fmt.Errorf("error registering token renewal job: %w", err)
+		return fmt.Errorf("error registering Vault token renewal job: %w", err)
+	}
+	tokenRevoke, err := vault.NewTokenRevocationJob(rw, rw, c.kms, c.logger)
+	if err != nil {
+		return fmt.Errorf("error creating Vault token revocation job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, tokenRevoke); err != nil {
+		return fmt.Errorf("error registering Vault token revocation job: %w", err)
+	}
+	credRenewal, err := vault.NewCredentialRenewalJob(rw, rw, c.kms, c.logger)
+	if err != nil {
+		return fmt.Errorf("error creating Vault credential renewal job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, credRenewal); err != nil {
+		return fmt.Errorf("error registering Vault credential renewal job: %w", err)
+	}
+	credRevoke, err := vault.NewCredentialRevocationJob(rw, rw, c.kms, c.logger)
+	if err != nil {
+		return fmt.Errorf("error creating Vault credential revocation job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, credRevoke); err != nil {
+		return fmt.Errorf("error registering Vault credential revocation job: %w", err)
 	}
 
 	return nil
