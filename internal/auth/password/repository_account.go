@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -60,7 +61,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	a = a.clone()
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, AccountPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, intglobals.NewPasswordAccountPrefix+"_") {
 			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
 		}
 		a.PublicId = opts.withPublicId

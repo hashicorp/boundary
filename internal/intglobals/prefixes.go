@@ -9,4 +9,10 @@ const (
 	// OidcManagedGroupPrefix defines the prefix for ManagedGroup public ids
 	// from the OIDC auth method.
 	OidcManagedGroupPrefix = "mgoidc"
+
+	// OldPasswordAccountPrefix is the previously-used account prefix
+	OldPasswordAccountPrefix = "apw"
+
+	// NewPasswordAccountPrefix is the new account prefix
+	NewPasswordAccountPrefix = "acctpw"
 )

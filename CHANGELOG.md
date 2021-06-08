@@ -4,6 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* `password` account IDs: When the `oidc` auth method came out, accounts were
+  given the prefix `acctoidc`. Unfortunately, accounts in the `password` method
+  were using `apw`...oops. We're standardizing on `acct` and have updated the
+  `password` method to generate new IDs with `acctpw` prefixes.
+  Previously-generated prefixes will continue to work.
+
 ### New and Improved
 
 * oidc: The new Managed Groups feature allows groups of accounts to be created

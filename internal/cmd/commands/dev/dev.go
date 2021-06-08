@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -313,10 +314,10 @@ func (c *Command) Run(args []string) int {
 		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
 		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", oidc.AuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
-		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", password.AccountPrefix, c.flagIdSuffix)
+		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", intglobals.NewPasswordAccountPrefix, c.flagIdSuffix)
 		c.DevOidcAccountId = fmt.Sprintf("%s_%s", oidc.AccountPrefix, c.flagIdSuffix)
 		c.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(c.DevUserId, "u_"))
-		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", password.AccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", password.AccountPrefix)))
+		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix)))
 		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", oidc.AccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", oidc.AccountPrefix)))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
