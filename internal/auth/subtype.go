@@ -89,8 +89,8 @@ func SubtypeFromType(t string) Subtype {
 func SubtypeFromId(id string) Subtype {
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(id), password.AuthMethodPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), password.OldAccountPrefix),
-		strings.HasPrefix(strings.TrimSpace(id), password.NewAccountPrefix):
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.OldPasswordAccountPrefix),
+		strings.HasPrefix(strings.TrimSpace(id), intglobals.NewPasswordAccountPrefix):
 		return PasswordSubtype
 	case strings.HasPrefix(strings.TrimSpace(id), oidc.AuthMethodPrefix),
 		strings.HasPrefix(strings.TrimSpace(id), oidc.AccountPrefix),

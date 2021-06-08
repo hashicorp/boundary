@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -33,9 +34,9 @@ const (
 	DefaultTestUnprivilegedLoginName         = "user"
 	DefaultTestPassword                      = "passpass"
 	DefaultTestUserId                        = "u_1234567890"
-	DefaultTestPasswordAccountId             = "apw_1234567890"
+	DefaultTestPasswordAccountId             = intglobals.NewPasswordAccountPrefix + "_1234567890"
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
-	DefaultTestUnprivilegedPasswordAccountId = "apw_0987654321"
+	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 )
 

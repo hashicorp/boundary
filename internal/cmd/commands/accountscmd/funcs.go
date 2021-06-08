@@ -58,7 +58,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Read a account:",
 			"",
-			`      $ boundary accounts read -id apw_1234567890`,
+			`      $ boundary accounts read -id acctpw_1234567890`,
 			"",
 			"  Please see the accounts subcommand help for detailed usage information.",
 		})
@@ -70,7 +70,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Change the password on a password-type account:",
 			"",
-			`      $ boundary accounts change-password -id apw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
+			`      $ boundary accounts change-password -id acctpw_1234567890 -current-password <empty, to be read by stdin> -new-password <empty, to be read by stdin>`,
 			"",
 			"",
 		})
@@ -82,7 +82,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Set the password on a password-type account:",
 			"",
-			`      $ boundary accounts set-password -id apw_1234567890 -password <empty, to be read by stdin>`,
+			`      $ boundary accounts set-password -id acctpw_1234567890 -password <empty, to be read by stdin>`,
 			"",
 			"",
 		})

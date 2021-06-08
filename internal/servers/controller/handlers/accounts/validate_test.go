@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -156,7 +157,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.OldAccountPrefix + "_1234567890",
+				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: auth.OidcSubtype.String(),
 				},
@@ -166,7 +167,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, new prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.NewAccountPrefix + "_1234567890",
+				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: auth.OidcSubtype.String(),
 				},
@@ -186,7 +187,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password bad attributes",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.NewAccountPrefix + "_1234567890",
+				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"test": structpb.NewStringValue("something"),

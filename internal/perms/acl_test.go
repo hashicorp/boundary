@@ -1,8 +1,10 @@
 package perms
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -235,17 +237,17 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.Authenticate},
 				{action: action.Delete},
 			},
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 		},
 		{
 			name:        "good templated account id",
-			resource:    Resource{ScopeId: "o_c", Id: "apw_1234567890"},
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix)},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
 			},
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 		},
 		{
 			name:        "all type",
