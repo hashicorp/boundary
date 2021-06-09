@@ -18,10 +18,11 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withWrapper          wrapping.Wrapper
-	withSalt             []byte
-	withInfo             []byte
-	withFilterOperations map[DataClassification]FilterOperation
+	withWrapper              wrapping.Wrapper
+	withSalt                 []byte
+	withInfo                 []byte
+	withFilterOperations     map[DataClassification]FilterOperation
+	withPointerstructureInfo *pointerstructureInfo
 }
 
 func getDefaultOptions() options {
@@ -49,5 +50,19 @@ func WithInfo(info []byte) Option {
 func withFilterOperations(ops map[DataClassification]FilterOperation) Option {
 	return func(o *options) {
 		o.withFilterOperations = ops
+	}
+}
+
+type pointerstructureInfo struct {
+	i       interface{}
+	pointer string
+}
+
+func withPointer(i interface{}, pointer string) Option {
+	return func(o *options) {
+		o.withPointerstructureInfo = &pointerstructureInfo{
+			i:       i,
+			pointer: pointer,
+		}
 	}
 }

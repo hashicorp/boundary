@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/eventlogger"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -243,6 +244,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
 	}
 
+	opts := getOpts(opt...)
 	switch classificationTag.Classification {
 	case PublicClassification:
 		return nil
@@ -271,8 +273,15 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		default: // catch UnknownOperation, NoOperation and everything else
 			return errors.New(errors.InvalidParameter, op, "unknown filter operation for field")
 		}
-		if err := setValue(fv, data); err != nil {
-			return errors.Wrap(err, op)
+		// TODO: jimlambrt this needs work, but it's a reasonable POC
+		if opts.withPointerstructureInfo != nil {
+			if _, err := pointerstructure.Set(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer, data); err != nil {
+				return errors.Wrap(err, op)
+			}
+		} else {
+			if err := setValue(fv, data); err != nil {
+				return errors.Wrap(err, op)
+			}
 		}
 	default:
 		if err := setValue(fv, RedactedData); err != nil {
