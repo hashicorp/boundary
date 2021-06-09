@@ -97,7 +97,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			return nil, errors.Wrap(err, op)
 		}
 
-		creds = append(creds, &privateCredential{
+		creds = append(creds, &actualCredential{
 			id:         cred.PublicId,
 			sessionId:  cred.SessionId,
 			lib:        lib,

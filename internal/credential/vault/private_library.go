@@ -14,9 +14,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ credential.Dynamic = (*privateCredential)(nil)
+var _ credential.Dynamic = (*actualCredential)(nil)
 
-type privateCredential struct {
+type actualCredential struct {
 	id         string
 	sessionId  string
 	lib        *privateLibrary
@@ -24,11 +24,11 @@ type privateCredential struct {
 	purpose    credential.Purpose
 }
 
-func (pc *privateCredential) GetPublicId() string           { return pc.id }
-func (pc *privateCredential) GetSessionId() string          { return pc.sessionId }
-func (pc *privateCredential) Secret() credential.SecretData { return pc.secretData }
-func (pc *privateCredential) Library() credential.Library   { return pc.lib }
-func (pc *privateCredential) Purpose() credential.Purpose   { return pc.purpose }
+func (ac *actualCredential) GetPublicId() string           { return ac.id }
+func (ac *actualCredential) GetSessionId() string          { return ac.sessionId }
+func (ac *actualCredential) Secret() credential.SecretData { return ac.secretData }
+func (ac *actualCredential) Library() credential.Library   { return ac.lib }
+func (ac *actualCredential) Purpose() credential.Purpose   { return ac.purpose }
 
 var _ credential.Library = (*privateLibrary)(nil)
 
