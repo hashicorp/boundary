@@ -65,6 +65,13 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Target: &c.FlagHostCatalogId,
 				Usage:  "The host-catalog resource to use for the operation.",
 			})
+		case "credential-store-id":
+			f.StringVar(&base.StringVar{
+				Name:   "credential-store-id",
+				EnvVar: "BOUNDARY_CREDENTIAL_STORE_ID",
+				Target: &c.FlagCredentialStoreId,
+				Usage:  "The credential-store resource to use for the operation.",
+			})
 		case "recursive":
 			f.BoolVar(&base.BoolVar{
 				Name:   "recursive",

@@ -190,6 +190,32 @@ var inputStructs = map[string][]*cmdInfo{
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
 	},
+	"credentiallibraries": {
+		{
+			ResourceType:     resource.CredentialLibrary.String(),
+			Pkg:              "credentiallibraries",
+			StdActions:       []string{"read", "delete", "list"},
+			IsAbstractType:   true,
+			HasExtraHelpFunc: true,
+			Container:        "CredentialStore",
+			HasId:            true,
+		},
+		{
+			ResourceType:        resource.CredentialLibrary.String(),
+			Pkg:                 "credentiallibraries",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "vault",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			HasDescription:      true,
+			Container:           "CredentialStore",
+			VersionedActions:    []string{"update"},
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
+	},
 	"groups": {
 		{
 			ResourceType:        resource.Group.String(),
