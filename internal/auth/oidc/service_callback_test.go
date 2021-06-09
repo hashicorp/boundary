@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/sdk/strutil"
 
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -594,4 +595,199 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(tk.Status, string(authtoken.PendingStatus))
 	})
+}
+
+func Test_ManagedGroupFiltering(t *testing.T) {
+	// DO NOT run these tests under t.Parallel()
+
+	// A note about this test: other tests handle checking managed group
+	// membership, creation, etc. This test is only scoped to checking that
+	// given reasonable data in the jwt/userinfo, the result of a callback call
+	// results in association with the proper managed groups.
+
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	// some standard factories for unit tests which
+	// are used in the Callback(...) call
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	repoFn := func() (*Repository, error) {
+		return NewRepository(rw, rw, kmsCache)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kmsCache)
+	}
+
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	// a very simple test mock controller, that simply responds with a 200 OK to
+	// every request.
+	testController := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer testController.Close()
+
+	// test provider for the tests (see the oidc package docs for more info)
+	// it will provide discovery, JWKs, a token endpoint, etc for these tests.
+	tp := oidc.StartTestProvider(t)
+	tpCert, err := ParseCertificates(tp.CACert())
+	require.NoError(t, err)
+	_, _, tpAlg, _ := tp.SigningKeys()
+
+	// a reusable test authmethod for the unit tests
+	testAuthMethod := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, ActivePublicState,
+		"alice-rp", "fido",
+		WithCertificates(tpCert...),
+		WithSigningAlgs(Alg(tpAlg)),
+		WithIssuer(TestConvertToUrls(t, tp.Addr())[0]),
+		WithApiUrl(TestConvertToUrls(t, testController.URL)[0]))
+
+	// set this as the primary so users will be created on first login
+	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, testAuthMethod.PublicId)
+
+	// Create an account so it's a known account id
+	sub := "alice@example.com"
+	account := TestAccount(t, conn, testAuthMethod, sub)
+
+	// Create two managed groups. We'll use these in tests to set filters and
+	// then check that the user belongs to the ones we expect.
+	mgs := []*ManagedGroup{
+		TestManagedGroup(t, conn, testAuthMethod, TestFakeManagedGroupFilter),
+		TestManagedGroup(t, conn, testAuthMethod, TestFakeManagedGroupFilter),
+	}
+
+	// A reusable oidc.Provider for the tests
+	testProvider, err := convertToProvider(ctx, testAuthMethod)
+	require.NoError(t, err)
+	testConfigHash, err := testProvider.ConfigHash()
+	require.NoError(t, err)
+
+	// Set up the provider a bit
+	testNonce := "nonce"
+	tp.SetExpectedAuthNonce(testNonce)
+	code := "simple"
+	tp.SetExpectedAuthCode(code)
+	tp.SetExpectedSubject(sub)
+	tp.SetCustomAudience("foo", "alice-rp")
+	info := map[string]interface{}{
+		"roles": []string{"user", "operator"},
+		"sub":   "alice@example.com",
+		"email": "alice-alias@example.com",
+		"name":  "alice doe joe foe",
+	}
+	tp.SetUserInfoReply(info)
+
+	repo, err := repoFn()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		filters     []string        // Should always be length 2, and specify the filters to use for the test
+		matchingMgs []*ManagedGroup // The public IDs of the managed groups we expect the user to be in
+	}{
+		{
+			name: "no match",
+			filters: []string{
+				TestFakeManagedGroupFilter,
+				TestFakeManagedGroupFilter,
+			},
+		},
+		{
+			name: "token match",
+			filters: []string{
+				`"/token/nonce" == "nonce"`,
+				TestFakeManagedGroupFilter,
+			},
+			matchingMgs: mgs[0:1],
+		},
+		{
+			name: "token double match",
+			filters: []string{
+				`"/token/nonce" == "nonce"`,
+				`"/token/name" == "Alice Doe Smith"`,
+			},
+			matchingMgs: mgs[0:2],
+		},
+		{
+			name: "userinfo double match",
+			filters: []string{
+				`"user" in "/userinfo/roles"`,
+				`"/userinfo/email" == "alice-alias@example.com"`,
+			},
+			matchingMgs: mgs[0:2],
+		},
+		{
+			name: "userinfo match only",
+			filters: []string{
+				`"/token/nonce" == "not-nonce"`,
+				`"/userinfo/email" == "alice-alias@example.com"`,
+			},
+			matchingMgs: mgs[1:2],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// A unique token ID for each test
+			testTokenRequestId, err := authtoken.NewAuthTokenId()
+			require.NoError(err)
+
+			// the test provider is stateful, so we need to configure
+			// it for this unit test.
+			tp.SetClientCreds(testAuthMethod.ClientId, testAuthMethod.ClientSecret)
+			tpAllowedRedirect := fmt.Sprintf(CallbackEndpoint, testAuthMethod.ApiUrl)
+			tp.SetAllowedRedirectURIs([]string{tpAllowedRedirect})
+
+			state := testState(t, testAuthMethod, kmsCache, testTokenRequestId, 2000*time.Second, "https://testcontroler.com/hi-alice", testConfigHash, testNonce)
+			tp.SetExpectedState(state)
+
+			// Set the filters on the MGs for this test. First we need to get the current versions.
+			currMgs, err := repo.ListManagedGroups(ctx, testAuthMethod.PublicId)
+			require.NoError(err)
+			require.Len(currMgs, 2)
+			currVersionMap := map[string]uint32{
+				currMgs[0].PublicId: currMgs[0].Version,
+				currMgs[1].PublicId: currMgs[1].Version,
+			}
+			for i, filter := range tt.filters {
+				mgs[i].Filter = filter
+				_, numUpdated, err := repo.UpdateManagedGroup(ctx, org.PublicId, mgs[i], currVersionMap[mgs[i].PublicId], []string{"Filter"})
+				require.Equal(numUpdated, 1)
+				require.NoError(err)
+			}
+
+			// Run the callback
+			_, err = Callback(ctx,
+				repoFn,
+				iamRepoFn,
+				atRepoFn,
+				testAuthMethod,
+				state,
+				code,
+			)
+			require.NoError(err)
+
+			// Ensure that we get the expected groups
+			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId)
+			require.NoError(err)
+			assert.Equal(len(tt.matchingMgs), len(memberships))
+			var matchingIds []string
+			for _, mg := range tt.matchingMgs {
+				matchingIds = append(matchingIds, mg.PublicId)
+			}
+			for _, mg := range memberships {
+				assert.True(strutil.StrListContains(matchingIds, mg.ManagedGroupId))
+			}
+		})
+	}
 }

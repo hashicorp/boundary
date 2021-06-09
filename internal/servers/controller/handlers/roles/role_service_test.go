@@ -9,15 +9,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/kr/pretty"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -1010,10 +1013,23 @@ func TestAddPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	o, p := iam.TestScopes(t, iamRepo)
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, iamRepo)
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1024,15 +1040,22 @@ func TestAddPrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	addCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		addUsers     []string
-		addGroups    []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		addUsers            []string
+		addGroups           []string
+		addManagedGroups    []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Add user on empty role",
@@ -1079,6 +1102,28 @@ func TestAddPrincipal(t *testing.T) {
 			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 		},
 		{
+			name:                "Add managed group on empty role",
+			setup:               func(r *iam.Role) {},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Add managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Add duplicate managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{managedGroups[1].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+		},
+		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			addUsers: []string{"u_recovery"},
@@ -1094,7 +1139,7 @@ func TestAddPrincipal(t *testing.T) {
 				req := &pbs.AddRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.addUsers, tc.addGroups...),
+					PrincipalIds: append(tc.addUsers, append(tc.addGroups, tc.addManagedGroups...)...),
 				}
 
 				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
@@ -1103,10 +1148,10 @@ func TestAddPrincipal(t *testing.T) {
 					return
 				}
 				s, ok := status.FromError(err)
-				require.True(t, ok)
+				require.True(t, ok, fmt.Sprintf("Could not run FromError; input was %s", pretty.Sprint(err)))
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}
@@ -1168,6 +1213,20 @@ func TestSetPrincipal(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1178,15 +1237,22 @@ func TestSetPrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	setCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		setUsers     []string
-		setGroups    []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		setUsers            []string
+		setGroups           []string
+		setManagedGroups    []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Set user on empty role",
@@ -1234,6 +1300,20 @@ func TestSetPrincipal(t *testing.T) {
 			resultGroups: []string{groups[1].GetPublicId()},
 		},
 		{
+			name:                "Set managed group on empty role",
+			setup:               func(r *iam.Role) {},
+			setManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Set managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			setManagedGroups:    []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
 			name:     "Set invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			setUsers: []string{"u_recovery"},
@@ -1249,7 +1329,7 @@ func TestSetPrincipal(t *testing.T) {
 				req := &pbs.SetRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.setUsers, tc.setGroups...),
+					PrincipalIds: append(tc.setUsers, append(tc.setGroups, tc.setManagedGroups...)...),
 				}
 
 				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
@@ -1258,10 +1338,10 @@ func TestSetPrincipal(t *testing.T) {
 					return
 				}
 				s, ok := status.FromError(err)
-				require.True(t, ok)
+				require.True(t, ok, fmt.Sprintf("Could not run FromError; input was %s", pretty.Sprint(err)))
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}
@@ -1323,6 +1403,20 @@ func TestRemovePrincipal(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
+
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrap)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	authMethod := oidc.TestAuthMethod(
+		t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState,
+		"alice-rp", "fido",
+		oidc.WithSigningAlgs(oidc.RS256),
+		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
+		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
+	)
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1333,15 +1427,22 @@ func TestRemovePrincipal(t *testing.T) {
 		iam.TestGroup(t, conn, o.GetPublicId()),
 		iam.TestGroup(t, conn, o.GetPublicId()),
 	}
+	managedGroups := []*oidc.ManagedGroup{
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+		oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter),
+	}
 
 	addCases := []struct {
-		name         string
-		setup        func(*iam.Role)
-		removeUsers  []string
-		removeGroups []string
-		resultUsers  []string
-		resultGroups []string
-		wantErr      bool
+		name                string
+		setup               func(*iam.Role)
+		removeUsers         []string
+		removeGroups        []string
+		removeManagedGroups []string
+		resultUsers         []string
+		resultGroups        []string
+		resultManagedGroups []string
+		wantErr             bool
 	}{
 		{
 			name:        "Remove user on empty role",
@@ -1416,6 +1517,39 @@ func TestRemovePrincipal(t *testing.T) {
 			removeGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
 			resultGroups: []string{},
 		},
+		{
+			name:         "Remove managed group on empty role",
+			setup:        func(r *iam.Role) {},
+			removeGroups: []string{groups[1].GetPublicId()},
+			wantErr:      true,
+		},
+		{
+			name: "Remove 1 of 2 managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 duplicate managed group of 2 managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[1].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
+		},
+		{
+			name: "Remove all managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[1].GetPublicId())
+			},
+			removeManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+			resultManagedGroups: []string{},
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1426,7 +1560,7 @@ func TestRemovePrincipal(t *testing.T) {
 				req := &pbs.RemoveRolePrincipalsRequest{
 					Id:           role.GetPublicId(),
 					Version:      role.GetVersion(),
-					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
+					PrincipalIds: append(tc.removeUsers, append(tc.removeGroups, tc.removeManagedGroups...)...),
 				}
 
 				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(repoFn, o.GetPublicId()), req)
@@ -1438,7 +1572,7 @@ func TestRemovePrincipal(t *testing.T) {
 				require.True(t, ok)
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, append(tc.resultGroups, tc.resultManagedGroups...)...)))
 			})
 		}
 	}

@@ -60,4 +60,28 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts.WithOutputFields)
 		assert.Nil(*opts.WithOutputFields)
 	})
+	t.Run("WithManagedGroupIds", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithManagedGroupIds)
+
+		out := []string{"foobar"}
+
+		opts = GetOpts(WithManagedGroupIds(out))
+		require.Equal(out, opts.WithManagedGroupIds)
+	})
+	t.Run("WithMemberIds", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		opts := GetOpts()
+		assert.Nil(opts.WithMemberIds)
+
+		out := []string{"foobar"}
+
+		opts = GetOpts(WithMemberIds(out))
+		require.Equal(out, opts.WithMemberIds)
+	})
 }

@@ -25,9 +25,11 @@ import (
 
 const apiRequest = "APIRequest"
 
-const testAuditVersion = "v0.1"
-const testErrorVersion = "v0.1"
-const testObservationVersion = "v0.1"
+const (
+	testAuditVersion       = "v0.1"
+	testErrorVersion       = "v0.1"
+	testObservationVersion = "v0.1"
+)
 
 type testAudit struct {
 	Id             string             `json:"id"`                     // std audit/boundary field
@@ -855,7 +857,7 @@ func Test_WriteError(t *testing.T) {
 			}
 			event.WriteError(tt.ctx, event.Op(op), tt.e)
 			if tt.errSinkFileName != "" {
-				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0666) }()
+				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
 				require.NoError(err)
 
@@ -891,7 +893,6 @@ func Test_WriteError(t *testing.T) {
 				}
 				if tt.info != nil {
 					wantError.Payload["request_info"] = tt.info
-
 				}
 				wantJson, err := json.Marshal(wantError)
 				require.NoError(err)
