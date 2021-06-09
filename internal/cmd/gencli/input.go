@@ -251,6 +251,32 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"update"},
 		},
 	},
+	"managedgroups": {
+		{
+			ResourceType:   resource.ManagedGroup.String(),
+			Pkg:            "managedgroups",
+			StdActions:     []string{"read", "delete", "list"},
+			IsAbstractType: true,
+			Container:      "AuthMethod",
+			HasId:          true,
+			HasName:        true,
+			HasDescription: true,
+		},
+		{
+			ResourceType:        resource.ManagedGroup.String(),
+			Pkg:                 "managedgroups",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "oidc",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
+	},
 	"roles": {
 		{
 			ResourceType:        resource.Role.String(),

@@ -3,6 +3,8 @@ package oidc
 import (
 	"crypto/x509"
 	"net/url"
+
+	"github.com/hashicorp/boundary/internal/db"
 )
 
 // getOpts - iterate the inbound Options and return a struct.
@@ -42,6 +44,7 @@ type options struct {
 	withIssuer              *url.URL
 	withOperationalState    AuthMethodState
 	withAccountClaimMap     map[string]AccountToClaim
+	withReader              db.Reader
 }
 
 func getDefaultOptions() options {
@@ -216,5 +219,13 @@ func WithOperationalState(state AuthMethodState) Option {
 func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
 	return func(o *options) {
 		o.withAccountClaimMap = acm
+	}
+}
+
+// WithReader provides an option for specifying a reader to use for the
+// operation.
+func WithReader(reader db.Reader) Option {
+	return func(o *options) {
+		o.withReader = reader
 	}
 }

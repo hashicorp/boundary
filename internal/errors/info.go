@@ -224,4 +224,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "oidc provider callback error",
 		Kind:    External,
 	},
+	GracefullyAborted: {
+		Message: "purposefully aborted without error",
+		Kind:    Other,
+	},
 }

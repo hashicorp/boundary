@@ -20,8 +20,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -69,24 +67,30 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevPasswordAuthMethodId         string
-	DevOidcAuthMethodId             string
-	DevLoginName                    string
-	DevPassword                     string
-	DevUserId                       string
-	DevUnprivilegedLoginName        string
-	DevUnprivilegedPassword         string
-	DevUnprivilegedUserId           string
-	DevOrgId                        string
-	DevProjectId                    string
-	DevHostCatalogId                string
-	DevHostSetId                    string
-	DevHostId                       string
-	DevTargetId                     string
-	DevHostAddress                  string
-	DevTargetDefaultPort            int
-	DevTargetSessionMaxSeconds      int
-	DevTargetSessionConnectionLimit int
+	DevPasswordAuthMethodId          string
+	DevOidcAuthMethodId              string
+	DevLoginName                     string
+	DevPassword                      string
+	DevUserId                        string
+	DevPasswordAccountId             string
+	DevOidcAccountId                 string
+	DevUnprivilegedLoginName         string
+	DevUnprivilegedPassword          string
+	DevUnprivilegedUserId            string
+	DevUnprivilegedPasswordAccountId string
+	DevUnprivilegedOidcAccountId     string
+	DevOrgId                         string
+	DevProjectId                     string
+	DevHostCatalogId                 string
+	DevHostSetId                     string
+	DevHostId                        string
+	DevTargetId                      string
+	DevHostAddress                   string
+	DevTargetDefaultPort             int
+	DevTargetSessionMaxSeconds       int
+	DevTargetSessionConnectionLimit  int
+
+	DevOidcSetup oidcSetup
 
 	DatabaseUrl                string
 	DatabaseMaxOpenConnections int
@@ -464,145 +468,6 @@ func (b *Server) ConnectToDatabase(dialect string) error {
 		gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
 		b.Database.SetLogger(db.GetGormLogger(b.Logger))
 	}
-	return nil
-}
-
-func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
-	var container, url, dialect string
-	var err error
-	var c func() error
-
-	opts := getOpts(opt...)
-
-	// We should only get back postgres for now, but laying the foundation for non-postgres
-	switch opts.withDialect {
-	case "":
-		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
-	default:
-		dialect = opts.withDialect
-	}
-
-	switch b.DatabaseUrl {
-	case "":
-		c, url, container, err = docker.StartDbInDocker(dialect, docker.WithContainerImage(opts.withContainerImage))
-		// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
-		// function before returning from this method
-		defer func() {
-			if !opts.withSkipDatabaseDestruction {
-				if c != nil {
-					if err := c(); err != nil {
-						b.Logger.Error("error cleaning up docker container", "error", err)
-					}
-				}
-			}
-		}()
-		if err == docker.ErrDockerUnsupported {
-			return err
-		}
-		if err != nil {
-			return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
-		}
-
-		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
-		_, err := schema.MigrateStore(ctx, dialect, url)
-		if err != nil {
-			err = fmt.Errorf("unable to initialize dev database with dialect %s: %w", dialect, err)
-			if c != nil {
-				err = multierror.Append(err, c())
-			}
-			return err
-		}
-
-		b.DevDatabaseCleanupFunc = c
-		b.DatabaseUrl = url
-	default:
-		// Let migrate store manage the dirty bit since dev DBs should be ephemeral anyways.
-		if _, err := schema.MigrateStore(ctx, dialect, b.DatabaseUrl); err != nil {
-			err = fmt.Errorf("error initializing store: %w", err)
-			if c != nil {
-				err = multierror.Append(err, c())
-			}
-			return err
-		}
-	}
-
-	b.InfoKeys = append(b.InfoKeys, "dev database url")
-	b.Info["dev database url"] = b.DatabaseUrl
-	if container != "" {
-		b.InfoKeys = append(b.InfoKeys, "dev database container")
-		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
-	}
-
-	if err := b.ConnectToDatabase(dialect); err != nil {
-		if c != nil {
-			err = multierror.Append(err, c())
-		}
-		return err
-	}
-
-	b.Database.LogMode(true)
-
-	if err := b.CreateGlobalKmsKeys(ctx); err != nil {
-		if c != nil {
-			err = multierror.Append(err, c())
-		}
-		return err
-	}
-
-	if _, err := b.CreateInitialLoginRole(ctx); err != nil {
-		if c != nil {
-			err = multierror.Append(err, c())
-		}
-		return err
-	}
-
-	if opts.withSkipAuthMethodCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, err := b.CreateInitialPasswordAuthMethod(ctx); err != nil {
-		return err
-	}
-
-	if opts.withSkipScopesCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, err := b.CreateInitialScopes(ctx); err != nil {
-		return err
-	}
-
-	if opts.withSkipHostResourcesCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, _, _, err := b.CreateInitialHostResources(context.Background()); err != nil {
-		return err
-	}
-
-	if opts.withSkipTargetCreation {
-		// now that we have passed all the error cases, reset c to be a noop so the
-		// defer doesn't do anything.
-		c = func() error { return nil }
-		return nil
-	}
-
-	if _, err := b.CreateInitialTarget(ctx); err != nil {
-		return err
-	}
-
-	// now that we have passed all the error cases, reset c to be a noop so the
-	// defer doesn't do anything.
-	c = func() error { return nil }
 	return nil
 }
 
