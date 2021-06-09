@@ -68,6 +68,24 @@ func TestEncryptFilter_Process(t *testing.T) {
 				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
 			},
 		},
+		{
+			name:   "taggable",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testTaggedMap{
+					"foo": "bar",
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testTaggedMap{
+					"foo": "<REDACTED>",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -130,4 +148,18 @@ type testPayload struct {
 	SensitiveRedacted []byte `classified:"sensitive,redact"`
 	UserInfo          *testUserInfo
 	Keys              [][]byte `classified:"secret"`
+}
+
+const testMapField = "foo"
+
+type testTaggedMap map[string]interface{}
+
+func (t testTaggedMap) Tags() ([]node.PointerTag, error) {
+	return []node.PointerTag{
+		{
+			Pointer:        "/" + testMapField,
+			Classification: node.SecretClassification,
+			Filter:         node.RedactOperation,
+		},
+	}, nil
 }

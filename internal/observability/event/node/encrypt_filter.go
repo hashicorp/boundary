@@ -145,8 +145,59 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	// field.
 	payloadValue := reflect.ValueOf(e.Payload).Elem()
 
-	if err := ef.filterField(ctx, payloadValue, opts...); err != nil {
-		return nil, errors.Wrap(err, op)
+	pType := payloadValue.Type()
+	pKind := payloadValue.Kind()
+
+	isPtrToSlice := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Slice
+	isPtrToStruct := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Struct
+	isSlice := pKind == reflect.Slice
+
+	taggedInterface, isTaggable := payloadValue.Interface().(Taggable)
+
+	switch {
+	case pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
+		ef.l.RLock()
+		classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
+		ef.l.RUnlock()
+		if err := ef.filterValue(ctx, payloadValue, classificationTag, opts...); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+	case isTaggable:
+		if err := ef.filterTaggable(ctx, taggedInterface, opts...); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+	case isSlice || isPtrToSlice:
+		switch {
+		// if the field is a slice of string or slice of []byte
+		case pType == reflect.TypeOf([]string{}) || pType == reflect.TypeOf([][]uint8{}):
+			ef.l.RLock()
+			classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
+			ef.l.RUnlock()
+			if err := ef.filterSlice(ctx, classificationTag, payloadValue, opts...); err != nil {
+				return nil, errors.Wrap(err, op)
+			}
+		// if the field is a slice of structs, recurse through them...
+		default:
+			if isPtrToSlice {
+				payloadValue = payloadValue.Elem()
+			}
+			for i := 0; i < payloadValue.Len(); i++ {
+				f := payloadValue.Index(i)
+				if f.Kind() == reflect.Ptr {
+					f = f.Elem()
+				}
+				if f.Kind() != reflect.Struct {
+					continue
+				}
+				if err := ef.filterField(ctx, f, opts...); err != nil {
+					return nil, errors.Wrap(err, op)
+				}
+			}
+		}
+	case pKind == reflect.Struct || isPtrToStruct:
+		if err := ef.filterField(ctx, payloadValue, opts...); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
 	}
 	return e, nil
 }
@@ -210,6 +261,33 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 			if err := ef.filterField(ctx, field, opt...); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// filterTaggable will filter data that implements the Taggable interface
+func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Option) error {
+	const op = "event.(EncryptFilter).filterTaggable"
+	if t == nil {
+		return errors.New(errors.InvalidParameter, op, "missing taggable interface")
+	}
+	tags, err := t.Tags()
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("unable to get tags from taggable interface"))
+	}
+	for _, pt := range tags {
+		value, err := pointerstructure.Get(t, pt.Pointer)
+		if err != nil {
+			return errors.Wrap(err, op, errors.WithMsg("unable to get value using tag pointer structure"))
+		}
+		rv := reflect.Indirect(reflect.ValueOf(value))
+		info := &tagInfo{
+			Classification: pt.Classification,
+			Operation:      pt.Filter,
+		}
+		if err = ef.filterValue(ctx, rv, info, withPointer(t, pt.Pointer)); err != nil {
+			return errors.Wrap(err, op)
 		}
 	}
 	return nil
