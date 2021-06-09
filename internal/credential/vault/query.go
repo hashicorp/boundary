@@ -133,6 +133,12 @@ update credential_vault_credential
    and status = 'active';
 `
 
+	revokedCredentialQuery = `
+update credential_vault_credential
+   set status = 'revoked'
+ where token_hmac = ?;
+`
+
 	credentialRenewalNextRunInQuery = `
 select
 	extract(epoch from (renewal_time - now()))::int as renewal_in

@@ -385,6 +385,12 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		return errors.New(errors.Unknown, op, "token revoked but failed to update repo")
 	}
 
+	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
+	_, err = r.writer.Exec(ctx, revokedCredentialQuery, []interface{}{token.TokenHmac})
+	if err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+	}
+
 	return nil
 }
 
