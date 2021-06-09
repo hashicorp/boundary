@@ -2,7 +2,7 @@ import s from './merch-desktop-client.module.css'
 import InlineSvg from '@hashicorp/react-inline-svg'
 
 export default function MerchDesktopDownload({ version, releases }) {
-  var { builds } = releases.versions[version]
+  const { builds } = releases.versions[version]
 
   // Calculate all Operating Systems that we have versions for
   // and place their respective builds under them
