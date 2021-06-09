@@ -16,9 +16,9 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		return base.WrapForHelpText([]string{
 			"Usage: boundary credential-libraries [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary credential store resources. Example:",
+			"  This command allows operations on Boundary credential library resources. Example:",
 			"",
-			"    Read a credential store:",
+			"    Read a credential library:",
 			"",
 			`      $ boundary credential-libraries read -id clvlt_1234567890`,
 			"",
@@ -28,11 +28,11 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary credential-libraries create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary credential store resources. Example:",
+			"  This command allows create operations on Boundary credential library resources. Example:",
 			"",
-			"    Create a vault-type credential store:",
+			"    Create a credential library:",
 			"",
-			`      $ boundary credential-libraries create -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
+			`      $ boundary credential-libraries create vault -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -40,9 +40,9 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary credential-libraries update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary credential store resources. Example:",
+			"  This command allows update operations on Boundary credential library resources. Example:",
 			"",
-			"    Update a vault-type credential store:",
+			"    Update a vault-type credential library:",
 			"",
 			`      $ boundary credential-libraries update vault -id clvlt_1234567890 -name devops -description "For DevOps usage"`,
 			"",
@@ -56,7 +56,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 
 func (c *Command) printListTable(items []*credentiallibraries.CredentialLibrary) string {
 	if len(items) == 0 {
-		return "No credential store found"
+		return "No credential library found"
 	}
 
 	var output []string
