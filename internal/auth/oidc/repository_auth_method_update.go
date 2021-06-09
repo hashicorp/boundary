@@ -21,6 +21,7 @@ const (
 	VersionField                           = "Version"
 	NameField                              = "Name"
 	DescriptionField                       = "Description"
+	FilterField                            = "Filter"
 	IssuerField                            = "Issuer"
 	ClientIdField                          = "ClientId"
 	ClientSecretField                      = "ClientSecret"
