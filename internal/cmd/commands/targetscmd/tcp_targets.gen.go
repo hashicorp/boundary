@@ -91,7 +91,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap, c.Func)
 
 	extraTcpFlagsFunc(c, set, f)
 

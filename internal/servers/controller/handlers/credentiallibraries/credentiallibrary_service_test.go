@@ -625,8 +625,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
-	secret := v.CreateToken(t)
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t)
 	_ = token
 
 	successCases := []struct {

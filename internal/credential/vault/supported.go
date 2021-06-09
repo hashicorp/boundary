@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const DefaultVaultVersion = "1.7.2"
+
 func init() {
 	newVaultServer = gotNewServer
 	mountDatabase = gotMountDatabase
@@ -73,7 +75,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
-		Tag:        "1.7.1",
+		Tag:        DefaultVaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
 
@@ -182,10 +184,12 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 		return nil
 	})
 	require.NoError(err)
+
+	server.addPolicy(t, "boundary-controller", requiredCapabilities)
 	return server
 }
 
-func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
+func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *TestDatabase {
 	require := require.New(t)
 	require.Nil(v.postgresContainer, "postgres container exists")
 	require.NotNil(v.network, "Vault server must be created with docker network")
@@ -209,7 +213,8 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 	})
 	v.postgresContainer = resource
 
-	dburl := fmt.Sprintf("postgres://postgres:password@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
+	dbUrlTemplate := fmt.Sprintf("postgres://%%s:%%s@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
+	dburl := fmt.Sprintf(dbUrlTemplate, "postgres", "password")
 	err = pool.Retry(func() error {
 		var err error
 		db, err := sql.Open("postgres", dburl)
@@ -224,7 +229,7 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 		createOpened = `create table boundary_opened ( name text primary key )`
 		createClosed = `create table boundary_closed ( name text primary key )`
 
-		createVaultAccount = `create role vault with login createrole password 'vault-password'`
+		createVaultAccount = `create role vault with superuser login createrole password 'vault-password'`
 		createOpenedRole   = `create role opened_role noinherit`
 		createClosedRole   = `create role closed_role noinherit`
 
@@ -272,7 +277,11 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 		mountPath = "database/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
-	v.addPolicy(t, "database", mountPath)
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "database", pc)
 
 	vaultContainer, ok := v.vaultContainer.(*dockertest.Resource)
 	require.True(ok)
@@ -294,8 +303,6 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) {
 	s, err := vc.Logical().Write(postgresConfPath, postgresConfOptions)
 	require.NoError(err)
 	require.NotEmpty(s)
-
-	// Create the role named `warehouse` that creates credentials with
 
 	const (
 		vaultOpenedCreationStatement = `
@@ -329,7 +336,9 @@ grant closed_role to "{{name}}";
 	_, err = vc.Logical().Write(closedRolePath, closedRoleOptions)
 	require.NoError(err)
 
-	// Add policies to vault?
+	return &TestDatabase{
+		URL: TestDatabaseURL(dbUrlTemplate),
+	}
 }
 
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {

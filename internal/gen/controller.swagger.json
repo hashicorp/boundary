@@ -36,6 +36,9 @@
       "name": "HostSetService"
     },
     {
+      "name": "ManagedGroupService"
+    },
+    {
       "name": "RoleService"
     },
     {
@@ -1661,6 +1664,147 @@
         ]
       }
     },
+    "/v1/managed-groups": {
+      "get": {
+        "summary": "Lists all ManagedGroups in a specific Auth Method.",
+        "operationId": "ManagedGroupService_ListManagedGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListManagedGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ManagedGroupService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single ManagedGroup in the provided Auth Method.",
+        "operationId": "ManagedGroupService_CreateManagedGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ManagedGroupService"
+        ]
+      }
+    },
+    "/v1/managed-groups/{id}": {
+      "get": {
+        "summary": "Gets a single ManagedGroup.",
+        "operationId": "ManagedGroupService_GetManagedGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ManagedGroupService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a ManagedGroup.",
+        "operationId": "ManagedGroupService_DeleteManagedGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteManagedGroupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ManagedGroupService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a ManagedGroup.",
+        "operationId": "ManagedGroupService_UpdateManagedGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ManagedGroupService"
+        ]
+      }
+    },
     "/v1/roles": {
       "get": {
         "summary": "Lists all Roles.",
@@ -2937,6 +3081,14 @@
           "type": "object",
           "description": "The attributes that are applicable for the specific Account type."
         },
+        "managed_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -3523,6 +3675,75 @@
         }
       },
       "title": "HostSet is a collection of Hosts created and managed by a Host Catalog"
+    },
+    "controller.api.resources.managedgroups.v1.ManagedGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the ManagedGroup.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for the ManagedGroup.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of this ManagedGroup."
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The ID of the Auth Method that is associated with this ManagedGroup."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific ManagedGroup type."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of the current set of members (accounts) that are associated with this ManagedGroup.",
+          "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      },
+      "title": "ManagedGroup contains all fields related to an ManagedGroup resource"
     },
     "controller.api.resources.roles.v1.Grant": {
       "type": "object",
@@ -4682,6 +4903,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateManagedGroupResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
+        }
+      }
+    },
     "controller.api.services.v1.CreateRoleResponse": {
       "type": "object",
       "properties": {
@@ -4766,6 +4998,9 @@
     "controller.api.services.v1.DeleteHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeleteManagedGroupResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteRoleResponse": {
       "type": "object"
     },
@@ -4847,6 +5082,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.GetManagedGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
         }
       }
     },
@@ -4985,6 +5228,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListManagedGroupsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
           }
         }
       }
@@ -5516,6 +5770,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateManagedGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
         }
       }
     },

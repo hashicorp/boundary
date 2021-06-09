@@ -157,15 +157,18 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			v := NewTestVaultServer(t)
 			require.NotNil(v)
-			secret := v.CreateToken(t, tt.opts...)
+			secret, token := v.CreateToken(t, tt.opts...)
 			require.NotNil(secret)
+			require.NotEmpty(token)
+			require.Equal(token, secret.Auth.ClientToken)
 			t.Log(testLogVaultSecret(t, secret))
 
 			// token sanity check
-			token, err := secret.TokenID()
+			t2, err := secret.TokenID()
 			require.NoError(err)
-			assert.NotEmpty(token)
-			require.Equal(token, secret.Auth.ClientToken)
+			assert.NotEmpty(t2)
+			require.Equal(token, t2)
+			require.Equal(t2, secret.Auth.ClientToken)
 
 			if tt.tokenChkFn != nil {
 				tt.tokenChkFn(t, secret)
@@ -269,8 +272,8 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
-		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
-		vc.SetToken(token.Auth.ClientToken)
+		_, token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "boundary")
 		certOptions := map[string]interface{}{
@@ -300,8 +303,8 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
-		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
-		vc.SetToken(token.Auth.ClientToken)
+		_, token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token)
 
 		certPath := path.Join("gary", "issue", "boundary")
 		certOptions := map[string]interface{}{
@@ -331,8 +334,8 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		afterCount := len(mounts)
 		assert.Greater(afterCount, beforeCount)
 
-		token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
-		vc.SetToken(token.Auth.ClientToken)
+		_, token := v.CreateToken(t, WithPolicies([]string{"default", "pki"}))
+		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "gary")
 		certOptions := map[string]interface{}{
@@ -349,29 +352,37 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 		t.Parallel()
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
-		require.NotNil(v)
-
 		vc := v.client(t).cl
+
 		mounts, err := vc.Sys().ListMounts()
 		assert.NoError(err)
 		require.NotEmpty(mounts)
 		beforeCount := len(mounts)
 
-		v.MountDatabase(t)
+		testDatabase := v.MountDatabase(t)
 
 		mounts, err = vc.Sys().ListMounts()
 		assert.NoError(err)
 		require.NotEmpty(mounts)
 		afterCount := len(mounts)
+
 		assert.Greater(afterCount, beforeCount)
 
-		token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
-		vc.SetToken(token.Auth.ClientToken)
+		_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
+		vc.SetToken(token)
 
-		dbCredPath := path.Join("database", "creds", "opened")
-		dbSecret, err := vc.Logical().Read(dbCredPath)
+		dbSecret, err := vc.Logical().Read(path.Join("database", "creds", "opened"))
 		assert.NoError(err)
 		require.NotEmpty(dbSecret)
+
+		// verify the database credentials work
+		assert.NoError(testDatabase.ValidateCredential(t, dbSecret))
+
+		// revoke the database credentials
+		assert.NoError(vc.Sys().Revoke(dbSecret.LeaseID))
+
+		// verify the database credentials no longer work
+		assert.Error(testDatabase.ValidateCredential(t, dbSecret))
 	})
 }
 

@@ -1,0 +1,69 @@
+---
+layout: docs
+page_title: Filtering - OIDC Managed Groups
+description: |-
+  How to configure filters for managed groups within the OIDC auth method.
+---
+
+This page describes how to use filters with OIDC managed groups. It assumes that
+the reader is familiar with the general [filter syntax][] as well as with
+[OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html).
+
+~> This feature was introduced in Boundary 0.3.0.
+
+[filter syntax]: /docs/concepts/filtering
+
+# OIDC Managed Groups Filtering
+
+Currently, two blocks of data are available for these filters:
+
+- `/token/<claims>` contains claims from the JWT returned by the OIDC Identity
+  Provider (IdP). For example, `/token/sub` is the `"sub"` claim from the token.
+
+- `/userinfo/<claims>` contains claims from the
+  [UserInfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
+  endpoint.
+
+## Examples
+
+As the content of these claims is specific to the given IdP (other than those
+claims mandated by the OIDC specification), no specific syntax can be conveyed,
+but some examples are given below using contrived sets of claims.
+
+Given the example claims below:
+
+Example JWT claims:
+
+```json
+{
+  "iss": "https://server.example.com",
+  "sub": "24400320",
+  "aud": "s6BhdRkqt3",
+  "nonce": "n-0S6_WzA2Mj",
+  "exp": 1311281970,
+  "iat": 1311280970,
+  "auth_time": 1311280969,
+  "custom": {
+    "department": "infosec"
+  }
+}
+```
+
+Example UserInfo claims:
+
+```json
+{
+  "roles": ["user", "operator"],
+  "sub": "alice@example.com",
+  "email": "rabbithole@example.com",
+  "name": "Alice of Wonderland"
+}
+```
+
+Following are some examples of using these values in filters:
+
+- `"operator" in "/userinfo/roles"` would match users (like Alice) that have
+  `"operator"` in the roles returned in the UserInfo reply.
+
+- `"/token/custom/department" == "infosec" or "/token/custom/department" == "ops"` would match users (like Alice) that are either in the `ops` or `infosec`
+  departments.

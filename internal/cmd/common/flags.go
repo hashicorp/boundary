@@ -7,8 +7,8 @@ import (
 	"github.com/posener/complete"
 )
 
-func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, flagNames []string) {
-	for _, name := range flagNames {
+func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, flagNames map[string][]string, command string) {
+	for _, name := range flagNames[command] {
 		switch name {
 		case "scope-id":
 			f.StringVar(&base.StringVar{
@@ -78,12 +78,18 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 				Target: &c.FlagRecursive,
 				Usage:  "If set, the list operation will be applied recursively into child scopes, if supported by the type.",
 			})
-		case "filter":
-			f.StringVar(&base.StringVar{
-				Name:   "filter",
-				Target: &c.FlagFilter,
-				Usage:  "If set, the list operation will be filtered before being returned. The filter operates against each item in the list. Using single quotes is recommended as filters contain double quotes. See https://www.boundaryproject.io/docs/concepts/filtering/resource-listing for details.",
-			})
+		}
+	}
+	if command == "list" {
+		for _, name := range flagNames[command] {
+			switch name {
+			case "filter":
+				f.StringVar(&base.StringVar{
+					Name:   "filter",
+					Target: &c.FlagFilter,
+					Usage:  "If set, the list operation will be filtered before being returned. The filter operates against each item in the list. Using single quotes is recommended as filters contain double quotes. See https://www.boundaryproject.io/docs/concepts/filtering/resource-listing for details.",
+				})
+			}
 		}
 	}
 }

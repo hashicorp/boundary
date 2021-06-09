@@ -1,8 +1,10 @@
 package perms
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -652,21 +654,43 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
-			name:      "bad account id template",
+			name:      "bad old account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
-			name:      "good account id template",
+			name:      "bad new account id template",
+			input:     `id={{superman}};actions=read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
+		},
+		{
+			name:      "good old account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: "apw_1234567890",
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id: "apw_1234567890",
+				id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+				actions: map[action.Type]bool{
+					action.Update: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:      "good new account id template",
+			input:     `id={{    account.id}};actions=update,read`,
+			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,

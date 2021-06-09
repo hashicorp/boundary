@@ -24,7 +24,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
+	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true), vault.WithTestVaultTLS(vault.TestClientTLS))
 	v.MountDatabase(t)
 	v.MountPKI(t)
 
@@ -41,10 +41,15 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 
-	secret := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
-	token := secret.Auth.ClientToken
+	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
 
-	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
+	var opts []vault.Option
+	opts = append(opts, vault.WithCACert(v.CaCert))
+	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
+	require.NoError(err)
+	opts = append(opts, vault.WithClientCert(clientCert))
+
+	credStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 	assert.NoError(err)
 	require.NotNil(credStoreIn)
 	origStore, err := repo.CreateCredentialStore(ctx, credStoreIn)
@@ -193,5 +198,123 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			assert.Len(got, len(tt.requests))
 			assert.NoError(err)
 		})
+	}
+}
+
+func TestRepository_Revoke(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	cl := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
+
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+
+	tar := target.TestTcpTarget(t, conn, prj.GetPublicId(), "test", target.WithHostSets([]string{hs.GetPublicId()}))
+	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
+
+	const (
+		sessionCount    = 4
+		credentialCount = 4
+	)
+
+	sessionIds := make([]string, sessionCount)
+	sessions := make(map[string][]*vault.Credential, sessionCount)
+	for i := 0; i < sessionCount; i++ {
+		at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+		uId := at.GetIamUserId()
+
+		sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ScopeId:     prj.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+		sessionIds[i] = sess.GetPublicId()
+		credentials := vault.TestCredentials(t, conn, wrapper, cl.GetPublicId(), sess.GetPublicId(), credentialCount)
+		assert.Len(credentials, credentialCount)
+		for _, credential := range credentials {
+			assert.NotEmpty(credential.GetPublicId())
+		}
+		sessions[sess.GetPublicId()] = credentials
+	}
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	ctx := context.Background()
+	assert.Error(repo.Revoke(ctx, ""))
+
+	type credCount struct {
+		active, revoke            int
+		revoked, expired, unknown int
+	}
+
+	assertCreds := func(want map[string]*credCount) {
+		const query = `
+  select session_id, status, count(public_id)
+    from credential_vault_credential
+group by session_id, status;
+`
+		got := make(map[string]*credCount, len(want))
+		for id := range want {
+			got[id] = new(credCount)
+		}
+
+		var (
+			id     string
+			status string
+			count  int
+		)
+		rows, err := rw.Query(ctx, query, nil)
+		require.NoError(err)
+		defer rows.Close()
+		for rows.Next() {
+			require.NoError(rows.Scan(&id, &status, &count))
+			switch status {
+			case "active":
+				got[id].active = count
+			case "revoke":
+				got[id].revoke = count
+			case "revoked":
+				got[id].revoked = count
+			case "expired":
+				got[id].expired = count
+			case "unknown":
+				got[id].unknown = count
+			default:
+				assert.Failf("Unexpected status: %s", status)
+			}
+		}
+		require.NoError(rows.Err())
+		assert.Equal(want, got)
+	}
+
+	cc := make(map[string]*credCount, sessionCount)
+	for _, id := range sessionIds {
+		cc[id] = new(credCount)
+		cc[id].active = credentialCount
+	}
+	for _, id := range sessionIds {
+		assert.NoError(repo.Revoke(ctx, id))
+		cc[id].revoke = cc[id].active
+		cc[id].active = 0
+		assertCreds(cc)
 	}
 }

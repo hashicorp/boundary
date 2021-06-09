@@ -1,14 +1,17 @@
 package vault
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
+	"github.com/mitchellh/mapstructure"
 )
 
 type clientConfig struct {
@@ -83,7 +86,7 @@ func newClient(c *clientConfig) (*client, error) {
 
 // ping calls the /sys/health Vault endpoint and returns an error if no
 // response is returned. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
 func (c *client) ping() error {
 	const op = "vault.(client).ping"
@@ -92,15 +95,17 @@ func (c *client) ping() error {
 	case err != nil:
 		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
-		return errors.New(errors.Unavailable, op, fmt.Sprintf("vault: %s", c.cl.Address()))
-	default:
-		return nil
+		return errors.New(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
+	case !h.Initialized || h.Sealed:
+		return errors.New(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
 	}
+
+	return nil
 }
 
 // renewToken calls the /auth/token/renew-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
 func (c *client) renewToken() (*vault.Secret, error) {
 	const op = "vault.(client).renewToken"
@@ -111,22 +116,21 @@ func (c *client) renewToken() (*vault.Secret, error) {
 	return t, nil
 }
 
-// revokeToken calls the /auth/token/revoke-self Vault endpoint. This endpoint
-// is accessible with the default policy in Vault 1.7.0. See
+// revokeToken calls the /auth/token/revoke-self Vault endpoint. This
+// endpoint is accessible with the default policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
 func (c *client) revokeToken() error {
 	const op = "vault.(client).revokeToken"
 	// The `token` parameter  s kept for backwards compatibility but is ignored, so use ""
-	err := c.cl.Auth().Token().RevokeSelf("")
-	if err != nil {
+	if err := c.cl.Auth().Token().RevokeSelf(""); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
 }
 
-// renewLease calls the /sys/leases/renew Vault endpoint and returns
-// the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// renewLease calls the /sys/leases/renew Vault endpoint and returns the
+// vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/leases#renew-lease.
 func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
 	const op = "vault.(client).renewLease"
@@ -137,9 +141,20 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 	return t, nil
 }
 
+// revokeLease calls the /sys/leases/revoke Vault endpoint. This endpoint
+// is NOT accessible with the default policy in Vault 1.7.2. See
+// https://www.vaultproject.io/api-docs/system/leases#revoke-lease.
+func (c *client) revokeLease(leaseId string) error {
+	const op = "vault.(client).revokeLease"
+	if err := c.cl.Sys().Revoke(leaseId); err != nil {
+		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+	}
+	return nil
+}
+
 // lookupToken calls the /auth/token/lookup-self Vault endpoint and returns
 // the vault.Secret response. This endpoint is accessible with the default
-// policy in Vault 1.7.0. See
+// policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
 func (c *client) lookupToken() (*vault.Secret, error) {
 	const op = "vault.(client).lookupToken"
@@ -180,4 +195,47 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
+}
+
+// capabilities calls the /sys/capabilities-self Vault endpoint and returns
+// the vault.Secret response. This endpoint is accessible with the default
+// policy in Vault 1.7.2. See
+// https://www.vaultproject.io/api-docs/system/capabilities-self.
+func (c *client) capabilities(paths []string) (pathCapabilities, error) {
+	const op = "vault.(client).capabilities"
+	if len(paths) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "empty paths")
+	}
+	body := map[string]string{
+		"paths": strings.Join(paths, ","),
+	}
+	reqPath := "/v1/sys/capabilities-self"
+
+	r := c.cl.NewRequest("POST", reqPath)
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+	resp, err := c.cl.RawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	secret, err := vault.ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Data == nil {
+		return nil, errors.New(errors.Unknown, op, "data from Vault is empty")
+	}
+
+	var res map[string][]string
+	if err := mapstructure.Decode(secret.Data, &res); err != nil {
+		return nil, err
+	}
+
+	return newPathCapabilities(res), nil
 }

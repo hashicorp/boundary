@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -21,6 +22,7 @@ func fieldError(field, details string) string {
 }
 
 func TestValidateCreateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		item        *pb.Account
@@ -132,6 +134,7 @@ func TestValidateCreateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			req := &pbs.CreateAccountRequest{Item: tc.item}
 			err := validateCreateRequest(req)
 			if tc.errContains == "" {
@@ -145,15 +148,26 @@ func TestValidateCreateRequest(t *testing.T) {
 }
 
 func TestValidateUpdateRequest(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		req         *pbs.UpdateAccountRequest
 		errContains string
 	}{
 		{
-			name: "password to oidc change type",
+			name: "password to oidc change type, old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.AccountPrefix + "_1234567890",
+				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
+				Item: &pb.Account{
+					Type: auth.OidcSubtype.String(),
+				},
+			},
+			errContains: fieldError(typeField, "Cannot modify the resource type."),
+		},
+		{
+			name: "password to oidc change type, new prefix",
+			req: &pbs.UpdateAccountRequest{
+				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: auth.OidcSubtype.String(),
 				},
@@ -171,9 +185,21 @@ func TestValidateUpdateRequest(t *testing.T) {
 			errContains: fieldError(typeField, "Cannot modify the resource type."),
 		},
 		{
-			name: "password bad attributes",
+			name: "password bad attributes old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: password.AccountPrefix + "_1234567890",
+				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
+				Item: &pb.Account{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"test": structpb.NewStringValue("something"),
+					}},
+				},
+			},
+			errContains: fieldError(attributesField, "Attribute fields do not match the expected format."),
+		},
+		{
+			name: "password bad attributes new prefix",
+			req: &pbs.UpdateAccountRequest{
+				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"test": structpb.NewStringValue("something"),
@@ -207,6 +233,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateUpdateRequest(tc.req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
@@ -218,6 +245,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 
 	t.Run("oidc read only fields", func(t *testing.T) {
+		t.Parallel()
 		readOnlyFields := []string{
 			emailClaimField,
 			nameClaimField,
@@ -235,6 +263,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	})
 
 	t.Run("oidc write only at create fields", func(t *testing.T) {
+		t.Parallel()
 		readOnlyFields := []string{
 			issuerField,
 			subjectField,

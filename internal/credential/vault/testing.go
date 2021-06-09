@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -117,7 +118,7 @@ func TestCredentialLibraries(t *testing.T, conn *gorm.DB, _ wrapping.Wrapper, st
 
 // TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
-// during the creation of the credentials , the test will fail.
+// during the creation of the credentials, the test will fail.
 func TestCredentials(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
@@ -444,7 +445,7 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		orphan:        true,
 		periodic:      true,
 		renewable:     true,
-		policies:      []string{"default"},
+		policies:      []string{"default", "boundary-controller"},
 		mountPath:     "",
 		roleName:      "boundary",
 		vaultTLS:      TestNoTLS,
@@ -542,10 +543,15 @@ func TestRenewableToken(b bool) TestOption {
 
 func (v *TestVaultServer) client(t *testing.T) *client {
 	t.Helper()
+	return v.clientUsingToken(t, v.RootToken)
+}
+
+func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
+	t.Helper()
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
-		Token:      v.RootToken,
+		Token:      token,
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
@@ -559,9 +565,10 @@ func (v *TestVaultServer) client(t *testing.T) *client {
 }
 
 // CreateToken creates a new Vault token by calling /auth/token/create on v
-// using v.RootToken. See
+// using v.RootToken. It returns the vault secret containing the token and
+// the token itself. See
 // https://www.vaultproject.io/api-docs/auth/token#create-token.
-func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Secret {
+func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.Secret, string) {
 	t.Helper()
 	require := require.New(t)
 	opts := getTestOpts(t, opt...)
@@ -581,11 +588,14 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) *vault.Se
 		Policies:    opts.policies,
 	}
 	vc := v.client(t).cl
-	token, err := vc.Auth().Token().Create(req)
+	secret, err := vc.Auth().Token().Create(req)
+	require.NoError(err)
+	require.NotNil(secret)
+	token, err := secret.TokenID()
 	require.NoError(err)
 	require.NotNil(token)
 
-	return token
+	return secret, token
 }
 
 // LookupToken calls /auth/token/lookup on v for token. See
@@ -614,15 +624,11 @@ func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secre
 	return secret
 }
 
-func (v *TestVaultServer) addPolicy(t *testing.T, name string, mountPath string) {
-	const template = `
-		path "%s*" {
-			capabilities = ["create", "read", "update", "delete", "list"]
-		}`
-
+func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabilities) {
 	t.Helper()
 	require := require.New(t)
-	policy := fmt.Sprintf(template, mountPath)
+	policy := pc.vaultPolicy()
+	require.NotEmpty(policy)
 	vc := v.client(t).cl
 	require.NoError(vc.Sys().PutPolicy(name, policy))
 }
@@ -669,7 +675,11 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 		mountPath = "pki/"
 	}
 	require.NoError(vc.Sys().Mount(mountPath, mountInput))
-	v.addPolicy(t, "pki", mountPath)
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "pki", pc)
 
 	// Generate a root CA
 	caPath := path.Join(mountPath, "root/generate/internal")
@@ -737,7 +747,50 @@ func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 //   path "mountPath/*" {
 //     capabilities = ["create", "read", "update", "delete", "list"]
 //   }
-func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) {
+//
+// MountDatabase returns a TestDatabase for testing credentials from the
+// mount.
+func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) *TestDatabase {
 	t.Helper()
-	mountDatabase(t, v, opt...)
+	return mountDatabase(t, v, opt...)
+}
+
+// TestDatabaseURL is a connection string with place holders for username
+// and password to the database started by MountDatabase.
+type TestDatabaseURL string
+
+// Encode encodes the username and password credentials from s into u.
+func (u TestDatabaseURL) Encode(t *testing.T, s *vault.Secret) string {
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(s, "vault.Secret")
+	username, ok := s.Data["username"].(string)
+	require.True(ok, "username")
+	password, ok := s.Data["password"].(string)
+	require.True(ok, "password")
+	return fmt.Sprintf(string(u), username, password)
+}
+
+// TestDatabase is returned from MountDatabase and can be used to test
+// database credentials returned by Vault for that mount.
+type TestDatabase struct {
+	URL TestDatabaseURL
+}
+
+// ValidateCredential tests the credentials in s against d. An error is
+// returned if the credentials are not valid.
+func (d *TestDatabase) ValidateCredential(t *testing.T, s *vault.Secret) error {
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(s)
+	dburl := d.URL.Encode(t, s)
+	db, err := sql.Open("postgres", dburl)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		return err
+	}
+	return nil
 }

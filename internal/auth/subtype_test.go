@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +31,13 @@ func TestSubtype(t *testing.T) {
 		},
 		{
 			subtype:     PasswordSubtype,
-			id:          password.AccountPrefix + "1234567890",
+			id:          intglobals.OldPasswordAccountPrefix + "1234567890",
+			wantString:  "password",
+			wantSubtype: PasswordSubtype,
+		},
+		{
+			subtype:     PasswordSubtype,
+			id:          intglobals.NewPasswordAccountPrefix + "1234567890",
 			wantString:  "password",
 			wantSubtype: PasswordSubtype,
 		},
