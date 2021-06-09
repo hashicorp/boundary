@@ -84,11 +84,11 @@ func TestCredentialLibraryASD(t *testing.T) {
 	require.NotNil(cs)
 
 	lClient := credentiallibraries.NewClient(client)
-	r1, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryVaultPath("something1"))
+	r1, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something1"))
 	require.NoError(err)
 	require.NotNil(r1)
 
-	r2, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryVaultPath("something2"))
+	r2, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something2"))
 	require.NoError(err)
 	require.NotNil(r1)
 
