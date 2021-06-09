@@ -218,6 +218,14 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 // filterSlice will filter a slice reflect.Value
 func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterSlice"
+	if classificationTag == nil {
+		return errors.New(errors.InvalidParameter, op, "missing classification tag")
+	}
+
+	ftype := slice.Type()
+	if ftype != reflect.TypeOf([]string{}) && ftype != reflect.TypeOf([][]uint8{}) {
+		return errors.New(errors.InvalidParameter, op, "slice parameter is not a []string or [][]byte")
+	}
 	if classificationTag.Classification == PublicClassification {
 		return nil
 	}
@@ -239,6 +247,9 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 // filterValue will filter a value based on it's DataClassification
 func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterValue"
+	if classificationTag == nil {
+		return errors.New(errors.InvalidParameter, op, "missing classification tag")
+	}
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
@@ -291,8 +302,11 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	return nil
 }
 
-func (ef *EncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Option) (string, error) {
+func (ef *EncryptFilter) encrypt(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
+	if data == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing value")
+	}
 	ef.l.Lock()
 	defer ef.l.Unlock()
 	opts := getOpts(opt...)
@@ -306,7 +320,7 @@ func (ef *EncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Optio
 	default:
 		w = ef.Wrapper
 	}
-	blobInfo, err := w.Encrypt(ctx, value, nil)
+	blobInfo, err := w.Encrypt(ctx, data, nil)
 	if err != nil {
 		return "", errors.Wrap(err, op)
 	}
@@ -319,6 +333,9 @@ func (ef *EncryptFilter) encrypt(ctx context.Context, value []byte, opt ...Optio
 
 func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).hmacField"
+	if data == nil {
+		return "", errors.New(errors.InvalidParameter, op, "missing data")
+	}
 	ef.l.Lock()
 	defer ef.l.Unlock()
 	opts := getOpts(opt...)
