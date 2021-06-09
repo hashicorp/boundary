@@ -5,48 +5,53 @@
   justify-content: center;
   min-height: 193px;
   padding: 40px 50px;
-}
 
-.wrapper {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-content: center;
-  text-align: center;
-}
+  & .wrapper {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    text-align: center;
 
-.title {
-  font-family: var(--font-display);
-  font-size: 12px;
-  line-height: 18px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--gray-4);
-  font-weight: bold;
-}
-
-.platformVersion {
-  display: flex;
-  align-content: center;
-  justify-content: center;
-
-  & .logo {
-    margin-right: 20px;
+    & .title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      line-height: 18px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-4);
+      font-weight: bold;
+    }
   }
 
-  & .version {
-    align-self: center;
-  }
-}
+  & .downloadsList {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin-top: 22px;
+    margin-bottom: 0;
+    padding: 0;
 
-.downloadLinks {
-  color: var(--brand);
+    & > li {
+      display: flex;
+      align-items: center;
+      &:not(:last-of-type) {
+        margin-bottom: 12px;
+      }
 
-  & a {
-    margin-right: 20px;
+      & svg {
+        max-height: 40px;
+      }
 
-    &:last-child {
-      margin-right: 0;
+      & .versionsList {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        & > .versionDownload {
+          margin-left: 10px;
+        }
+      }
     }
   }
 }
