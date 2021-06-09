@@ -91,7 +91,7 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "password-type account", flagsPasswordMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "password-type account", flagsPasswordMap, c.Func)
 
 	extraPasswordFlagsFunc(c, set, f)
 

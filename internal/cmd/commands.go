@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hostsetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/logout"
+	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
@@ -592,6 +593,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"logout": func() (cli.Command, error) {
 			return &logout.LogoutCommand{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"managed-groups": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"managed-groups read": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"managed-groups delete": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"managed-groups list": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"managed-groups create": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"managed-groups create oidc": func() (cli.Command, error) {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"managed-groups update": func() (cli.Command, error) {
+			return &managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"managed-groups update oidc": func() (cli.Command, error) {
+			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 

@@ -97,7 +97,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			return nil, errors.Wrap(err, op)
 		}
 
-		creds = append(creds, &privateCredential{
+		creds = append(creds, &actualCredential{
 			id:         cred.PublicId,
 			sessionId:  cred.SessionId,
 			lib:        lib,
@@ -107,4 +107,24 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	}
 
 	return creds, nil
+}
+
+var _ credential.Revoker = (*Repository)(nil)
+
+// Revoke revokes all dynamic credentials issued from Vault for sessionId.
+func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
+	const op = "vault.(Repository).Revoke"
+	if sessionId == "" {
+		return errors.New(errors.InvalidParameter, op, "no session id")
+	}
+
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if _, err := w.Exec(ctx, revokeCredentialsQuery, []interface{}{sessionId}); err != nil {
+				return errors.Wrap(err, op)
+			}
+			return nil
+		},
+	)
+	return err
 }

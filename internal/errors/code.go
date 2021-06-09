@@ -81,6 +81,11 @@ const (
 	MaxRetries           Code = 1103 // MaxRetries represent that a db Tx hit max retires allowed
 	Exception            Code = 1104 // Exception represent that an underlying db exception was raised
 	VersionMismatch      Code = 1105 // VersionMismatch represents the update version and the db version for an entry do not match.
+	// GracefullyAborted means we intended to abort a transaction but the
+	// enclosing function should not treat it as an error; we aborted for
+	// reasons related to the state of the DDL and/or inputs (such as we're
+	// already in the right state and don't want to end up writing oplogs).
+	GracefullyAborted Code = 1106
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code
@@ -90,10 +95,11 @@ const (
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
 
 	// Vault specific errors
-	VaultTokenNotOrphan    Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
-	VaultTokenNotPeriodic  Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
-	VaultTokenNotRenewable Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
-	VaultCredentialRequest Code = 3013 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
+	VaultTokenNotOrphan           Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
+	VaultTokenNotPeriodic         Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
+	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
+	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
+	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint

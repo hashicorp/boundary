@@ -57,6 +57,11 @@ All resources have an ID which is unique within Boundary.
   which are considered equivalent
   for the purposes of access control.
 
+- **[Managed Group][]** :
+  A managed group is a resource that groups [accounts][] based on criteria
+  established by a third-party service backing the [authentication method][]. It
+  can be used as a principal in [roles][].
+
 - **[Role][]** :
   A role is a resource
   that contains a collection of [permissions][]
@@ -104,6 +109,7 @@ That page can help you understand the structure of resources within Boundary.
 [host sets]: /docs/concepts/domain-model/host-sets
 [host]: /docs/concepts/domain-model/hosts
 [hosts]: /docs/concepts/domain-model/hosts
+[managed group]: /docs/concepts/domain-model/managed-groups
 [role]: /docs/concepts/domain-model/roles
 [roles]: /docs/concepts/domain-model/roles
 [scope]: /docs/concepts/domain-model/scopes

@@ -71,7 +71,7 @@ func TestCredentialLibraryASD(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
-	vaultTok := vaultServ.CreateToken(t).Auth.ClientToken
+	_, vaultTok := vaultServ.CreateToken(t)
 
 	token := tc.Token()
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))

@@ -103,7 +103,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "host set", flagsMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "host set", flagsMap, c.Func)
 
 	extraFlagsFunc(c, set, f)
 

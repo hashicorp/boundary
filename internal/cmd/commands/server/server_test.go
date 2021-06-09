@@ -36,8 +36,7 @@ func testServerCommand(t *testing.T, controllerKey string) *Command {
 	require.NoError(err)
 	require.NoError(cmd.SetupKMSes(cmd.UI, parsedKmsConfig))
 
-	opts := base.WithContainerImage("postgres")
-	err = cmd.CreateDevDatabase(cmd.Context, opts)
+	err = cmd.CreateDevDatabase(cmd.Context, base.WithContainerImage("postgres"), base.WithSkipOidcAuthMethodCreation())
 	if err != nil {
 		if cmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(cmd.DevDatabaseCleanupFunc())

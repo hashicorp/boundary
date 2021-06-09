@@ -494,20 +494,20 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	}
 
 	var parsedGrants []perms.Grant
-	var grantPairs []perms.GrantPair
+	var grantTuples []perms.GrantTuple
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantPairs, err = iamRepo.GrantsForUser(v.ctx, userId)
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
 		retErr = errors.Wrap(err, op)
 		return
 	}
-	parsedGrants = make([]perms.Grant, 0, len(grantPairs))
+	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
 	// Note: Below, we always skip validation so that we don't error on formats
 	// that we've since restricted, e.g. "id=foo;actions=create,read". These
 	// will simply not have an effect.
-	for _, pair := range grantPairs {
+	for _, pair := range grantTuples {
 		parsed, err := perms.Parse(
 			pair.ScopeId,
 			pair.Grant,
