@@ -6,10 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* scheduler: Fixes bug that failed to run jobs due to sql check constraint on the length 
-  of the controller name: `job.(Repository).RunJobs: wt_private_id_check constraint failed`
+* scheduler: removes a Postgres check constraint, on the length of the controller name, 
+  causing an error when the scheduler attempts to run jobs
   ([issue](https://github.com/hashicorp/boundary/issues/1309),
-  [PR](https://github.com/hashicorp/boundary/pull/1310))
+  [PR](https://github.com/hashicorp/boundary/pull/1310)).
 
 ## 0.3.0 (2021/06/08)
 
