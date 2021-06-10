@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -361,8 +362,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		var err error
-		c.DatabaseUrl, err = config.ParseAddress(c.Config.Controller.Database.Url)
-		if err != nil && err != config.ErrNotAUrl {
+		c.DatabaseUrl, err = configutil.ParsePath(c.Config.Controller.Database.Url)
+		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}
