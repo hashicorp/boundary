@@ -27,6 +27,17 @@ const createJobQuery = `
 	returning *;
 `
 
+const setNextScheduledRunIfSoonerQuery = `
+	update
+	  job
+	set
+	  next_scheduled_run = least(wt_add_seconds_to_now(?), next_scheduled_run)
+	where
+	  plugin_id = ?
+	  and name = ?
+	returning *;
+`
+
 const setNextScheduledRunQuery = `
 	update
 	  job

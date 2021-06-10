@@ -63,7 +63,7 @@ func TestJobWorkflow(t *testing.T) {
 	assert.Nil(newRuns)
 
 	// Update job next run to time in past
-	job, err = repo.UpdateJobNextRun(context.Background(), job.Name, 0)
+	job, err = repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, 0)
 	require.NoError(err)
 
 	// Now that next scheduled time is in past, a request for work should return a Run
