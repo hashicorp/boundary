@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
@@ -148,6 +149,7 @@ func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 }
 
 func (cs *CredentialStore) client() (*client, error) {
+	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
 		Token:         string(cs.inputToken),
@@ -161,5 +163,9 @@ func (cs *CredentialStore) client() (*client, error) {
 		clientConfig.ClientKey = cs.clientCert.GetCertificateKey()
 	}
 
-	return newClient(clientConfig)
+	c, err := newClient(clientConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return c, nil
 }
