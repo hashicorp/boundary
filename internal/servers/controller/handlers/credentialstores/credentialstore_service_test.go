@@ -418,9 +418,9 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:           v.Addr,
-						Token:        token,
-						CaCert:       wrapperspb.String(string(v.CaCert)),
+						Address:           wrapperspb.String(v.Addr),
+						Token:             wrapperspb.String(token),
+						CaCert:            wrapperspb.String(string(v.CaCert)),
 						ClientCertificate: wrapperspb.String(string(v.ClientCert) + string(v.ClientKey)),
 					})
 					require.NoError(t, err)
@@ -437,9 +437,9 @@ func TestCreate(t *testing.T) {
 					Type:    credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							CaCert:              wrapperspb.String(string(v.CaCert)),
-							Address:                  v.Addr,
-							TokenHmac:           "<hmac>",
+							CaCert:                   wrapperspb.String(string(v.CaCert)),
+							Address:                  wrapperspb.String(v.Addr),
+							TokenHmac:                "<hmac>",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						})
@@ -791,7 +791,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.CredentialStore{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Token:           wrapperspb.String(token1b),
+							Token: wrapperspb.String(token1b),
 						})
 						require.NoError(t, err)
 						return attrs
@@ -965,8 +965,8 @@ func TestUpdate(t *testing.T) {
 	defer cleanup()
 
 	roCases := []struct {
-		path string
-		item *pb.CredentialStore
+		path    string
+		item    *pb.CredentialStore
 		matcher func(t *testing.T, e error) // When not set defaults to checking against InvalidArgument Error
 	}{
 		{
@@ -996,14 +996,15 @@ func TestUpdate(t *testing.T) {
 			item: &pb.CredentialStore{
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Token: token2,
+						Token: wrapperspb.String(token2),
 					})
 					require.NoError(t, err)
 					return attrs
-				}()},
-				matcher: func(t *testing.T, err error) {
-					assert.Containsf(t, err.Error(), "cannot lookup token for updated store", "got error %v, wanted 'unable to lookup token'", err)
-				},
+				}(),
+			},
+			matcher: func(t *testing.T, err error) {
+				assert.Containsf(t, err.Error(), "cannot lookup token for updated store", "got error %v, wanted 'unable to lookup token'", err)
+			},
 		},
 	}
 	for _, tc := range roCases {

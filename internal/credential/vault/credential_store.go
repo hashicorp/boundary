@@ -1,6 +1,8 @@
 package vault
 
 import (
+	"strings"
+
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -61,6 +63,53 @@ func (cs *CredentialStore) clone() *CredentialStore {
 		clientCert:      clientCertCopy,
 		CredentialStore: cp.(*store.CredentialStore),
 	}
+}
+
+// applyUpdate returns a new CredentialStore with the new values applied to
+// this based on the passed in fieldMaskPaths.
+func (cs *CredentialStore) applyUpdate(new *CredentialStore, fieldMaskPaths []string) *CredentialStore {
+	cp := cs.clone()
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold(nameField, f):
+			cp.Name = new.Name
+		case strings.EqualFold(descriptionField, f):
+			cp.Description = new.Description
+		case strings.EqualFold(certificateField, f):
+			if new.clientCert == nil {
+				cp.clientCert = nil
+				continue
+			}
+			if cp.clientCert == nil {
+				cp.clientCert = allocClientCertificate()
+			}
+			cp.clientCert.Certificate = new.clientCert.GetCertificate()
+			cp.clientCert.StoreId = cs.GetPublicId()
+		case strings.EqualFold(certificateKeyField, f):
+			if new.clientCert == nil {
+				cp.clientCert = nil
+				continue
+			}
+			if cp.clientCert == nil {
+				cp.clientCert = allocClientCertificate()
+			}
+			cp.clientCert.CertificateKey = new.clientCert.GetCertificateKey()
+			cp.clientCert.StoreId = cs.GetPublicId()
+		case strings.EqualFold(vaultAddressField, f):
+			cp.VaultAddress = new.VaultAddress
+		case strings.EqualFold(namespaceField, f):
+			cp.Namespace = new.Namespace
+		case strings.EqualFold(caCertField, f):
+			cp.CaCert = new.CaCert
+		case strings.EqualFold(tlsServerNameField, f):
+			cp.TlsServerName = new.TlsServerName
+		case strings.EqualFold(tlsSkipVerifyField, f):
+			cp.TlsSkipVerify = new.TlsSkipVerify
+		case strings.EqualFold(tokenField, f):
+			cp.inputToken = new.inputToken
+		}
+	}
+	return cp
 }
 
 // TableName returns the table name.

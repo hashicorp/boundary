@@ -487,50 +487,6 @@ func (ps *privateStore) TableName() string {
 	return "credential_vault_store_private"
 }
 
-// applyUpdate takes the new and applies it to the orig using the field masks
-func applyUpdate(new, orig *CredentialStore, fieldMaskPaths []string) *CredentialStore {
-	cp := orig.clone()
-	for _, f := range fieldMaskPaths {
-		switch {
-		case strings.EqualFold(nameField, f):
-			cp.Name = new.Name
-		case strings.EqualFold(descriptionField, f):
-			cp.Description = new.Description
-		case strings.EqualFold(certificateField, f):
-			if new.clientCert == nil {
-				cp.clientCert = nil
-				continue
-			}
-			if cp.clientCert == nil {
-				cp.clientCert = allocClientCertificate()
-			}
-			cp.clientCert.Certificate = new.clientCert.GetCertificate()
-		case strings.EqualFold(certificateKeyField, f):
-			if new.clientCert == nil {
-				cp.clientCert = nil
-				continue
-			}
-			if cp.clientCert == nil {
-				cp.clientCert = allocClientCertificate()
-			}
-			cp.clientCert.CertificateKey = new.clientCert.GetCertificateKey()
-		case strings.EqualFold(vaultAddressField, f):
-			cp.VaultAddress = new.VaultAddress
-		case strings.EqualFold(namespaceField, f):
-			cp.Namespace = new.Namespace
-		case strings.EqualFold(caCertField, f):
-			cp.CaCert = new.CaCert
-		case strings.EqualFold(tlsServerNameField, f):
-			cp.TlsServerName = new.TlsServerName
-		case strings.EqualFold(tlsSkipVerifyField, f):
-			cp.TlsSkipVerify = new.TlsSkipVerify
-		case strings.EqualFold(tokenField, f):
-			cp.inputToken = new.inputToken
-		}
-	}
-	return cp
-}
-
 // UpdateCredentialStore updates the repository entry for cs.PublicId with
 // the values in cs for the fields listed in fieldMaskPaths. It returns a
 // new CredentialStore containing the updated values and a count of the
@@ -655,15 +611,55 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	if ps == nil {
 		return nil, db.NoRowsAffected, errors.New(errors.RecordNotFound, op, fmt.Sprintf("credential store %s", cs.PublicId))
 	}
-	updatedStore := ps.toCredentialStore()
-	updatedStore.inputToken = ps.Token
+	origStore := ps.toCredentialStore()
+	origStore.inputToken = ps.Token
 	if len(ps.ClientCert) > 0 {
-		updatedStore.clientCert, err = NewClientCertificate(ps.ClientCert, ps.ClientKey)
+		origStore.clientCert, err = NewClientCertificate(ps.ClientCert, ps.ClientKey)
 	}
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("can't recreate client certificate for vault client creation"))
 	}
-	updatedStore = applyUpdate(cs, updatedStore, fieldMaskPaths)
+	updatedStore := origStore.applyUpdate(cs, fieldMaskPaths)
+
+	if len(certDbMask) > 0 && updatedStore.clientCert != nil {
+		if err := updatedStore.clientCert.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+	}
+
+	var token *Token
+	if updateToken {
+		client, err := updatedStore.client()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
+		}
+		tokenLookup, err := client.lookupToken()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
+		}
+		if err := validateTokenLookup(op, tokenLookup); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+		renewedToken, err := client.renewToken()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
+		}
+		tokenExpires, err := renewedToken.TokenTTL()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
+		}
+		accessor, err := renewedToken.TokenAccessor()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
+		}
+		if token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+		// encrypt token
+		if err := token.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
+	}
 
 	var rowsUpdated int
 	var returnedCredentialStore *CredentialStore
@@ -728,8 +724,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				if updatedStore.clientCert == nil {
 					return errors.New(errors.InvalidParameter, op, "updated cert")
 				}
-				updatedStore.clientCert.StoreId = ps.StoreId
-				updatedStore.clientCert.encrypt(ctx, databaseWrapper)
 				query, values := updatedStore.clientCert.insertQuery()
 				rows, err := w.Exec(ctx, query, values)
 				if err != nil {
@@ -740,39 +734,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				}
 			}
 
-			var token *Token
 			if updateToken {
-				client, err := updatedStore.client()
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
-				}
-				tokenLookup, err := client.lookupToken()
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
-				}
-				if err := validateTokenLookup(op, tokenLookup); err != nil {
-					return err
-				}
-				renewedToken, err := client.renewToken()
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
-				}
-				tokenExpires, err := renewedToken.TokenTTL()
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get vault token expiration"))
-				}
-				accessor, err := renewedToken.TokenAccessor()
-				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get vault token accessor"))
-				}
-				token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires)
-				if err != nil {
-					return err
-				}
-				// encrypt token
-				if err := token.encrypt(ctx, databaseWrapper); err != nil {
-					return errors.Wrap(err, op)
-				}
 				query, values := token.insertQuery()
 				rows, err := w.Exec(ctx, query, values)
 				if err != nil {
@@ -796,13 +758,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
 			}
-
-			if updateToken && token != nil {
-				// Best effort update next run time of token renewal job, but an error should not
-				// cause update to fail.
-				// TODO (lcr 05/2021): log error once repo has logger
-				_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
-			}
 			return nil
 		},
 	)
@@ -813,6 +768,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				fmt.Sprintf("name %s already exists: %s", cs.Name, cs.PublicId))
 		}
 		return nil, db.NoRowsAffected, err
+	}
+
+	if updateToken && token != nil {
+		// Best effort update next run time of token renewal job, but an error should not
+		// cause update to fail.
+		// TODO (lcr 05/2021): log error once repo has logger
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRenewalJobName, token.renewalIn())
 	}
 
 	return returnedCredentialStore, rowsUpdated, nil
