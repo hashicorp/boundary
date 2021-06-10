@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 9004,
+		binarySchemaVersion: 10001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4991,6 +4991,10 @@ create trigger
 	kms_version_column
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
+`),
+			10001: []byte(`
+alter table job_run
+    alter column server_id type text;
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
