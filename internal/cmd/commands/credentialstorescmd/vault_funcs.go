@@ -77,7 +77,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   tlsServerNameFlagName,
 				Target: &c.flagTlsServerName,
-				Usage:  `The TLS server name used when connecting to vault.`,
+				Usage:  `Name to use as the SNI host when connecting via TLS.`,
 			})
 		case tlsSkipVerifyFlagName:
 			f.BoolVar(&base.BoolVar{
