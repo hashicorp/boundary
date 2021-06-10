@@ -74,7 +74,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
-		Token:         string(cs.inputToken),
+		Token:         cs.inputToken,
 		CaCert:        cs.CaCert,
 		TlsServerName: cs.TlsServerName,
 		TlsSkipVerify: cs.TlsSkipVerify,
@@ -368,7 +368,7 @@ type privateStore struct {
 	TlsSkipVerify        bool
 	StoreId              string
 	TokenHmac            []byte
-	Token                []byte
+	Token                TokenSecret
 	CtToken              []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
@@ -472,7 +472,7 @@ func (ps *privateStore) client() (*client, error) {
 	const op = "vault.(privateStore).client"
 	clientConfig := &clientConfig{
 		Addr:          ps.VaultAddress,
-		Token:         string(ps.Token),
+		Token:         ps.Token,
 		CaCert:        ps.CaCert,
 		TlsServerName: ps.TlsServerName,
 		TlsSkipVerify: ps.TlsSkipVerify,
@@ -622,7 +622,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op)
 		}
-		client.swapToken(string(cs.inputToken))
+		client.swapToken(cs.inputToken)
 
 		tokenLookup, err := client.lookupToken()
 		if err != nil {

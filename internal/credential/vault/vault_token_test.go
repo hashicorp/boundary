@@ -28,9 +28,10 @@ func TestToken_New(t *testing.T) {
 	cs := TestCredentialStores(t, conn, wrapper, prj.PublicId, 1)[0]
 
 	type args struct {
-		storeId         string
-		token, accessor []byte
-		expiration      time.Duration
+		storeId    string
+		token      TokenSecret
+		accessor   []byte
+		expiration time.Duration
 	}
 
 	hmac := func(t, a []byte) []byte {
@@ -50,7 +51,7 @@ func TestToken_New(t *testing.T) {
 			name: "blank-store-id",
 			args: args{
 				storeId:    "",
-				token:      []byte("token"),
+				token:      TokenSecret("token"),
 				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},
@@ -71,7 +72,7 @@ func TestToken_New(t *testing.T) {
 			name: "missing-accessor",
 			args: args{
 				storeId:    cs.PublicId,
-				token:      []byte("token"),
+				token:      TokenSecret("token"),
 				expiration: 5 * time.Minute,
 			},
 			want:    nil,
@@ -81,7 +82,7 @@ func TestToken_New(t *testing.T) {
 			name: "missing-expiration",
 			args: args{
 				storeId:  cs.PublicId,
-				token:    []byte("token"),
+				token:    TokenSecret("token"),
 				accessor: []byte("accessor"),
 			},
 			want:    nil,
@@ -91,7 +92,7 @@ func TestToken_New(t *testing.T) {
 			name: "valid",
 			args: args{
 				storeId:    cs.PublicId,
-				token:      []byte("token"),
+				token:      TokenSecret("token"),
 				accessor:   []byte("accessor"),
 				expiration: 5 * time.Minute,
 			},

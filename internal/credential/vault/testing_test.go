@@ -197,7 +197,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:  v.Addr,
-			Token: v.RootToken,
+			Token: TokenSecret(v.RootToken),
 		}
 
 		client, err := newClient(conf)
@@ -216,7 +216,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:   v.Addr,
-			Token:  v.RootToken,
+			Token:  TokenSecret(v.RootToken),
 			CaCert: v.CaCert,
 		}
 
@@ -238,7 +238,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:       v.Addr,
-			Token:      v.RootToken,
+			Token:      TokenSecret(v.RootToken),
 			CaCert:     v.CaCert,
 			ClientCert: v.ClientCert,
 			ClientKey:  v.ClientKey,
@@ -397,7 +397,7 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
-		Token:      v.RootToken,
+		Token:      TokenSecret(v.RootToken),
 	}
 
 	client, err := newClient(conf)

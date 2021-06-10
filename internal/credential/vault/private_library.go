@@ -50,7 +50,7 @@ type privateLibrary struct {
 	TlsServerName   string
 	TlsSkipVerify   bool
 	TokenHmac       []byte
-	Token           []byte
+	Token           TokenSecret
 	CtToken         []byte
 	TokenKeyId      string
 	ClientCert      []byte
@@ -137,7 +137,7 @@ func (pl *privateLibrary) client() (*client, error) {
 	const op = "vault.(privateLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
-		Token:         string(pl.Token),
+		Token:         pl.Token,
 		CaCert:        pl.CaCert,
 		TlsServerName: pl.TlsServerName,
 		TlsSkipVerify: pl.TlsSkipVerify,
