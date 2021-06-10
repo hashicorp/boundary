@@ -59,7 +59,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   addressFlagName,
 				Target: &c.flagAddress,
-				Usage:  "The vault address.",
+				Usage:  "The address of the Vault server. This should be a complete URL such as https://127.0.0.1:8200",
 			})
 		case namespaceFlagName:
 			f.StringVar(&base.StringVar{
