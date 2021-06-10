@@ -15,13 +15,14 @@ import (
 )
 
 type clientConfig struct {
-	Addr                  string
-	Token                 TokenSecret
-	CaCert                []byte
-	ClientCert, ClientKey []byte
-	TlsServerName         string
-	TlsSkipVerify         bool
-	Namespace             string
+	Addr          string
+	Token         TokenSecret
+	CaCert        []byte
+	ClientCert    []byte
+	ClientKey     KeySecret
+	TlsServerName string
+	TlsSkipVerify bool
+	Namespace     string
 }
 
 func (c *clientConfig) isValid() bool {

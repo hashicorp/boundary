@@ -40,7 +40,7 @@ type privateCredential struct {
 	TlsServerName        string
 	TlsSkipVerify        bool
 	ClientCert           []byte
-	ClientKey            []byte
+	ClientKey            KeySecret
 	CtClientKey          []byte
 	ClientKeyHmac        []byte
 	ClientKeyId          string

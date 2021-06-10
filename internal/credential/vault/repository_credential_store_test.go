@@ -363,11 +363,11 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
 
-			assert.Equal([]byte(token), got.Token)
+			assert.Equal(token, string(got.Token))
 
 			if tt.tls == TestClientTLS {
 				require.NotNil(got.ClientKey)
-				assert.Equal(v.ClientKey, got.ClientKey)
+				assert.Equal(v.ClientKey, []byte(got.ClientKey))
 			}
 		})
 	}
@@ -1161,7 +1161,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 
 	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
 		assert.Equal(t, updated.Certificate, ps.ClientCert, "updated certificate")
-		assert.Equal(t, updated.CertificateKey, ps.ClientKey, "updated certificate key")
+		assert.Equal(t, updated.CertificateKey, []byte(ps.ClientKey), "updated certificate key")
 	}
 
 	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {

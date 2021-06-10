@@ -379,7 +379,7 @@ type privateStore struct {
 	TokenStatus          string
 	ClientCert           []byte
 	ClientKeyId          string
-	ClientKey            []byte
+	ClientKey            KeySecret
 	CtClientKey          []byte
 	ClientKeyHmac        []byte
 }

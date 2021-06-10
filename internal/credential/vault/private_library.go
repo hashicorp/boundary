@@ -54,7 +54,7 @@ type privateLibrary struct {
 	CtToken         []byte
 	TokenKeyId      string
 	ClientCert      []byte
-	ClientKey       []byte
+	ClientKey       KeySecret
 	CtClientKey     []byte
 	ClientKeyId     string
 	Purpose         credential.Purpose `gorm:"-"`
