@@ -71,7 +71,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   vaultCaCertFlagName,
 				Target: &c.flagCaCert,
-				Usage:  "The CA Cert to use when connecting with vault.",
+				Usage:  "The CA Cert to use when connecting to vault.",
 			})
 		case tlsServerNameFlagName:
 			f.StringVar(&base.StringVar{
