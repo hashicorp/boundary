@@ -296,7 +296,9 @@ func testSendRecv(t *testing.T, conn net.Conn, max uint32) int {
 		// Shuttle over the sequence number as base64.
 		err := binary.Write(conn, binary.LittleEndian, i)
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+			if errors.Is(err, net.ErrClosed) ||
+				errors.Is(err, io.EOF) ||
+				errors.Is(err, &websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
 				break
 			}
 
@@ -307,7 +309,9 @@ func testSendRecv(t *testing.T, conn net.Conn, max uint32) int {
 		var j uint32
 		err = binary.Read(conn, binary.LittleEndian, &j)
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+			if errors.Is(err, net.ErrClosed) ||
+				errors.Is(err, io.EOF) ||
+				errors.Is(err, &websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
 				break
 			}
 
