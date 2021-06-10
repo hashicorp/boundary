@@ -436,7 +436,7 @@ type testOptions struct {
 	roleName      string
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
-	dontCleanup bool
+	dontCleanup   bool
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {

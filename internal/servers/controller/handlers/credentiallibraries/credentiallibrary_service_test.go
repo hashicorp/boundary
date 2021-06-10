@@ -67,7 +67,7 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-					Path:  wrapperspb.String(l.GetVaultPath()),
+					Path:       wrapperspb.String(l.GetVaultPath()),
 					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
 				})
 				require.NoError(t, err)
