@@ -20,6 +20,7 @@ const (
 	Controller
 	Worker
 	Session
+	ManagedGroup
 	CredentialStore
 	CredentialLibrary
 )
@@ -42,6 +43,7 @@ func (r Type) String() string {
 		"controller",
 		"worker",
 		"session",
+		"managed-group",
 		"credential-store",
 		"credential-library",
 	}[r]
@@ -64,6 +66,7 @@ var Map = map[string]Type{
 	Controller.String():        Controller,
 	Worker.String():            Worker,
 	Session.String():           Session,
+	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
 }

@@ -14,15 +14,17 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope              bool
-	withNoTokenValue              bool
-	withSkipDatabaseDestruction   bool
-	withSkipAuthMethodCreation    bool
-	withSkipScopesCreation        bool
-	withSkipHostResourcesCreation bool
-	withSkipTargetCreation        bool
-	withContainerImage            string
-	withDialect                   string
+	withNoTokenScope               bool
+	withNoTokenValue               bool
+	withSkipDatabaseDestruction    bool
+	withSkipAuthMethodCreation     bool
+	withSkipOidcAuthMethodCreation bool
+	withSkipScopesCreation         bool
+	withSkipHostResourcesCreation  bool
+	withSkipTargetCreation         bool
+	withContainerImage             string
+	withDialect                    string
+	withAttributeFieldPrefix       string
 }
 
 func getDefaultOptions() Options {
@@ -57,11 +59,19 @@ func WithNoTokenValue() Option {
 	}
 }
 
-// WithSkipAuthMethodCreation tells the command not to instantiate an auth
+// WithSkipAuthMethodCreation tells the command not to instantiate any auth
 // method on first run.
 func WithSkipAuthMethodCreation() Option {
 	return func(o *Options) {
 		o.withSkipAuthMethodCreation = true
+	}
+}
+
+// WithSkipOidcAuthMethodCreation tells the command not to instantiate an OIDC auth
+// method on first run, useful in some tests.
+func WithSkipOidcAuthMethodCreation() Option {
+	return func(o *Options) {
+		o.withSkipOidcAuthMethodCreation = true
 	}
 }
 
@@ -100,5 +110,13 @@ func WithContainerImage(name string) Option {
 func withDialect(dialect string) Option {
 	return func(o *Options) {
 		o.withDialect = dialect
+	}
+}
+
+// WithAttributeFieldPrefix tells the command what prefix
+// to attach to attribute fields when they are returned as errors.
+func WithAttributeFieldPrefix(p string) Option {
+	return func(o *Options) {
+		o.withAttributeFieldPrefix = p
 	}
 }

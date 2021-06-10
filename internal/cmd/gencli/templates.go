@@ -195,7 +195,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
 
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
 
@@ -361,7 +361,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+			var opts []base.Option
+			{{ if (and $input.SubActionPrefix $input.PrefixAttributeFieldErrorsWithSubactionPrefix ) }}
+			opts = append(opts, base.WithAttributeFieldPrefix("{{ $input.SubActionPrefix }}"))
+			{{ end }}
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))

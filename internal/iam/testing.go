@@ -242,6 +242,18 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 	return r
 }
 
+func TestManagedGroupRole(t *testing.T, conn *gorm.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	r, err := NewManagedGroupRole(roleId, managedGrpId, opt...)
+	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
+	return r
+}
+
 // testAccount is a temporary test function.  TODO - replace with an auth
 // subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId

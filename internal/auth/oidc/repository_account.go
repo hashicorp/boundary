@@ -24,6 +24,8 @@ import (
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
+//
+// WithPublicId is currently the only valid option.
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	const op = "oidc.(Repository).CreateAccount"
 	if a == nil {
@@ -67,11 +69,20 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.Issuer == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no issuer provided or defined in auth method")
 	}
-	id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+
+	opts := getOpts(opt...)
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, AccountPrefix+"_") {
+			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
+		}
+		a.PublicId = opts.withPublicId
+	} else {
+		id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+		a.PublicId = id
 	}
-	a.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {

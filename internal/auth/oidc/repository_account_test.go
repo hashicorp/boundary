@@ -67,7 +67,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantErrMsg: "oidc.(Repository).CreateAccount: missing embedded Account: parameter violation: error #100",
 		},
 		{
-			name: "invalid-no-scope-id",
+			name: "invalid-no-auth-method-id",
 			in: &Account{
 				Account: &store.Account{},
 			},

@@ -23,7 +23,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746
-	github.com/hashicorp/go-bexpr v0.1.7
+	github.com/hashicorp/go-bexpr v0.1.8
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v0.16.1
 	github.com/hashicorp/go-kms-wrapping v0.6.1
@@ -55,6 +55,7 @@ require (
 	github.com/pires/go-proxyproto v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
+	github.com/spf13/cobra v1.1.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.7.0
@@ -66,6 +67,7 @@ require (
 	google.golang.org/grpc v1.37.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	mvdan.cc/gofumpt v0.1.1
 	nhooyr.io/websocket v1.8.7
 )

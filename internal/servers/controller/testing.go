@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/sdk/strutil"
@@ -27,11 +28,16 @@ import (
 )
 
 const (
-	DefaultTestAuthMethodId          = "ampw_1234567890"
-	DefaultTestLoginName             = "admin"
-	DefaultTestUnprivilegedLoginName = "user"
-	DefaultTestPassword              = "passpass"
-	DefaultTestUserId                = "u_1234567890"
+	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
+	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
+	DefaultTestLoginName                     = "admin"
+	DefaultTestUnprivilegedLoginName         = "user"
+	DefaultTestPassword                      = "passpass"
+	DefaultTestUserId                        = "u_1234567890"
+	DefaultTestPasswordAccountId             = intglobals.NewPasswordAccountPrefix + "_1234567890"
+	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
+	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
+	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -280,8 +286,11 @@ type TestControllerOpts struct {
 	// set.
 	Config *config.Config
 
-	// DefaultAuthMethodId is the default auth method ID to use, if set.
-	DefaultAuthMethodId string
+	// DefaultPasswordAuthMethodId is the default password method ID to use, if set.
+	DefaultPasswordAuthMethodId string
+
+	// DefaultOidcAuthMethodId is the default OIDC method ID to use, if set.
+	DefaultOidcAuthMethodId string
 
 	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
@@ -299,6 +308,10 @@ type TestControllerOpts struct {
 	// DisableAuthMethodCreation can be set true to disable creating an auth
 	// method automatically.
 	DisableAuthMethodCreation bool
+
+	// DisableOidcAuthMethodCreation can be set true to disable the built-in
+	// OIDC listener. Useful for e.g. unix listener tests.
+	DisableOidcAuthMethodCreation bool
 
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
@@ -394,10 +407,15 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller.Name = opts.Name
 	}
 
-	if opts.DefaultAuthMethodId != "" {
-		tc.b.DevPasswordAuthMethodId = opts.DefaultAuthMethodId
+	if opts.DefaultPasswordAuthMethodId != "" {
+		tc.b.DevPasswordAuthMethodId = opts.DefaultPasswordAuthMethodId
 	} else {
-		tc.b.DevPasswordAuthMethodId = DefaultTestAuthMethodId
+		tc.b.DevPasswordAuthMethodId = DefaultTestPasswordAuthMethodId
+	}
+	if opts.DefaultOidcAuthMethodId != "" {
+		tc.b.DevOidcAuthMethodId = opts.DefaultOidcAuthMethodId
+	} else {
+		tc.b.DevOidcAuthMethodId = DefaultTestOidcAuthMethodId
 	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
@@ -416,6 +434,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.DevPassword = DefaultTestPassword
 		tc.b.DevUnprivilegedPassword = DefaultTestPassword
 	}
+	tc.b.DevPasswordAccountId = DefaultTestPasswordAccountId
+	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
+	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
+	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
@@ -440,6 +462,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if opts.InitialResourcesSuffix != "" {
 		suffix := opts.InitialResourcesSuffix
 		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
+		tc.b.DevOidcAuthMethodId = "amoidc_" + suffix
 		tc.b.DevHostCatalogId = "hcst_" + suffix
 		tc.b.DevHostId = "hst_" + suffix
 		tc.b.DevHostSetId = "hsst_" + suffix
@@ -500,6 +523,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 					if _, _, err := tc.b.CreateInitialPasswordAuthMethod(ctx); err != nil {
 						t.Fatal(err)
 					}
+					if !opts.DisableOidcAuthMethodCreation {
+						if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
+					}
 					if !opts.DisableScopesCreation {
 						if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
 							t.Fatal(err)
@@ -522,6 +550,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		var createOpts []base.Option
 		if opts.DisableAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipAuthMethodCreation())
+		}
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
 		if err := tc.b.CreateDevDatabase(ctx, createOpts...); err != nil {
 			t.Fatal(err)
@@ -557,17 +588,18 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:               tc.c.conf.DatabaseUrl,
-		DefaultAuthMethodId:       tc.c.conf.DevPasswordAuthMethodId,
-		RootKms:                   tc.c.conf.RootKms,
-		WorkerAuthKms:             tc.c.conf.WorkerAuthKms,
-		RecoveryKms:               tc.c.conf.RecoveryKms,
-		Name:                      opts.Name,
-		Logger:                    tc.c.conf.Logger,
-		DefaultLoginName:          tc.b.DevLoginName,
-		DefaultPassword:           tc.b.DevPassword,
-		DisableKmsKeyCreation:     true,
-		DisableAuthMethodCreation: true,
+		DatabaseUrl:                 tc.c.conf.DatabaseUrl,
+		DefaultPasswordAuthMethodId: tc.c.conf.DevPasswordAuthMethodId,
+		DefaultOidcAuthMethodId:     tc.c.conf.DevOidcAuthMethodId,
+		RootKms:                     tc.c.conf.RootKms,
+		WorkerAuthKms:               tc.c.conf.WorkerAuthKms,
+		RecoveryKms:                 tc.c.conf.RecoveryKms,
+		Name:                        opts.Name,
+		Logger:                      tc.c.conf.Logger,
+		DefaultLoginName:            tc.b.DevLoginName,
+		DefaultPassword:             tc.b.DevPassword,
+		DisableKmsKeyCreation:       true,
+		DisableAuthMethodCreation:   true,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger

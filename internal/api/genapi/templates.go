@@ -127,6 +127,19 @@ func fillTemplates() {
 			}
 			optionsMap[input.Package] = optionMap
 		}
+		// Override some defined options
+		if len(in.fieldOverrides) > 0 && optionsMap != nil {
+			for _, override := range in.fieldOverrides {
+				inOpts := optionsMap[input.Package]
+				if inOpts != nil {
+					if override.SkipDefault {
+						fieldInfo := inOpts[override.Name]
+						fieldInfo.SkipDefault = true
+						inOpts[override.Name] = fieldInfo
+					}
+				}
+			}
+		}
 
 		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("API_GEN_BASEPATH"), in.outFile))
 		if err != nil {

@@ -62,6 +62,12 @@ type cmdInfo struct {
 	// NeedsSubtypeInCreate controls whether the sub-type must be passed in as
 	// an argument to a create call. Targets need this, accounts do not, etc.
 	NeedsSubtypeInCreate bool
+
+	// PrefixAttributeFieldErrorsWithSubactionPrefix will prepend the value in
+	// SubActionPrefix when reporting errors which are reported in flag format.
+	// This allows the flags to be defined differently from the the attribute
+	// names in the API.
+	PrefixAttributeFieldErrorsWithSubactionPrefix bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -157,6 +163,33 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:    "Scope",
 		},
 	},
+	"credentialstores": {
+		{
+			ResourceType:     resource.CredentialStore.String(),
+			Pkg:              "credentialstores",
+			StdActions:       []string{"read", "delete", "list"},
+			IsAbstractType:   true,
+			HasExtraHelpFunc: true,
+			Container:        "Scope",
+			HasId:            true,
+		},
+		{
+			ResourceType:         resource.CredentialStore.String(),
+			Pkg:                  "credentialstores",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "vault",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
+	},
 	"groups": {
 		{
 			ResourceType:        resource.Group.String(),
@@ -247,6 +280,32 @@ var inputStructs = map[string][]*cmdInfo{
 			HasId:               true,
 			HasName:             true,
 			Container:           "HostCatalog",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
+	},
+	"managedgroups": {
+		{
+			ResourceType:   resource.ManagedGroup.String(),
+			Pkg:            "managedgroups",
+			StdActions:     []string{"read", "delete", "list"},
+			IsAbstractType: true,
+			Container:      "AuthMethod",
+			HasId:          true,
+			HasName:        true,
+			HasDescription: true,
+		},
+		{
+			ResourceType:        resource.ManagedGroup.String(),
+			Pkg:                 "managedgroups",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "oidc",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
 			HasDescription:      true,
 			VersionedActions:    []string{"update"},
 		},

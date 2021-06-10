@@ -76,6 +76,10 @@ func Test_Resource(t *testing.T) {
 			want:       Session,
 		},
 		{
+			typeString: "managed-group",
+			want:       ManagedGroup,
+		},
+		{
 			typeString: "credential-store",
 			want:       CredentialStore,
 		},

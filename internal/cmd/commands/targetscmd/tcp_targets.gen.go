@@ -91,7 +91,7 @@ func (c *TcpCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "tcp-type target", flagsTcpMap, c.Func)
 
 	extraTcpFlagsFunc(c, set, f)
 
@@ -200,7 +200,9 @@ func (c *TcpCommand) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+			var opts []base.Option
+
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))

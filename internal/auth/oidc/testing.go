@@ -34,6 +34,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const TestFakeManagedGroupFilter = `"/foo" == "bar"`
+
 // TestAuthMethod creates a test oidc auth method.  WithName, WithDescription,
 // WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
 // WithSigningAlgs options are supported.
@@ -174,6 +176,38 @@ func TestAccount(t *testing.T, conn *gorm.DB, am *AuthMethod, subject string, op
 
 	require.NoError(rw.Create(ctx, a))
 	return a
+}
+
+// TestManagedGroup creates a test oidc managed group.
+func TestManagedGroup(t *testing.T, conn *gorm.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg, err := NewManagedGroup(am.PublicId, filter, opt...)
+	require.NoError(err)
+
+	id, err := newManagedGroupId()
+	require.NoError(err)
+	mg.PublicId = id
+
+	require.NoError(rw.Create(ctx, mg))
+	return mg
+}
+
+// TestManagedGroupMember adds given account IDs to a managed group
+func TestManagedGroupMember(t *testing.T, conn *gorm.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg, err := NewManagedGroupMemberAccount(managedGroupId, memberId, opt...)
+	require.NoError(err)
+
+	require.NoError(rw.Create(ctx, mg))
+	return mg
 }
 
 // TestConvertToUrls will convert URL string representations to a slice of

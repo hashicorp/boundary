@@ -1017,7 +1017,7 @@ documentation](https://www.boundaryproject.io/api-docs) for guidance.
     </tr>
     <tr>
       <td>
-        <code>/targets/&lt;id&gt;</code>
+        <code>/host-sets/&lt;id&gt;</code>
       </td>
       <td>
         <ul>
@@ -1107,6 +1107,112 @@ documentation](https://www.boundaryproject.io/api-docs) for guidance.
             </li>
             <li>
               <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=remove-hosts</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowSpan="2">Managed Group</td>
+      <td rowSpan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/managed-groups</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>managed-group</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a managed group
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
+          <li>
+            <code>list</code>: List managed groups
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/managed-groups/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
+          <li>Pin</li>
+          <ul>
+            <li>
+              <code>&lt;auth-method-id&gt;</code>
+            </li>
+          </ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>managed-group</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=read</code>
+            </li>
+          </ul>
+          <li>
+            <code>update</code>: Update a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=update</code>
+            </li>
+          </ul>
+          <li>
+            <code>delete</code>: Delete a managed group
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+            <li>
+              <code>id=&lt;pin&gt;;type=&lt;type&gt;;actions=delete</code>
             </li>
           </ul>
         </ul>
