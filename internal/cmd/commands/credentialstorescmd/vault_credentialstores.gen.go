@@ -91,7 +91,7 @@ func (c *VaultCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "vault-type credential store", flagsVaultMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, "vault-type credential store", flagsVaultMap, c.Func)
 
 	extraVaultFlagsFunc(c, set, f)
 
