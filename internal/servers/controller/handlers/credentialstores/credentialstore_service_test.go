@@ -65,8 +65,8 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-					Address:                  s.GetVaultAddress(),
-					VaultTokenHmac:           base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					Address:                  wrapperspb.String(s.GetVaultAddress()),
+					TokenHmac:                base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
 					ClientCertificate:        wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
 					ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(s.ClientCertificate().GetCertificateKeyHmac()),
 					// TODO: Add all fields including tls related fields, namespace, etc...
@@ -174,8 +174,8 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:              v.Addr,
-						VaultToken:           token,
+						Address:              wrapperspb.String(v.Addr),
+						Token:                wrapperspb.String(token),
 						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
 						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
@@ -193,9 +193,9 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:              v.Addr,
-						VaultToken:           "madeup",
-						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						Address:              wrapperspb.String(v.Addr),
+						Token:                wrapperspb.String("madeup"),
+						CaCert:               wrapperspb.String(string(v.CaCert)),
 						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
 						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
@@ -213,9 +213,9 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:           v.Addr,
-						VaultToken:        token,
-						VaultCaCert:       wrapperspb.String(string(v.CaCert)),
+						Address:           wrapperspb.String(v.Addr),
+						Token:             wrapperspb.String(token),
+						CaCert:            wrapperspb.String(string(v.CaCert)),
 						ClientCertificate: wrapperspb.String(string(v.ClientCert)),
 					})
 					require.NoError(t, err)
@@ -232,9 +232,9 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:              v.Addr,
-						VaultToken:           token,
-						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						Address:              wrapperspb.String(v.Addr),
+						Token:                wrapperspb.String(token),
+						CaCert:               wrapperspb.String(string(v.CaCert)),
 						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
 					require.NoError(t, err)
@@ -251,9 +251,9 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:              v.Addr,
-						VaultToken:           token,
-						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						Address:              wrapperspb.String(v.Addr),
+						Token:                wrapperspb.String(token),
+						CaCert:               wrapperspb.String(string(v.CaCert)),
 						ClientCertificateKey: wrapperspb.String(string(append(v.ClientCert, v.ClientKey...))),
 						ClientCertificate:    wrapperspb.String(string(v.ClientKey)),
 					})
@@ -272,8 +272,8 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -290,8 +290,8 @@ func TestCreate(t *testing.T) {
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -308,8 +308,8 @@ func TestCreate(t *testing.T) {
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -326,8 +326,8 @@ func TestCreate(t *testing.T) {
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -342,8 +342,8 @@ func TestCreate(t *testing.T) {
 				ScopeId: prj.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -353,13 +353,13 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Must specify vault address",
+			name: "Must specify vault VaultAddress",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						VaultToken: token,
+						Token: wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -375,7 +375,7 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address: v.Addr,
+						Address: wrapperspb.String(v.Addr),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -391,8 +391,8 @@ func TestCreate(t *testing.T) {
 				Type:    credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:    v.Addr,
-						VaultToken: token,
+						Address: wrapperspb.String(v.Addr),
+						Token:   wrapperspb.String(token),
 					})
 					require.NoError(t, err)
 					attrs.Fields["invalid"] = structpb.NewStringValue("foo")
@@ -412,9 +412,9 @@ func TestCreate(t *testing.T) {
 				Type:        credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-						Address:              v.Addr,
-						VaultToken:           token,
-						VaultCaCert:          wrapperspb.String(string(v.CaCert)),
+						Address:              wrapperspb.String(v.Addr),
+						Token:                wrapperspb.String(token),
+						CaCert:               wrapperspb.String(string(v.CaCert)),
 						ClientCertificate:    wrapperspb.String(string(v.ClientCert)),
 						ClientCertificateKey: wrapperspb.String(string(v.ClientKey)),
 					})
@@ -437,9 +437,9 @@ func TestCreate(t *testing.T) {
 					Type:        credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							VaultCaCert:              wrapperspb.String(string(v.CaCert)),
-							Address:                  v.Addr,
-							VaultTokenHmac:           "<hmac>",
+							CaCert:                   wrapperspb.String(string(v.CaCert)),
+							Address:                  wrapperspb.String(v.Addr),
+							TokenHmac:                "<hmac>",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						})
@@ -484,9 +484,9 @@ func TestCreate(t *testing.T) {
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
-				if _, ok := got.Item.Attributes.Fields["vault_token_hmac"]; ok {
-					assert.NotEqual(tc.req.Item.Attributes.Fields["vault_token"], got.Item.Attributes.Fields["vault_token_hmac"])
-					got.Item.Attributes.Fields["vault_token_hmac"] = structpb.NewStringValue("<hmac>")
+				if _, ok := got.Item.Attributes.Fields["token_hmac"]; ok {
+					assert.NotEqual(tc.req.Item.Attributes.Fields["token"], got.Item.Attributes.Fields["token_hmac"])
+					got.Item.Attributes.Fields["token_hmac"] = structpb.NewStringValue("<hmac>")
 				}
 				if _, ok := got.Item.Attributes.Fields["client_certificate_key_hmac"]; ok {
 					assert.NotEqual(tc.req.Item.Attributes.Fields["client_certificate_key_hmac"], got.Item.Attributes.Fields["client_certificate_key_hmac"])
@@ -540,8 +540,8 @@ func TestGet(t *testing.T) {
 					Version:           1,
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address:                  store.GetVaultAddress(),
-							VaultTokenHmac:           base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
+							Address:                  wrapperspb.String(store.GetVaultAddress()),
+							TokenHmac:                base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
 							ClientCertificate:        wrapperspb.String(string(store.ClientCertificate().GetCertificate())),
 							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(store.ClientCertificate().GetCertificateKeyHmac()),
 						})
@@ -710,7 +710,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.CredentialStore{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							Address: v.Addr,
+							Address: wrapperspb.String(v.Addr),
 						})
 						require.NoError(t, err)
 						return attrs
@@ -764,7 +764,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "update TlsSkipVerify",
+			name: "update VaultTlsSkipVerify",
 			req: &pbs.UpdateCredentialStoreRequest{
 				UpdateMask: fieldmask("attributes.tls_skip_verify"),
 				Item: &pb.CredentialStore{
@@ -786,11 +786,11 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "update ca cert",
 			req: &pbs.UpdateCredentialStoreRequest{
-				UpdateMask: fieldmask("attributes.vault_ca_cert"),
+				UpdateMask: fieldmask("attributes.ca_cert"),
 				Item: &pb.CredentialStore{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialStoreAttributes{
-							VaultCaCert: wrapperspb.String(string(v.CaCert)),
+							CaCert: wrapperspb.String(string(v.CaCert)),
 						})
 						require.NoError(t, err)
 						return attrs
@@ -799,7 +799,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
-				out.Attributes.Fields["vault_ca_cert"] = structpb.NewStringValue(string(v.CaCert))
+				out.Attributes.Fields["ca_cert"] = structpb.NewStringValue(string(v.CaCert))
 				return out
 			},
 		},
