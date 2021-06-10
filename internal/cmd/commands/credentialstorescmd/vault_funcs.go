@@ -59,7 +59,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   addressFlagName,
 				Target: &c.flagAddress,
-				Usage:  "The vault address.",
+				Usage:  "The address of the Vault server. This should be a complete URL such as https://127.0.0.1:8200",
 			})
 		case namespaceFlagName:
 			f.StringVar(&base.StringVar{
@@ -71,13 +71,13 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   vaultCaCertFlagName,
 				Target: &c.flagCaCert,
-				Usage:  "The CA Cert to use when connecting with vault.",
+				Usage:  "The CA Cert to use when connecting to vault.",
 			})
 		case tlsServerNameFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   tlsServerNameFlagName,
 				Target: &c.flagTlsServerName,
-				Usage:  `The TLS server name used when connecting to vault.`,
+				Usage:  `Name to use as the SNI host when connecting via TLS.`,
 			})
 		case tlsSkipVerifyFlagName:
 			f.BoolVar(&base.BoolVar{
