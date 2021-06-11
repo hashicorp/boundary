@@ -28,6 +28,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCredentialStore creates a vault credential store in the provided DB with
+// the provided scope, vault address, token, and accessor and any values passed
+// in through the Options vargs.  If any errors are encountered during the
+// creation of the store, the test will fail.
 func TestCredentialStore(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()

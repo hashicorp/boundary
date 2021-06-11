@@ -493,10 +493,10 @@ func (ps *privateStore) TableName() string {
 // number of records updated. cs is not changed.
 //
 // cs must contain a valid PublicId. Only Name, Description, Namespace,
-// TlsServerName, TlsSkipVerify, CaCert, VaultAddress, Token, and
-// ClientCertificate can be changed. If cs.Name is set to a non-empty
-// string, it must be unique within cs.ScopeId. If Token is changed, the
-// new token must have the same properties defined in CreateCredentialStore
+// TlsServerName, TlsSkipVerify, CaCert, VaultAddress, ClientCertificate,
+// ClientCertificateKey, and Token can be changed. If cs.Name is set to a
+// non-empty string, it must be unique within cs.ScopeId. If Token is changed,
+// the new token must have the same properties defined in CreateCredentialStore
 // and UpdateCredentialStore calls the same Vault endpoints described in
 // CreateCredentialStore.
 //
