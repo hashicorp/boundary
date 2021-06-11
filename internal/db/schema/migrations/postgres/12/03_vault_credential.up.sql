@@ -62,6 +62,7 @@ begin;
         name in (
           'current',
           'maintaining',
+          'revoke',
           'revoked',
           'expired'
         )
@@ -69,12 +70,13 @@ begin;
   );
   comment on table credential_vault_token_status_enm is
     'credential_vault_token_status_enm is an enumeration table for the status of vault tokens. '
-    'It contains rows for representing the current, maintaining, revoked, and expired statuses.';
+    'It contains rows for representing the current, maintaining, revoke, revoked, and expired statuses.';
 
   insert into credential_vault_token_status_enm (name)
   values
     ('current'),
     ('maintaining'),
+    ('revoke'),
     ('revoked'),
     ('expired');
 
