@@ -3,6 +3,7 @@ package credentiallibrariescmd
 import (
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 )
 
 func init() {
@@ -56,7 +57,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   httpRequestBodyFlagName,
 				Target: &c.flagHttpRequestBody,
-				Usage:  "The http request body the library uses to communicate with vault.",
+				Usage:  "The http request body the library uses to communicate with vault. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
 		}
 	}
@@ -82,7 +83,8 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentiallibraries.DefaultVaultCredentialLibraryHttpRequestBody())
 	default:
-		*opts = append(*opts, credentiallibraries.WithVaultCredentialLibraryHttpRequestBody(c.flagHttpRequestBody))
+		rb, _ := configutil.ParsePath(c.flagHttpRequestBody)
+		*opts = append(*opts, credentiallibraries.WithVaultCredentialLibraryHttpRequestBody(rb))
 	}
 
 	return true

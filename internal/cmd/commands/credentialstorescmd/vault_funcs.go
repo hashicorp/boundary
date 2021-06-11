@@ -3,6 +3,7 @@ package credentialstorescmd
 import (
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 )
 
 func init() {
@@ -71,7 +72,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   vaultCaCertFlagName,
 				Target: &c.flagCaCert,
-				Usage:  "The CA Cert to use when connecting to vault.",
+				Usage:  "The CA Cert to use when connecting to vault. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
 		case tlsServerNameFlagName:
 			f.StringVar(&base.StringVar{
@@ -95,13 +96,13 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   clientCertificateFlagName,
 				Target: &c.flagClientCert,
-				Usage:  "The client certificate to use when boundary connects to vault for this store.",
+				Usage:  "The client certificate to use when boundary connects to vault for this store. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
 		case clientCertificateKeyFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   clientCertificateKeyFlagName,
 				Target: &c.flagClientCertKey,
-				Usage:  `The client certificate's private key to use when boundary connects to vault for this store.`,
+				Usage:  `The client certificate's private key to use when boundary connects to vault for this store. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.`,
 			})
 		}
 	}
@@ -134,21 +135,24 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreCaCert())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreCaCert(c.flagCaCert))
+		cer, _ := configutil.ParsePath(c.flagCaCert)
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreCaCert(cer))
 	}
 	switch c.flagClientCert {
 	case "":
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificate())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificate(c.flagClientCert))
+		cer, _ := configutil.ParsePath(c.flagClientCert)
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificate(cer))
 	}
 	switch c.flagClientCertKey {
 	case "":
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificateKey())
 	default:
-		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificateKey(c.flagClientCertKey))
+		cer, _ := configutil.ParsePath(c.flagClientCert)
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificateKey(cer))
 	}
 	if c.flagTlsSkipVerify {
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreTlsSkipVerify(c.flagTlsSkipVerify))
