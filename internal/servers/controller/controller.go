@@ -150,7 +150,6 @@ func New(conf *Config) (*Controller, error) {
 	c.SessionRepoFn = func() (*session.Repository, error) {
 		return session.NewRepository(dbase, dbase, c.kms)
 	}
-
 	c.workerAuthCache = cache.New(0, 0)
 
 	return c, nil
@@ -190,7 +189,6 @@ func (c *Controller) registerJobs() error {
 	if err = c.scheduler.RegisterJob(c.baseContext, tokenRenewal); err != nil {
 		return fmt.Errorf("error registering token renewal job: %w", err)
 	}
-
 	return nil
 }
 

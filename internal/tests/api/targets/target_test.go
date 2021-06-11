@@ -79,7 +79,7 @@ func TestCredentialLibraryASD(t *testing.T) {
 	client.SetToken(token.Token)
 
 	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
-		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreVaultToken(vaultTok))
+		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
 
