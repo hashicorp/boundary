@@ -26,7 +26,7 @@ func (s TokenSecret) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]byte(redactedTokenSecret))
 }
 
-// KeySecret equals a Vault client certificate key.  This type provides a
+// KeySecret equals a Vault client certificate private key.  This type provides a
 // wrapper so the secret isn't inadvertently leaked into a log or error.
 type KeySecret []byte
 

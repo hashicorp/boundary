@@ -152,7 +152,7 @@ func (cs *CredentialStore) client() (*client, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
-		Token:         string(cs.inputToken),
+		Token:         cs.inputToken,
 		CaCert:        cs.CaCert,
 		TlsServerName: cs.TlsServerName,
 		TlsSkipVerify: cs.TlsSkipVerify,
