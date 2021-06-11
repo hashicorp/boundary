@@ -557,12 +557,9 @@ func TestRepository_CompleteRun(t *testing.T) {
 			// The previous run is ended before the next run is scheduled, therefore the previous
 			// run end time incremented by the nextRunIn duration, should be less than or equal to the
 			// NextScheduledRun time that is persisted in the repo.
-			nextRunAt := updatedJob.NextScheduledRun.Timestamp.GetSeconds()
-			previousRunEnd := got.EndTime.Timestamp.GetSeconds()
-			nextRunIn := int64(tt.nextRunIn.Round(time.Second).Seconds())
-			assert.True(nextRunAt >= previousRunEnd+nextRunIn,
-				fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run end time (%d) incremented by %d",
-					nextRunAt, previousRunEnd, nextRunIn))
+			nextRunAt := updatedJob.NextScheduledRun.AsTime()
+			previousRunEnd := got.EndTime.AsTime()
+			assert.Equal(nextRunAt.Round(time.Minute), previousRunEnd.Add(tt.nextRunIn).Round(time.Minute))
 
 			// Delete job run so it does not clash with future runs
 			_, err = repo.deleteRun(context.Background(), privateId)
