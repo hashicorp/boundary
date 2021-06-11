@@ -3,8 +3,6 @@ package worker
 import (
 	"context"
 	"math/rand"
-	"os"
-	"strconv"
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -15,47 +13,9 @@ import (
 
 // In the future we could make this configurable
 const (
-	statusInterval           = 2 * time.Second
-	statusTimeout            = 5 * time.Second
-	defaultStatusGracePeriod = 30 * time.Second
-	statusGracePeriodEnvVar  = "BOUNDARY_STATUS_GRACE_PERIOD"
+	statusInterval = 2 * time.Second
+	statusTimeout  = 5 * time.Second
 )
-
-// statusGracePeriod returns the status grace period setting for this
-// worker, in seconds.
-//
-// The grace period is the length of time we allow connections to run
-// on a worker in the event of an error sending status updates. The
-// period is defined the length of time since the last successful
-// update.
-//
-// The setting is derived from one of the following:
-//
-//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//   integer value to define the setting.
-//   * If this is missing, the default (30 seconds) is used.
-//
-func (w *Worker) statusGracePeriod() time.Duration {
-	if v := os.Getenv(statusGracePeriodEnvVar); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			w.logger.Error("could not read setting for BOUNDARY_STATUS_GRACE_PERIOD, using default",
-				"err", err,
-				"value", v,
-			)
-			return defaultStatusGracePeriod
-		}
-
-		if n < 1 {
-			w.logger.Error("invalid setting for BOUNDARY_STATUS_GRACE_PERIOD, using default", "value", v)
-			return defaultStatusGracePeriod
-		}
-
-		return time.Second * time.Duration(n)
-	}
-
-	return defaultStatusGracePeriod
-}
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
@@ -97,6 +57,34 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 // status request.
 func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 	return w.lastStatusSuccess.Load().(*LastStatusInformation)
+}
+
+// WaitForNextSuccessfulStatusUpdate waits for the next successful status. It's
+// used by testing (and in the future, shutdown) in place of a more opaque and
+// possibly unnecessarily long sleep for things like initial controller
+// check-in, etc.
+//
+// The timeout is aligned with the worker's status grace period. A nil error
+// means the status was sent successfully.
+func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
+	w.logger.Debug("waiting for next status report to controller")
+	waitStatusStart := time.Now()
+	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	defer cancel()
+	for {
+		if err := ctx.Err(); err != nil {
+			w.logger.Error("error waiting for next status report to controller", "err", err)
+			break
+		}
+
+		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	return ctx.Err()
 }
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
@@ -196,6 +184,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
 
 		for _, request := range result.GetJobsRequests() {
+			w.logger.Trace("got job request from controller", "request", request)
 			switch request.GetRequestType() {
 			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 				switch request.GetJob().GetType() {
@@ -204,12 +193,25 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					sessionId := sessInfo.GetSessionId()
 					siRaw, ok := w.sessionInfoMap.Load(sessionId)
 					if !ok {
-						w.logger.Warn("asked to cancel session but could not find a local information for it", "session_id", sessionId)
+						w.logger.Warn("session change requested but could not find local information for it", "session_id", sessionId)
 						continue
 					}
 					si := siRaw.(*sessionInfo)
 					si.Lock()
 					si.status = sessInfo.GetStatus()
+					// Update connection state if there are any connections in
+					// the request.
+					for _, conn := range sessInfo.GetConnections() {
+						connId := conn.GetConnectionId()
+						connInfo, ok := si.connInfoMap[conn.GetConnectionId()]
+						if !ok {
+							w.logger.Warn("connection change requested but could not find local information for it", "connection_id", connId)
+							continue
+						}
+
+						connInfo.status = conn.GetStatus()
+					}
+
 					si.Unlock()
 				}
 			}
@@ -240,21 +242,30 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
 			time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0:
-			var toClose int
-			for k, v := range si.connInfoMap {
-				if v.closeTime.IsZero() {
-					toClose++
-					v.connCancel()
-					w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
-					closeInfo[k] = si.id
-				}
+			// Cancel connections without regard to individual connection
+			// state.
+			closedIds := w.cancelConnections(si.connInfoMap, true)
+			for _, connId := range closedIds {
+				closeInfo[connId] = si.id
+				w.logClose(si.id, connId)
 			}
+
 			// closeTime is marked by closeConnections iff the
 			// status is returned for that connection as closed. If
 			// the session is no longer valid and all connections
 			// are marked closed, clean up the session.
-			if toClose == 0 {
+			if len(closedIds) == 0 {
 				cleanSessionIds = append(cleanSessionIds, si.id)
+			}
+
+		default:
+			// Cancel connections *with* regard to individual connection
+			// state (ie: only ones that the controller has requested be
+			// terminated).
+			closedIds := w.cancelConnections(si.connInfoMap, false)
+			for _, connId := range closedIds {
+				closeInfo[connId] = si.id
+				w.logClose(si.id, connId)
 			}
 		}
 
@@ -277,6 +288,33 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 	}
 }
 
+// cancelConnections is run by cleanupConnections to iterate over a
+// session's connInfoMap and close connections based on the
+// connection's state (or regardless if ignoreConnectionState is
+// set).
+//
+// The returned map and slice are the maps of connection -> session,
+// and sessions to completely remove from local state, respectively.
+func (w *Worker) cancelConnections(connInfoMap map[string]*connInfo, ignoreConnectionState bool) []string {
+	var closedIds []string
+	for k, v := range connInfoMap {
+		if v.closeTime.IsZero() {
+			if !ignoreConnectionState && v.status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+				continue
+			}
+
+			v.connCancel()
+			closedIds = append(closedIds, k)
+		}
+	}
+
+	return closedIds
+}
+
+func (w *Worker) logClose(sessionId, connId string) {
+	w.logger.Info("terminated connection due to cancellation or expiration", "session_id", sessionId, "connection_id", connId)
+}
+
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
 	lastStatus := w.LastStatusSuccess()
 	if lastStatus == nil {
@@ -288,7 +326,7 @@ func (w *Worker) lastSuccessfulStatusTime() time.Time {
 
 func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
 	t := w.lastSuccessfulStatusTime()
-	u := w.statusGracePeriod()
+	u := w.conf.StatusGracePeriodDuration
 	v := time.Since(t)
 	return v > u, t, u
 }

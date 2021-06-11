@@ -119,6 +119,13 @@ type Controller struct {
 	// denoted by time.Duration
 	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// controller will wait before marking connections from a disconnected worker
+	// as invalid.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
 }
 
 type Worker struct {
@@ -132,6 +139,13 @@ type Worker struct {
 	// key=value syntax. This is trued up in the Parse function below.
 	TagsRaw interface{}         `hcl:"tags"`
 	Tags    map[string][]string `hcl:"-"`
+
+	// StatusGracePeriod represents the period of time (as a duration) that the
+	// worker will wait before disconnecting connections if it cannot make a
+	// status report to a controller.
+	//
+	// TODO: This field is currently internal.
+	StatusGracePeriodDuration time.Duration `hcl:"-"`
 }
 
 type Database struct {

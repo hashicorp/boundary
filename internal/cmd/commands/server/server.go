@@ -156,6 +156,10 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
+
 	base.StartMemProfiler(c.Logger)
 
 	if !c.skipMetrics {

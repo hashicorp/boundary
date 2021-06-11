@@ -13,7 +13,15 @@ import (
 )
 
 const (
-	defaultLiveness = 15 * time.Second
+	// DefaultLiveness is the setting that controls the server "liveness" time,
+	// or the maximum allowable time that a worker can't send a status update to
+	// the controller for. After this, the server is considered dead, and it will
+	// be taken out of the rotation for allowable workers for connections, and
+	// connections will possibly start to be terminated and marked as closed
+	// depending on the grace period setting (see
+	// base.Server.StatusGracePeriodDuration). This value serves as the default
+	// and minimum allowable setting for the grace period.
+	DefaultLiveness = 15 * time.Second
 )
 
 type ServerType string
@@ -67,18 +75,27 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
-		liveness = defaultLiveness
+		liveness = DefaultLiveness
 	}
+
+	var where string
+	if liveness > 0 {
+		where = fmt.Sprintf("type = $1 and update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+	} else {
+		where = "type = $1"
+	}
+
 	var servers []*Server
 	if err := reader.SearchWhere(
 		ctx,
 		&servers,
-		fmt.Sprintf("type = $1 and update_time > now() - interval '%d seconds'", uint32(liveness.Seconds())),
+		where,
 		[]interface{}{serverType},
 		db.WithLimit(-1),
 	); err != nil {
 		return nil, errors.Wrap(err, "servers.listServersWithReader")
 	}
+
 	return servers, nil
 }
 
