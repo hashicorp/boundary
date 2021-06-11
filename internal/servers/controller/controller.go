@@ -182,7 +182,7 @@ func (c *Controller) Start() error {
 
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
-	tokenRenewal, err := vault.NewgTokenRenewalJob(rw, rw, c.kms, c.logger)
+	tokenRenewal, err := vault.NewTokenRenewalJob(rw, rw, c.kms, c.logger)
 	if err != nil {
 		return fmt.Errorf("error creating token renewal job: %w", err)
 	}
