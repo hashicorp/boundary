@@ -154,7 +154,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	// Run our connection cleanup function
-	closedConns, err := sessRepo.CloseDeadConnectionsOnWorkerReport(ctx, req.Worker.PrivateId, foundConns)
+	closedConns, err := sessRepo.CloseDeadConnectionsOnWorker(ctx, req.Worker.PrivateId, foundConns)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error closing dead conns for worker %s: %v", req.Worker.PrivateId, err)
 	}

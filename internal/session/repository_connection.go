@@ -59,6 +59,21 @@ func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId s
 	return connections, nil
 }
 
+// ListConnectionsByServerId will list connections by server ID. Supports the
+// WithLimit and WithOrder options.
+func (r *Repository) ListConnectionsByServerId(ctx context.Context, serverId string, opt ...Option) ([]*Connection, error) {
+	const op = "session.(Repository).ListConnectionsByServerId"
+	if serverId == "" {
+		return nil, errors.New(errors.InvalidParameter, op, "no server ID supplied")
+	}
+	var connections []*Connection
+	err := r.list(ctx, &connections, "server_id = ?", []interface{}{serverId}, opt...) // pass options, so WithLimit and WithOrder are supported
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	return connections, nil
+}
+
 // DeleteConnection will delete a connection from the repository.
 func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "session.(Repository).DeleteConnection"
@@ -99,18 +114,16 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 	return rowsDeleted, nil
 }
 
-// CloseDeadConnectionsOnWorkerReport will run the connectionsToClose CTE to
-// look for connections that should be marked closed because they are no longer
-// claimed by a server. This does notdetect connections where the server is no
-// longer reporting status; that's for a different CTE to be called by a
-// heartbeat detector.
+// CloseDeadConnectionsOnWorker will run the connectionsToClose CTE to look for
+// connections that should be marked closed because they are no longer claimed
+// by a server.
 //
 // The foundConns input should be the currently-claimed connections; the CTE
 // uses a NOT IN clause to ensure these are excluded. It is not an error for
 // this to be empty as the worker could claim no connections; in that case all
 // connections will immediately transition to closed.
-func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, serverId string, foundConns []string) (int, error) {
-	const op = "session.(Repository).CloseDeadConnectionsOnWorkerReport"
+func (r *Repository) CloseDeadConnectionsOnWorker(ctx context.Context, serverId string, foundConns []string) (int, error) {
+	const op = "session.(Repository).CloseDeadConnectionsOnWorker"
 	if serverId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing server id")
 	}

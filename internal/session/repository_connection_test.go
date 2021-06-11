@@ -210,7 +210,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 	}
 }
 
-func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
+func TestRepository_CloseDeadConnectionsOnWorker(t *testing.T) {
 	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -284,7 +284,7 @@ func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
 	// all connection IDs for worker 1 should be showing as non-closed, and
 	// the ones for worker 2 not advertised should be closed.
 	shouldStayOpen := worker2ConnIds[0:2]
-	count, err := repo.CloseDeadConnectionsOnWorkerReport(ctx, worker2.GetPrivateId(), shouldStayOpen)
+	count, err := repo.CloseDeadConnectionsOnWorker(ctx, worker2.GetPrivateId(), shouldStayOpen)
 	require.NoError(err)
 	assert.Equal(4, count)
 
@@ -310,7 +310,7 @@ func TestRepository_CloseDeadConnectionsOnWorkerReport(t *testing.T) {
 	// Now, advertise none of the connection IDs for worker 2. This is mainly to
 	// test that handling the case where we do not include IDs works properly as
 	// it changes the where clause.
-	count, err = repo.CloseDeadConnectionsOnWorkerReport(ctx, worker1.GetPrivateId(), nil)
+	count, err = repo.CloseDeadConnectionsOnWorker(ctx, worker1.GetPrivateId(), nil)
 	require.NoError(err)
 	assert.Equal(6, count)
 

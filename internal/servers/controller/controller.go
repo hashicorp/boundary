@@ -37,7 +37,7 @@ type Controller struct {
 
 	workerAuthCache *cache.Cache
 
-	// Used for testing
+	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
 	// Repo factory methods
@@ -178,6 +178,24 @@ func (c *Controller) Start() error {
 }
 
 func (c *Controller) registerJobs() error {
+	if err := c.registerSessionCleanupJob(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// registerSessionCleanupJob is a helper method to abstract
+// registering the session cleanup job specifically.
+func (c *Controller) registerSessionCleanupJob() error {
+	sessionCleanupJob, err := newSessionCleanupJob(c.logger, c.ServersRepoFn, c.SessionRepoFn)
+	if err != nil {
+		return fmt.Errorf("error creating session cleanup job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, sessionCleanupJob); err != nil {
+		return fmt.Errorf("error registering session cleanup job: %w", err)
+	}
+
 	return nil
 }
 
