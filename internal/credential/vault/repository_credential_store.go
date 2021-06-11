@@ -80,6 +80,16 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
 	}
 
+	available, err := client.capabilities(requiredCapabilities.paths())
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get vault capabilities"))
+	}
+	missing := available.missing(requiredCapabilities)
+	if len(missing) > 0 {
+		return nil,
+			errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+	}
+
 	tokenLookup, err := client.lookupToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
@@ -633,6 +643,18 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
 		}
+
+		available, err := client.capabilities(requiredCapabilities.paths())
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get vault capabilities"))
+		}
+		missing := available.missing(requiredCapabilities)
+		if len(missing) > 0 {
+			return nil,
+				db.NoRowsAffected,
+				errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+		}
+
 		tokenLookup, err := client.lookupToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
