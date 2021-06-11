@@ -123,6 +123,30 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithVaultCredentialStoreCaCert(inCaCert string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ca_cert"] = inCaCert
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialStoreCaCert() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ca_cert"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithVaultCredentialStoreClientCertificate(inClientCertificate string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -267,50 +291,26 @@ func DefaultVaultCredentialStoreTlsSkipVerify() Option {
 	}
 }
 
-func WithVaultCredentialStoreVaultCaCert(inVaultCaCert string) Option {
+func WithVaultCredentialStoreToken(inToken string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["vault_ca_cert"] = inVaultCaCert
+		val["token"] = inToken
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultVaultCredentialStoreVaultCaCert() Option {
+func DefaultVaultCredentialStoreToken() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["vault_ca_cert"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithVaultCredentialStoreVaultToken(inVaultToken string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["vault_token"] = inVaultToken
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreVaultToken() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["vault_token"] = nil
+		val["token"] = nil
 		o.postMap["attributes"] = val
 	}
 }
