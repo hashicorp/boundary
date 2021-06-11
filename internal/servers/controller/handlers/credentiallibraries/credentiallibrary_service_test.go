@@ -609,7 +609,8 @@ func TestUpdate(t *testing.T) {
 
 	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
-	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+	store, diffStore := cs[0], cs[1]
 
 	freshLibrary := func() (*vault.CredentialLibrary, func()) {
 		vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
@@ -751,7 +752,6 @@ func TestUpdate(t *testing.T) {
 	vl, cleanup := freshLibrary()
 	defer cleanup()
 
-	diffStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	errCases := []struct {
 		name string
 		path string

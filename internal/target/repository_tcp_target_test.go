@@ -417,8 +417,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantIsError: errors.NotUnique,
 		},
 	}
-	for _, tt := range tests {
+	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cs := css[i]
 			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				_ = TestTcpTarget(t, conn, proj.PublicId, tt.args.name)
@@ -431,7 +433,6 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				testHostSetIds = append(testHostSetIds, hs.PublicId)
 			}
 
-			cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
 			var testClIds []string
 			for _, cl := range cls {

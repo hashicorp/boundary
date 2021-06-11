@@ -13,14 +13,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/strutil"
 )
 
-const (
-	nameField            = "Name"
-	descriptionField     = "Description"
-	vaultPathField       = "VaultPath"
-	httpMethodField      = "HttpMethod"
-	httpRequestBodyField = "HttpRequestBody"
-)
-
 // CreateCredentialLibrary inserts l into the repository and returns a new
 // CredentialLibrary containing the credential library's PublicId. l is not
 // changed. l must contain a valid StoreId. l must not contain a PublicId.

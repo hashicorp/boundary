@@ -271,15 +271,16 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 			wantErrCode:     errors.VersionMismatch,
 		},
 	}
-	for _, tt := range tests {
+	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			cs := css[i]
 
 			target := TestTcpTarget(t, conn, proj.PublicId, tt.name)
 
 			clIds := make([]string, 0, tt.args.createCnt)
 			if tt.args.createCnt > 0 {
-				cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 				credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.PublicId, tt.args.createCnt)
 				for _, cl := range credLibs {
 					clIds = append(clIds, cl.PublicId)
@@ -325,6 +326,7 @@ func TestRepository_DeleteTargetCredentialLibraries(t *testing.T) {
 	t.Run("delete-unassociated", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
+		_, proj := iam.TestScopes(t, iamRepo)
 		cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 		libs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 3)
 		require.Len(libs, 3)
