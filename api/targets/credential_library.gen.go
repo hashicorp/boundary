@@ -3,6 +3,8 @@ package targets
 
 type CredentialLibrary struct {
 	Id                string `json:"id,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Description       string `json:"description,omitempty"`
 	CredentialStoreId string `json:"credential_store_id,omitempty"`
 	Purpose           string `json:"purpose,omitempty"`
 }

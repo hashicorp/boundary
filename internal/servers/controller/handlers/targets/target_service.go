@@ -38,6 +38,7 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -82,6 +83,7 @@ type Service struct {
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    common.SessionRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
+	vaultCredRepoFn  common.VaultCredentialRepoFactory
 	kmsCache         *kms.Kms
 }
 
@@ -92,7 +94,8 @@ func NewService(
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn common.SessionRepoFactory,
-	staticHostRepoFn common.StaticRepoFactory) (Service, error) {
+	staticHostRepoFn common.StaticRepoFactory,
+	vaultCredRepoFn common.VaultCredentialRepoFactory) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
 		return Service{}, errors.New(errors.InvalidParameter, op, "missing target repository")
@@ -109,12 +112,16 @@ func NewService(
 	if staticHostRepoFn == nil {
 		return Service{}, errors.New(errors.InvalidParameter, op, "missing static host repository")
 	}
+	if vaultCredRepoFn == nil {
+		return Service{}, errors.New(errors.InvalidParameter, op, "missing vault credential repository")
+	}
 	return Service{
 		repoFn:           repoFn,
 		iamRepoFn:        iamRepoFn,
 		serversRepoFn:    serversRepoFn,
 		sessionRepoFn:    sessionRepoFn,
 		staticHostRepoFn: staticHostRepoFn,
+		vaultCredRepoFn:  vaultCredRepoFn,
 		kmsCache:         kmsCache,
 	}, nil
 }
@@ -601,7 +608,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSets, _, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, hostSets, libs, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -797,6 +804,39 @@ HostSetIterationLoop:
 		return nil, err
 	}
 
+	credRepo, err := s.vaultCredRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	var reqs []credential.Request
+	for _, l := range libs {
+		reqs = append(reqs, credential.Request{
+			SourceId: l.GetCredentialLibraryId(),
+			Purpose:  credential.Purpose(l.GetCredentialPurpose()),
+		})
+	}
+	cs, err := credRepo.Issue(ctx, sess.GetPublicId(), reqs)
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	var creds []*pb.SessionCredential
+	for _, c := range cs {
+		l := c.Library()
+		sVal, err := structpb.NewValue(c.Secret())
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("converting secret to proto value"))
+		}
+		creds = append(creds, &pb.SessionCredential{
+			Library: &pb.CredentialLibrary{
+				Id:                l.GetPublicId(),
+				Name:              l.GetName(),
+				Description:       l.GetDescription(),
+				CredentialStoreId: l.GetStoreId(),
+			},
+			Secret: sVal,
+		})
+	}
+
 	sad := &pb.SessionAuthorizationData{
 		SessionId:       sess.PublicId,
 		TargetId:        t.GetPublicId(),
@@ -827,6 +867,7 @@ HostSetIterationLoop:
 		HostId:             chosenId.hostId,
 		HostSetId:          chosenId.hostSetId,
 		Endpoint:           endpointUrl.String(),
+		Credentials:        creds,
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }

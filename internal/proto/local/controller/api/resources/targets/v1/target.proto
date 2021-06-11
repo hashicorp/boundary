@@ -22,11 +22,26 @@ message CredentialLibrary{
 	// The ID of the Credential Library.
 	string id = 10;
 
+	// Output only.  The name of the Credential Library.
+	string name = 20;
+
+	// Output only. The description of the Credential Library.
+	string description = 30;
+
 	// Output only. The Credential Store to which this Credential Library belongs.
-	string credential_store_id = 20 [json_name="credential_store_id"];
+	string credential_store_id = 40 [json_name="credential_store_id"];
 
 	// The library's purpose for this target.
-	string purpose = 30;
+	string purpose = 50;
+}
+
+// A credential for a session.
+message SessionCredential {
+	// Output only. The library which generated this credential.
+	CredentialLibrary library = 1;
+
+	// Output only. The secret of this credential.
+	google.protobuf.Value secret = 2;
 }
 
 // Target contains all fields related to a Target resource
@@ -166,4 +181,7 @@ message SessionAuthorization {
 
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
 	string endpoint = 100;
+
+	// Output only. The credentials for this session.
+	repeated SessionCredential credentials = 110 [json_name="credentials"];
 }

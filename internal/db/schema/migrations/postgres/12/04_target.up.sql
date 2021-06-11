@@ -37,7 +37,9 @@ begin;
     tcl.target_id,
     tcl.credential_library_id,
     tcl.credential_purpose,
-    cl.store_id
+    cl.store_id,
+    cl.name,
+    cl.description
   from
     target_credential_library tcl,
     credential_library cl
