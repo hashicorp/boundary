@@ -22,8 +22,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
 	job1Ch := make(chan error)
 	job1Ready := make(chan struct{})
@@ -67,7 +66,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	job1Ch <- nil
 
 	// Update job2 to run again
-	err = sched.UpdateJobNextRun(context.Background(), tj2.name, 0)
+	err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj2.name, 0)
 	require.NoError(err)
 	<-job2Ready
 
@@ -84,8 +83,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
 
 	fn, jobReady, jobDone := testJobFn()
 	tj := testJob{name: "name", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -125,8 +123,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	fn, job1Ready, job1Done := testJobFn()
 	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
@@ -218,8 +215,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	fn := func(ctx context.Context) error {
@@ -306,8 +302,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	server := testController(t, conn, wrapper)
-	sched := testScheduler(t, conn, wrapper, server.PrivateId, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithInterruptThreshold(time.Second), WithRunJobsInterval(time.Second), WithMonitorInterval(time.Second))
 
 	jobReady := make(chan struct{})
 	jobDone := make(chan struct{})
