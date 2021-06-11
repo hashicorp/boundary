@@ -30,19 +30,19 @@ func TestClient_RenewToken(t *testing.T) {
 	v := NewTestVaultServer(t)
 
 	_, token := v.CreateToken(t)
-	secretLookup, err := v.LookupToken(t, token)
-	require.NoError(t, err)
+	secretLookup := v.LookupToken(t, token)
+	require.NotNil(t, secretLookup)
 
 	// need to sleep so the expiration times will be different
 	time.Sleep(100 * time.Millisecond)
 
 	client := v.clientUsingToken(t, token)
 	renewedToken, err := client.renewToken()
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.NotNil(renewedToken)
 
-	renewedLookup, err := v.LookupToken(t, token)
-	require.NoError(t, err)
+	renewedLookup := v.LookupToken(t, token)
+	require.NotNil(t, renewedLookup)
 
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, renewedLookup)
 	assert.False(t1.Equal(t2))
@@ -69,8 +69,8 @@ func TestClient_LookupToken(t *testing.T) {
 	v := NewTestVaultServer(t)
 
 	_, token := v.CreateToken(t)
-	secretLookup, err := v.LookupToken(t, token)
-	require.NoError(err)
+	secretLookup := v.LookupToken(t, token)
+	require.NotNil(secretLookup)
 
 	client := v.clientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken()
@@ -154,8 +154,7 @@ func TestClient_RenewLease(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(cred)
 
-	leaseLookup, err := v.LookupLease(t, cred.LeaseID)
-	require.NoError(err)
+	leaseLookup := v.LookupLease(t, cred.LeaseID)
 	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
@@ -167,8 +166,7 @@ func TestClient_RenewLease(t *testing.T) {
 	require.NotNil(renewedLease)
 	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
 
-	leaseLookup, err = v.LookupLease(t, cred.LeaseID)
-	require.NoError(err)
+	leaseLookup = v.LookupLease(t, cred.LeaseID)
 	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 

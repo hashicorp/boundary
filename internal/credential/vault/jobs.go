@@ -24,6 +24,39 @@ const (
 	renewalWindow    = 10 * time.Minute
 )
 
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger) error {
+	const op = "vault.RegisterJobs"
+	tokenRenewal, err := newTokenRenewalJob(r, w, kms, logger)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, tokenRenewal); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("token renewal job"))
+	}
+	tokenRevoke, err := newTokenRevocationJob(r, w, kms, logger)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, tokenRevoke); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("token revocation job"))
+	}
+	credRenewal, err := newCredentialRenewalJob(r, w, kms, logger)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, credRenewal); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("credential renewal job"))
+	}
+	credRevoke, err := newCredentialRevocationJob(r, w, kms, logger)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("credential revocation job"))
+	}
+	return nil
+}
+
 // TokenRenewalJob is the recurring job that renews credential store Vault tokens that
 // are in the `current` and `maintaining` state.  The TokenRenewalJob is not thread safe,
 // an attempt to Run the job concurrently will result in an JobAlreadyRunning error.
@@ -39,11 +72,11 @@ type TokenRenewalJob struct {
 	numProcessed int
 }
 
-// NewTokenRenewalJob creates a new in-memory TokenRenewalJob.
+// newTokenRenewalJob creates a new in-memory TokenRenewalJob.
 //
 // WithLimit is the only supported option.
-func NewTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
-	const op = "vault.NewTokenRenewalJob"
+func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRenewalJob, error) {
+	const op = "vault.newTokenRenewalJob"
 	switch {
 	case r == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
@@ -258,11 +291,11 @@ type TokenRevocationJob struct {
 	numProcessed int
 }
 
-// NewTokenRevocationJob creates a new in-memory TokenRevocationJob.
+// newTokenRevocationJob creates a new in-memory TokenRevocationJob.
 //
 // WithLimit is the only supported option.
-func NewTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRevocationJob, error) {
-	const op = "vault.NewTokenRevocationJob"
+func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*TokenRevocationJob, error) {
+	const op = "vault.newTokenRevocationJob"
 	switch {
 	case r == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
@@ -424,11 +457,11 @@ type CredentialRenewalJob struct {
 	numProcessed int
 }
 
-// NewCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
+// newCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
 //
 // WithLimit is the only supported option.
-func NewCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRenewalJob, error) {
-	const op = "vault.NewCredentialRenewalJob"
+func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRenewalJob, error) {
+	const op = "vault.newCredentialRenewalJob"
 	switch {
 	case r == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
@@ -592,11 +625,11 @@ type CredentialRevocationJob struct {
 	numProcessed int
 }
 
-// NewCredentialRevocationJob creates a new in-memory CredentialRevocationJob.
+// newCredentialRevocationJob creates a new in-memory CredentialRevocationJob.
 //
 // WithLimit is the only supported option.
-func NewCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRevocationJob, error) {
-	const op = "vault.NewCredentialRevocationJob"
+func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialRevocationJob, error) {
+	const op = "vault.newCredentialRevocationJob"
 	switch {
 	case r == nil:
 		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")

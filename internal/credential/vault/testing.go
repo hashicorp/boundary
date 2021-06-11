@@ -588,24 +588,43 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.S
 	return secret, token
 }
 
-// LookupToken calls /auth/token/lookup on v for token. See
+// LookupToken calls /auth/token/lookup on v for the token. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
-func (v *TestVaultServer) LookupToken(t *testing.T, token string) (*vault.Secret, error) {
+func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret {
 	t.Helper()
+	require := require.New(t)
 	vc := v.client(t).cl
 	secret, err := vc.Auth().Token().Lookup(token)
-	return secret, err
+	require.NoError(err)
+	require.NotNil(secret)
+	return secret
+}
+
+// LookupTokenError calls /auth/token/lookup on v for the token. It expects the lookup to fail,
+// and returns the error received.  See
+// https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
+func (v *TestVaultServer) LookupTokenError(t *testing.T, token string) error {
+	t.Helper()
+	require := require.New(t)
+	vc := v.client(t).cl
+	secret, err := vc.Auth().Token().Lookup(token)
+	require.Error(err)
+	require.Nil(secret)
+	return err
 }
 
 // LookupLease calls the /sys/leases/lookup Vault endpoint and returns
 // the vault.Secret response.  See
 // https://www.vaultproject.io/api-docs/system/leases#read-lease.
-func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) (*vault.Secret, error) {
+func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secret {
 	t.Helper()
+	require := require.New(t)
 	vc := v.client(t).cl
 	credData := map[string]interface{}{"lease_id": leaseId}
 	secret, err := vc.Logical().Write("sys/leases/lookup", credData)
-	return secret, err
+	require.NoError(err)
+	require.NotNil(secret)
+	return secret
 }
 
 func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabilities) {

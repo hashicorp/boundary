@@ -174,8 +174,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 				tt.tokenChkFn(t, secret)
 			}
 
-			tokenLookup, err := v.LookupToken(t, token)
-			require.NoError(err)
+			tokenLookup := v.LookupToken(t, token)
 			require.NotNil(tokenLookup)
 			t.Log(testLogVaultSecret(t, tokenLookup))
 
@@ -414,8 +413,7 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 	// Sleep to move ttl
 	time.Sleep(time.Second)
 
-	leaseLookup, err := v.LookupLease(t, cred.LeaseID)
-	require.NoError(err)
+	leaseLookup := v.LookupLease(t, cred.LeaseID)
 	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 

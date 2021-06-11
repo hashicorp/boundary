@@ -45,9 +45,7 @@ func testVaultToken(t *testing.T,
 	rw := db.New(conn)
 
 	secret, _ := v.CreateToken(t)
-	acc, err := secret.TokenAccessor()
-	require.NoError(err)
-	inToken, err := newToken(cs.PublicId, []byte(secret.Auth.ClientToken), []byte(acc), expiration)
+	inToken, err := newToken(cs.PublicId, []byte(secret.Auth.ClientToken), []byte(secret.Auth.Accessor), expiration)
 	require.NoError(err)
 	inToken.Status = string(status)
 
@@ -228,7 +226,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -315,7 +313,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -349,7 +347,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
-	r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -380,20 +378,16 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Get ttls in vault to verify against before running renewal
-	lookupToken, err := v.LookupToken(t, string(currentToken.GetToken()))
-	require.NoError(err)
+	lookupToken := v.LookupToken(t, string(currentToken.GetToken()))
 	oldCurrentTtl, err := lookupToken.TokenTTL()
 	require.NoError(err)
-	lookupToken, err = v.LookupToken(t, string(maintainToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(maintainToken.GetToken()))
 	oldMaintainTtl, err := lookupToken.TokenTTL()
 	require.NoError(err)
-	lookupToken, err = v.LookupToken(t, string(revokedToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(revokedToken.GetToken()))
 	oldRevokedTtl, err := lookupToken.TokenTTL()
 	require.NoError(err)
-	lookupToken, err = v.LookupToken(t, string(expiredToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(expiredToken.GetToken()))
 	oldExpiredTtl, err := lookupToken.TokenTTL()
 	require.NoError(err)
 
@@ -404,25 +398,21 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	assert.Equal(2, r.numProcessed)
 
 	// Verify current and maintaining token were renewed in vault
-	lookupToken, err = v.LookupToken(t, string(currentToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(currentToken.GetToken()))
 	newTtl, err := lookupToken.TokenTTL()
 	require.NoError(err)
 	assert.True(oldCurrentTtl < newTtl)
-	lookupToken, err = v.LookupToken(t, string(maintainToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(maintainToken.GetToken()))
 	newTtl, err = lookupToken.TokenTTL()
 	require.NoError(err)
 	assert.True(oldMaintainTtl < newTtl)
 
 	// Verify expired and revoked tokens were not renewed in vault
-	lookupToken, err = v.LookupToken(t, string(revokedToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(revokedToken.GetToken()))
 	newTtl, err = lookupToken.TokenTTL()
 	require.NoError(err)
 	assert.True(oldRevokedTtl >= newTtl)
-	lookupToken, err = v.LookupToken(t, string(expiredToken.GetToken()))
-	require.NoError(err)
+	lookupToken = v.LookupToken(t, string(expiredToken.GetToken()))
 	newTtl, err = lookupToken.TokenTTL()
 	require.NoError(err)
 	assert.True(oldExpiredTtl >= newTtl)
@@ -472,7 +462,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -585,7 +575,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := NewTokenRenewalJob(rw, rw, kmsCache, hclog.L())
+			r, err := newTokenRenewalJob(rw, rw, kmsCache, hclog.L())
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -701,7 +691,7 @@ func TestNewTokenRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewTokenRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newTokenRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -790,7 +780,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := NewTokenRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newTokenRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -825,7 +815,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
-	r, err := NewTokenRevocationJob(rw, rw, kmsCache, hclog.L())
+	r, err := newTokenRevocationJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	err = sche.RegisterJob(context.Background(), r)
@@ -881,12 +871,10 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	assert.Equal(1, r.numProcessed)
 
 	// Verify noCredsToken was revoked in vault
-	lookupToken, err := v.LookupToken(t, string(noCredsToken.GetToken()))
-	require.Error(err)
-	assert.Nil(lookupToken)
+	err = v.LookupTokenError(t, string(noCredsToken.GetToken()))
+	assert.Error(err)
 	// Verify credsToken was not revoked in vault
-	lookupToken, err = v.LookupToken(t, string(credsToken.GetToken()))
-	require.NoError(err)
+	lookupToken := v.LookupToken(t, string(credsToken.GetToken()))
 	assert.NotNil(lookupToken)
 
 	// Verify noCredsToken was set to revoked in repo
@@ -906,9 +894,8 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	assert.Equal(1, r.numProcessed)
 
 	// Verify credsToken was revoked in vault
-	lookupToken, err = v.LookupToken(t, string(credsToken.GetToken()))
+	err = v.LookupTokenError(t, string(credsToken.GetToken()))
 	require.Error(err)
-	assert.Nil(lookupToken)
 
 	// Verify credsToken was set to revoked in repo
 	repoToken = allocToken()
@@ -1001,7 +988,7 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1114,7 +1101,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, credsToken, status, 5*time.Minute)
 			}
 
-			r, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -1176,7 +1163,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	csToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &csToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	err = credRenewal.Run(context.Background())
@@ -1189,8 +1176,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	_, revokedCred := testVaultCred(t, conn, v, cl, sess, csToken, RevokedCredential, 5*time.Minute)
 	_, expiredCred := testVaultCred(t, conn, v, cl, sess, csToken, ExpiredCredential, 5*time.Minute)
 
-	secret, err := v.LookupLease(t, activeCred.ExternalId)
-	require.NoError(err)
+	secret := v.LookupLease(t, activeCred.ExternalId)
 	// Secret should not have a last renewal time
 	assert.Nil(secret.Data["last_renewal"])
 
@@ -1223,19 +1209,15 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	assert.Equal(lookupCred.ExpirationTime.AsTime(), expiredCred.ExpirationTime.AsTime())
 
 	// Active credential should have a last renewal time in Vault
-	secret, err = v.LookupLease(t, activeCred.ExternalId)
-	require.NoError(err)
+	secret = v.LookupLease(t, activeCred.ExternalId)
 	assert.NotNil(secret.Data["last_renewal"])
 
 	// Revoke, Revoked and Expired credentials should not have a last renewal time
-	secret, err = v.LookupLease(t, revokeCred.ExternalId)
-	require.NoError(err)
+	secret = v.LookupLease(t, revokeCred.ExternalId)
 	assert.Nil(secret.Data["last_renewal"])
-	secret, err = v.LookupLease(t, revokedCred.ExternalId)
-	require.NoError(err)
+	secret = v.LookupLease(t, revokedCred.ExternalId)
 	assert.Nil(secret.Data["last_renewal"])
-	secret, err = v.LookupLease(t, expiredCred.ExternalId)
-	require.NoError(err)
+	secret = v.LookupLease(t, expiredCred.ExternalId)
 	assert.Nil(secret.Data["last_renewal"])
 }
 
@@ -1287,7 +1269,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	repoToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	_, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, time.Minute)
@@ -1446,7 +1428,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := NewCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache, hclog.L())
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -1547,7 +1529,7 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewCredentialRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
+			got, err := newCredentialRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.args.logger, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1662,7 +1644,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, repoToken, status, 5*time.Minute)
 			}
 
-			r, err := NewCredentialRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
+			r, err := newCredentialRevocationJob(rw, rw, kmsCache, hclog.L(), tt.opts...)
 			require.NoError(err)
 
 			err = r.Run(context.Background())
@@ -1724,7 +1706,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	repoToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
 
-	r, err := NewCredentialRevocationJob(rw, rw, kmsCache, hclog.L())
+	r, err := newCredentialRevocationJob(rw, rw, kmsCache, hclog.L())
 	require.NoError(err)
 
 	err = r.Run(context.Background())
