@@ -44,19 +44,19 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 			f.StringVar(&base.StringVar{
 				Name:   pathFlagName,
 				Target: &c.flagPath,
-				Usage:  "The vault path.",
+				Usage:  "The path in vault to request credentials from.",
 			})
 		case httpMethodFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   httpMethodFlagName,
 				Target: &c.flagHttpMethod,
-				Usage:  "The http method the library should use when connecting to vault.",
+				Usage:  "The http method the library should use when communicating with vault.",
 			})
 		case httpRequestBodyFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   httpRequestBodyFlagName,
 				Target: &c.flagHttpRequestBody,
-				Usage:  "The http request body to include when connecting to vault.",
+				Usage:  "The http request body the library uses to communicate with vault.",
 			})
 		}
 	}
@@ -97,7 +97,7 @@ func (c *VaultCommand) extraVaultHelpFunc(helpMap map[string]func() string) stri
 			"",
 			"  Create a vault-type credential library. Example:",
 			"",
-			`    $ boundary credential-libraries create -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
+			`    $ boundary credential-libraries create vault -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
 			"",
 			"",
 		})
