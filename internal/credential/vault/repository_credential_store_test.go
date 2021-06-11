@@ -663,7 +663,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 				},
 			},
 			chgFn: changeNamespace("test-update-namespace"),
-			masks: []string{"namespace"},
+			masks: []string{"Namespace"},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
 					Namespace: "test-update-namespace",
@@ -679,7 +679,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 				},
 			},
 			chgFn: changeNamespace(""),
-			masks: []string{"namespace"},
+			masks: []string{"Namespace"},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{},
 			},
@@ -914,7 +914,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 
 		// Change CA Cert
 		orig.CaCert = vs.ServerCert
-		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, orig, 1, []string{"cacert"})
+		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, orig, 1, []string{"CaCert"})
 		assert.NoError(err)
 		assert.Equal(1, gotCount1, "count of updated records")
 		require.NotNil(got1)
@@ -922,7 +922,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 
 		// Delete CA Cert
 		orig.CaCert = nil
-		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, orig, 2, []string{"cacert"})
+		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, orig, 2, []string{"CaCert"})
 		assert.NoError(err)
 		assert.Equal(1, gotCount2, "count of updated records")
 		require.NotNil(got2)
@@ -948,7 +948,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		csA, csB := css[0], css[1]
 
 		csA.Name = name
-		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"Name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -956,7 +956,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, csA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		csB.Name = name
-		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, csB, 1, []string{"name"})
+		got2, gotCount2, err := repo.UpdateCredentialStore(ctx, csB, 1, []string{"Name"})
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -1002,7 +1002,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateCredentialStore(ctx, got2, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateCredentialStore(ctx, got2, 1, []string{"Name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -1030,7 +1030,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		csA.ScopeId = csB.ScopeId
 		assert.Equal(csA.ScopeId, csB.ScopeId)
 
-		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"Name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
@@ -1104,7 +1104,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(updateIn)
 			updateIn.PublicId = orig.GetPublicId()
-			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"token"})
+			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"Token"})
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -1250,7 +1250,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(updateIn)
 			updateIn.PublicId = orig.GetPublicId()
-			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"ClientCertificate"})
+			got, gotCount, err := repo.UpdateCredentialStore(ctx, updateIn, 1, []string{"Certificate", "CertificateKey"})
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
