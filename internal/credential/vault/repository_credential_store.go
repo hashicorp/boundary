@@ -79,6 +79,13 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
 	}
+	tokenLookup, err := client.lookupToken()
+	if err != nil {
+		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
+	}
+	if err := validateTokenLookup(op, tokenLookup); err != nil {
+		return nil, err
+	}
 
 	available, err := client.capabilities(requiredCapabilities.paths())
 	if err != nil {
@@ -90,13 +97,6 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 	}
 
-	tokenLookup, err := client.lookupToken()
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup vault token"))
-	}
-	if err := validateTokenLookup(op, tokenLookup); err != nil {
-		return nil, err
-	}
 	renewedToken, err := client.renewToken()
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
@@ -643,6 +643,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
 		}
+		tokenLookup, err := client.lookupToken()
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
+		}
+		if err := validateTokenLookup(op, tokenLookup); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		}
 
 		available, err := client.capabilities(requiredCapabilities.paths())
 		if err != nil {
@@ -655,13 +662,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 		}
 
-		tokenLookup, err := client.lookupToken()
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
-		}
-		if err := validateTokenLookup(op, tokenLookup); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op)
-		}
 		renewedToken, err := client.renewToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
