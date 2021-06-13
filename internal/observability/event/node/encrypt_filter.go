@@ -140,6 +140,10 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 
+	if e.Payload == nil {
+		return e, nil
+	}
+
 	// Get both the value and the type of what the payload points to. Value is
 	// used to mutate underlying data and Type is used to get the name of the
 	// field.
@@ -202,8 +206,8 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	return e, nil
 }
 
-// filterField will recursively iterate over all the field for a value and
-// filter them based on their DataClassification
+// filterField will recursively iterate over all the fields for a struct value
+// and filter them based on their DataClassification
 func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterField"
 	for i := 0; i < v.Type().NumField(); i++ {
@@ -334,6 +338,17 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	}
 
 	opts := getOpts(opt...)
+
+	// check to see if it's an exported struct field
+	if opts.withPointerstructureInfo == nil && !fv.CanSet() {
+		return nil
+	}
+
+	// make sure it's not a nil ptr
+	if ftype == reflect.TypeOf([]uint8(nil)) && fv.IsNil() {
+		return nil
+	}
+
 	switch classificationTag.Classification {
 	case PublicClassification:
 		return nil
