@@ -42,6 +42,7 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Type:      "test",
 				CreatedAt: now,
 				Payload: &testPayload{
+					notExported:       "not-exported",
 					NotTagged:         "not-tagged-data-will-be-redacted",
 					SensitiveRedacted: []byte("sensitive-redact-override"),
 					UserInfo: &testUserInfo{
@@ -55,6 +56,7 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Type:      "test",
 				CreatedAt: now,
 				Payload: &testPayload{
+					notExported:       "not-exported",
 					NotTagged:         node.RedactedData,
 					SensitiveRedacted: []byte(node.RedactedData),
 					UserInfo: &testUserInfo{
@@ -68,6 +70,40 @@ func TestEncryptFilter_Process(t *testing.T) {
 				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
 			},
 		},
+		{
+			name:   "nil-byte-fields",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testPayload{
+					NotTagged:         "not-tagged-data-will-be-redacted",
+					SensitiveRedacted: nil,
+					UserInfo: &testUserInfo{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+					Keys: nil,
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testPayload{
+					NotTagged:         node.RedactedData,
+					SensitiveRedacted: nil,
+					UserInfo: &testUserInfo{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
+					},
+					Keys: nil,
+				},
+			},
+			setupWantEvent: func(e *eventlogger.Event) {
+				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(testDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
+			},
+		},
+
 		{
 			name:   "taggable",
 			filter: testEncryptingFilter,
@@ -84,6 +120,20 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Payload: &testTaggedMap{
 					"foo": "<REDACTED>",
 				},
+			},
+		},
+		{
+			name:   "nil-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   nil,
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   nil,
 			},
 		},
 	}
@@ -144,6 +194,7 @@ type testUserInfo struct {
 }
 
 type testPayload struct {
+	notExported       string
 	NotTagged         string
 	SensitiveRedacted []byte `classified:"sensitive,redact"`
 	UserInfo          *testUserInfo
