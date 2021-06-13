@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 )
 
+// TestVaultServer is a vault server running in a docker container suitable
+// for testing.
 type TestVaultServer struct {
 	*vault.TestVaultServer
 }
