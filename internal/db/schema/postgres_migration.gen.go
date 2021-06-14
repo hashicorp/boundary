@@ -5866,6 +5866,24 @@ create table session_credential_dynamic (
 
   create trigger immutable_columns before update on session_credential_dynamic
     for each row execute procedure immutable_columns('session_id', 'library_id', 'credential_purpose', 'create_time');
+
+  -- revoke_credentials revokes any active credentials for a session when the
+  -- session enters the canceling or terminated states.
+  create or replace function revoke_credentials()
+    returns trigger
+  as $$
+  begin
+    if new.state in ('canceling', 'terminated') then
+      update credential_vault_credential
+         set status = 'revoke'
+       where session_id = new.session_id
+         and status = 'active';
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  create trigger revoke_credentials after insert on session_state
+    for each row execute procedure revoke_credentials();
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
