@@ -17,6 +17,73 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEncryptFilter_encrypt(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	wrapper := TestWrapper(t)
+	testFilter := &EncryptFilter{
+		Wrapper:  wrapper,
+		HmacSalt: []byte("salt"),
+		HmacInfo: []byte("info"),
+	}
+
+	optWrapper := TestWrapper(t)
+	tests := []struct {
+		name            string
+		ef              *EncryptFilter
+		opt             []Option
+		data            []byte
+		decryptWrapper  wrapping.Wrapper
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-data",
+			ef:              testFilter,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing data",
+		},
+		{
+			name:            "missing-wrapper",
+			ef:              &EncryptFilter{},
+			data:            []byte("fido"),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name:           "success",
+			ef:             testFilter,
+			data:           []byte("fido"),
+			decryptWrapper: wrapper,
+		},
+		{
+			name:           "success-with-wrapper",
+			ef:             testFilter,
+			opt:            []Option{WithWrapper(optWrapper)},
+			data:           []byte("fido"),
+			decryptWrapper: optWrapper,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tt.ef.encrypt(ctx, tt.data, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			assert.Equal(TestDecryptValue(t, tt.decryptWrapper, []byte(got)), tt.data)
+		})
+	}
+}
+
 func TestEncryptFilter_hmacSha256(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -96,7 +163,6 @@ func TestEncryptFilter_hmacSha256(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
-
 }
 
 func Test_setValue(t *testing.T) {
