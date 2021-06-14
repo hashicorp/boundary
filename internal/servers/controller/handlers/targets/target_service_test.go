@@ -4,27 +4,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	credpb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
+	spb "github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -43,6 +54,7 @@ var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-h
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
@@ -58,7 +70,10 @@ func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wra
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	return targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn)
+	credentialRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	return targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
 }
 
 func TestGet(t *testing.T) {
@@ -1731,4 +1746,111 @@ func TestRemoveTargetLibraries(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthorizeSession(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+	sessionRepoFn := func() (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms)
+	}
+	staticHostRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	credentialRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
+		nil,
+		iamRepoFn,
+		atRepoFn,
+		serversRepoFn,
+		kms,
+		auth.RequestInfo{
+			Token:       at.GetToken(),
+			TokenFormat: auth.AuthTokenTypeBearer,
+			PublicId:    at.GetPublicId(),
+		})
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	s, err := targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
+	require.NoError(t, err)
+
+	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	_ = static.TestSetMembers(t, conn, hs.GetPublicId(), h)
+
+	apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+		Id:         tar.GetPublicId(),
+		Version:    tar.GetVersion(),
+		HostSetIds: []string{hs.GetPublicId()},
+	})
+	require.NoError(t, err)
+
+	// Tell our DB that there is a worker ready to serve the data
+	workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+	_, err = workerService.Status(ctx, &spbs.StatusRequest{
+		Worker: &spb.Server{
+			PrivateId: "testworker",
+			Address:   "localhost:8457",
+		},
+	})
+	require.NoError(t, err)
+
+	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
+	v.MountDatabase(t)
+	v.MountPKI(t)
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
+
+	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
+	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
+	require.NoError(t, err)
+	clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+		CredentialStoreId: store.GetPublicId(),
+		Name:              wrapperspb.String("Library Name"),
+		Description:       wrapperspb.String("Library Description"),
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"path": structpb.NewStringValue(path.Join("database", "creds", "opened")),
+		}},
+	}})
+	require.NoError(t, err)
+
+	// cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	_, err = s.AddTargetCredentialLibraries(ctx,
+		&pbs.AddTargetCredentialLibrariesRequest{
+			Id:                   tar.GetPublicId(),
+			CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
+			Version:              apiTar.GetItem().GetVersion(),
+		})
+	require.NoError(t, err)
+
+	_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+		Id: tar.GetPublicId(),
+	})
+	require.NoError(t, err)
 }

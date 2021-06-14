@@ -78,9 +78,7 @@ func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 // library is a part of and the library's name and description.
 type TargetLibrary struct {
 	*store.CredentialLibrary
-	StoreId     string
-	Name        string
-	Description string
+	StoreId string
 }
 
 // TableName returns the tablename to override the default gorm table name
