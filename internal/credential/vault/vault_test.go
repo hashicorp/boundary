@@ -31,7 +31,6 @@ func TestClient_RenewToken(t *testing.T) {
 
 	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
-	require.NotNil(t, secretLookup)
 
 	// need to sleep so the expiration times will be different
 	time.Sleep(100 * time.Millisecond)
@@ -42,8 +41,6 @@ func TestClient_RenewToken(t *testing.T) {
 	assert.NotNil(renewedToken)
 
 	renewedLookup := v.LookupToken(t, token)
-	require.NotNil(t, renewedLookup)
-
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, renewedLookup)
 	assert.False(t1.Equal(t2))
 	assert.True(t2.After(t1))
@@ -70,7 +67,6 @@ func TestClient_LookupToken(t *testing.T) {
 
 	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
-	require.NotNil(secretLookup)
 
 	client := v.clientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken()

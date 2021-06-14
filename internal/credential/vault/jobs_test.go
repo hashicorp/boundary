@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"net/http"
 	"path"
 	"strings"
 	"testing"
@@ -872,7 +873,10 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify noCredsToken was revoked in vault
 	err = v.LookupTokenError(t, string(noCredsToken.GetToken()))
-	assert.Error(err)
+	var respErr *vault.ResponseError
+	require.True(errors.As(err, &respErr))
+	assert.Equal(http.StatusForbidden, respErr.StatusCode)
+
 	// Verify credsToken was not revoked in vault
 	lookupToken := v.LookupToken(t, string(credsToken.GetToken()))
 	assert.NotNil(lookupToken)
@@ -895,7 +899,8 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify credsToken was revoked in vault
 	err = v.LookupTokenError(t, string(credsToken.GetToken()))
-	require.Error(err)
+	require.True(errors.As(err, &respErr))
+	assert.Equal(http.StatusForbidden, respErr.StatusCode)
 
 	// Verify credsToken was set to revoked in repo
 	repoToken = allocToken()

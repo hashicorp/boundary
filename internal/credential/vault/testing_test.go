@@ -175,7 +175,6 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 			}
 
 			tokenLookup := v.LookupToken(t, token)
-			require.NotNil(tokenLookup)
 			t.Log(testLogVaultSecret(t, tokenLookup))
 
 			if tt.lookupChkFn != nil {
@@ -414,7 +413,6 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 	time.Sleep(time.Second)
 
 	leaseLookup := v.LookupLease(t, cred.LeaseID)
-	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
 	id := leaseLookup.Data["id"]
