@@ -110,14 +110,14 @@ func TestEncryptFilter_Process(t *testing.T) {
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &testTaggedMap{
+				Payload: &node.TestTaggedMap{
 					"foo": "bar",
 				},
 			},
 			wantEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &testTaggedMap{
+				Payload: &node.TestTaggedMap{
 					"foo": "<REDACTED>",
 				},
 			},
@@ -199,18 +199,4 @@ type testPayload struct {
 	SensitiveRedacted []byte `classified:"sensitive,redact"`
 	UserInfo          *testUserInfo
 	Keys              [][]byte `classified:"secret"`
-}
-
-const testMapField = "foo"
-
-type testTaggedMap map[string]interface{}
-
-func (t testTaggedMap) Tags() ([]node.PointerTag, error) {
-	return []node.PointerTag{
-		{
-			Pointer:        "/" + testMapField,
-			Classification: node.SecretClassification,
-			Filter:         node.RedactOperation,
-		},
-	}, nil
 }
