@@ -71,16 +71,17 @@ type Command struct {
 	FlagRecoveryConfig   string
 	flagOutputCurlString bool
 
-	FlagScopeId       string
-	FlagScopeName     string
-	FlagId            string
-	FlagName          string
-	FlagDescription   string
-	FlagAuthMethodId  string
-	FlagHostCatalogId string
-	FlagVersion       int
-	FlagRecursive     bool
-	FlagFilter        string
+	FlagScopeId           string
+	FlagScopeName         string
+	FlagId                string
+	FlagName              string
+	FlagDescription       string
+	FlagAuthMethodId      string
+	FlagHostCatalogId     string
+	FlagCredentialStoreId string
+	FlagVersion           int
+	FlagRecursive         bool
+	FlagFilter            string
 
 	client *api.Client
 }

@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	vaultPathField       = "attributes.vault_path"
+	vaultPathField       = "attributes.path"
 	httpMethodField      = "attributes.http_method"
 	httpRequestBodyField = "attributes.http_request_body"
 )
@@ -471,7 +471,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential library")
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{
-				VaultPath: vaultIn.GetVaultPath(),
+				Path: wrapperspb.String(vaultIn.GetVaultPath()),
 			}
 			if vaultIn.GetHttpMethod() != "" {
 				attrs.HttpMethod = wrapperspb.String(vaultIn.GetHttpMethod())
@@ -511,7 +511,7 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithRequestBody([]byte(attrs.GetHttpRequestBody().GetValue())))
 	}
 
-	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetVaultPath(), opts...)
+	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetPath().GetValue(), opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to build credential library"))
 	}
@@ -540,7 +540,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 				break
 			}
-			if attrs.VaultPath == "" {
+			if attrs.GetPath().GetValue() == "" {
 				badFields[vaultPathField] = "This is a required field."
 			}
 			if m := attrs.GetHttpMethod(); m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
@@ -569,7 +569,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 				break
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.VaultPath == "" {
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
 				badFields[vaultPathField] = "This is a required field and cannot be set to empty."
 			}
 			if m := attrs.GetHttpMethod(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), httpMethodField) && m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
