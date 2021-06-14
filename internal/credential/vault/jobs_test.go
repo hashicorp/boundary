@@ -1136,7 +1136,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
-	_, token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
@@ -1242,7 +1242,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
-	_, token := v.CreateToken(t, WithPolicies([]string{"default", "database"}))
+	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
 	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
