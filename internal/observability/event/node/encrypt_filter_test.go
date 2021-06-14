@@ -212,3 +212,81 @@ func TestEncryptFilter_Reopen(t *testing.T) {
 	ef := &node.EncryptFilter{}
 	require.NoErrorf(t, ef.Reopen(), "Reopen is a no op and should never return an error")
 }
+
+func TestEncryptFilter_Rotate(t *testing.T) {
+	t.Parallel()
+
+	initialWrapper := node.TestWrapper(t)
+
+	rotatedWrapper := node.TestWrapper(t)
+
+	tests := []struct {
+		name         string
+		node         *node.EncryptFilter
+		opt          []node.Option
+		wantWrapper  wrapping.Wrapper
+		wantSalt     []byte
+		wantwithInfo []byte
+	}{
+		{
+			name: "wrapper-only",
+			node: &node.EncryptFilter{
+				Wrapper:  initialWrapper,
+				HmacSalt: []byte("initial-salt"),
+				HmacInfo: []byte("initial-info"),
+			},
+			opt:          []node.Option{node.WithWrapper(rotatedWrapper)},
+			wantWrapper:  rotatedWrapper,
+			wantSalt:     []byte("initial-salt"),
+			wantwithInfo: []byte("initial-info"),
+		},
+		{
+			name: "salt-only",
+			node: &node.EncryptFilter{
+				Wrapper:  initialWrapper,
+				HmacSalt: []byte("initial-salt"),
+				HmacInfo: []byte("initial-info"),
+			},
+			opt:          []node.Option{node.WithSalt([]byte("rotated-salt"))},
+			wantWrapper:  initialWrapper,
+			wantSalt:     []byte("rotated-salt"),
+			wantwithInfo: []byte("initial-info"),
+		},
+		{
+			name: "info-only",
+			node: &node.EncryptFilter{
+				Wrapper:  initialWrapper,
+				HmacSalt: []byte("initial-salt"),
+				HmacInfo: []byte("initial-info"),
+			},
+			opt:          []node.Option{node.WithInfo([]byte("rotated-info"))},
+			wantWrapper:  initialWrapper,
+			wantSalt:     []byte("initial-salt"),
+			wantwithInfo: []byte("rotated-info"),
+		},
+		{
+			name: "rotate-everything",
+			node: &node.EncryptFilter{
+				Wrapper:  initialWrapper,
+				HmacSalt: []byte("initial-salt"),
+				HmacInfo: []byte("initial-info"),
+			},
+			opt: []node.Option{
+				node.WithWrapper(rotatedWrapper),
+				node.WithSalt([]byte("rotated-salt")),
+				node.WithInfo([]byte("rotated-info")),
+			},
+			wantWrapper:  rotatedWrapper,
+			wantSalt:     []byte("rotated-salt"),
+			wantwithInfo: []byte("rotated-info"),
+		},
+	}
+	for _, tt := range tests {
+		assert := assert.New(t)
+		tt.node.Rotate(tt.opt...)
+		assert.Equal(tt.wantWrapper, tt.node.Wrapper)
+		assert.Equal(tt.wantSalt, tt.node.HmacSalt)
+		assert.Equal(tt.wantwithInfo, tt.node.HmacInfo)
+	}
+
+}
