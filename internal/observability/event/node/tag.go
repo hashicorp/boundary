@@ -24,14 +24,7 @@ func getClassificationFromTag(f reflect.StructTag, opt ...Option) *tagInfo {
 
 func getClassificationFromTagString(tag string, opt ...Option) *tagInfo {
 	const op = "node.getClassificationFromTagString"
-	segs := strings.Split(tag, ",")
-
-	if len(segs) == 0 {
-		return &tagInfo{
-			Classification: UnknownClassification,
-			Operation:      UnknownOperation,
-		}
-	}
+	segs := strings.Split(tag, ",") // will always return at least 1 segment
 
 	var operation FilterOperation
 	switch len(segs) {
