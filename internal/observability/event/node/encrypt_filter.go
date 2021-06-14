@@ -398,7 +398,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 func (ef *EncryptFilter) encrypt(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
 	if data == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing value")
+		return "", errors.New(errors.InvalidParameter, op, "missing data")
 	}
 	ef.l.Lock()
 	defer ef.l.Unlock()
