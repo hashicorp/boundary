@@ -8,6 +8,7 @@ import (
 )
 
 func Test_getClassificationFromTagString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		tag  string

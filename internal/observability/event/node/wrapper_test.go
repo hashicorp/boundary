@@ -10,6 +10,7 @@ import (
 )
 
 func Test_NewEventWrapper(t *testing.T) {
+	t.Parallel()
 
 	testWrapper := TestWrapper(t)
 
@@ -57,6 +58,7 @@ func Test_NewEventWrapper(t *testing.T) {
 }
 
 func Test_derivedKeyPurpose_String(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		k    derivedKeyPurpose

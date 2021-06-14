@@ -7,7 +7,7 @@ import (
 )
 
 func Test_convertToOperation(t *testing.T) {
-
+	t.Parallel()
 	tests := []struct {
 		name string
 		seg  string
