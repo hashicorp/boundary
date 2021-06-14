@@ -55,3 +55,28 @@ func Test_NewEventWrapper(t *testing.T) {
 	}
 
 }
+
+func Test_derivedKeyPurpose_String(t *testing.T) {
+	tests := []struct {
+		name string
+		k    derivedKeyPurpose
+		want string
+	}{
+		{
+			name: "unknown",
+			k:    derivedKeyPurposeUnknown,
+			want: "unknown",
+		},
+		{
+			name: "event",
+			k:    derivedKeyPurposeEvent,
+			want: "event",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			assert.Equal(tt.want, tt.k.String())
+		})
+	}
+}
