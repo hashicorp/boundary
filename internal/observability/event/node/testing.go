@@ -1,6 +1,8 @@
 package node
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"testing"
@@ -8,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing
@@ -29,6 +32,20 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 	require.NoErrorf(err, "unable to set wrapper's key bytes")
 
 	return root
+}
+
+func TestDecryptValue(t *testing.T, w wrapping.Wrapper, value []byte) []byte {
+	t.Helper()
+	require := require.New(t)
+	value = bytes.TrimPrefix(value, []byte("encrypted:"))
+	value, err := base64.RawURLEncoding.DecodeString(string(value))
+	require.NoError(err)
+	blobInfo := new(wrapping.EncryptedBlobInfo)
+	require.NoError(proto.Unmarshal(value, blobInfo))
+
+	marshaledInfo, err := w.Decrypt(context.Background(), blobInfo, nil)
+	require.NoError(err)
+	return marshaledInfo
 }
 
 // TestMapField defines a const for a field name used for testing TestTaggedMap
