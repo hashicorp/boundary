@@ -17,6 +17,149 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEncryptFilter_filterValue(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	var nilBytePtr []byte
+	testStr := "fido"
+	testInt := 22
+
+	wrapper := TestWrapper(t)
+	testFilter := &EncryptFilter{
+		Wrapper:  wrapper,
+		HmacSalt: []byte("salt"),
+		HmacInfo: []byte("info"),
+	}
+
+	// optWrapper := TestWrapper(t)
+	tests := []struct {
+		name            string
+		ef              *EncryptFilter
+		opt             []Option
+		fv              reflect.Value
+		classification  *tagInfo
+		decryptWrapper  wrapping.Wrapper
+		wantValue       string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-tag",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(&testStr).Elem(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing classification tag",
+		},
+		{
+			name:            "missing-wrapper-encrypt",
+			ef:              &EncryptFilter{},
+			fv:              reflect.ValueOf(&testStr).Elem(),
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name:            "missing-wrapper-hmac",
+			ef:              &EncryptFilter{},
+			fv:              reflect.ValueOf(&testStr).Elem(),
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing wrapper",
+		},
+		{
+			name:            "not-string-or-bytes",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(&testInt).Elem(),
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "field value is not a string or []byte",
+		},
+		{
+			name:           "nil",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(nil),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+		},
+		{
+			name:           "nil-byte-ptr",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(nilBytePtr),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			decryptWrapper: wrapper,
+		},
+		{
+			name:            "unknown-filter-operation",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(&testStr).Elem(),
+			classification:  &tagInfo{Classification: SecretClassification, Operation: NoOperation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unknown filter operation",
+		},
+		{
+			name:           "success-public",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: PublicClassification},
+			wantValue:      testStr,
+		},
+		{
+			name:           "success-secret-hmac",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
+			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+		},
+		{
+			name:           "success-secret-encrypt",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SecretClassification, Operation: EncryptOperation},
+			decryptWrapper: wrapper,
+			wantValue:      "fido",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testStr = "fido" // reset it everytime
+			assert, require := assert.New(t), require.New(t)
+			err := tt.ef.filterValue(ctx, tt.fv, tt.classification, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			switch tt.classification.Classification {
+			case PublicClassification:
+				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+			case SecretClassification, SensitiveClassification:
+				switch tt.classification.Operation {
+				case EncryptOperation:
+					switch {
+					case tt.fv == reflect.ValueOf(nil):
+						assert.Equal(tt.wantValue, "")
+					case tt.fv.Type() == reflect.TypeOf([]uint8(nil)):
+						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, tt.fv.Bytes())), tt.wantValue)
+					case tt.fv.Type() == reflect.TypeOf(""):
+						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, []byte(tt.fv.String()))), tt.wantValue)
+					}
+				case HmacSha256Operation:
+					assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+				case RedactOperation:
+					assert.Equal(RedactedData, fmt.Sprintf("%s", tt.fv))
+				}
+			default:
+				assert.Equal(RedactedData, fmt.Sprintf("%s", tt.fv))
+			}
+		})
+	}
+}
+
 func TestEncryptFilter_encrypt(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -167,7 +310,6 @@ func TestEncryptFilter_hmacSha256(t *testing.T) {
 
 func Test_setValue(t *testing.T) {
 	t.Parallel()
-
 	testInt := 22
 	testStr := "fido"
 	tests := []struct {
