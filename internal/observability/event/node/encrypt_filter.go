@@ -436,26 +436,33 @@ func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Opt
 		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
 	}
 	var w wrapping.Wrapper
-	var salt []byte
-	var info []byte
 	switch {
 	case opts.withWrapper != nil:
 		w = opts.withWrapper
 	default:
 		w = ef.Wrapper
 	}
+
+	var salt []byte
 	switch {
 	case opts.withSalt != nil:
+		salt = make([]byte, len(opts.withSalt))
 		copy(salt, opts.withSalt)
 	default:
+		salt = make([]byte, len(ef.HmacSalt))
 		copy(salt, ef.HmacSalt)
 	}
+
+	var info []byte
 	switch {
 	case opts.withInfo != nil:
+		info = make([]byte, len(opts.withInfo))
 		copy(info, opts.withInfo)
 	default:
+		info = make([]byte, len(ef.HmacInfo))
 		copy(info, ef.HmacInfo)
 	}
+
 	reader, err := kms.NewDerivedReader(w, 32, salt, info)
 	if err != nil {
 		return "", errors.Wrap(err, op)
