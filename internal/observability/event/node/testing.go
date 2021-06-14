@@ -31,3 +31,20 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 	}
 	return root
 }
+
+// TestMapField defines a const for a field name used for testing TestTaggedMap
+const TestMapField = "foo"
+
+// TestTaggedMap is a map that implements the Taggable interface for testing
+type TestTaggedMap map[string]interface{}
+
+// Tags implements the taggable interface for the TestTaggedMap type
+func (t TestTaggedMap) Tags() ([]PointerTag, error) {
+	return []PointerTag{
+		{
+			Pointer:        "/" + TestMapField,
+			Classification: SecretClassification,
+			Filter:         RedactOperation,
+		},
+	}, nil
+}
