@@ -85,10 +85,10 @@ func NewEventWrapper(wrapper wrapping.Wrapper, eventId string) (wrapping.Wrapper
 	if err := derivedWrapper.SetAESGCMKeyBytes(privKey); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper for event id %s", eventId)))
 	}
-	return wrapper, nil
+	return derivedWrapper, nil
 }
 
 // derivedKeyId returns a key that represents the derived key
-func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, authMethodId string) string {
-	return fmt.Sprintf("%s.%s.%s", purpose.String(), wrapperKeyId, authMethodId)
+func derivedKeyId(purpose derivedKeyPurpose, wrapperKeyId, eventId string) string {
+	return fmt.Sprintf("%s.%s.%s", purpose.String(), wrapperKeyId, eventId)
 }
