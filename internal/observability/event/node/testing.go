@@ -7,28 +7,27 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing
 func TestWrapper(t *testing.T) wrapping.Wrapper {
+	t.Helper()
+	require := require.New(t)
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != 32 {
-		t.Fatal(n)
-	}
+	require.NoErrorf(err, "unable to read random data for test wrapper")
+	require.Equalf(n, 32, "random data for test wrapper is not the proper length of 32 bytes")
+
 	root := aead.NewWrapper(nil)
 	_, err = root.SetConfig(map[string]string{
 		"key_id": base64.StdEncoding.EncodeToString(rootKey),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
-		t.Fatal(err)
-	}
+	require.NoErrorf(err, "unable to encode key for wrapper")
+
+	err = root.SetAESGCMKeyBytes(rootKey)
+	require.NoErrorf(err, "unable to set wrapper's key bytes")
+
 	return root
 }
 
