@@ -471,6 +471,9 @@ func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Opt
 
 func setValue(fv reflect.Value, newVal string) error {
 	const op = "event.(EncryptFilter).setValue"
+	if !fv.CanSet() {
+		return errors.New(errors.InvalidParameter, op, "unable to set value")
+	}
 	ftype := fv.Type()
 	isByteArray := ftype == reflect.TypeOf([]uint8(nil))
 	isString := ftype == reflect.TypeOf("")
@@ -483,7 +486,8 @@ func setValue(fv reflect.Value, newVal string) error {
 	case isString:
 		fv.SetString(newVal)
 	default:
-		return errors.New(errors.InvalidParameter, op, "unable to redact field value since is not a string or []byte")
+		// should not be reachable based on current parameter checking
+		return errors.New(errors.InvalidParameter, op, "unable to set field value since is not a string or []byte")
 	}
 	return nil
 }
