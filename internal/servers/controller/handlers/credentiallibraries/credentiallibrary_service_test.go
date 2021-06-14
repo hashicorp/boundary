@@ -67,7 +67,7 @@ func TestList(t *testing.T) {
 			AuthorizedActions: testAuthorizedActions,
 			Attributes: func() *structpb.Struct {
 				attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-					VaultPath:  l.GetVaultPath(),
+					Path:       wrapperspb.String(l.GetVaultPath()),
 					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
 				})
 				require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestCreate(t *testing.T) {
 				Id:                vault.CredentialLibraryPrefix + "_notallowed",
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -207,7 +207,7 @@ func TestCreate(t *testing.T) {
 				CreatedTime:       timestamppb.Now(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -223,7 +223,7 @@ func TestCreate(t *testing.T) {
 				UpdatedTime:       timestamppb.Now(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -239,7 +239,7 @@ func TestCreate(t *testing.T) {
 				Type:              "static",
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -254,7 +254,7 @@ func TestCreate(t *testing.T) {
 				Type: credential.VaultSubtype.String(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -269,7 +269,7 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					attrs.Fields["invalid"] = structpb.NewStringValue("foo")
@@ -285,7 +285,7 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath:       "something",
+						Path:            wrapperspb.String("something"),
 						HttpRequestBody: wrapperspb.String("foo"),
 					})
 					require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath:  "something",
+						Path:       wrapperspb.String("something"),
 						HttpMethod: wrapperspb.String("PATCH"),
 					})
 					require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath:       "something",
+						Path:            wrapperspb.String("something"),
 						HttpRequestBody: wrapperspb.String("foo"),
 					})
 					require.NoError(t, err)
@@ -333,7 +333,7 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath:       "something",
+						Path:            wrapperspb.String("something"),
 						HttpMethod:      wrapperspb.String("post"),
 						HttpRequestBody: wrapperspb.String("foo"),
 					})
@@ -354,7 +354,7 @@ func TestCreate(t *testing.T) {
 					Type:              credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-							VaultPath:       "something",
+							Path:            wrapperspb.String("something"),
 							HttpMethod:      wrapperspb.String("POST"),
 							HttpRequestBody: wrapperspb.String("foo"),
 						})
@@ -373,7 +373,7 @@ func TestCreate(t *testing.T) {
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attributes: func() *structpb.Struct {
 					attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-						VaultPath: "something",
+						Path: wrapperspb.String("something"),
 					})
 					require.NoError(t, err)
 					return attrs
@@ -394,7 +394,7 @@ func TestCreate(t *testing.T) {
 					Type:              credential.VaultSubtype.String(),
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-							VaultPath:  "something",
+							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						})
 						require.NoError(t, err)
@@ -487,7 +487,7 @@ func TestGet(t *testing.T) {
 					Version:           1,
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-							VaultPath:  vl.GetVaultPath(),
+							Path:       wrapperspb.String(vl.GetVaultPath()),
 							HttpMethod: wrapperspb.String(vl.GetHttpMethod()),
 						})
 						require.NoError(t, err)
@@ -666,7 +666,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.Attributes.Fields["vault_path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path0")
 				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
 				return out
 			},
@@ -688,7 +688,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.Attributes.Fields["vault_path"] = structpb.NewStringValue("vault/path0")
+				out.Attributes.Fields["path"] = structpb.NewStringValue("vault/path0")
 				out.Attributes.Fields["http_method"] = structpb.NewStringValue("POST")
 				out.Attributes.Fields["http_request_body"] = structpb.NewStringValue("body")
 				return out
@@ -701,7 +701,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.CredentialLibrary{
 					Attributes: func() *structpb.Struct {
 						attrs, err := handlers.ProtoToStruct(&pb.VaultCredentialLibraryAttributes{
-							VaultPath: "something",
+							Path: wrapperspb.String("something"),
 						})
 						require.NoError(t, err)
 						return attrs
@@ -710,7 +710,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.Attributes.Fields["vault_path"] = structpb.NewStringValue("something")
+				out.Attributes.Fields["path"] = structpb.NewStringValue("something")
 				return out
 			},
 		},
