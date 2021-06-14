@@ -200,3 +200,15 @@ type testPayload struct {
 	UserInfo          *testUserInfo
 	Keys              [][]byte `classified:"secret"`
 }
+
+func TestEncryptFilter_Type(t *testing.T) {
+	t.Parallel()
+	ef := &node.EncryptFilter{}
+	assert.Equalf(t, eventlogger.NodeTypeFilter, ef.Type(), "Type() should always return %s", eventlogger.NodeTypeFilter)
+}
+
+func TestEncryptFilter_Reopen(t *testing.T) {
+	t.Parallel()
+	ef := &node.EncryptFilter{}
+	require.NoErrorf(t, ef.Reopen(), "Reopen is a no op and should never return an error")
+}
