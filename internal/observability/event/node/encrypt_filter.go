@@ -332,6 +332,12 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	if classificationTag == nil {
 		return errors.New(errors.InvalidParameter, op, "missing classification tag")
 	}
+
+	// check for nil value (prevent panics)
+	if fv == reflect.ValueOf(nil) {
+		return nil
+	}
+
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
 		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
@@ -344,7 +350,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		return nil
 	}
 
-	// make sure it's not a nil ptr
+	// make sure it's not a []uint8 nil ptr
 	if ftype == reflect.TypeOf([]uint8(nil)) && fv.IsNil() {
 		return nil
 	}
