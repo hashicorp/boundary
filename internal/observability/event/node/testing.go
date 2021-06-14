@@ -37,12 +37,16 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 func TestDecryptValue(t *testing.T, w wrapping.Wrapper, value []byte) []byte {
 	t.Helper()
 	require := require.New(t)
+	require.NotNilf(w, "wrapper is missing")
 	value = bytes.TrimPrefix(value, []byte("encrypted:"))
 	value, err := base64.RawURLEncoding.DecodeString(string(value))
 	require.NoError(err)
 	blobInfo := new(wrapping.EncryptedBlobInfo)
 	require.NoError(proto.Unmarshal(value, blobInfo))
 
+	if blobInfo.Ciphertext == nil {
+		return nil
+	}
 	marshaledInfo, err := w.Decrypt(context.Background(), blobInfo, nil)
 	require.NoError(err)
 	return marshaledInfo
