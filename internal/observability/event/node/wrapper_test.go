@@ -25,13 +25,13 @@ func Test_NewEventWrapper(t *testing.T) {
 			name:            "missing wrapper",
 			eventId:         "test-id",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "mssing wrapper",
+			wantErrContains: "missing wrapper",
 		},
 		{
 			name:            "missing eventId",
 			wrapper:         testWrapper,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "mssing event id",
+			wantErrContains: "missing event id",
 		},
 		{
 			name:    "success",
@@ -47,6 +47,9 @@ func Test_NewEventWrapper(t *testing.T) {
 				require.Error(err)
 				assert.Nil(got)
 				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
 				return
 			}
 			require.NoError(err)
