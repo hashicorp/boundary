@@ -18,28 +18,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, serverId string, opts ...Option) *Scheduler {
+// TestScheduler creates a mock controller and a new Scheduler attached to that controller id.
+// The Scheduler returned should only be used for tests.  The mock controller is not run.
+//
+// WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
+// the only valid options.
+func TestScheduler(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := servers.NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
 	iam.TestRepo(t, conn, wrapper)
-
-	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(rw, rw, kmsCache)
-	}
-
-	s, err := New(serverId, jobRepoFn, hclog.L(), opts...)
-	require.NoError(t, err)
-	return s
-}
-
-func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *servers.Server {
-	t.Helper()
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
@@ -51,7 +42,15 @@ func testController(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *serv
 	}
 	_, _, err = serversRepo.UpsertServer(context.Background(), controller)
 	require.NoError(t, err)
-	return controller
+
+	jobRepoFn := func() (*job.Repository, error) {
+		return job.NewRepository(rw, rw, kmsCache)
+	}
+
+	s, err := New(controller.PrivateId, jobRepoFn, hclog.L(), opt...)
+	require.NoError(t, err)
+
+	return s
 }
 
 func testJobFn() (func(ctx context.Context) error, chan struct{}, chan struct{}) {
@@ -87,8 +86,8 @@ func (j testJob) Run(ctx context.Context) error {
 	return j.fn(ctx)
 }
 
-func (j testJob) NextRunIn() time.Duration {
-	return j.nextRunIn
+func (j testJob) NextRunIn() (time.Duration, error) {
+	return j.nextRunIn, nil
 }
 
 func (j testJob) Name() string {
