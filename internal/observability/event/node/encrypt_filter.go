@@ -152,6 +152,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	pType := payloadValue.Type()
 	pKind := payloadValue.Kind()
 
+	isPtrToString := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.String
 	isPtrToSlice := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Slice
 	isPtrToStruct := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Struct
 	isSlice := pKind == reflect.Slice
@@ -159,7 +160,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	taggedInterface, isTaggable := payloadValue.Interface().(Taggable)
 
 	switch {
-	case pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
+	case isPtrToString || pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
 		ef.l.RLock()
 		classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
 		ef.l.RUnlock()
@@ -336,6 +337,10 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	// check for nil value (prevent panics)
 	if fv == reflect.ValueOf(nil) {
 		return nil
+	}
+
+	if fv.Kind() == reflect.Ptr && fv.Elem().Kind() == reflect.String {
+		fv = fv.Elem()
 	}
 
 	ftype := fv.Type()
