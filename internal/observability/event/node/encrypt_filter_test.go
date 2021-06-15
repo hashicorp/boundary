@@ -199,8 +199,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 		HmacInfo: []byte("info"),
 	}
 
-	// TODO: add tests that use an optional wrapper.
-	// optWrapper := TestWrapper(t)
+	optWrapper := TestWrapper(t)
 	tests := []struct {
 		name            string
 		ef              *EncryptFilter
@@ -371,6 +370,14 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			wantValue: fmt.Sprintf("%s", map[string]interface{}{
 				"foo": RedactedData,
 			}),
+		},
+		{
+			name:           "success-secret-hmac-opt-wrapper",
+			ef:             testFilter,
+			opt:            []Option{WithWrapper(optWrapper)},
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
+			wantValue:      testHmacSha256(t, []byte("fido"), optWrapper, []byte("salt"), []byte("info")),
 		},
 	}
 	for _, tt := range tests {
