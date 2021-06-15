@@ -1824,8 +1824,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
 	v.MountDatabase(t)
-	v.MountPKI(t)
-	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database", "pki"}))
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
 
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
@@ -1849,10 +1848,16 @@ func TestAuthorizeSession(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+	asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 		Id: tar.GetPublicId(),
 	})
 	require.NoError(t, err)
+	asRes2, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+		Id: tar.GetPublicId(),
+	})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()))
 
 	want := &pb.SessionAuthorization{
 		Scope: &scopes.ScopeInfo{
@@ -1874,11 +1879,12 @@ func TestAuthorizeSession(t *testing.T) {
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),
 				CredentialStoreId: store.GetPublicId(),
+				Type: credential.VaultSubtype.String(),
 			},
 			Secret: func() *structpb.Value {
 				s, err := structpb.NewStruct(map[string]interface{}{
-					"username": "somethingelse",
-					"password": "something",
+					"username": "some username",
+					"password": "some password",
 				})
 				require.NoError(t, err)
 				return structpb.NewStructValue(s)
@@ -1887,7 +1893,11 @@ func TestAuthorizeSession(t *testing.T) {
 		// TODO: validate the contents of the authorization token is what is expected
 		// AuthorizationToken: "",
 	}
-	got := asRes.GetItem()
+	got := asRes1.GetItem()
+	require.Len(t, got.GetCredentials(), 1)
+	got.Credentials[0].Secret.GetStructValue().Fields["username"] = structpb.NewStringValue("some username")
+	got.Credentials[0].Secret.GetStructValue().Fields["password"] = structpb.NewStringValue("some password")
+
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-	assert.Empty(t, cmp.Diff(asRes.GetItem(), want, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(asRes1.GetItem(), want, protocmp.Transform()))
 }
