@@ -525,6 +525,52 @@ func TestPathCapabilities_missing(t *testing.T) {
 	}
 }
 
+func TestPathCapabilities_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		pc       pathCapabilities
+		contains []string
+	}{
+		{
+			name: "empty-empty",
+		},
+		{
+			name:     "one-path",
+			pc:       pathCapabilities{"one": createCapability},
+			contains: []string{"one: create"},
+		},
+		{
+			name:     "one-path-multiple-capabilities",
+			pc:       pathCapabilities{"one": createCapability | readCapability | updateCapability},
+			contains: []string{"one: create|read|update"},
+		},
+		{
+			name:     "multiple-paths",
+			pc:       pathCapabilities{"one": createCapability, "two": updateCapability},
+			contains: []string{"one: create", "two: update"},
+		},
+		{
+			name: "multiple-paths-multiple-capabilities",
+			pc: pathCapabilities{
+				"one":   createCapability,
+				"two":   createCapability | readCapability | updateCapability,
+				"three": readCapability | deleteCapability,
+			},
+			contains: []string{"one: create", "two: create|read|update", "three: read|delete"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := tt.pc.String()
+			for _, s := range tt.contains {
+				assert.Containsf(got, s, "expected %q to contain %s", got, s)
+			}
+		})
+	}
+}
+
 func TestCapabilities_missing(t *testing.T) {
 	tests := []struct {
 		have, require, want capabilities

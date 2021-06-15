@@ -242,6 +242,25 @@ func (pc pathCapabilities) vaultPolicy() string {
 	return b.String()
 }
 
+func (pc pathCapabilities) paths() []string {
+	var paths []string
+	for path := range pc {
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+func (pc pathCapabilities) String() string {
+	var b strings.Builder
+	for k, v := range pc {
+		b.WriteString(k)
+		b.WriteString(": ")
+		b.WriteString(strings.Join(v.strings(), "|"))
+		b.WriteString(", ")
+	}
+	return strings.TrimSuffix(b.String(), ", ")
+}
+
 var requiredCapabilities = pathCapabilities{
 	"auth/token/lookup-self": readCapability,
 	"auth/token/renew-self":  updateCapability,

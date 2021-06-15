@@ -135,6 +135,11 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			tls:  TestClientTLS,
 		},
 		{
+			name:      "token-missing-capabilities",
+			tokenOpts: []TestOption{WithPolicies([]string{"default"})},
+			wantErr:   errors.VaultTokenMissingCapabilities,
+		},
+		{
 			name:      "no-tls-token-not-renewable",
 			tokenOpts: []TestOption{TestRenewableToken(false)},
 			wantErr:   errors.VaultTokenNotRenewable,
@@ -1056,6 +1061,11 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			name:               "valid",
 			wantOldTokenStatus: MaintainingToken,
 			wantCount:          1,
+		},
+		{
+			name:         "token-missing-capabilities",
+			newTokenOpts: []TestOption{WithPolicies([]string{"default"})},
+			wantErr:      errors.VaultTokenMissingCapabilities,
 		},
 		{
 			name:         "token-not-renewable",
