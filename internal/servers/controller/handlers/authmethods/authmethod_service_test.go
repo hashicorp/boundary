@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -997,6 +998,19 @@ func TestCreate(t *testing.T) {
 					delete(got.Item.Attributes.Fields, "callback_url")
 					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
+				if v, ok := got.Item.Attributes.Fields["account_claim_maps"]; ok {
+					lv := v.GetListValue().GetValues()
+					sort.Slice(lv, func(i, j int) bool {
+						return lv[i].GetStringValue() < lv[j].GetStringValue()
+					})
+				}
+				if v, ok := tc.res.Item.Attributes.Fields["account_claim_maps"]; ok {
+					lv := v.GetListValue().GetValues()
+					sort.Slice(lv, func(i, j int) bool {
+						return lv[i].GetStringValue() < lv[j].GetStringValue()
+					})
+				}
+
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})

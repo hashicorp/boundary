@@ -70,13 +70,13 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	return j, nil
 }
 
-// UpdateJobNextRun updates the Job repository entry for the job name
-// setting the job's NextScheduledRun to the current database time incremented by
-// the nextRunIn parameter.
+// UpdateJobNextRunInAtLeast updates the Job repository entry for the job name,
+// setting the job's NextScheduledRun time to either the current database time incremented by
+// the nextRunInAtLeast parameter or the current NextScheduledRun time value, which ever is sooner.
 //
 // All options are ignored.
-func (r *Repository) UpdateJobNextRun(ctx context.Context, name string, nextRunIn time.Duration, _ ...Option) (*Job, error) {
-	const op = "job.(Repository).UpdateJobNextRun"
+func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) (*Job, error) {
+	const op = "job.(Repository).UpdateJobNextRunInAtLeast"
 	if name == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing name")
 	}
@@ -84,7 +84,7 @@ func (r *Repository) UpdateJobNextRun(ctx context.Context, name string, nextRunI
 	j := allocJob()
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), defaultPluginId, name})
+			rows, err := w.Query(ctx, setNextScheduledRunIfSoonerQuery, []interface{}{int(nextRunInAtLeast.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(
 					fmt.Sprintf("failed to set next scheduled run time for job %v", name)))

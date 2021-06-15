@@ -366,7 +366,7 @@ func TestRepository_ListJobs_Limits(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateJobNextRun(t *testing.T) {
+func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -380,21 +380,48 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		job, err := repo.CreateJob(context.Background(), "name", "description")
+		job, err := repo.CreateJob(context.Background(), "valid", "description", WithNextRunIn(2*time.Hour))
 		require.NoError(err)
 
-		got, err := repo.UpdateJobNextRun(context.Background(), job.Name, time.Hour)
+		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, time.Hour)
 		require.NoError(err)
 		require.NotNil(got)
 
-		previousRunAt := job.NextScheduledRun.Timestamp.GetSeconds()
-		nextRunAt := got.NextScheduledRun.Timestamp.GetSeconds()
-		assert.True(nextRunAt >= previousRunAt+int64(time.Hour.Seconds()),
-			fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run (%d)",
-				nextRunAt, previousRunAt))
+		previousRunAt := job.NextScheduledRun.AsTime()
+		nextRunAt := got.NextScheduledRun.AsTime()
+		assert.Equal(nextRunAt.Round(time.Minute), previousRunAt.Add(-1*time.Hour).Round(time.Minute))
 		// update NextScheduledRun to pass equality check
 		job.NextScheduledRun = got.NextScheduledRun
 		assert.Equal(job, got)
+	})
+
+	t.Run("next-run-already-sooner", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, kmsCache)
+		require.NoError(err)
+		require.NotNil(repo)
+		job, err := repo.CreateJob(context.Background(), "next-run-already-sooner", "description", WithNextRunIn(time.Hour))
+		require.NoError(err)
+		previousRunAt := job.NextScheduledRun.AsTime()
+
+		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, 2*time.Hour)
+		require.NoError(err)
+		require.NotNil(got)
+		// Next run should not have been updated since its later than already scheduled
+		assert.Equal(got.NextScheduledRun.AsTime(), previousRunAt)
+
+		got, err = repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, time.Minute)
+		require.NoError(err)
+		require.NotNil(got)
+		// Next run should be less than previous run at
+		assert.True(got.NextScheduledRun.AsTime().Before(previousRunAt))
+		previousRunAt = got.NextScheduledRun.AsTime()
+
+		got, err = repo.UpdateJobNextRunInAtLeast(context.Background(), job.Name, time.Hour)
+		require.NoError(err)
+		require.NotNil(got)
+		// Next run should not have been updated since its later than already scheduled
+		assert.Equal(got.NextScheduledRun.AsTime(), previousRunAt)
 	})
 
 	t.Run("no-name", func(t *testing.T) {
@@ -403,11 +430,11 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpdateJobNextRun(context.Background(), "", time.Hour)
+		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), "", time.Hour)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateJobNextRun: missing name: parameter violation: error #100", err.Error())
+		assert.Equal("job.(Repository).UpdateJobNextRunInAtLeast: missing name: parameter violation: error #100", err.Error())
 	})
 
 	t.Run("job-not-found", func(t *testing.T) {
@@ -416,10 +443,10 @@ func TestRepository_UpdateJobNextRun(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpdateJobNextRun(context.Background(), "fake-name", time.Hour)
+		got, err := repo.UpdateJobNextRunInAtLeast(context.Background(), "fake-name", time.Hour)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
-		assert.Equal("job.(Repository).UpdateJobNextRun: db.DoTx: job.(Repository).UpdateJobNextRun: job \"fake-name\" does not exist: search issue: error #1100", err.Error())
+		assert.Equal("job.(Repository).UpdateJobNextRunInAtLeast: db.DoTx: job.(Repository).UpdateJobNextRunInAtLeast: job \"fake-name\" does not exist: search issue: error #1100", err.Error())
 	})
 }

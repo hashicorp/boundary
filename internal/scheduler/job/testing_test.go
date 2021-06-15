@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -44,12 +43,9 @@ func Test_TestJob(t *testing.T) {
 
 	// The previous job next scheduled run should have been created with the current database time,
 	// while the current job should be an hour later
-	previousJobNextRun := got.NextScheduledRun.Timestamp.GetSeconds()
-	currentJobNextRun := got1.NextScheduledRun.Timestamp.GetSeconds()
-	nextRunIn := int64(time.Hour.Seconds())
-	assert.True(currentJobNextRun >= previousJobNextRun+nextRunIn,
-		fmt.Sprintf("expected next run (%d) to be greater than or equal to the previous run end time (%d) incremented by %d",
-			currentJobNextRun, previousJobNextRun, nextRunIn))
+	previousJobNextRun := got.NextScheduledRun.AsTime()
+	currentJobNextRun := got1.NextScheduledRun.AsTime()
+	assert.Equal(currentJobNextRun.Round(time.Minute), previousJobNextRun.Add(time.Hour).Round(time.Minute))
 }
 
 func Test_TestRun(t *testing.T) {
