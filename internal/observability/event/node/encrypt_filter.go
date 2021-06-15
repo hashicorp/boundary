@@ -311,6 +311,14 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 	if classificationTag == nil {
 		return errors.New(errors.InvalidParameter, op, "missing classification tag")
 	}
+	// check for nil value (prevent panics)
+	if slice == reflect.ValueOf(nil) {
+		return nil
+	}
+
+	if slice.Kind() == reflect.Ptr && !slice.IsNil() {
+		slice = slice.Elem()
+	}
 
 	ftype := slice.Type()
 	if ftype != reflect.TypeOf([]string{}) && ftype != reflect.TypeOf([][]uint8{}) {
@@ -322,9 +330,7 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 	if slice.Len() == 0 {
 		return nil
 	}
-	if slice.Kind() == reflect.Ptr && !slice.IsNil() {
-		slice = slice.Elem()
-	}
+
 	for i := 0; i < slice.Len(); i++ {
 		fv := slice.Index(i)
 		if err := ef.filterValue(ctx, fv, classificationTag); err != nil {
