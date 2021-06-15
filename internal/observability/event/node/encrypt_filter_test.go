@@ -25,7 +25,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 	testStr := "fido"
 	testInt := 22
 
-	testPayload := testPayload{
+	testStruct := testPayload{
 		notExported:       "not-exported",
 		NotTagged:         "not-tagged-data-will-be-redacted",
 		SensitiveRedacted: []byte("sensitive-redact-override"),
@@ -34,6 +34,13 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			SensitiveUserName: "Alice Eve Doe",
 		},
 		Keys: [][]byte{[]byte("key1"), []byte("key2")},
+	}
+
+	testMap := TestTaggedMap{
+		"foo": "bar",
+	}
+	testMap2 := TestTaggedMap{
+		"foo": "bar",
 	}
 
 	wrapper := TestWrapper(t)
@@ -84,13 +91,14 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			fv:              reflect.ValueOf(&testInt).Elem(),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "field value is not a string or []byte",
+			wantErrContains: "field value is not a string, []byte or tagged map value",
 		},
 		{
 			name:           "nil",
 			ef:             testFilter,
 			fv:             reflect.ValueOf(nil),
 			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantValue:      "",
 		},
 		{
 			name:           "nil-byte-ptr",
@@ -98,6 +106,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			fv:             reflect.ValueOf(nilBytePtr),
 			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
 			decryptWrapper: wrapper,
+			wantValue:      "",
 		},
 		{
 			name:            "unknown-filter-operation",
@@ -108,9 +117,17 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			wantErrContains: "unknown filter operation",
 		},
 		{
+			name:            "not-tagged",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(map[string]interface{}{"not": "tagged"}),
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "field value is not a string, []byte or tagged map value",
+		},
+		{
 			name:           "test-not-settable",
 			ef:             testFilter,
-			fv:             reflect.ValueOf(testPayload.notExported),
+			fv:             reflect.ValueOf(testStruct.notExported),
 			classification: &tagInfo{Classification: SecretClassification, Operation: RedactOperation},
 			wantValue:      "not-exported",
 		},
@@ -174,10 +191,42 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			decryptWrapper: wrapper,
 			wantValue:      RedactedData,
 		},
+		{
+			name:           "success-tagged-sensitive-hmac",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(testMap),
+			opt:            []Option{withPointer(testMap, "/foo")},
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
+			wantValue: fmt.Sprintf("%s", map[string]interface{}{
+				"foo": testHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
+			}),
+		},
+		{
+			name:           "success-tagged-sensitive-encrypt",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(testMap2),
+			opt:            []Option{withPointer(testMap2, "/foo")},
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			decryptWrapper: wrapper,
+			wantValue: fmt.Sprintf("%s", map[string]interface{}{
+				"foo": testHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
+			}),
+		},
+		{
+			name:           "success-tagged-sensitive-redact",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(testMap2),
+			opt:            []Option{withPointer(testMap2, "/foo")},
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: RedactOperation},
+			wantValue: fmt.Sprintf("%s", map[string]interface{}{
+				"foo": RedactedData,
+			}),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testStr = "fido" // reset it everytime
+
 			assert, require := assert.New(t), require.New(t)
 			err := tt.ef.filterValue(ctx, tt.fv, tt.classification, tt.opt...)
 			if tt.wantErrMatch != nil {
