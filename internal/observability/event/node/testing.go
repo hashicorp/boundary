@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"testing"
+	"time"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
@@ -67,4 +68,18 @@ func (t TestTaggedMap) Tags() ([]PointerTag, error) {
 			Filter:         RedactOperation,
 		},
 	}, nil
+}
+
+type testUserInfo struct {
+	PublicId          string `classified:"public"`
+	SensitiveUserName string `classified:"sensitive"`
+	LoginTimestamp    time.Time
+}
+
+type testPayload struct {
+	notExported       string
+	NotTagged         string
+	SensitiveRedacted []byte `classified:"sensitive,redact"`
+	UserInfo          *testUserInfo
+	Keys              [][]byte `classified:"secret"`
 }
