@@ -819,10 +819,14 @@ HostSetIterationLoop:
 		return nil, err
 	}
 
-	cs, err := credRepo.Issue(ctx, sess.GetPublicId(), reqs)
-	if err != nil {
-		return nil, errors.Wrap(err, op)
+	var cs []credential.Dynamic
+	if len(reqs) > 0 {
+		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
 	}
+
 	var creds []*pb.SessionCredential
 	for _, c := range cs {
 		l := c.Library()
