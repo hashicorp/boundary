@@ -1801,9 +1801,9 @@ func TestAuthorizeSession(t *testing.T) {
 
 	tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), "test")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
-	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-	_ = static.TestSetMembers(t, conn, hs.GetPublicId(), h)
+	_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
 
 	apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
 		Id:         tar.GetPublicId(),
@@ -1849,8 +1849,45 @@ func TestAuthorizeSession(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+	asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 		Id: tar.GetPublicId(),
 	})
 	require.NoError(t, err)
+
+	want := &pb.SessionAuthorization{
+		Scope: &scopes.ScopeInfo{
+			Id:            proj.GetPublicId(),
+			Type:          proj.GetType(),
+			Name:          proj.GetName(),
+			Description:   proj.GetDescription(),
+			ParentScopeId: proj.GetParentId(),
+		},
+		TargetId:  tar.GetPublicId(),
+		UserId:    at.GetIamUserId(),
+		HostSetId: hs.GetPublicId(),
+		HostId:    h.GetPublicId(),
+		Type:      "tcp",
+		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
+		Credentials: []*pb.SessionCredential{{
+			Library: &pb.CredentialLibrary{
+				Id:                clsResp.GetItem().GetId(),
+				Name:              clsResp.GetItem().GetName().GetValue(),
+				Description:       clsResp.GetItem().GetDescription().GetValue(),
+				CredentialStoreId: store.GetPublicId(),
+			},
+			Secret: func() *structpb.Value {
+				s, err := structpb.NewStruct(map[string]interface{}{
+					"username": "somethingelse",
+					"password": "something",
+				})
+				require.NoError(t, err)
+				return structpb.NewStructValue(s)
+			}(),
+		}},
+		// TODO: validate the contents of the authorization token is what is expected
+		// AuthorizationToken: "",
+	}
+	got := asRes.GetItem()
+	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
+	assert.Empty(t, cmp.Diff(asRes.GetItem(), want, protocmp.Transform()))
 }
