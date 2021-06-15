@@ -776,6 +776,20 @@ HostSetIterationLoop:
 		endpointUrl.Host = endpointHost
 	}
 
+	credRepo, err := s.vaultCredRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+	var reqs []credential.Request
+	var dynCreds []*session.DynamicCredential
+	for _, l := range libs {
+		reqs = append(reqs, credential.Request{
+			SourceId: l.GetCredentialLibraryId(),
+			Purpose:  credential.Purpose(l.GetCredentialPurpose()),
+		})
+		dynCreds = append(dynCreds, session.NewDynamicCredential(l.GetCredentialLibraryId(), credential.Purpose(l.GetCredentialPurpose())))
+	}
+
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
@@ -789,6 +803,7 @@ HostSetIterationLoop:
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 		WorkerFilter:    t.GetWorkerFilter(),
+		DynamicCredentials: dynCreds,
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -804,17 +819,6 @@ HostSetIterationLoop:
 		return nil, err
 	}
 
-	credRepo, err := s.vaultCredRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-	var reqs []credential.Request
-	for _, l := range libs {
-		reqs = append(reqs, credential.Request{
-			SourceId: l.GetCredentialLibraryId(),
-			Purpose:  credential.Purpose(l.GetCredentialPurpose()),
-		})
-	}
 	cs, err := credRepo.Issue(ctx, sess.GetPublicId(), reqs)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
