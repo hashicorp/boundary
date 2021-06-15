@@ -11,6 +11,7 @@ begin;
     description wt_description,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    delete_time timestamp with time zone,
     version wt_version,
     vault_address wt_url not null,
     -- the remaining text columns can be null but if they are not null, they
