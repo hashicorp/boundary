@@ -793,16 +793,16 @@ HostSetIterationLoop:
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
-		UserId:          authResults.UserId,
-		HostId:          chosenId.hostId,
-		TargetId:        t.GetPublicId(),
-		HostSetId:       chosenId.hostSetId,
-		AuthTokenId:     authResults.AuthTokenId,
-		ScopeId:         authResults.Scope.Id,
-		Endpoint:        endpointUrl.String(),
-		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
-		ConnectionLimit: t.GetSessionConnectionLimit(),
-		WorkerFilter:    t.GetWorkerFilter(),
+		UserId:             authResults.UserId,
+		HostId:             chosenId.hostId,
+		TargetId:           t.GetPublicId(),
+		HostSetId:          chosenId.hostSetId,
+		AuthTokenId:        authResults.AuthTokenId,
+		ScopeId:            authResults.Scope.Id,
+		Endpoint:           endpointUrl.String(),
+		ExpirationTime:     &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit:    t.GetSessionConnectionLimit(),
+		WorkerFilter:       t.GetWorkerFilter(),
 		DynamicCredentials: dynCreds,
 	}
 
@@ -840,6 +840,7 @@ HostSetIterationLoop:
 				Name:              l.GetName(),
 				Description:       l.GetDescription(),
 				CredentialStoreId: l.GetStoreId(),
+				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
 			Secret: sVal,
 		})

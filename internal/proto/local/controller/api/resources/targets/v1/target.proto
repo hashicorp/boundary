@@ -33,6 +33,9 @@ message CredentialLibrary{
 
 	// The library's purpose for this target.
 	string purpose = 50;
+
+	// Output only. The type of the credential library.
+	string type = 60;
 }
 
 // A credential for a session.

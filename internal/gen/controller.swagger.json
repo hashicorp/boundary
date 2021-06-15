@@ -4173,6 +4173,11 @@
         "purpose": {
           "type": "string",
           "description": "The library's purpose for this target."
+        },
+        "type": {
+          "type": "string",
+          "description": "Output only. The type of the credential library.",
+          "readOnly": true
         }
       }
     },
