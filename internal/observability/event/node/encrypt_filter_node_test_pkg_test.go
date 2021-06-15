@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event/node"
 	"github.com/hashicorp/eventlogger"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -24,14 +25,15 @@ func TestEncryptFilter_Process(t *testing.T) {
 		HmacInfo: []byte("info"),
 	}
 
+	testString := "test-string"
+
 	tests := []struct {
 		name            string
 		filter          *node.EncryptFilter
 		testEvent       *eventlogger.Event
 		setupWantEvent  func(*eventlogger.Event)
 		wantEvent       *eventlogger.Event
-		wantErr         bool
-		wantErrIs       error
+		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
 		{
@@ -102,7 +104,6 @@ func TestEncryptFilter_Process(t *testing.T) {
 				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
 			},
 		},
-
 		{
 			name:   "taggable",
 			filter: testEncryptingFilter,
@@ -135,6 +136,49 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Payload:   nil,
 			},
 		},
+		{
+			name:   "string-ptr-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   &testString,
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   func() interface{} { s := node.RedactedData; return &s }(),
+			},
+		},
+		{
+			name:   "string-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   testString,
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to redact string payload (not setable)",
+		},
+		{
+			name:            "missing-event",
+			filter:          testEncryptingFilter,
+			testEvent:       nil,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing event",
+		},
+		{
+			name:   "missing-wrapper",
+			filter: &node.EncryptFilter{},
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   nil,
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing wrapper",
+		},
 	}
 
 	for _, tt := range tests {
@@ -142,15 +186,13 @@ func TestEncryptFilter_Process(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			got, err := tt.filter.Process(ctx, tt.testEvent)
-			if tt.wantErr {
+
+			if tt.wantErrMatch != nil {
 				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
-				if tt.wantErrIs != nil {
-					assert.ErrorIs(err, eventlogger.ErrInvalidParameter)
-				}
-
 				return
 			}
 			require.NoError(err)
