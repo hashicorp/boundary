@@ -283,7 +283,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 		DisplayName: t.Name(),
 		NoParent:    true,
 		Period:      "1s",
-		Policies:    []string{"default"},
+		Policies:    []string{"default", "boundary-controller"},
 	}
 	vc := v.client(t).cl
 	ct, err := vc.Auth().Token().Create(req)
