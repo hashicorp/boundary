@@ -17,6 +17,116 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEncryptFilter_filterSlice tests primarily the edge cases.  It is not
+// intended to fully test all possible combinations for filtering a slice value.
+//  the tests for filterValue(...) provide that coverage.
+func TestEncryptFilter_filterSlice(t *testing.T) {
+	ctx := context.Background()
+	wrapper := TestWrapper(t)
+
+	testStrings := []string{"fido"}
+	testInt := 22
+
+	testFilter := &EncryptFilter{
+		Wrapper:  wrapper,
+		HmacSalt: []byte("salt"),
+		HmacInfo: []byte("info"),
+	}
+
+	tests := []struct {
+		name            string
+		ef              *EncryptFilter
+		opt             []Option
+		fv              reflect.Value
+		classification  *tagInfo
+		decryptWrapper  wrapping.Wrapper
+		wantValue       string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-classification",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(testStrings),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing classification tag",
+		},
+		{
+			name:           "nil",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(nil),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantValue:      "",
+		},
+		{
+			name:            "not-string-or-bytes",
+			ef:              testFilter,
+			fv:              reflect.ValueOf(&testInt).Elem(),
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "slice parameter is not a []string or [][]byte",
+		},
+		{
+			name:           "success-public",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStrings).Elem(),
+			classification: &tagInfo{Classification: PublicClassification},
+			wantValue:      fmt.Sprintf("%s", testStrings),
+		},
+		{
+			name:           "success-string-ptr",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStrings),
+			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
+			wantValue:      fmt.Sprintf("%s", []string{testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info"))}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			assert, require := assert.New(t), require.New(t)
+			err := tt.ef.filterSlice(ctx, tt.classification, tt.fv, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			switch tt.classification.Classification {
+			case PublicClassification:
+				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+			case SecretClassification, SensitiveClassification:
+				switch tt.classification.Operation {
+				case EncryptOperation:
+					switch {
+					case tt.fv == reflect.ValueOf(nil):
+						assert.Equal(tt.wantValue, "")
+					case tt.fv.Type() == reflect.TypeOf([]uint8(nil)):
+						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, tt.fv.Bytes())), tt.wantValue)
+					case tt.fv.Type() == reflect.TypeOf(""):
+						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, []byte(tt.fv.String()))), tt.wantValue)
+					}
+				case HmacSha256Operation:
+					if tt.fv.Kind() == reflect.Ptr {
+						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv.Elem()))
+					} else {
+						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+					}
+				case RedactOperation:
+					assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+				}
+			default:
+				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+			}
+		})
+	}
+
+}
+
 func TestEncryptFilter_filterValue(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
