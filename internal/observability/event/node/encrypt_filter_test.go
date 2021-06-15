@@ -17,6 +17,66 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testTaggableWithError map[string]interface{}
+
+func (t testTaggableWithError) Tags() ([]PointerTag, error) {
+	return nil, errors.New(errors.InvalidParameter, "Tags", "bad tags")
+}
+
+// TestEncryptFilter_filterTaggable tests primarily the edge cases.  It is not
+// intended to fully test all possible combinations for filtering a taggable
+// value. the tests for filterValue(...) provide that coverage.
+func TestEncryptFilter_filterTaggable(t *testing.T) {
+	ctx := context.Background()
+	wrapper := TestWrapper(t)
+	testFilter := &EncryptFilter{
+		Wrapper:  wrapper,
+		HmacSalt: []byte("salt"),
+		HmacInfo: []byte("info"),
+	}
+
+	tests := []struct {
+		name            string
+		ef              *EncryptFilter
+		opt             []Option
+		t               Taggable
+		decryptWrapper  wrapping.Wrapper
+		wantValue       string
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "nil",
+			ef:              testFilter,
+			t:               nil,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing taggable interface",
+		},
+		{
+			name:            "tags-error",
+			ef:              testFilter,
+			t:               testTaggableWithError{},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "unable to get tags from taggable interface",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := tt.ef.filterTaggable(ctx, tt.t, tt.opt...)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
 // TestEncryptFilter_filterSlice tests primarily the edge cases.  It is not
 // intended to fully test all possible combinations for filtering a slice value.
 //  the tests for filterValue(...) provide that coverage.
@@ -39,7 +99,6 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 		opt             []Option
 		fv              reflect.Value
 		classification  *tagInfo
-		decryptWrapper  wrapping.Wrapper
 		wantValue       string
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -55,14 +114,14 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 			name:           "nil",
 			ef:             testFilter,
 			fv:             reflect.ValueOf(nil),
-			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
 			wantValue:      "",
 		},
 		{
 			name:            "not-string-or-bytes",
 			ef:              testFilter,
 			fv:              reflect.ValueOf(&testInt).Elem(),
-			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			classification:  &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "slice parameter is not a []string or [][]byte",
 		},
@@ -95,36 +154,16 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-
-			switch tt.classification.Classification {
-			case PublicClassification:
-				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
-			case SecretClassification, SensitiveClassification:
-				switch tt.classification.Operation {
-				case EncryptOperation:
-					switch {
-					case tt.fv == reflect.ValueOf(nil):
-						assert.Equal(tt.wantValue, "")
-					case tt.fv.Type() == reflect.TypeOf([]uint8(nil)):
-						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, tt.fv.Bytes())), tt.wantValue)
-					case tt.fv.Type() == reflect.TypeOf(""):
-						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, []byte(tt.fv.String()))), tt.wantValue)
-					}
-				case HmacSha256Operation:
-					if tt.fv.Kind() == reflect.Ptr {
-						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv.Elem()))
-					} else {
-						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
-					}
-				case RedactOperation:
-					assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
-				}
+			switch {
+			case tt.fv == reflect.ValueOf(nil):
+				assert.Equal(tt.wantValue, "")
+			case tt.fv.Kind() == reflect.Ptr:
+				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv.Elem()))
 			default:
 				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
 			}
 		})
 	}
-
 }
 
 func TestEncryptFilter_filterValue(t *testing.T) {
@@ -160,6 +199,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 		HmacInfo: []byte("info"),
 	}
 
+	// TODO: add tests that use an optional wrapper.
 	// optWrapper := TestWrapper(t)
 	tests := []struct {
 		name            string
