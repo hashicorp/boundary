@@ -211,6 +211,11 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 // and filter them based on their DataClassification
 func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterField"
+	// check for nil value (prevent panics)
+	if v == reflect.ValueOf(nil) {
+		return nil
+	}
+
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
 		fkind := field.Kind()
