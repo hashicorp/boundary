@@ -220,6 +220,8 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 		isPtrToStruct := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Struct
 		isSlice := fkind == reflect.Slice
 
+		taggedInterface, isTaggable := v.Interface().(Taggable)
+
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
 		case ftype == reflect.TypeOf("") || ftype == reflect.TypeOf([]uint8{}):
@@ -265,6 +267,11 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 			}
 			if err := ef.filterField(ctx, field, opt...); err != nil {
 				return err
+			}
+
+		case isTaggable:
+			if err := ef.filterTaggable(ctx, taggedInterface, opt...); err != nil {
+				return errors.Wrap(err, op)
 			}
 		}
 	}
@@ -343,12 +350,11 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		fv = fv.Elem()
 	}
 
-	ftype := fv.Type()
-	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) {
-		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
-	}
-
 	opts := getOpts(opt...)
+	ftype := fv.Type()
+	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) && opts.withPointerstructureInfo == nil {
+		return errors.New(errors.InvalidParameter, op, "field value is not a string, []byte or tagged map value")
+	}
 
 	// check to see if it's an exported struct field
 	if opts.withPointerstructureInfo == nil && !fv.CanSet() {
@@ -365,11 +371,20 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		return nil
 	case SecretClassification, SensitiveClassification:
 		var raw []byte
-		switch ftype {
-		case reflect.TypeOf(""):
+		switch {
+		case opts.withPointerstructureInfo != nil:
+			i, err := pointerstructure.Get(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get value from taggable interface"))
+			}
+			raw = []byte(fmt.Sprintf("%s", i))
+		case fv.Type() == reflect.TypeOf(""):
 			raw = []byte(fv.String())
-		default:
+		case fv.Type() == reflect.TypeOf([]uint8(nil)):
 			raw = fv.Bytes()
+		default:
+			// should be unreachable based on parameter checks
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to get data to filter for type: %s", fv.Type()))
 		}
 
 		var data string
@@ -388,7 +403,6 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		default: // catch UnknownOperation, NoOperation and everything else
 			return errors.New(errors.InvalidParameter, op, "unknown filter operation for field")
 		}
-		// TODO: jimlambrt this needs work, but it's a reasonable POC
 		if opts.withPointerstructureInfo != nil {
 			if _, err := pointerstructure.Set(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer, data); err != nil {
 				return errors.Wrap(err, op)
