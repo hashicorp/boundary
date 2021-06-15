@@ -25,6 +25,17 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 	testStr := "fido"
 	testInt := 22
 
+	testPayload := testPayload{
+		notExported:       "not-exported",
+		NotTagged:         "not-tagged-data-will-be-redacted",
+		SensitiveRedacted: []byte("sensitive-redact-override"),
+		UserInfo: &testUserInfo{
+			PublicId:          "id-12",
+			SensitiveUserName: "Alice Eve Doe",
+		},
+		Keys: [][]byte{[]byte("key1"), []byte("key2")},
+	}
+
 	wrapper := TestWrapper(t)
 	testFilter := &EncryptFilter{
 		Wrapper:  wrapper,
@@ -97,6 +108,20 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			wantErrContains: "unknown filter operation",
 		},
 		{
+			name:           "test-not-settable",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(testPayload.notExported),
+			classification: &tagInfo{Classification: SecretClassification, Operation: RedactOperation},
+			wantValue:      "not-exported",
+		},
+		{
+			name:           "success-string-ptr",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr),
+			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
+			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+		},
+		{
 			name:           "success-public",
 			ef:             testFilter,
 			fv:             reflect.ValueOf(&testStr).Elem(),
@@ -117,6 +142,37 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			classification: &tagInfo{Classification: SecretClassification, Operation: EncryptOperation},
 			decryptWrapper: wrapper,
 			wantValue:      "fido",
+		},
+		{
+			name:           "success-secret-redact",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SecretClassification, Operation: RedactOperation},
+			decryptWrapper: wrapper,
+			wantValue:      RedactedData,
+		},
+		{
+			name:           "success-sensitive-hmac",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
+			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+		},
+		{
+			name:           "success-sensitive-encrypt",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
+			decryptWrapper: wrapper,
+			wantValue:      "fido",
+		},
+		{
+			name:           "success-sensitive-redact",
+			ef:             testFilter,
+			fv:             reflect.ValueOf(&testStr).Elem(),
+			classification: &tagInfo{Classification: SensitiveClassification, Operation: RedactOperation},
+			decryptWrapper: wrapper,
+			wantValue:      RedactedData,
 		},
 	}
 	for _, tt := range tests {
@@ -149,12 +205,16 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 						assert.Equal(fmt.Sprintf("%s", TestDecryptValue(t, tt.decryptWrapper, []byte(tt.fv.String()))), tt.wantValue)
 					}
 				case HmacSha256Operation:
-					assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+					if tt.fv.Kind() == reflect.Ptr {
+						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv.Elem()))
+					} else {
+						assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
+					}
 				case RedactOperation:
-					assert.Equal(RedactedData, fmt.Sprintf("%s", tt.fv))
+					assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
 				}
 			default:
-				assert.Equal(RedactedData, fmt.Sprintf("%s", tt.fv))
+				assert.Equal(tt.wantValue, fmt.Sprintf("%s", tt.fv))
 			}
 		})
 	}
