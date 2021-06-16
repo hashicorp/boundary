@@ -3,11 +3,15 @@ package node
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/stretchr/testify/require"
@@ -51,6 +55,19 @@ func TestDecryptValue(t *testing.T, w wrapping.Wrapper, value []byte) []byte {
 	marshaledInfo, err := w.Decrypt(context.Background(), blobInfo, nil)
 	require.NoError(err)
 	return marshaledInfo
+}
+
+func TestHmacSha256(t *testing.T, data []byte, w wrapping.Wrapper, salt, info []byte) string {
+	t.Helper()
+	require := require.New(t)
+	reader, err := kms.NewDerivedReader(w, 32, salt, info)
+	require.NoError(err)
+	key, _, err := ed25519.GenerateKey(reader)
+	require.NoError(err)
+
+	mac := hmac.New(sha256.New, key)
+	_, _ = mac.Write(data)
+	return "hmac-sh256:" + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
 // TestMapField defines a const for a field name used for testing TestTaggedMap
