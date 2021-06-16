@@ -43,7 +43,6 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -1894,7 +1893,6 @@ func TestAuthorizeSession(t *testing.T) {
 	}
 	got := asRes1.GetItem()
 
-	t.Log(protojson.Format(got))
 	require.Len(t, got.GetCredentials(), 1)
 	got.Credentials[0].Secret.GetStructValue().Fields["username"] = structpb.NewStringValue("some username")
 	got.Credentials[0].Secret.GetStructValue().Fields["password"] = structpb.NewStringValue("some password")

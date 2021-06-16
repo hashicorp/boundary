@@ -835,7 +835,7 @@ HostSetIterationLoop:
 			return nil, errors.Wrap(err, op, errors.WithMsg("converting secret to proto value"))
 		}
 		creds = append(creds, &pb.SessionCredential{
-			Library: &pb.CredentialLibrary{
+			CredentialLibrary: &pb.CredentialLibrary{
 				Id:                l.GetPublicId(),
 				Name:              l.GetName(),
 				Description:       l.GetDescription(),
