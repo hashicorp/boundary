@@ -41,6 +41,17 @@ func (t *testWrapperPayload) Wrapper() wrapping.Wrapper { return t.wrapper }
 func (t *testWrapperPayload) HmacSalt() []byte          { return t.salt }
 func (t *testWrapperPayload) HmacInfo() []byte          { return t.info }
 
+type testEventWrapperPayload struct {
+	eventId     string
+	salt        []byte
+	info        []byte
+	StructValue testPayloadStruct
+}
+
+func (t *testEventWrapperPayload) EventId() string  { return t.eventId }
+func (t *testEventWrapperPayload) HmacSalt() []byte { return t.salt }
+func (t *testEventWrapperPayload) HmacInfo() []byte { return t.info }
+
 func TestEncryptFilter_Process(t *testing.T) {
 	ctx := context.Background()
 	wrapper := node.TestWrapper(t)
@@ -443,14 +454,11 @@ func TestEncryptFilter_Process(t *testing.T) {
 			HmacInfo: []byte("info"),
 		}
 		rotatedWrapper := node.TestWrapper(t)
-		now := time.Now()
 		e := &eventlogger.Event{
-			Type:      "test",
-			CreatedAt: now,
 			Payload: &testWrapperPayload{
 				wrapper: rotatedWrapper,
 				info:    []byte("rotated-info"),
-				salt:    []byte("rotated-info"),
+				salt:    []byte("rotated-salt"),
 			},
 		}
 		got, err := ef.Process(context.Background(), e)
@@ -458,7 +466,103 @@ func TestEncryptFilter_Process(t *testing.T) {
 		assert.Nil(got)
 		assert.Equal(rotatedWrapper, ef.Wrapper)
 		assert.Equal([]byte("rotated-info"), ef.HmacInfo)
-		assert.Equal([]byte("rotated-info"), ef.HmacInfo)
+		assert.Equal([]byte("rotated-salt"), ef.HmacSalt)
+	})
+	t.Run("event-wrapper-info-payload-encrypt", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		wrapper := node.TestWrapper(t)
+		ef := &node.EncryptFilter{
+			Wrapper:  wrapper,
+			HmacSalt: []byte("salt"),
+			HmacInfo: []byte("info"),
+		}
+		now := time.Now()
+		e := &eventlogger.Event{
+			Type:      "test",
+			CreatedAt: now,
+			Payload: &testEventWrapperPayload{
+				eventId: "event-id",
+				info:    []byte("event-info"),
+				salt:    []byte("event-salt"),
+				StructValue: testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+				},
+			},
+		}
+		want := &eventlogger.Event{
+			Type:      "test",
+			CreatedAt: now,
+			Payload: &testEventWrapperPayload{
+				eventId: "event-id",
+				info:    []byte("event-info"),
+				salt:    []byte("event-salt"),
+				StructValue: testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+				},
+			},
+		}
+		got, err := ef.Process(context.Background(), e)
+		require.NoError(err)
+		assert.NotNil(got)
+		assert.Equal(wrapper, ef.Wrapper)
+		assert.Equal([]byte("info"), ef.HmacInfo)
+		assert.Equal([]byte("salt"), ef.HmacSalt)
+		eventWrapper, err := node.NewEventWrapper(wrapper, "event-id")
+		require.NoError(err)
+
+		e.Payload.(*testEventWrapperPayload).StructValue.SensitiveUserName = string(node.TestDecryptValue(t, eventWrapper, []byte(e.Payload.(*testEventWrapperPayload).StructValue.SensitiveUserName)))
+		assert.Equal(want, got)
+	})
+	t.Run("event-wrapper-info-payload-hmac", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		now := time.Now()
+		wrapper := node.TestWrapper(t)
+		ef := &node.EncryptFilter{
+			Wrapper:  wrapper,
+			HmacSalt: []byte("salt"),
+			HmacInfo: []byte("info"),
+		}
+		e := &eventlogger.Event{
+			Type:      "test",
+			CreatedAt: now,
+			Payload: &testEventWrapperPayload{
+				eventId: "event-id",
+				info:    []byte("event-info"),
+				salt:    []byte("event-salt"),
+				StructValue: testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+				},
+			},
+		}
+		wantHmac := &eventlogger.Event{
+			Type:      "test",
+			CreatedAt: now,
+			Payload: &testEventWrapperPayload{
+				eventId: "event-id",
+				info:    []byte("event-info"),
+				salt:    []byte("event-salt"),
+				StructValue: testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+				},
+			},
+		}
+		ef.FilterOperationOverrides = map[node.DataClassification]node.FilterOperation{
+			node.SensitiveClassification: node.HmacSha256Operation,
+		}
+
+		got, err := ef.Process(context.Background(), e)
+		require.NoError(err)
+		assert.NotNil(got)
+		testWrapper, err := node.NewEventWrapper(wrapper, "event-id")
+		require.NoError(err)
+		wantHmac.Payload.(*testEventWrapperPayload).StructValue.SensitiveUserName = node.TestHmacSha256(t, []byte("Alice Eve Doe"), testWrapper, []byte("event-salt"), []byte("event-info"))
+		assert.Equal(wantHmac, got)
 	})
 }
 
