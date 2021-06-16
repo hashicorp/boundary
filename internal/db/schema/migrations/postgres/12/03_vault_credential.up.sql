@@ -64,7 +64,7 @@ begin;
   -- and an update contains a value for delete_time different from the current
   -- value, this trigger will raise an error with error code 23602 which is a
   -- class 23 integrity constraint violation: set_once_violation.
-  create or replace function before_soft_delete_credential_vault_store()
+  create function before_soft_delete_credential_vault_store()
     returns trigger
   as $$
   begin
@@ -92,7 +92,7 @@ begin;
   -- When a credential store is soft deleted, this trigger:
   --  * marks any active Vault tokens owned by the credential store for revocation
   --  * deletes any credential library owned by the credential store
-  create or replace function after_soft_delete_credential_vault_store()
+  create function after_soft_delete_credential_vault_store()
     returns trigger
   as $$
   begin
@@ -198,7 +198,7 @@ begin;
   -- insert_credential_vault_token() is a before insert trigger
   -- function for credential_vault_token that changes the status of the current
   -- token to 'maintaining'
-  create or replace function insert_credential_vault_token()
+  create function insert_credential_vault_token()
     returns trigger
   as $$
   begin

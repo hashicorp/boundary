@@ -5048,7 +5048,7 @@ create function wt_is_sentinel(string text)
 
   -- insert_credential_store_subtype() is a before insert trigger
   -- function for subtypes of credential_store
-  create or replace function insert_credential_store_subtype()
+  create function insert_credential_store_subtype()
     returns trigger
   as $$
   begin
@@ -5062,7 +5062,7 @@ create function wt_is_sentinel(string text)
 
   -- delete_credential_store_subtype() is an after delete trigger
   -- function for subtypes of credential_store
-  create or replace function delete_credential_store_subtype()
+  create function delete_credential_store_subtype()
     returns trigger
   as $$
   begin
@@ -5093,7 +5093,7 @@ create function wt_is_sentinel(string text)
 
   -- insert_credential_library_subtype() is a before insert trigger
   -- function for subtypes of credential_library
-  create or replace function insert_credential_library_subtype()
+  create function insert_credential_library_subtype()
     returns trigger
   as $$
   begin
@@ -5107,7 +5107,7 @@ create function wt_is_sentinel(string text)
 
   -- delete_credential_library_subtype() is an after delete trigger
   -- function for subtypes of credential_library
-  create or replace function delete_credential_library_subtype()
+  create function delete_credential_library_subtype()
     returns trigger
   as $$
   begin
@@ -5129,7 +5129,7 @@ create function wt_is_sentinel(string text)
 
   -- insert_credential_subtype() is a before insert trigger
   -- function for subtypes of credential
-  create or replace function insert_credential_subtype()
+  create function insert_credential_subtype()
     returns trigger
   as $$
   begin
@@ -5143,7 +5143,7 @@ create function wt_is_sentinel(string text)
 
   -- delete_credential_subtype() is an after delete trigger
   -- function for subtypes of credential
-  create or replace function delete_credential_subtype()
+  create function delete_credential_subtype()
     returns trigger
   as $$
   begin
@@ -5183,7 +5183,7 @@ create function wt_is_sentinel(string text)
 
   -- insert_credential_static_subtype() is a before insert trigger
   -- function for subtypes of credential_static
-  create or replace function insert_credential_static_subtype()
+  create function insert_credential_static_subtype()
     returns trigger
   as $$
   begin
@@ -5197,7 +5197,7 @@ create function wt_is_sentinel(string text)
 
   -- delete_credential_static_subtype() is an after delete trigger
   -- function for subtypes of credential_static
-  create or replace function delete_credential_static_subtype()
+  create function delete_credential_static_subtype()
     returns trigger
   as $$
   begin
@@ -5237,7 +5237,7 @@ create function wt_is_sentinel(string text)
 
   -- insert_credential_dynamic_subtype() is a before insert trigger
   -- function for subtypes of credential_dynamic
-  create or replace function insert_credential_dynamic_subtype()
+  create function insert_credential_dynamic_subtype()
     returns trigger
   as $$
   begin
@@ -5251,7 +5251,7 @@ create function wt_is_sentinel(string text)
 
   -- delete_credential_dynamic_subtype() is an after delete trigger
   -- function for subtypes of credential_dynamic
-  create or replace function delete_credential_dynamic_subtype()
+  create function delete_credential_dynamic_subtype()
     returns trigger
   as $$
   begin
@@ -5347,7 +5347,7 @@ create table credential_vault_store (
   -- and an update contains a value for delete_time different from the current
   -- value, this trigger will raise an error with error code 23602 which is a
   -- class 23 integrity constraint violation: set_once_violation.
-  create or replace function before_soft_delete_credential_vault_store()
+  create function before_soft_delete_credential_vault_store()
     returns trigger
   as $$
   begin
@@ -5375,7 +5375,7 @@ create table credential_vault_store (
   -- When a credential store is soft deleted, this trigger:
   --  * marks any active Vault tokens owned by the credential store for revocation
   --  * deletes any credential library owned by the credential store
-  create or replace function after_soft_delete_credential_vault_store()
+  create function after_soft_delete_credential_vault_store()
     returns trigger
   as $$
   begin
@@ -5481,7 +5481,7 @@ create table credential_vault_store (
   -- insert_credential_vault_token() is a before insert trigger
   -- function for credential_vault_token that changes the status of the current
   -- token to 'maintaining'
-  create or replace function insert_credential_vault_token()
+  create function insert_credential_vault_token()
     returns trigger
   as $$
   begin
@@ -5965,7 +5965,7 @@ create table session_credential_dynamic (
 
   -- revoke_credentials revokes any active credentials for a session when the
   -- session enters the canceling or terminated states.
-  create or replace function revoke_credentials()
+  create function revoke_credentials()
     returns trigger
   as $$
   begin

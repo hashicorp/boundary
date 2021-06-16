@@ -38,7 +38,7 @@ begin;
 
   -- revoke_credentials revokes any active credentials for a session when the
   -- session enters the canceling or terminated states.
-  create or replace function revoke_credentials()
+  create function revoke_credentials()
     returns trigger
   as $$
   begin
