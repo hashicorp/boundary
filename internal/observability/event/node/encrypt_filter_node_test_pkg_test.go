@@ -54,6 +54,18 @@ func TestEncryptFilter_Process(t *testing.T) {
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe",
 					},
+					StructPtrSlice: []*testPayloadStruct{
+						{
+							PublicId:          "id-12",
+							SensitiveUserName: "Alice Eve Doe",
+						},
+					},
+					StructValueSlice: []testPayloadStruct{
+						{
+							PublicId:          "id-12",
+							SensitiveUserName: "Alice Eve Doe",
+						},
+					},
 					Keys: [][]byte{[]byte("key1"), []byte("key2")},
 				},
 			},
@@ -72,12 +84,26 @@ func TestEncryptFilter_Process(t *testing.T) {
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
 					},
+					StructPtrSlice: []*testPayloadStruct{
+						{
+							PublicId:          "id-12",
+							SensitiveUserName: "Alice Eve Doe",
+						},
+					},
+					StructValueSlice: []testPayloadStruct{
+						{
+							PublicId:          "id-12",
+							SensitiveUserName: "Alice Eve Doe",
+						},
+					},
 					Keys: [][]byte{[]byte(node.RedactedData), []byte(node.RedactedData)},
 				},
 			},
 			setupWantEvent: func(e *eventlogger.Event) {
 				e.Payload.(*testPayload).StructPtr.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructPtr.SensitiveUserName)))
 				e.Payload.(*testPayload).StructValue.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructValue.SensitiveUserName)))
+				e.Payload.(*testPayload).StructPtrSlice[0].SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructPtrSlice[0].SensitiveUserName)))
+				e.Payload.(*testPayload).StructValueSlice[0].SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructValueSlice[0].SensitiveUserName)))
 			},
 		},
 		{
@@ -147,6 +173,20 @@ func TestEncryptFilter_Process(t *testing.T) {
 			},
 		},
 		{
+			name:   "ptr-slice-string-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   &[]string{"test"},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   &[]string{node.RedactedData},
+			},
+		},
+		{
 			name:   "slice-string-payload",
 			filter: testEncryptingFilter,
 			testEvent: &eventlogger.Event{
@@ -158,6 +198,26 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Type:      "test",
 				CreatedAt: now,
 				Payload:   []string{node.RedactedData},
+			},
+		},
+		{
+			name:   "ptr-slice-string-ptr-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: func() interface{} {
+					s := "test"
+					return &[]*string{&s}
+				}(),
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: func() interface{} {
+					s := node.RedactedData
+					return &[]*string{&s}
+				}(),
 			},
 		},
 		{
@@ -271,7 +331,7 @@ type testPayload struct {
 	StructPtr         *testPayloadStruct
 	StructValue       testPayloadStruct
 	StructPtrSlice    []*testPayloadStruct
-	StructValueSlice  []testPayload
+	StructValueSlice  []testPayloadStruct
 	Keys              [][]byte `classified:"secret"`
 }
 
