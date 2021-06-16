@@ -157,6 +157,53 @@ func TestEncryptFilter_Process(t *testing.T) {
 			},
 		},
 		{
+			name:   "taggable-value",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: node.TestTaggedMap{
+					"foo": "bar",
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: node.TestTaggedMap{
+					"foo": "<REDACTED>",
+				},
+			},
+		},
+		{
+			name:   "struct-with-taggable",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+					TaggedMap: node.TestTaggedMap{
+						"foo": "bar",
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: &testPayloadStruct{
+					PublicId:          "id-12",
+					SensitiveUserName: "Alice Eve Doe",
+					TaggedMap: node.TestTaggedMap{
+						"foo": "<REDACTED>",
+					},
+				},
+			},
+			setupWantEvent: func(e *eventlogger.Event) {
+				e.Payload.(*testPayloadStruct).SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayloadStruct).SensitiveUserName)))
+			},
+		},
+		{
 			name:   "nil-payload",
 			filter: testEncryptingFilter,
 			testEvent: &eventlogger.Event{
@@ -364,6 +411,7 @@ type testPayloadStruct struct {
 	PublicId          string `classified:"public"`
 	SensitiveUserName string `classified:"sensitive"`
 	LoginTimestamp    time.Time
+	TaggedMap         node.TestTaggedMap
 }
 
 type testPayload struct {
