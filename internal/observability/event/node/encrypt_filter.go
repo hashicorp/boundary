@@ -147,7 +147,11 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	// Get both the value and the type of what the payload points to. Value is
 	// used to mutate underlying data and Type is used to get the name of the
 	// field.
-	payloadValue := reflect.ValueOf(e.Payload).Elem()
+	payloadValue := reflect.ValueOf(e.Payload)
+	switch payloadValue.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		payloadValue = reflect.ValueOf(e.Payload).Elem()
+	}
 
 	pType := payloadValue.Type()
 	pKind := payloadValue.Kind()
@@ -161,6 +165,9 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 
 	switch {
 	case isPtrToString || pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
+		if !payloadValue.CanSet() {
+			return nil, errors.New(errors.InvalidParameter, op, "unable to redact string payload (not setable)")
+		}
 		ef.l.RLock()
 		classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
 		ef.l.RUnlock()
@@ -174,7 +181,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	case isSlice || isPtrToSlice:
 		switch {
 		// if the field is a slice of string or slice of []byte
-		case pType == reflect.TypeOf([]string{}) || pType == reflect.TypeOf([][]uint8{}):
+		case pType == reflect.TypeOf([]string{}) || pType == reflect.TypeOf([]*string{}) || pType == reflect.TypeOf([][]uint8{}):
 			ef.l.RLock()
 			classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
 			ef.l.RUnlock()
@@ -296,7 +303,7 @@ func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Op
 	for _, pt := range tags {
 		value, err := pointerstructure.Get(t, pt.Pointer)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get value using tag pointer structure"))
+			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value using tag pointer structure (pointer == %s", pt.Pointer)))
 		}
 		rv := reflect.Indirect(reflect.ValueOf(value))
 		info := &tagInfo{
@@ -326,8 +333,8 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 	}
 
 	ftype := slice.Type()
-	if ftype != reflect.TypeOf([]string{}) && ftype != reflect.TypeOf([][]uint8{}) {
-		return errors.New(errors.InvalidParameter, op, "slice parameter is not a []string or [][]byte")
+	if ftype != reflect.TypeOf([]string{}) && ftype != reflect.TypeOf([]*string{}) && ftype != reflect.TypeOf([][]uint8{}) {
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("slice parameter is not a []string or [][]byte: (%s)", slice.String()))
 	}
 	if classificationTag.Classification == PublicClassification {
 		return nil
@@ -338,6 +345,9 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 
 	for i := 0; i < slice.Len(); i++ {
 		fv := slice.Index(i)
+		// if !fv.CanSet() {
+		// 	return errors.New(errors.InvalidParameter, op, "unable to redact slice value (not setable)")
+		// }
 		if err := ef.filterValue(ctx, fv, classificationTag); err != nil {
 			return errors.Wrap(err, op)
 		}
@@ -364,7 +374,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	opts := getOpts(opt...)
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) && opts.withPointerstructureInfo == nil {
-		return errors.New(errors.InvalidParameter, op, "field value is not a string, []byte or tagged map value")
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("field value is not a string, []byte or tagged map value: %s", fv.String()))
 	}
 
 	// check to see if it's an exported struct field
@@ -386,7 +396,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		case opts.withPointerstructureInfo != nil:
 			i, err := pointerstructure.Get(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get value from taggable interface"))
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value from taggable interface using pointer: %s", opts.withPointerstructureInfo.pointer)))
 			}
 			raw = []byte(fmt.Sprintf("%s", i))
 		case fv.Type() == reflect.TypeOf(""):
@@ -412,7 +422,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		case RedactOperation:
 			data = RedactedData
 		default: // catch UnknownOperation, NoOperation and everything else
-			return errors.New(errors.InvalidParameter, op, "unknown filter operation for field")
+			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown filter operation for field: %s", classificationTag.Operation))
 		}
 		if opts.withPointerstructureInfo != nil {
 			if _, err := pointerstructure.Set(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer, data); err != nil {
@@ -515,13 +525,13 @@ func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Opt
 func setValue(fv reflect.Value, newVal string) error {
 	const op = "event.(EncryptFilter).setValue"
 	if !fv.CanSet() {
-		return errors.New(errors.InvalidParameter, op, "unable to set value")
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to set value for: %s", fv.String()))
 	}
 	ftype := fv.Type()
 	isByteArray := ftype == reflect.TypeOf([]uint8(nil))
 	isString := ftype == reflect.TypeOf("")
 	if !isString && !isByteArray {
-		return errors.New(errors.InvalidParameter, op, "field value is not a string or []byte")
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("field value is not a string or []byte: %s", fv.String()))
 	}
 	switch {
 	case isByteArray:
@@ -530,7 +540,7 @@ func setValue(fv reflect.Value, newVal string) error {
 		fv.SetString(newVal)
 	default:
 		// should not be reachable based on current parameter checking
-		return errors.New(errors.InvalidParameter, op, "unable to set field value since is not a string or []byte")
+		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to set field value since is not a string or []byte: %s", fv.String()))
 	}
 	return nil
 }
