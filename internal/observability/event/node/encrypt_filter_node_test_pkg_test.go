@@ -46,7 +46,11 @@ func TestEncryptFilter_Process(t *testing.T) {
 					notExported:       "not-exported",
 					NotTagged:         "not-tagged-data-will-be-redacted",
 					SensitiveRedacted: []byte("sensitive-redact-override"),
-					UserInfo: &testUserInfo{
+					StructPtr: &testPayloadStruct{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+					StructValue: testPayloadStruct{
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe",
 					},
@@ -60,7 +64,11 @@ func TestEncryptFilter_Process(t *testing.T) {
 					notExported:       "not-exported",
 					NotTagged:         node.RedactedData,
 					SensitiveRedacted: []byte(node.RedactedData),
-					UserInfo: &testUserInfo{
+					StructPtr: &testPayloadStruct{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
+					},
+					StructValue: testPayloadStruct{
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
 					},
@@ -68,7 +76,8 @@ func TestEncryptFilter_Process(t *testing.T) {
 				},
 			},
 			setupWantEvent: func(e *eventlogger.Event) {
-				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
+				e.Payload.(*testPayload).StructPtr.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructPtr.SensitiveUserName)))
+				e.Payload.(*testPayload).StructValue.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructValue.SensitiveUserName)))
 			},
 		},
 		{
@@ -80,7 +89,7 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Payload: &testPayload{
 					NotTagged:         "not-tagged-data-will-be-redacted",
 					SensitiveRedacted: nil,
-					UserInfo: &testUserInfo{
+					StructPtr: &testPayloadStruct{
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe",
 					},
@@ -93,7 +102,7 @@ func TestEncryptFilter_Process(t *testing.T) {
 				Payload: &testPayload{
 					NotTagged:         node.RedactedData,
 					SensitiveRedacted: nil,
-					UserInfo: &testUserInfo{
+					StructPtr: &testPayloadStruct{
 						PublicId:          "id-12",
 						SensitiveUserName: "Alice Eve Doe", // this will be decryped by the setupWantEvent func before comparison
 					},
@@ -101,7 +110,8 @@ func TestEncryptFilter_Process(t *testing.T) {
 				},
 			},
 			setupWantEvent: func(e *eventlogger.Event) {
-				e.Payload.(*testPayload).UserInfo.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).UserInfo.SensitiveUserName)))
+				e.Payload.(*testPayload).StructPtr.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructPtr.SensitiveUserName)))
+				e.Payload.(*testPayload).StructValue.SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.(*testPayload).StructValue.SensitiveUserName)))
 			},
 		},
 		{
@@ -248,7 +258,7 @@ func testEncryptValue(t *testing.T, w wrapping.Wrapper, value []byte) string {
 	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob)
 }
 
-type testUserInfo struct {
+type testPayloadStruct struct {
 	PublicId          string `classified:"public"`
 	SensitiveUserName string `classified:"sensitive"`
 	LoginTimestamp    time.Time
@@ -258,7 +268,10 @@ type testPayload struct {
 	notExported       string
 	NotTagged         string
 	SensitiveRedacted []byte `classified:"sensitive,redact"`
-	UserInfo          *testUserInfo
+	StructPtr         *testPayloadStruct
+	StructValue       testPayloadStruct
+	StructPtrSlice    []*testPayloadStruct
+	StructValueSlice  []testPayload
 	Keys              [][]byte `classified:"secret"`
 }
 
