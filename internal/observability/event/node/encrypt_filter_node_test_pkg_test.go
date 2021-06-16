@@ -2,7 +2,6 @@ package node_test
 
 import (
 	"context"
-	"encoding/base64"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestEncryptFilter_Process(t *testing.T) {
@@ -173,6 +171,60 @@ func TestEncryptFilter_Process(t *testing.T) {
 			},
 		},
 		{
+			name:   "slice-struct-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: []testPayloadStruct{
+					{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: []testPayloadStruct{
+					{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+				},
+			},
+			setupWantEvent: func(e *eventlogger.Event) {
+				e.Payload.([]testPayloadStruct)[0].SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.([]testPayloadStruct)[0].SensitiveUserName)))
+			},
+		},
+		{
+			name:   "slice-struct-ptr-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: []*testPayloadStruct{
+					{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+				},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: []*testPayloadStruct{
+					{
+						PublicId:          "id-12",
+						SensitiveUserName: "Alice Eve Doe",
+					},
+				},
+			},
+			setupWantEvent: func(e *eventlogger.Event) {
+				e.Payload.([]*testPayloadStruct)[0].SensitiveUserName = string(node.TestDecryptValue(t, wrapper, []byte(e.Payload.([]*testPayloadStruct)[0].SensitiveUserName)))
+			},
+		},
+		{
 			name:   "ptr-slice-string-payload",
 			filter: testEncryptingFilter,
 			testEvent: &eventlogger.Event{
@@ -306,16 +358,6 @@ func TestEncryptFilter_Process(t *testing.T) {
 			assert.Equal(tt.wantEvent, got)
 		})
 	}
-}
-
-func testEncryptValue(t *testing.T, w wrapping.Wrapper, value []byte) string {
-	t.Helper()
-	require := require.New(t)
-	blobInfo, err := w.Encrypt(context.Background(), value, nil)
-	require.NoError(err)
-	marshaledBlob, err := proto.Marshal(blobInfo)
-	require.NoError(err)
-	return "encrypted:" + base64.RawURLEncoding.EncodeToString(marshaledBlob)
 }
 
 type testPayloadStruct struct {
