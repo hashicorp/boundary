@@ -13,6 +13,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testPayloadStruct struct {
+	PublicId          string `classified:"public"`
+	SensitiveUserName string `classified:"sensitive"`
+	LoginTimestamp    time.Time
+	TaggedMap         node.TestTaggedMap
+}
+
+type testPayload struct {
+	notExported       string
+	NotTagged         string
+	SensitiveRedacted []byte `classified:"sensitive,redact"`
+	StructPtr         *testPayloadStruct
+	StructValue       testPayloadStruct
+	StructPtrSlice    []*testPayloadStruct
+	StructValueSlice  []testPayloadStruct
+	Keys              [][]byte `classified:"secret"`
+}
+
 func TestEncryptFilter_Process(t *testing.T) {
 	ctx := context.Background()
 	wrapper := node.TestWrapper(t)
@@ -405,24 +423,6 @@ func TestEncryptFilter_Process(t *testing.T) {
 			assert.Equal(tt.wantEvent, got)
 		})
 	}
-}
-
-type testPayloadStruct struct {
-	PublicId          string `classified:"public"`
-	SensitiveUserName string `classified:"sensitive"`
-	LoginTimestamp    time.Time
-	TaggedMap         node.TestTaggedMap
-}
-
-type testPayload struct {
-	notExported       string
-	NotTagged         string
-	SensitiveRedacted []byte `classified:"sensitive,redact"`
-	StructPtr         *testPayloadStruct
-	StructValue       testPayloadStruct
-	StructPtrSlice    []*testPayloadStruct
-	StructValueSlice  []testPayloadStruct
-	Keys              [][]byte `classified:"secret"`
 }
 
 func TestEncryptFilter_Type(t *testing.T) {
