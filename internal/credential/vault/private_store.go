@@ -80,7 +80,7 @@ type privateStore struct {
 	TlsSkipVerify        bool
 	StoreId              string
 	TokenHmac            []byte
-	Token                []byte
+	Token                TokenSecret
 	CtToken              []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
@@ -91,7 +91,7 @@ type privateStore struct {
 	TokenStatus          string
 	ClientCert           []byte
 	ClientKeyId          string
-	ClientKey            []byte
+	ClientKey            KeySecret
 	CtClientKey          []byte
 	ClientCertKeyHmac    []byte
 }
@@ -184,7 +184,7 @@ func (ps *privateStore) client() (*client, error) {
 	const op = "vault.(privateStore).client"
 	clientConfig := &clientConfig{
 		Addr:          ps.VaultAddress,
-		Token:         string(ps.Token),
+		Token:         ps.Token,
 		CaCert:        ps.CaCert,
 		TlsServerName: ps.TlsServerName,
 		TlsSkipVerify: ps.TlsSkipVerify,

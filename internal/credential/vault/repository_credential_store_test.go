@@ -1099,7 +1099,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 
 	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
 		assert.Equal(t, updated.Certificate, ps.ClientCert, "updated certificate")
-		assert.Equal(t, updated.CertificateKey, ps.ClientKey, "updated certificate key")
+		assert.Equal(t, updated.CertificateKey, []byte(ps.ClientKey), "updated certificate key")
 	}
 
 	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {

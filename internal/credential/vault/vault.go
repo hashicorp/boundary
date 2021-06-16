@@ -15,17 +15,18 @@ import (
 )
 
 type clientConfig struct {
-	Addr                  string
-	Token                 string
-	CaCert                []byte
-	ClientCert, ClientKey []byte
-	TlsServerName         string
-	TlsSkipVerify         bool
-	Namespace             string
+	Addr          string
+	Token         TokenSecret
+	CaCert        []byte
+	ClientCert    []byte
+	ClientKey     KeySecret
+	TlsServerName string
+	TlsSkipVerify bool
+	Namespace     string
 }
 
 func (c *clientConfig) isValid() bool {
-	if c == nil || c.Addr == "" || c.Token == "" {
+	if c == nil || c.Addr == "" || len(c.Token) < 0 {
 		return false
 	}
 	return true
@@ -40,7 +41,7 @@ func (c *clientConfig) isClientTLS() bool {
 
 type client struct {
 	cl    *vault.Client
-	token string
+	token TokenSecret
 }
 
 func newClient(c *clientConfig) (*client, error) {
@@ -76,7 +77,7 @@ func newClient(c *clientConfig) (*client, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
-	vClient.SetToken(c.Token)
+	vClient.SetToken(string(c.Token))
 
 	return &client{
 		cl:    vClient,
@@ -167,9 +168,9 @@ func (c *client) lookupToken() (*vault.Secret, error) {
 
 // swapToken replaces the token in the Vault client with t and returns the
 // token that was replaced.
-func (c *client) swapToken(new string) (old string) {
-	old = c.cl.Token()
-	c.cl.SetToken(new)
+func (c *client) swapToken(new TokenSecret) (old TokenSecret) {
+	old = TokenSecret(c.cl.Token())
+	c.cl.SetToken(string(new))
 	return
 }
 

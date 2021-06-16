@@ -79,11 +79,11 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
 
-			assert.Equal([]byte(token), got.Token)
+			assert.Equal(token, string(got.Token))
 
 			if tt.tls == TestClientTLS {
 				require.NotNil(got.ClientKey)
-				assert.Equal(v.ClientKey, got.ClientKey)
+				assert.Equal(v.ClientKey, []byte(got.ClientKey))
 			}
 		})
 	}

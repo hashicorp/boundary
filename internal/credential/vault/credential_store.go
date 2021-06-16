@@ -16,7 +16,7 @@ type CredentialStore struct {
 	tableName string `gorm:"-"`
 
 	clientCert  *ClientCertificate `gorm:"-"`
-	inputToken  []byte             `gorm:"-"`
+	inputToken  TokenSecret        `gorm:"-"`
 	outputToken *Token             `gorm:"-"`
 
 	privateClientCert *ClientCertificate `gorm:"-"`
@@ -27,7 +27,7 @@ type CredentialStore struct {
 // server at vaultAddress assigned to scopeId. Name, description, CA cert,
 // client cert, namespace, TLS server name, and TLS skip verify are the
 // only valid options. All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, token TokenSecret, opt ...Option) (*CredentialStore, error) {
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
 		inputToken: token,
@@ -53,7 +53,7 @@ func allocCredentialStore() *CredentialStore {
 }
 
 func (cs *CredentialStore) clone() *CredentialStore {
-	tokenCopy := make([]byte, len(cs.inputToken))
+	tokenCopy := make(TokenSecret, len(cs.inputToken))
 	copy(tokenCopy, cs.inputToken)
 	var clientCertCopy *ClientCertificate
 	if cs.clientCert != nil {
@@ -169,7 +169,7 @@ func (cs *CredentialStore) client() (*client, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
-		Token:         string(cs.inputToken),
+		Token:         cs.inputToken,
 		CaCert:        cs.CaCert,
 		TlsServerName: cs.TlsServerName,
 		TlsSkipVerify: cs.TlsSkipVerify,
