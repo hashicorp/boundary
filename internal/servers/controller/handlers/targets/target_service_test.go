@@ -43,6 +43,7 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -1873,7 +1874,7 @@ func TestAuthorizeSession(t *testing.T) {
 		Type:      "tcp",
 		Endpoint:  fmt.Sprintf("tcp://%s", h.GetAddress()),
 		Credentials: []*pb.SessionCredential{{
-			Library: &pb.CredentialLibrary{
+			CredentialLibrary: &pb.CredentialLibrary{
 				Id:                clsResp.GetItem().GetId(),
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),
@@ -1892,6 +1893,8 @@ func TestAuthorizeSession(t *testing.T) {
 		// TODO: validate the contents of the authorization token is what is expected
 	}
 	got := asRes1.GetItem()
+
+	t.Log(protojson.Format(got))
 	require.Len(t, got.GetCredentials(), 1)
 	got.Credentials[0].Secret.GetStructValue().Fields["username"] = structpb.NewStringValue("some username")
 	got.Credentials[0].Secret.GetStructValue().Fields["password"] = structpb.NewStringValue("some password")
@@ -1950,7 +1953,6 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	r := iam.TestRole(t, conn, proj.GetPublicId())
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
-
 
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
 	v.MountDatabase(t)
@@ -2040,30 +2042,30 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
-	cases := []struct{
-		name string
-		setup []func( *target.TcpTarget) uint32
-		err bool
-	} {
+	cases := []struct {
+		name  string
+		setup []func(*target.TcpTarget) uint32
+		err   bool
+	}{
 		{
 			// This one must be run first since it relies on the DB not having any worker details
-			name: "no worker",
-			setup: []func(tcpTarget *target.TcpTarget) uint32 {hostExists, libraryExists},
-			err: true,
+			name:  "no worker",
+			setup: []func(tcpTarget *target.TcpTarget) uint32{hostExists, libraryExists},
+			err:   true,
 		},
 		{
-			name: "success",
-			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostExists, libraryExists},
+			name:  "success",
+			setup: []func(tcpTarget *target.TcpTarget) uint32{workerExists, hostExists, libraryExists},
 		},
 		{
-			name: "no hosts",
-			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostSetNoHostExists, libraryExists},
-			err: true,
+			name:  "no hosts",
+			setup: []func(tcpTarget *target.TcpTarget) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			err:   true,
 		},
 		{
-			name: "bad library configuration",
-			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostExists, misConfiguredlibraryExists},
-			err: true,
+			name:  "bad library configuration",
+			setup: []func(tcpTarget *target.TcpTarget) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			err:   true,
 		},
 	}
 	for i, tc := range cases {
@@ -2087,5 +2089,4 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			require.NotNil(t, res)
 		})
 	}
-
 }

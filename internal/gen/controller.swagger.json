@@ -4264,7 +4264,7 @@
     "controller.api.resources.targets.v1.SessionCredential": {
       "type": "object",
       "properties": {
-        "library": {
+        "credential_library": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary",
           "description": "Output only. The library which generated this credential.",
           "readOnly": true

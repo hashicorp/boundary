@@ -2,6 +2,6 @@
 package targets
 
 type SessionCredential struct {
-	Library *CredentialLibrary `json:"library,omitempty"`
-	Secret  interface{}        `json:"secret,omitempty"`
+	CredentialLibrary *CredentialLibrary `json:"credential_library,omitempty"`
+	Secret            interface{}        `json:"secret,omitempty"`
 }

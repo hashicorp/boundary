@@ -41,7 +41,7 @@ message CredentialLibrary{
 // A credential for a session.
 message SessionCredential {
 	// Output only. The library which generated this credential.
-	CredentialLibrary library = 1;
+	CredentialLibrary credential_library = 1;
 
 	// Output only. The secret of this credential.
 	google.protobuf.Value secret = 2;
