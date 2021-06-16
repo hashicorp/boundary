@@ -5649,7 +5649,7 @@ create table credential_vault_store (
                key_id,
                status
           from credential_vault_token
-         where status in ('current', 'maintaining')
+         where status in ('current', 'maintaining', 'revoke')
      )
      select store.public_id           as public_id,
             store.scope_id            as scope_id,
@@ -5657,6 +5657,7 @@ create table credential_vault_store (
             store.description         as description,
             store.create_time         as create_time,
             store.update_time         as update_time,
+            store.delete_time         as delete_time,
             store.version             as version,
             store.vault_address       as vault_address,
             store.namespace           as namespace,
@@ -5684,7 +5685,7 @@ create table credential_vault_store (
          on store.public_id = cert.store_id;
   comment on view credential_vault_store_private is
     'credential_vault_store_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
-    'The view returns a separate row for each current and maintaining token, maintaining tokens should only be used for token/credential renewal and revocation. '
+    'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
      create view credential_vault_store_public as

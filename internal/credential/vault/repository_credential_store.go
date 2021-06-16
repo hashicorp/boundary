@@ -359,6 +359,7 @@ type privateStore struct {
 	Description          string
 	CreateTime           *timestamp.Timestamp
 	UpdateTime           *timestamp.Timestamp
+	DeleteTime           *timestamp.Timestamp
 	Version              uint32
 	VaultAddress         string
 	Namespace            string
@@ -395,6 +396,7 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs.Description = ps.Description
 	cs.CreateTime = ps.CreateTime
 	cs.UpdateTime = ps.UpdateTime
+	cs.DeleteTime = ps.DeleteTime
 	cs.Version = ps.Version
 	cs.VaultAddress = ps.VaultAddress
 	cs.Namespace = ps.Namespace
