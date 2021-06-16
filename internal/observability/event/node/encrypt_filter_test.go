@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,7 @@ import (
 type testTaggableWithError map[string]interface{}
 
 func (t testTaggableWithError) Tags() ([]PointerTag, error) {
-	return nil, errors.New(errors.InvalidParameter, "Tags", "bad tags")
+	return nil, fmt.Errorf("%s: bad tags: %w", "node.(testTaggableWithError).Tags", ErrInvalidParameter)
 }
 
 // TestEncryptFilter_filterTaggable tests primarily the edge cases.  It is not
@@ -37,21 +36,21 @@ func TestEncryptFilter_filterTaggable(t *testing.T) {
 		t               Taggable
 		decryptWrapper  wrapping.Wrapper
 		wantValue       string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "nil",
 			ef:              testFilter,
 			t:               nil,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing taggable interface",
 		},
 		{
 			name:            "tags-error",
 			ef:              testFilter,
 			t:               testTaggableWithError{},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "unable to get tags from taggable interface",
 		},
 	}
@@ -59,9 +58,9 @@ func TestEncryptFilter_filterTaggable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			err := tt.ef.filterTaggable(ctx, tt.t, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -95,14 +94,14 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 		fv              reflect.Value
 		classification  *tagInfo
 		wantValue       string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-classification",
 			ef:              testFilter,
 			fv:              reflect.ValueOf(testStrings),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing classification tag",
 		},
 		{
@@ -117,7 +116,7 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 			ef:              testFilter,
 			fv:              reflect.ValueOf(&testInt).Elem(),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "slice parameter is not a []string or [][]byte",
 		},
 		{
@@ -140,9 +139,9 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 
 			assert, require := assert.New(t), require.New(t)
 			err := tt.ef.filterSlice(ctx, tt.classification, tt.fv, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -203,14 +202,14 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 		classification  *tagInfo
 		decryptWrapper  wrapping.Wrapper
 		wantValue       string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-tag",
 			ef:              testFilter,
 			fv:              reflect.ValueOf(&testStr).Elem(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing classification tag",
 		},
 		{
@@ -218,7 +217,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:              &EncryptFilter{},
 			fv:              reflect.ValueOf(&testStr).Elem(),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing wrapper",
 		},
 		{
@@ -226,7 +225,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:              &EncryptFilter{},
 			fv:              reflect.ValueOf(&testStr).Elem(),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing wrapper",
 		},
 		{
@@ -234,7 +233,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:              testFilter,
 			fv:              reflect.ValueOf(&testInt).Elem(),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "field value is not a string, []byte or tagged map value",
 		},
 		{
@@ -257,7 +256,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:              testFilter,
 			fv:              reflect.ValueOf(&testStr).Elem(),
 			classification:  &tagInfo{Classification: SecretClassification, Operation: NoOperation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "unknown filter operation",
 		},
 		{
@@ -265,7 +264,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:              testFilter,
 			fv:              reflect.ValueOf(map[string]interface{}{"not": "tagged"}),
 			classification:  &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "field value is not a string, []byte or tagged map value",
 		},
 		{
@@ -381,9 +380,9 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 
 			assert, require := assert.New(t), require.New(t)
 			err := tt.ef.filterValue(ctx, tt.fv, tt.classification, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -439,20 +438,20 @@ func TestEncryptFilter_encrypt(t *testing.T) {
 		opt             []Option
 		data            []byte
 		decryptWrapper  wrapping.Wrapper
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-data",
 			ef:              testFilter,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing data",
 		},
 		{
 			name:            "missing-wrapper",
 			ef:              &EncryptFilter{},
 			data:            []byte("fido"),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing wrapper",
 		},
 		{
@@ -473,9 +472,9 @@ func TestEncryptFilter_encrypt(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := tt.ef.encrypt(ctx, tt.data, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -507,20 +506,20 @@ func TestEncryptFilter_hmacSha256(t *testing.T) {
 		opt             []Option
 		data            []byte
 		want            string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-data",
 			ef:              testFilter,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing data",
 		},
 		{
 			name:            "missing-wrapper",
 			ef:              &EncryptFilter{},
 			data:            []byte("fido"),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing wrapper",
 		},
 		{
@@ -555,9 +554,9 @@ func TestEncryptFilter_hmacSha256(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := tt.ef.hmacSha256(ctx, tt.data, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -577,19 +576,19 @@ func Test_setValue(t *testing.T) {
 		name            string
 		fv              reflect.Value
 		newVal          string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "not-string-or-bytes",
 			fv:              reflect.ValueOf(&testInt).Elem(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "field value is not a string or []byte",
 		},
 		{
 			name:            "not-settable",
 			fv:              reflect.ValueOf(&testStr),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "unable to set value",
 		},
 		{
@@ -608,9 +607,9 @@ func Test_setValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			err := setValue(tt.fv, tt.newVal)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}

@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
@@ -60,30 +59,30 @@ type EventWrapperInfo interface {
 func NewEventWrapper(wrapper wrapping.Wrapper, eventId string) (wrapping.Wrapper, error) {
 	const op = "node.deriveWrapper"
 	if wrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
 	}
 	if eventId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing event id")
+		return nil, fmt.Errorf("%s: missing event id: %w", op, ErrInvalidParameter)
 	}
 
 	keyId := derivedKeyId(derivedKeyPurposeEvent, wrapper.KeyID(), eventId)
 
 	reader, err := kms.NewDerivedReader(wrapper, 32, []byte(eventId), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	privKey, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return nil, errors.New(errors.Encrypt, op, "unable to generate key", errors.WithWrap(err))
+		return nil, fmt.Errorf("%s: unable to generate key: %w", op, ErrInvalidParameter)
 	}
 	derivedWrapper := aead.NewWrapper(nil)
 	if _, err := derivedWrapper.SetConfig(map[string]string{
 		"key_id": keyId,
 	}); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper for event id %s", eventId)))
+		return nil, fmt.Errorf("%s: error setting config on aead wrapper for event id %s: %w", op, eventId, err)
 	}
 	if err := derivedWrapper.SetAESGCMKeyBytes(privKey); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper for event id %s", eventId)))
+		return nil, fmt.Errorf("%s: error setting key bytes on aead wrapper for event id %s: %w", op, eventId, err)
 	}
 	return derivedWrapper, nil
 }

@@ -6,11 +6,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/eventlogger"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -104,7 +104,7 @@ func (ef *EncryptFilter) Rotate(opt ...Option) {
 func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
 	const op = "event.(EncryptFilter).Process"
 	if e == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing event")
+		return nil, fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	if i, ok := e.Payload.(RotateWrapper); ok {
 		ef.l.Lock()
@@ -130,7 +130,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 		w, err := NewEventWrapper(ef.Wrapper, i.EventId())
 		ef.l.RUnlock()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		optWrapper := w
 		opts = append(opts, WithWrapper(optWrapper))
@@ -139,7 +139,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	}
 
 	if ef.Wrapper == nil && optWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
 	}
 
 	if e.Payload == nil {
@@ -163,17 +163,17 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	switch {
 	case pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
 		if !payloadValue.CanSet() {
-			return nil, errors.New(errors.InvalidParameter, op, "unable to redact string payload (not setable)")
+			return nil, fmt.Errorf("%s: unable to redact string payload (not setable): %w", op, ErrInvalidParameter)
 		}
 		ef.l.RLock()
 		classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
 		ef.l.RUnlock()
 		if err := ef.filterValue(ctx, payloadValue, classificationTag, opts...); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	case isTaggable:
 		if err := ef.filterTaggable(ctx, taggedInterface, opts...); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	case pKind == reflect.Slice:
 		switch {
@@ -183,7 +183,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 			classificationTag := getClassificationFromTagString(string(SecretClassification), withFilterOperations(ef.FilterOperationOverrides))
 			ef.l.RUnlock()
 			if err := ef.filterSlice(ctx, classificationTag, payloadValue, opts...); err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 		// if the field is a slice of structs, recurse through them...
 		default:
@@ -196,13 +196,13 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 					continue
 				}
 				if err := ef.filterField(ctx, f, opts...); err != nil {
-					return nil, errors.Wrap(err, op)
+					return nil, fmt.Errorf("%s: %w", op, err)
 				}
 			}
 		}
 	case pKind == reflect.Struct:
 		if err := ef.filterField(ctx, payloadValue, opts...); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return e, nil
@@ -245,7 +245,7 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 			classificationTag := getClassificationFromTag(v.Type().Field(i).Tag, withFilterOperations(ef.FilterOperationOverrides))
 			ef.l.RUnlock()
 			if err := ef.filterValue(ctx, field, classificationTag, opt...); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		// if the field is a slice
 		case fkind == reflect.Slice:
@@ -281,7 +281,7 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 
 		case isTaggable:
 			if err := ef.filterTaggable(ctx, taggedInterface, opt...); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		}
 	}
@@ -292,11 +292,11 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Option) error {
 	const op = "event.(EncryptFilter).filterTaggable"
 	if t == nil {
-		return errors.New(errors.InvalidParameter, op, "missing taggable interface")
+		return fmt.Errorf("%s: missing taggable interface: %w", op, ErrInvalidParameter)
 	}
 	tags, err := t.Tags()
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get tags from taggable interface"))
+		return fmt.Errorf("%s: unable to get tags from taggable interface: %w", op, err)
 	}
 	for _, pt := range tags {
 		value, err := pointerstructure.Get(t, pt.Pointer)
@@ -304,7 +304,7 @@ func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Op
 			if errors.Is(err, pointerstructure.ErrNotFound) {
 				continue
 			} else {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value using tag pointer structure (pointer == %s", pt.Pointer)))
+				return fmt.Errorf("%s: unable to get value using tag pointer structure (pointer == %s): %w", op, pt.Pointer, err)
 			}
 		}
 		rv := reflect.Indirect(reflect.ValueOf(value))
@@ -313,7 +313,7 @@ func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Op
 			Operation:      pt.Filter,
 		}
 		if err = ef.filterValue(ctx, rv, info, withPointer(t, pt.Pointer)); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return nil
@@ -323,7 +323,7 @@ func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Op
 func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tagInfo, slice reflect.Value, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterSlice"
 	if classificationTag == nil {
-		return errors.New(errors.InvalidParameter, op, "missing classification tag")
+		return fmt.Errorf("%s: missing classification tag: %w", op, ErrInvalidParameter)
 	}
 	// check for nil value (prevent panics)
 	if slice == reflect.ValueOf(nil) {
@@ -336,7 +336,7 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 
 	ftype := slice.Type()
 	if ftype != reflect.TypeOf([]string{}) && ftype != reflect.TypeOf([]*string{}) && ftype != reflect.TypeOf([][]uint8{}) {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("slice parameter is not a []string or [][]byte: (%s)", slice.String()))
+		return fmt.Errorf("%s: slice parameter is not a []string or [][]byte: (%s): %w", op, slice.String(), ErrInvalidParameter)
 	}
 	if classificationTag.Classification == PublicClassification {
 		return nil
@@ -346,12 +346,8 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 	}
 
 	for i := 0; i < slice.Len(); i++ {
-		fv := slice.Index(i)
-		// if !fv.CanSet() {
-		// 	return errors.New(errors.InvalidParameter, op, "unable to redact slice value (not setable)")
-		// }
-		if err := ef.filterValue(ctx, fv, classificationTag); err != nil {
-			return errors.Wrap(err, op)
+		if err := ef.filterValue(ctx, slice.Index(i), classificationTag); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return nil
@@ -361,7 +357,7 @@ func (ef *EncryptFilter) filterSlice(ctx context.Context, classificationTag *tag
 func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, classificationTag *tagInfo, opt ...Option) error {
 	const op = "event.(EncryptFilter).filterValue"
 	if classificationTag == nil {
-		return errors.New(errors.InvalidParameter, op, "missing classification tag")
+		return fmt.Errorf("%s: missing classification tag: %w", op, ErrInvalidParameter)
 	}
 
 	// check for nil value (prevent panics)
@@ -376,7 +372,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 	opts := getOpts(opt...)
 	ftype := fv.Type()
 	if ftype != reflect.TypeOf("") && ftype != reflect.TypeOf([]uint8(nil)) && opts.withPointerstructureInfo == nil {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("field value is not a string, []byte or tagged map value: %s", fv.String()))
+		return fmt.Errorf("%s: field value is not a string, []byte or tagged map value: %s :%w", op, fv.String(), ErrInvalidParameter)
 	}
 
 	// check to see if it's an exported struct field
@@ -398,7 +394,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		case opts.withPointerstructureInfo != nil:
 			i, err := pointerstructure.Get(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value from taggable interface using pointer: %s", opts.withPointerstructureInfo.pointer)))
+				return fmt.Errorf("%s: unable to get value from taggable interface using pointer: %s: %w", op, opts.withPointerstructureInfo.pointer, err)
 			}
 			raw = []byte(fmt.Sprintf("%s", i))
 		case fv.Type() == reflect.TypeOf(""):
@@ -407,7 +403,7 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 			raw = fv.Bytes()
 		default:
 			// should be unreachable based on parameter checks
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to get data to filter for type: %s", fv.Type()))
+			return fmt.Errorf("%s: unable to get data to filter for type: %s: %w", op, fv.Type(), ErrInvalidParameter)
 		}
 
 		var data string
@@ -415,29 +411,29 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 		switch classificationTag.Operation {
 		case EncryptOperation:
 			if data, err = ef.encrypt(ctx, raw, opt...); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		case HmacSha256Operation:
 			if data, err = ef.hmacSha256(ctx, raw, opt...); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		case RedactOperation:
 			data = RedactedData
 		default: // catch UnknownOperation, NoOperation and everything else
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown filter operation for field: %s", classificationTag.Operation))
+			return fmt.Errorf("%s: unknown filter operation for field: %s: %w", op, classificationTag.Operation, ErrInvalidParameter)
 		}
 		if opts.withPointerstructureInfo != nil {
 			if _, err := pointerstructure.Set(opts.withPointerstructureInfo.i, opts.withPointerstructureInfo.pointer, data); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		} else {
 			if err := setValue(fv, data); err != nil {
-				return errors.Wrap(err, op)
+				return fmt.Errorf("%s: %w", op, err)
 			}
 		}
 	default:
 		if err := setValue(fv, RedactedData); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return nil
@@ -446,13 +442,13 @@ func (ef *EncryptFilter) filterValue(ctx context.Context, fv reflect.Value, clas
 func (ef *EncryptFilter) encrypt(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).encrypt"
 	if data == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing data")
+		return "", fmt.Errorf("%s: missing data: %w", op, ErrInvalidParameter)
 	}
 	ef.l.Lock()
 	defer ef.l.Unlock()
 	opts := getOpts(opt...)
 	if ef.Wrapper == nil && opts.withWrapper == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return "", fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
 	}
 	var w wrapping.Wrapper
 	switch {
@@ -463,7 +459,7 @@ func (ef *EncryptFilter) encrypt(ctx context.Context, data []byte, opt ...Option
 	}
 	blobInfo, err := w.Encrypt(ctx, data, nil)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
@@ -475,13 +471,13 @@ func (ef *EncryptFilter) encrypt(ctx context.Context, data []byte, opt ...Option
 func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Option) (string, error) {
 	const op = "event.(EncryptFilter).hmacField"
 	if data == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing data")
+		return "", fmt.Errorf("%s: missing data: %w", op, ErrInvalidParameter)
 	}
 	ef.l.Lock()
 	defer ef.l.Unlock()
 	opts := getOpts(opt...)
 	if ef.Wrapper == nil && opts.withWrapper == nil {
-		return "", errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return "", fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
 	}
 	var w wrapping.Wrapper
 	switch {
@@ -513,11 +509,11 @@ func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Opt
 
 	reader, err := kms.NewDerivedReader(w, 32, salt, info)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return "", errors.New(errors.Encrypt, op, "unable to generate derived key")
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write(data)
@@ -527,13 +523,13 @@ func (ef *EncryptFilter) hmacSha256(ctx context.Context, data []byte, opt ...Opt
 func setValue(fv reflect.Value, newVal string) error {
 	const op = "event.(EncryptFilter).setValue"
 	if !fv.CanSet() {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to set value for: %s", fv.String()))
+		return fmt.Errorf("%s: unable to set value for: %s: %w", op, fv.String(), ErrInvalidParameter)
 	}
 	ftype := fv.Type()
 	isByteArray := ftype == reflect.TypeOf([]uint8(nil))
 	isString := ftype == reflect.TypeOf("")
 	if !isString && !isByteArray {
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("field value is not a string or []byte: %s", fv.String()))
+		return fmt.Errorf("%s: field value is not a string or []byte: %s: %w", op, fv.String(), ErrInvalidParameter)
 	}
 	switch {
 	case isByteArray:
@@ -542,7 +538,7 @@ func setValue(fv reflect.Value, newVal string) error {
 		fv.SetString(newVal)
 	default:
 		// should not be reachable based on current parameter checking
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to set field value since is not a string or []byte: %s", fv.String()))
+		return fmt.Errorf("%s: unable to set field value since is not a string or []byte: %s: %w", op, fv.String(), ErrInvalidParameter)
 	}
 	return nil
 }

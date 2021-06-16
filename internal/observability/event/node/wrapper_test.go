@@ -3,7 +3,6 @@ package node
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,19 +17,19 @@ func Test_NewEventWrapper(t *testing.T) {
 		name            string
 		wrapper         wrapping.Wrapper
 		eventId         string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing wrapper",
 			eventId:         "test-id",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing wrapper",
 		},
 		{
 			name:            "missing eventId",
 			wrapper:         testWrapper,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing event id",
 		},
 		{
@@ -43,10 +42,10 @@ func Test_NewEventWrapper(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewEventWrapper(tt.wrapper, tt.eventId)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(got)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want err %q and got %q", tt.wantErrMatch, err.Error())
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
