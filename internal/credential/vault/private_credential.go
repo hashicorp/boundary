@@ -25,7 +25,7 @@ type privateCredential struct {
 	Status               string
 	RenewalTime          *timestamp.Timestamp
 	TokenHmac            []byte
-	Token                []byte
+	Token                TokenSecret
 	CtToken              []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
@@ -40,7 +40,7 @@ type privateCredential struct {
 	TlsServerName        string
 	TlsSkipVerify        bool
 	ClientCert           []byte
-	ClientKey            []byte
+	ClientKey            KeySecret
 	CtClientKey          []byte
 	ClientKeyHmac        []byte
 	ClientKeyId          string
@@ -82,7 +82,7 @@ func (pc *privateCredential) client() (*client, error) {
 	const op = "vault.(privateCredential).client"
 	clientConfig := &clientConfig{
 		Addr:          pc.VaultAddress,
-		Token:         string(pc.Token),
+		Token:         pc.Token,
 		CaCert:        pc.CaCert,
 		TlsServerName: pc.TlsServerName,
 		TlsSkipVerify: pc.TlsSkipVerify,

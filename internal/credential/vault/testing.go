@@ -585,7 +585,7 @@ func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
-		Token:      token,
+		Token:      TokenSecret(token),
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
