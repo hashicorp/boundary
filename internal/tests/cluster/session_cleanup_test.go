@@ -27,7 +27,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
-	"github.com/vancluever/dwadle"
+	"github.com/vancluever/dawdle"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
@@ -57,10 +57,10 @@ func TestWorkerSessionCleanup(t *testing.T) {
 
 	// Wire up the testing proxies
 	require.Len(t, c1.ClusterAddrs(), 1)
-	proxy, err := dwadle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
-		dwadle.WithListener(pl),
-		dwadle.WithRbufSize(512),
-		dwadle.WithWbufSize(512),
+	proxy, err := dawdle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
+		dawdle.WithListener(pl),
+		dawdle.WithRbufSize(512),
+		dawdle.WithWbufSize(512),
 	)
 	require.NoError(t, err)
 	defer proxy.Close()
@@ -175,10 +175,10 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	// ** Proxy 1 **
 	// *************
 	require.Len(t, c1.ClusterAddrs(), 1)
-	p1, err := dwadle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
-		dwadle.WithListener(pl1),
-		dwadle.WithRbufSize(512),
-		dwadle.WithWbufSize(512),
+	p1, err := dawdle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
+		dawdle.WithListener(pl1),
+		dawdle.WithRbufSize(512),
+		dawdle.WithWbufSize(512),
 	)
 	require.NoError(t, err)
 	defer p1.Close()
@@ -188,10 +188,10 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	// ** Proxy 2 **
 	// *************
 	require.Len(t, c2.ClusterAddrs(), 1)
-	p2, err := dwadle.NewProxy("tcp", "", c2.ClusterAddrs()[0],
-		dwadle.WithListener(pl2),
-		dwadle.WithRbufSize(512),
-		dwadle.WithWbufSize(512),
+	p2, err := dawdle.NewProxy("tcp", "", c2.ClusterAddrs()[0],
+		dawdle.WithListener(pl2),
+		dawdle.WithRbufSize(512),
+		dawdle.WithWbufSize(512),
 	)
 	require.NoError(t, err)
 	defer p2.Close()
