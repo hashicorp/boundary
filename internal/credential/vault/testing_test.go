@@ -426,3 +426,18 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 	// New ttl should have moved and be lower than original lease duration
 	assert.True(cred.LeaseDuration > int(newTtl))
 }
+
+func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+
+	_, token := v.CreateToken(t)
+	client := v.clientUsingToken(t, token)
+	err := client.revokeToken()
+	require.NoError(err)
+	v.VerifyTokenInvalid(t, token)
+
+	// Verify fake token is not valid
+	v.VerifyTokenInvalid(t, "fake-token")
+}

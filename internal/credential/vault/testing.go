@@ -12,10 +12,13 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"net/http"
 	"path"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/errors"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -644,17 +647,21 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 	return secret
 }
 
-// LookupTokenError calls /auth/token/lookup on v for the token. It expects the lookup to fail,
-// and returns the error received.  See
+// VerifyTokenInvalid calls /auth/token/lookup on v for the token. It expects the lookup to
+// fail with a StatusForbidden.  See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
-func (v *TestVaultServer) LookupTokenError(t *testing.T, token string) error {
+func (v *TestVaultServer) VerifyTokenInvalid(t *testing.T, token string) {
 	t.Helper()
-	require := require.New(t)
+	require, assert := require.New(t), assert.New(t)
 	vc := v.client(t).cl
 	secret, err := vc.Auth().Token().Lookup(token)
 	require.Error(err)
 	require.Nil(secret)
-	return err
+
+	// Verify error was forbidden
+	var respErr *vault.ResponseError
+	require.True(errors.As(err, &respErr))
+	assert.Equal(http.StatusForbidden, respErr.StatusCode)
 }
 
 // LookupLease calls the /sys/leases/lookup Vault endpoint and returns
