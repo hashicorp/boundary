@@ -229,7 +229,12 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 		fkind := field.Kind()
 		ftype := field.Type()
 
-		taggedInterface, isTaggable := v.Interface().(Taggable)
+		var taggedInterface Taggable
+		var isTaggable bool
+		// check exported fields to see if they implement the Taggable interface
+		if field.CanSet() {
+			taggedInterface, isTaggable = v.Field(i).Interface().(Taggable)
+		}
 
 		switch {
 		// if the field is a string or []byte then we just need to sanitize it
@@ -294,7 +299,11 @@ func (ef *EncryptFilter) filterTaggable(ctx context.Context, t Taggable, _ ...Op
 	for _, pt := range tags {
 		value, err := pointerstructure.Get(t, pt.Pointer)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value using tag pointer structure (pointer == %s", pt.Pointer)))
+			if errors.Is(err, pointerstructure.ErrNotFound) {
+				continue
+			} else {
+				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get value using tag pointer structure (pointer == %s", pt.Pointer)))
+			}
 		}
 		rv := reflect.Indirect(reflect.ValueOf(value))
 		info := &tagInfo{
