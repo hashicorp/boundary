@@ -776,10 +776,6 @@ HostSetIterationLoop:
 		endpointUrl.Host = endpointHost
 	}
 
-	credRepo, err := s.vaultCredRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(err, op)
-	}
 	var reqs []credential.Request
 	var dynCreds []*session.DynamicCredential
 	for _, l := range libs {
@@ -821,6 +817,10 @@ HostSetIterationLoop:
 
 	var cs []credential.Dynamic
 	if len(reqs) > 0 {
+		credRepo, err := s.vaultCredRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(err, op)
+		}
 		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
 		if err != nil {
 			return nil, errors.Wrap(err, op)
