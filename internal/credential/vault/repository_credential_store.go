@@ -680,16 +680,34 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var rowsDeleted int
+	var rows int
+	query, values := cs.softDeleteQuery()
 	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			dcs := cs.clone()
-			rowsDeleted, err = w.Delete(ctx, dcs, db.WithOplog(oplogWrapper, cs.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 CredentialStore would have been deleted")
+			var msgs []*oplog.Message
+			ticket, err := w.GetTicket(cs)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			return err
+
+			rows, err = w.Exec(ctx, query, values)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rows > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 credential store would have been deleted")
+			}
+			msg := cs.oplogMessage(db.UpdateOp)
+			msg.FieldMaskPaths = []string{"DeleteTime"}
+			msgs = append(msgs, msg)
+
+			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+			}
+
+			return nil
 		},
 	)
 
@@ -697,5 +715,10 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", cs.PublicId)))
 	}
 
-	return rowsDeleted, nil
+	if rows > 0 {
+		// TODO(mgaffney) 06/2021: Schedule the token revoke job to run
+		// immediately once it is merged
+		// _ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevokeJobName, 0)
+	}
+	return rows, nil
 }

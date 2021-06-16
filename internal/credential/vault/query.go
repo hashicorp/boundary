@@ -132,4 +132,12 @@ update credential_vault_credential
  where session_id = $1
    and status = 'active';
 `
+
+	softDeleteStoreQuery = `
+update credential_vault_store
+   set delete_time = now()
+ where public_id = $1
+   and delete_time is null
+returning *;
+`
 )

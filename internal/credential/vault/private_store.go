@@ -4,12 +4,40 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 )
+
+func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option) ([]*privateStore, error) {
+	const op = "vault.(Repository).listRevokePrivateStores"
+
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		limit = opts.withLimit
+	}
+
+	var stores []*privateStore
+	where, values := "token_status = ?", []interface{}{"revoke"}
+	if err := r.reader.SearchWhere(ctx, &stores, where, values, db.WithLimit(limit)); err != nil {
+		return nil, errors.Wrap(err, op)
+	}
+
+	for _, store := range stores {
+		databaseWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := store.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, errors.Wrap(err, op)
+		}
+	}
+	return stores, nil
+}
 
 func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*privateStore, error) {
 	const op = "vault.(Repository).lookupPrivateStore"
