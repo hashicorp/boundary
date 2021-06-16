@@ -137,6 +137,40 @@ func TestEncryptFilter_Process(t *testing.T) {
 			},
 		},
 		{
+			name:   "slice-string-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   []string{"test"},
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload:   []string{node.RedactedData},
+			},
+		},
+		{
+			name:   "slice-string-ptr-payload",
+			filter: testEncryptingFilter,
+			testEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: func() interface{} {
+					s := "test"
+					return []*string{&s}
+				}(),
+			},
+			wantEvent: &eventlogger.Event{
+				Type:      "test",
+				CreatedAt: now,
+				Payload: func() interface{} {
+					s := node.RedactedData
+					return []*string{&s}
+				}(),
+			},
+		},
+		{
 			name:   "string-ptr-payload",
 			filter: testEncryptingFilter,
 			testEvent: &eventlogger.Event{
