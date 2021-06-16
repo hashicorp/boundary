@@ -359,8 +359,9 @@ func TestSendWorkerStatusError(t *testing.T) {
 	assert.Empty(t, c.connCancelRequests)
 
 	// Add error, sleep, and make request
+	gracePeriod := w.statusGracePeriod()
 	c.statusErr = testStatusErr
-	time.Sleep(statusFailGrace)
+	time.Sleep(gracePeriod)
 	w.sendWorkerStatus(context.Background())
 
 	// Assert sessions/conns sent status (should be same)
