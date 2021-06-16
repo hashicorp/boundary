@@ -31,6 +31,16 @@ type testPayload struct {
 	Keys              [][]byte `classified:"secret"`
 }
 
+type testWrapperPayload struct {
+	wrapper wrapping.Wrapper
+	salt    []byte
+	info    []byte
+}
+
+func (t *testWrapperPayload) Wrapper() wrapping.Wrapper { return t.wrapper }
+func (t *testWrapperPayload) HmacSalt() []byte          { return t.salt }
+func (t *testWrapperPayload) HmacInfo() []byte          { return t.info }
+
 func TestEncryptFilter_Process(t *testing.T) {
 	ctx := context.Background()
 	wrapper := node.TestWrapper(t)
@@ -423,6 +433,33 @@ func TestEncryptFilter_Process(t *testing.T) {
 			assert.Equal(tt.wantEvent, got)
 		})
 	}
+	t.Run("rotate-wrapper-payload", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		wrapper := node.TestWrapper(t)
+		ef := &node.EncryptFilter{
+			Wrapper:  wrapper,
+			HmacSalt: []byte("salt"),
+			HmacInfo: []byte("info"),
+		}
+		rotatedWrapper := node.TestWrapper(t)
+		now := time.Now()
+		e := &eventlogger.Event{
+			Type:      "test",
+			CreatedAt: now,
+			Payload: &testWrapperPayload{
+				wrapper: rotatedWrapper,
+				info:    []byte("rotated-info"),
+				salt:    []byte("rotated-info"),
+			},
+		}
+		got, err := ef.Process(context.Background(), e)
+		require.NoError(err)
+		assert.Nil(got)
+		assert.Equal(rotatedWrapper, ef.Wrapper)
+		assert.Equal([]byte("rotated-info"), ef.HmacInfo)
+		assert.Equal([]byte("rotated-info"), ef.HmacInfo)
+	})
 }
 
 func TestEncryptFilter_Type(t *testing.T) {
