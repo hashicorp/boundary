@@ -156,15 +156,10 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 	pType := payloadValue.Type()
 	pKind := payloadValue.Kind()
 
-	isPtrToString := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.String
-	isPtrToSlice := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Slice
-	isPtrToStruct := pKind == reflect.Ptr && payloadValue.Elem().Kind() == reflect.Struct
-	isSlice := pKind == reflect.Slice
-
 	taggedInterface, isTaggable := payloadValue.Interface().(Taggable)
 
 	switch {
-	case isPtrToString || pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
+	case pType == reflect.TypeOf("") || pType == reflect.TypeOf([]uint8{}):
 		if !payloadValue.CanSet() {
 			return nil, errors.New(errors.InvalidParameter, op, "unable to redact string payload (not setable)")
 		}
@@ -178,7 +173,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 		if err := ef.filterTaggable(ctx, taggedInterface, opts...); err != nil {
 			return nil, errors.Wrap(err, op)
 		}
-	case isSlice || isPtrToSlice:
+	case pKind == reflect.Slice:
 		switch {
 		// if the field is a slice of string or slice of []byte
 		case pType == reflect.TypeOf([]string{}) || pType == reflect.TypeOf([]*string{}) || pType == reflect.TypeOf([][]uint8{}):
@@ -190,9 +185,6 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 			}
 		// if the field is a slice of structs, recurse through them...
 		default:
-			if isPtrToSlice {
-				payloadValue = payloadValue.Elem()
-			}
 			for i := 0; i < payloadValue.Len(); i++ {
 				f := payloadValue.Index(i)
 				if f.Kind() == reflect.Ptr {
@@ -206,7 +198,7 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 				}
 			}
 		}
-	case pKind == reflect.Struct || isPtrToStruct:
+	case pKind == reflect.Struct:
 		if err := ef.filterField(ctx, payloadValue, opts...); err != nil {
 			return nil, errors.Wrap(err, op)
 		}
@@ -225,12 +217,17 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 
 	for i := 0; i < v.Type().NumField(); i++ {
 		field := v.Field(i)
+
+		switch v.Field(i).Kind() {
+		case reflect.Ptr, reflect.Interface:
+			field = v.Field(i).Elem()
+			if field == reflect.ValueOf(nil) {
+				continue
+			}
+		}
+
 		fkind := field.Kind()
 		ftype := field.Type()
-
-		isPtrToSlice := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Slice
-		isPtrToStruct := fkind == reflect.Ptr && field.Elem().Kind() == reflect.Struct
-		isSlice := fkind == reflect.Slice
 
 		taggedInterface, isTaggable := v.Interface().(Taggable)
 
@@ -244,7 +241,7 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 				return errors.Wrap(err, op)
 			}
 		// if the field is a slice
-		case isSlice || isPtrToSlice:
+		case fkind == reflect.Slice:
 			switch {
 			// if the field is a slice of string or slice of []byte
 			case ftype == reflect.TypeOf([]string{}) || ftype == reflect.TypeOf([][]uint8{}):
@@ -256,9 +253,6 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 				}
 			// if the field is a slice of structs, recurse through them...
 			default:
-				if isPtrToSlice {
-					field = field.Elem()
-				}
 				for i := 0; i < field.Len(); i++ {
 					f := field.Index(i)
 					if f.Kind() == reflect.Ptr {
@@ -273,10 +267,7 @@ func (ef *EncryptFilter) filterField(ctx context.Context, v reflect.Value, opt .
 				}
 			}
 		// if the field is a struct
-		case fkind == reflect.Struct || isPtrToStruct:
-			if isPtrToStruct {
-				field = field.Elem()
-			}
+		case fkind == reflect.Struct:
 			if err := ef.filterField(ctx, field, opt...); err != nil {
 				return err
 			}
