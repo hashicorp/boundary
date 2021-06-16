@@ -16,6 +16,11 @@ func (s ClientSecret) String() string {
 	return redactedClientSecret
 }
 
+// GoString will redact the client_secret.
+func (s ClientSecret) GoString() string {
+	return redactedClientSecret
+}
+
 // MarshalJSON will redact the client_secret.
 func (s ClientSecret) MarshalJSON() ([]byte, error) {
 	return json.Marshal(redactedClientSecret)
