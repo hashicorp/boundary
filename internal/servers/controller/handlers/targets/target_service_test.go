@@ -1839,7 +1839,6 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	// cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 	_, err = s.AddTargetCredentialLibraries(ctx,
 		&pbs.AddTargetCredentialLibrariesRequest{
 			Id:                   tar.GetPublicId(),
@@ -1856,8 +1855,8 @@ func TestAuthorizeSession(t *testing.T) {
 		Id: tar.GetPublicId(),
 	})
 	require.NoError(t, err)
-
-	assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()))
+	assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
+		"the credentials aren't unique per request authorized session")
 
 	want := &pb.SessionAuthorization{
 		Scope: &scopes.ScopeInfo{
@@ -1879,7 +1878,7 @@ func TestAuthorizeSession(t *testing.T) {
 				Name:              clsResp.GetItem().GetName().GetValue(),
 				Description:       clsResp.GetItem().GetDescription().GetValue(),
 				CredentialStoreId: store.GetPublicId(),
-				Type: credential.VaultSubtype.String(),
+				Type:              credential.VaultSubtype.String(),
 			},
 			Secret: func() *structpb.Value {
 				s, err := structpb.NewStruct(map[string]interface{}{
@@ -1891,7 +1890,6 @@ func TestAuthorizeSession(t *testing.T) {
 			}(),
 		}},
 		// TODO: validate the contents of the authorization token is what is expected
-		// AuthorizationToken: "",
 	}
 	got := asRes1.GetItem()
 	require.Len(t, got.GetCredentials(), 1)
@@ -1900,4 +1898,194 @@ func TestAuthorizeSession(t *testing.T) {
 
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
 	assert.Empty(t, cmp.Diff(asRes1.GetItem(), want, protocmp.Transform()))
+}
+
+func TestAuthorizeSession_Errors(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	repoFn := func() (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+	sessionRepoFn := func() (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms)
+	}
+	staticHostRepoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, kms)
+	}
+	credentialRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	s, err := targets.NewService(kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, staticHostRepoFn, credentialRepoFn)
+	require.NoError(t, err)
+
+	// Authorized user gets full permissions
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	ctx := auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
+		nil,
+		iamRepoFn,
+		atRepoFn,
+		serversRepoFn,
+		kms,
+		auth.RequestInfo{
+			Token:       at.GetToken(),
+			TokenFormat: auth.AuthTokenTypeBearer,
+			PublicId:    at.GetPublicId(),
+		})
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+
+	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
+	v.MountDatabase(t)
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
+	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
+
+	workerExists := func(tar *target.TcpTarget) (version uint32) {
+		workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
+			Worker: &spb.Server{
+				PrivateId: "testworker",
+				Address:   "localhost:123",
+			},
+		})
+		require.NoError(t, err)
+		return tar.GetVersion()
+	}
+
+	hostSetNoHostExists := func(tar *target.TcpTarget) (version uint32) {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+
+		tr, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+			Id:         tar.GetPublicId(),
+			Version:    tar.GetVersion(),
+			HostSetIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
+		return tr.GetItem().GetVersion()
+	}
+
+	hostExists := func(tar *target.TcpTarget) (version uint32) {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+			Id:         tar.GetPublicId(),
+			Version:    tar.GetVersion(),
+			HostSetIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
+		return apiTar.GetItem().GetVersion()
+	}
+
+	libraryExists := func(tar *target.TcpTarget) (version uint32) {
+		credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
+		require.NoError(t, err)
+		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+			CredentialStoreId: store.GetPublicId(),
+			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"path": structpb.NewStringValue(path.Join("database", "creds", "opened")),
+			}},
+		}})
+		require.NoError(t, err)
+
+		tr, err := s.AddTargetCredentialLibraries(ctx,
+			&pbs.AddTargetCredentialLibrariesRequest{
+				Id:                   tar.GetPublicId(),
+				CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
+				Version:              tar.GetVersion(),
+			})
+		require.NoError(t, err)
+		return tr.GetItem().GetVersion()
+	}
+
+	misConfiguredlibraryExists := func(tar *target.TcpTarget) (version uint32) {
+		credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
+		require.NoError(t, err)
+		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+			CredentialStoreId: store.GetPublicId(),
+			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"path": structpb.NewStringValue("bad path"),
+			}},
+		}})
+		require.NoError(t, err)
+
+		tr, err := s.AddTargetCredentialLibraries(ctx,
+			&pbs.AddTargetCredentialLibrariesRequest{
+				Id:                   tar.GetPublicId(),
+				CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
+				Version:              tar.GetVersion(),
+			})
+		require.NoError(t, err)
+		return tr.GetItem().GetVersion()
+	}
+
+	cases := []struct{
+		name string
+		setup []func( *target.TcpTarget) uint32
+		err bool
+	} {
+		{
+			// This one must be run first since it relies on the DB not having any worker details
+			name: "no worker",
+			setup: []func(tcpTarget *target.TcpTarget) uint32 {hostExists, libraryExists},
+			err: true,
+		},
+		{
+			name: "success",
+			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostExists, libraryExists},
+		},
+		{
+			name: "no hosts",
+			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostSetNoHostExists, libraryExists},
+			err: true,
+		},
+		{
+			name: "bad library configuration",
+			setup: []func(tcpTarget *target.TcpTarget) uint32 {workerExists, hostExists, misConfiguredlibraryExists},
+			err: true,
+		},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tar := target.TestTcpTarget(t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i))
+
+			for _, fn := range tc.setup {
+				ver := fn(tar)
+				tar.Version = ver
+			}
+
+			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
+				Id: tar.GetPublicId(),
+			})
+			if tc.err {
+				require.Error(t, err)
+				require.Nil(t, res)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, res)
+		})
+	}
+
 }
