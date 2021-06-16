@@ -113,10 +113,12 @@ func (ef *EncryptFilter) Process(ctx context.Context, e *eventlogger.Event) (*ev
 			ef.Wrapper = i.Wrapper()
 		}
 		if i.HmacSalt() != nil {
-			ef.HmacSalt = i.HmacSalt()
+			ef.HmacSalt = make([]byte, len(i.HmacSalt()))
+			copy(ef.HmacSalt, i.HmacSalt())
 		}
 		if i.HmacInfo() != nil {
-			ef.HmacSalt = i.HmacInfo()
+			ef.HmacInfo = make([]byte, len(i.HmacInfo()))
+			copy(ef.HmacInfo, i.HmacInfo())
 		}
 		return nil, nil
 	}
