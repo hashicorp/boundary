@@ -2,16 +2,11 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,7 +132,7 @@ func TestEncryptFilter_filterSlice(t *testing.T) {
 			ef:             testFilter,
 			fv:             reflect.ValueOf(&testStrings),
 			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
-			wantValue:      fmt.Sprintf("%s", []string{testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info"))}),
+			wantValue:      fmt.Sprintf("%s", []string{TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info"))}),
 		},
 	}
 	for _, tt := range tests {
@@ -285,7 +280,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:             testFilter,
 			fv:             reflect.ValueOf(&testStr),
 			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
-			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+			wantValue:      TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
 		},
 		{
 			name:           "success-public",
@@ -299,7 +294,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:             testFilter,
 			fv:             reflect.ValueOf(&testStr).Elem(),
 			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
-			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+			wantValue:      TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
 		},
 		{
 			name:           "success-secret-encrypt",
@@ -322,7 +317,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			ef:             testFilter,
 			fv:             reflect.ValueOf(&testStr).Elem(),
 			classification: &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
-			wantValue:      testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+			wantValue:      TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
 		},
 		{
 			name:           "success-sensitive-encrypt",
@@ -347,7 +342,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			opt:            []Option{withPointer(testMap, "/foo")},
 			classification: &tagInfo{Classification: SensitiveClassification, Operation: HmacSha256Operation},
 			wantValue: fmt.Sprintf("%s", map[string]interface{}{
-				"foo": testHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
+				"foo": TestHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
 			}),
 		},
 		{
@@ -358,7 +353,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			classification: &tagInfo{Classification: SensitiveClassification, Operation: EncryptOperation},
 			decryptWrapper: wrapper,
 			wantValue: fmt.Sprintf("%s", map[string]interface{}{
-				"foo": testHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
+				"foo": TestHmacSha256(t, []byte("bar"), wrapper, []byte("salt"), []byte("info")),
 			}),
 		},
 		{
@@ -377,7 +372,7 @@ func TestEncryptFilter_filterValue(t *testing.T) {
 			opt:            []Option{WithWrapper(optWrapper)},
 			fv:             reflect.ValueOf(&testStr).Elem(),
 			classification: &tagInfo{Classification: SecretClassification, Operation: HmacSha256Operation},
-			wantValue:      testHmacSha256(t, []byte("fido"), optWrapper, []byte("salt"), []byte("info")),
+			wantValue:      TestHmacSha256(t, []byte("fido"), optWrapper, []byte("salt"), []byte("info")),
 		},
 	}
 	for _, tt := range tests {
@@ -532,28 +527,28 @@ func TestEncryptFilter_hmacSha256(t *testing.T) {
 			name: "success",
 			ef:   testFilter,
 			data: []byte("fido"),
-			want: testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
+			want: TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("info")),
 		},
 		{
 			name: "success-with-wrapper",
 			ef:   testFilter,
 			opt:  []Option{WithWrapper(optWrapper)},
 			data: []byte("fido"),
-			want: testHmacSha256(t, []byte("fido"), optWrapper, []byte("salt"), []byte("info")),
+			want: TestHmacSha256(t, []byte("fido"), optWrapper, []byte("salt"), []byte("info")),
 		},
 		{
 			name: "success-with-info",
 			ef:   testFilter,
 			data: []byte("fido"),
 			opt:  []Option{WithInfo([]byte("opt-info"))},
-			want: testHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("opt-info")),
+			want: TestHmacSha256(t, []byte("fido"), wrapper, []byte("salt"), []byte("opt-info")),
 		},
 		{
 			name: "success-with-salt",
 			ef:   testFilter,
 			data: []byte("fido"),
 			opt:  []Option{WithSalt([]byte("opt-salt"))},
-			want: testHmacSha256(t, []byte("fido"), wrapper, []byte("opt-salt"), []byte("info")),
+			want: TestHmacSha256(t, []byte("fido"), wrapper, []byte("opt-salt"), []byte("info")),
 		},
 	}
 	for _, tt := range tests {
@@ -626,17 +621,4 @@ func Test_setValue(t *testing.T) {
 		})
 	}
 
-}
-
-func testHmacSha256(t *testing.T, data []byte, w wrapping.Wrapper, salt, info []byte) string {
-	t.Helper()
-	require := require.New(t)
-	reader, err := kms.NewDerivedReader(w, 32, salt, info)
-	require.NoError(err)
-	key, _, err := ed25519.GenerateKey(reader)
-	require.NoError(err)
-
-	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write(data)
-	return "hmac-sh256:" + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
