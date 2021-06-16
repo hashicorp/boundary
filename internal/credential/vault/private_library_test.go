@@ -117,10 +117,10 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			assert.Len(gotLibs, len(libs))
 
 			for _, got := range gotLibs {
-				assert.Equal([]byte(token), got.Token)
+				assert.Equal(TokenSecret(token), got.Token)
 				if tt.tls == TestClientTLS {
 					require.NotNil(got.ClientKey)
-					assert.Equal(v.ClientKey, got.ClientKey)
+					assert.Equal(v.ClientKey, []byte(got.ClientKey))
 				}
 				want, ok := libs[got.PublicId]
 				require.True(ok)
