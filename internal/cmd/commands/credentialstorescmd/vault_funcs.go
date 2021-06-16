@@ -111,8 +111,6 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]credentialstores.Option) bool {
 	switch c.flagAddress {
 	case "":
-	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreAddress())
 	default:
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreAddress(c.flagAddress))
 	}
@@ -125,8 +123,6 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	}
 	switch c.flagVaultToken {
 	case "":
-	case "null":
-		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreToken())
 	default:
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreToken(c.flagVaultToken))
 	}

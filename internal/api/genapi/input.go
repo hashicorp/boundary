@@ -370,11 +370,27 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Address",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Token",
+				SkipDefault: true,
+			},
+		},
 	},
 	{
 		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
 		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
 		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
 	},
 	{
 		inProto: &credentiallibraries.CredentialLibrary{},
