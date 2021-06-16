@@ -156,9 +156,11 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 
 	resource, err := pool.RunWithOptions(dockerOptions)
 	require.NoError(err)
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
+	if !opts.dontCleanup {
+		t.Cleanup(func() {
+			cleanupResource(t, pool, resource)
+		})
+	}
 	server.vaultContainer = resource
 
 	switch opts.vaultTLS {

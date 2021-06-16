@@ -199,16 +199,11 @@ func TestClient_capabilities(t *testing.T) {
 			tt.name = fmt.Sprintf("%v", tt.polices)
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			var paths []string
-			for path := range tt.require {
-				paths = append(paths, path)
-			}
-
 			assert := assert.New(t)
 			_, token := v.CreateToken(t, WithPolicies(tt.polices))
 			client := v.clientUsingToken(t, token)
 
-			have, err := client.capabilities(paths)
+			have, err := client.capabilities(tt.require.paths())
 			assert.NoError(err)
 			got := have.missing(tt.require)
 			assert.Equalf(tt.wantMissing, got, "pathCapabilities: want: {%s} got: {%s}", tt.wantMissing, got)

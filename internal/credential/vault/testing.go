@@ -470,6 +470,7 @@ type testOptions struct {
 	roleName      string
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
+	dontCleanup   bool
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -535,6 +536,15 @@ func WithTestRoleName(n string) TestOption {
 			n = "boundary"
 		}
 		o.roleName = n
+	}
+}
+
+// WithDontCleanUp causes the resource created to not
+// be automaticaly cleaned up at the end of the test run.
+func WithDontCleanUp() TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.dontCleanup = true
 	}
 }
 

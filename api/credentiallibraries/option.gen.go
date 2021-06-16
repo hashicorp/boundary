@@ -158,26 +158,26 @@ func DefaultName() Option {
 	}
 }
 
-func WithVaultCredentialLibraryVaultPath(inVaultPath string) Option {
+func WithVaultCredentialLibraryPath(inPath string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["vault_path"] = inVaultPath
+		val["path"] = inPath
 		o.postMap["attributes"] = val
 	}
 }
 
-func DefaultVaultCredentialLibraryVaultPath() Option {
+func DefaultVaultCredentialLibraryPath() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
 		}
 		val := raw.(map[string]interface{})
-		val["vault_path"] = nil
+		val["path"] = nil
 		o.postMap["attributes"] = val
 	}
 }
