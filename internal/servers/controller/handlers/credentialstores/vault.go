@@ -33,7 +33,7 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 	}
 	pkIdx := -1
 	for i, b := range bs {
-		if !strings.Contains(strings.ToLower(b.Type), "certificate") {
+		if !strings.Contains(b.Type, "CERTIFICATE") {
 			switch {
 			case pkPem == nil:
 				pkIdx, pkPem = i, b
