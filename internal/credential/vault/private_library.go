@@ -50,11 +50,11 @@ type privateLibrary struct {
 	TlsServerName   string
 	TlsSkipVerify   bool
 	TokenHmac       []byte
-	Token           []byte
+	Token           TokenSecret
 	CtToken         []byte
 	TokenKeyId      string
 	ClientCert      []byte
-	ClientKey       []byte
+	ClientKey       KeySecret
 	CtClientKey     []byte
 	ClientKeyId     string
 	Purpose         credential.Purpose `gorm:"-"`
@@ -137,7 +137,7 @@ func (pl *privateLibrary) client() (*client, error) {
 	const op = "vault.(privateLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
-		Token:         string(pl.Token),
+		Token:         pl.Token,
 		CaCert:        pl.CaCert,
 		TlsServerName: pl.TlsServerName,
 		TlsSkipVerify: pl.TlsSkipVerify,

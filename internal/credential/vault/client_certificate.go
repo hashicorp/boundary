@@ -24,7 +24,7 @@ type ClientCertificate struct {
 }
 
 // NewClientCertificate creates a new in memory ClientCertificate.
-func NewClientCertificate(certificate []byte, key []byte) (*ClientCertificate, error) {
+func NewClientCertificate(certificate []byte, key KeySecret) (*ClientCertificate, error) {
 	const op = "vault.NewClientCertificate"
 	if len(certificate) == 0 {
 		return nil, errors.New(errors.InvalidParameter, op, "no certificate")
@@ -33,9 +33,9 @@ func NewClientCertificate(certificate []byte, key []byte) (*ClientCertificate, e
 	certificateCopy := make([]byte, len(certificate))
 	copy(certificateCopy, certificate)
 
-	var keyCopy []byte
+	var keyCopy KeySecret
 	if len(key) > 0 {
-		keyCopy = make([]byte, len(key))
+		keyCopy = make(KeySecret, len(key))
 		copy(keyCopy, key)
 	}
 
