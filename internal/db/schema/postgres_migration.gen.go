@@ -5632,6 +5632,11 @@ create table credential_vault_store (
   create trigger delete_credential_dynamic_subtype after delete on credential_vault_credential
     for each row execute procedure delete_credential_dynamic_subtype();
 
+  create index credential_vault_credential_expiration_time_ix
+    on credential_vault_credential(expiration_time);
+  comment on index credential_vault_credential_expiration_time_ix is
+    'the credential_vault_credential_expiration_time_ix is used by the credential renewal job';
+
   insert into oplog_ticket (name, version)
   values
     ('credential_vault_store', 1),

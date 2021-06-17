@@ -182,14 +182,7 @@ func (c *Controller) Start() error {
 
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
-	tokenRenewal, err := vault.NewTokenRenewalJob(rw, rw, c.kms, c.logger)
-	if err != nil {
-		return fmt.Errorf("error creating token renewal job: %w", err)
-	}
-	if err = c.scheduler.RegisterJob(c.baseContext, tokenRenewal); err != nil {
-		return fmt.Errorf("error registering token renewal job: %w", err)
-	}
-	return nil
+	return vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.logger)
 }
 
 func (c *Controller) Shutdown(serversOnly bool) error {

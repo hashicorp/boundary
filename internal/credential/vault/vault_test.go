@@ -37,11 +37,10 @@ func TestClient_RenewToken(t *testing.T) {
 
 	client := v.clientUsingToken(t, token)
 	renewedToken, err := client.renewToken()
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.NotNil(renewedToken)
 
 	renewedLookup := v.LookupToken(t, token)
-
 	t1, t2 := tokenExpirationTime(t, secretLookup), tokenExpirationTime(t, renewedLookup)
 	assert.False(t1.Equal(t2))
 	assert.True(t2.After(t1))
@@ -152,6 +151,7 @@ func TestClient_RenewLease(t *testing.T) {
 	require.NotNil(cred)
 
 	leaseLookup := v.LookupLease(t, cred.LeaseID)
+	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
 	// Verify lease has not been renewed
@@ -163,6 +163,7 @@ func TestClient_RenewLease(t *testing.T) {
 	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
 
 	leaseLookup = v.LookupLease(t, cred.LeaseID)
+	require.NotNil(leaseLookup)
 	require.NotNil(leaseLookup.Data)
 
 	// Verify lease been renewed
