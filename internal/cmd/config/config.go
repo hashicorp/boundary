@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -238,8 +236,8 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
-		result.Controller.Name, err = ParseAddress(result.Controller.Name)
-		if err != nil && err != ErrNotAUrl {
+		result.Controller.Name, err = configutil.ParsePath(result.Controller.Name)
+		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing controller name: %w", err)
 		}
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
@@ -267,8 +265,8 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
-		result.Worker.Name, err = ParseAddress(result.Worker.Name)
-		if err != nil && err != ErrNotAUrl {
+		result.Worker.Name, err = configutil.ParsePath(result.Worker.Name)
+		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
 		}
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {
@@ -384,40 +382,4 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
-}
-
-var ErrNotAUrl = errors.New("not a url")
-
-// ParseAddress parses a URL with schemes file://, env://, or any other.
-// Depending on the scheme it will return specific types of data:
-//
-// * file:// will return a string with the file's contents
-//
-// * env:// will return a string with the env var's contents
-//
-// * Anything else will return the string as it was
-//
-// On error, we return the original string along with the error. The caller can
-// switch on ErrNotAUrl to understand whether it was the parsing step that
-// errored or something else. This is useful to attempt to read a non-URL string
-// from some resource, but where the original input may simply be a valid string
-// of that type.
-func ParseAddress(addr string) (string, error) {
-	addr = strings.TrimSpace(addr)
-	parsed, err := url.Parse(addr)
-	if err != nil {
-		return addr, ErrNotAUrl
-	}
-	switch parsed.Scheme {
-	case "file":
-		contents, err := ioutil.ReadFile(strings.TrimPrefix(addr, "file://"))
-		if err != nil {
-			return addr, fmt.Errorf("error reading file at %s: %w", addr, err)
-		}
-		return strings.TrimSpace(string(contents)), nil
-	case "env":
-		return strings.TrimSpace(os.Getenv(strings.TrimPrefix(addr, "env://"))), nil
-	}
-
-	return addr, nil
 }

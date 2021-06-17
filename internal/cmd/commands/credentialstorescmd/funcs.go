@@ -194,10 +194,10 @@ func printItemTable(result api.GenericResult) string {
 var keySubstMap = map[string]string{
 	"address":                     "Address",
 	"namespace":                   "Namespace",
-	"ca_cert":                     "CaCert",
-	"tls_server_name":             "TlsServerName",
-	"tls_skip_verify":             "TlsSkipVerify",
-	"token_hmac":                  "TokenHmac",
-	"client_certificate":          "ClientCertificate",
-	"client_certificate_key_hmac": "ClientCertificateKeyHmac",
+	"ca_cert":                     "CA Cert",
+	"tls_server_name":             "TLS Server Name",
+	"tls_skip_verify":             "Skip TLS Verification",
+	"token_hmac":                  "Token HMAC",
+	"client_certificate":          "Client Certificate",
+	"client_certificate_key_hmac": "Client Certificate Key HMAC",
 }

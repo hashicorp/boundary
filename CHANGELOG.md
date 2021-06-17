@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* scheduler: removes a Postgres check constraint, on the length of the controller name, 
+  causing an error when the scheduler attempts to run jobs
+  ([issue](https://github.com/hashicorp/boundary/issues/1309),
+  [PR](https://github.com/hashicorp/boundary/pull/1310)).
+
 ## 0.3.0 (2021/06/08)
 
 ### Deprecations/Changes
