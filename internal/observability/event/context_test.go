@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -53,27 +54,27 @@ func Test_NewRequestInfoContext(t *testing.T) {
 		name            string
 		ctx             context.Context
 		requestInfo     *event.RequestInfo
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-ctx",
 			requestInfo:     testInfo,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing context",
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "event.NewRequestInfoContext: missing context: invalid parameter",
 		},
 		{
 			name:            "missing-request-info",
 			ctx:             context.Background(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing request info",
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "event.NewRequestInfoContext: missing request info: invalid parameter",
 		},
 		{
 			name:            "missing-request-info-id",
 			ctx:             context.Background(),
 			requestInfo:     testInfoMissingId,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing request info id",
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "event.NewRequestInfoContext: missing request info id: invalid parameter",
 		},
 		{
 			name:        "valid",
@@ -85,10 +86,10 @@ func Test_NewRequestInfoContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx, err := event.NewRequestInfoContext(tt.ctx, tt.requestInfo)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Errorf(err, "should have gotten an error")
 				assert.Nilf(ctx, "context should be nil")
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch, err)
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -154,19 +155,19 @@ func Test_NewEventerContext(t *testing.T) {
 		name            string
 		ctx             context.Context
 		eventer         *event.Eventer
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-ctx",
 			eventer:         testEventer,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing context",
 		},
 		{
 			name:            "missing-eventer",
 			ctx:             context.Background(),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing eventer",
 		},
 		{
@@ -179,10 +180,10 @@ func Test_NewEventerContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx, err := event.NewEventerContext(tt.ctx, tt.eventer)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Errorf(err, "should have gotten an error")
 				assert.Nilf(ctx, "context should be nil")
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch, err)
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -312,7 +313,7 @@ func Test_WriteObservation(t *testing.T) {
 		observationSinkFileName string
 		setup                   func() error
 		cleanup                 func()
-		wantErrMatch            *errors.Template
+		wantErrIs               error
 		wantErrContains         string
 	}{
 		{
@@ -338,7 +339,7 @@ func Test_WriteObservation(t *testing.T) {
 		{
 			name:               "missing-ctx",
 			observationPayload: testPayloads,
-			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrIs:          ErrInvalidParameter,
 			wantErrContains:    "missing context",
 		},
 		{
@@ -346,7 +347,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:                testCtx,
 			noOperation:        true,
 			observationPayload: testPayloads,
-			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrIs:          ErrInvalidParameter,
 			wantErrContains:    "missing operation",
 		},
 		{
@@ -356,14 +357,14 @@ func Test_WriteObservation(t *testing.T) {
 			observationPayload: []observationPayload{
 				{},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "you must specify either header or details options",
 		},
 		{
 			name:               "no-ctx-eventer-and-syseventer-not-initialized",
 			ctx:                context.Background(),
 			observationPayload: testPayloads,
-			wantErrMatch:       errors.T(errors.InvalidParameter),
+			wantErrIs:          ErrInvalidParameter,
 			wantErrContains:    "missing both context and system eventer",
 		},
 		{
@@ -411,8 +412,8 @@ func Test_WriteObservation(t *testing.T) {
 			require.Greater(len(tt.observationPayload), 0)
 			for _, p := range tt.observationPayload {
 				err := event.WriteObservation(tt.ctx, event.Op(op), event.WithHeader(p.header), event.WithDetails(p.details))
-				if tt.wantErrMatch != nil {
-					require.Errorf(err, "wanted error %q", tt.wantErrMatch)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
 						assert.Contains(err.Error(), tt.wantErrContains)
 					}
@@ -583,7 +584,7 @@ func Test_WriteAudit(t *testing.T) {
 		cleanup           func()
 		noOperation       bool
 		noFlush           bool
-		wantErrMatch      *errors.Template
+		wantErrIs      error
 		wantErrContains   string
 	}{
 		{
@@ -594,7 +595,7 @@ func Test_WriteAudit(t *testing.T) {
 					event.WithRequest(testReq),
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:    ErrInvalidParameter,
 			wantErrContains: "missing context",
 		},
 		{
@@ -607,7 +608,7 @@ func Test_WriteAudit(t *testing.T) {
 				},
 			},
 			noOperation:     true,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:    ErrInvalidParameter,
 			wantErrContains: "missing operation",
 		},
 		{
@@ -619,7 +620,7 @@ func Test_WriteAudit(t *testing.T) {
 					event.WithRequest(testReq),
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:    ErrInvalidParameter,
 			wantErrContains: "missing both context and system eventer",
 		},
 		{
@@ -680,8 +681,8 @@ func Test_WriteAudit(t *testing.T) {
 			for _, opts := range tt.auditOpts {
 				opts := append(opts, event.WithNow(now))
 				err := event.WriteAudit(tt.ctx, event.Op(op), opts...)
-				if tt.wantErrMatch != nil {
-					require.Errorf(err, "wanted error %q", tt.wantErrMatch)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContains != "" {
 						assert.Contains(err.Error(), tt.wantErrContains)
 					}

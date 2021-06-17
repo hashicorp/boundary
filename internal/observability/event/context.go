@@ -3,9 +3,6 @@ package event
 import (
 	"context"
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/go-hclog"
 )
 
 type key int
@@ -19,10 +16,10 @@ const (
 func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
 	const op = "event.NewEventerContext"
 	if ctx == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing context")
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
 	}
 	if eventer == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
+		return nil, fmt.Errorf("%s: missing eventer: %w", op, ErrInvalidParameter)
 	}
 	return context.WithValue(ctx, eventerKey, eventer), nil
 }
@@ -41,13 +38,13 @@ func EventerFromContext(ctx context.Context) (*Eventer, bool) {
 func NewRequestInfoContext(ctx context.Context, info *RequestInfo) (context.Context, error) {
 	const op = "event.NewRequestInfoContext"
 	if ctx == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing context")
+		return nil, fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
 	}
 	if info == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing request info")
+		return nil, fmt.Errorf("%s: missing request info: %w", op, ErrInvalidParameter)
 	}
 	if info.Id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing request info id")
+		return nil, fmt.Errorf("%s: missing request info id: %w", op, ErrInvalidParameter)
 	}
 	return context.WithValue(ctx, requestInfoKey, info), nil
 }
@@ -72,34 +69,34 @@ func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteObservation"
 	if ctx == nil {
-		return errors.New(errors.InvalidParameter, op, "missing context")
+		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
 	}
 	if caller == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation")
+		return fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
 	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			return errors.New(errors.InvalidParameter, op, "missing both context and system eventer")
+			return fmt.Errorf("%s: missing both context and system eventer: %w", op, ErrInvalidParameter)
 		}
 	}
 	opts := getOpts(opt...)
 	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush {
-		return errors.New(errors.InvalidParameter, op, "you must specify either header or details options for an event payload")
+		return fmt.Errorf("%s: specify either header or details options for an event payload: %w", op, ErrInvalidParameter)
 	}
 	if opts.withRequestInfo == nil {
 		var err error
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	e, err := newObservation(caller, opt...)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if err := eventer.writeObservation(ctx, e); err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
@@ -118,8 +115,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			logger := hclog.New(nil)
-			logger.Error(fmt.Sprintf("%s: no eventer available to write error: %s", op, e))
+			fmt.Errorf("%s: no eventer available to write error: %s", op, e)
 			return
 		}
 	}
@@ -127,20 +123,20 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if opts.withRequestInfo == nil {
 		var err error
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
-			eventer.logger.Error(errors.Wrap(err, op).Error())
-			eventer.logger.Error(fmt.Sprintf("%s: unable to process context options to write error: %s", op, e))
+			fmt.Errorf("%s: %w", op, err)
+			fmt.Errorf("%s: unable to process context options to write error: %s", op, e)
 			return
 		}
 	}
 	ev, err := newError(caller, e, opt...)
 	if err != nil {
-		eventer.logger.Error(errors.Wrap(err, op).Error())
-		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %s", op, e))
+		fmt.Errorf("%s: %w", op, err)
+		fmt.Errorf("%s: unable to create new error to write error: %s", op, e)
 		return
 	}
 	if err := eventer.writeError(ctx, ev); err != nil {
-		eventer.logger.Error(errors.Wrap(err, op).Error())
-		eventer.logger.Error(fmt.Sprintf("%s: unable to write error: %s", op, e))
+		fmt.Errorf("%s: %w", op, err)
+		fmt.Errorf("%s: unable to write error: %s", op, e)
 		return
 	}
 }
@@ -155,31 +151,31 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
 	const op = "event.WriteAudit"
 	if ctx == nil {
-		return errors.New(errors.InvalidParameter, op, "missing context")
+		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
 	}
 	if caller == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation")
+		return fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
 	eventer, ok := EventerFromContext(ctx)
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			return errors.New(errors.InvalidParameter, op, "missing both context and system eventer")
+			return fmt.Errorf("%s: missing both context and system eventer: %w", op, ErrInvalidParameter)
 		}
 	}
 	opts := getOpts(opt...)
 	if opts.withRequestInfo == nil {
 		var err error
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	e, err := newAudit(caller, opt...)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if err := eventer.writeAudit(ctx, e); err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
@@ -197,7 +193,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			// since there will never be another with the same id
 			id, err := newId(string(ObservationType))
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			retOpts = append(retOpts, WithId(id))
 			if !opts.withFlush {
@@ -216,7 +212,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 			// another with the same id
 			id, err := newId(string(ObservationType))
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			retOpts = append(retOpts, WithId(id))
 			if !opts.withFlush {
