@@ -7,3 +7,4 @@ import (
 var (
 	ErrInvalidParameter = errors.New("invalid parameter")
 )
+
