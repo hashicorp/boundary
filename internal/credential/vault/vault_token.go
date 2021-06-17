@@ -50,7 +50,7 @@ type Token struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newToken(storeId string, token, accessor []byte, expiration time.Duration) (*Token, error) {
+func newToken(storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "no store id")
@@ -65,7 +65,7 @@ func newToken(storeId string, token, accessor []byte, expiration time.Duration) 
 		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
 	}
 
-	tokenCopy := make([]byte, len(token))
+	tokenCopy := make(TokenSecret, len(token))
 	copy(tokenCopy, token)
 	accessorCopy := make([]byte, len(accessor))
 	copy(accessorCopy, accessor)
