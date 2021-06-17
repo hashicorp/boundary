@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/sdk/parseutil"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -326,176 +324,6 @@ func (_ *publicStore) TableName() string { return "credential_vault_store_public
 
 // GetPublicId returns the public id.
 func (ps *publicStore) GetPublicId() string { return ps.PublicId }
-
-func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*privateStore, error) {
-	const op = "vault.(Repository).lookupPrivateStore"
-	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
-	}
-	ps := allocPrivateStore()
-	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", publicId, CurrentToken); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
-	}
-
-	databaseWrapper, err := r.kms.GetWrapper(ctx, ps.ScopeId, kms.KeyPurposeDatabase)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
-	}
-
-	if err := ps.decrypt(ctx, databaseWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
-	}
-
-	return ps, nil
-}
-
-type privateStore struct {
-	PublicId             string `gorm:"primary_key"`
-	ScopeId              string
-	Name                 string
-	Description          string
-	CreateTime           *timestamp.Timestamp
-	UpdateTime           *timestamp.Timestamp
-	Version              uint32
-	VaultAddress         string
-	Namespace            string
-	CaCert               []byte
-	TlsServerName        string
-	TlsSkipVerify        bool
-	StoreId              string
-	TokenHmac            []byte
-	Token                TokenSecret
-	CtToken              []byte
-	TokenCreateTime      *timestamp.Timestamp
-	TokenUpdateTime      *timestamp.Timestamp
-	TokenLastRenewalTime *timestamp.Timestamp
-	TokenExpirationTime  *timestamp.Timestamp
-	TokenRenewalTime     *timestamp.Timestamp
-	TokenKeyId           string
-	TokenStatus          string
-	ClientCert           []byte
-	ClientKeyId          string
-	ClientKey            KeySecret
-	CtClientKey          []byte
-	ClientCertKeyHmac    []byte
-}
-
-func allocPrivateStore() *privateStore {
-	return &privateStore{}
-}
-
-func (ps *privateStore) toCredentialStore() *CredentialStore {
-	cs := allocCredentialStore()
-	cs.PublicId = ps.PublicId
-	cs.ScopeId = ps.ScopeId
-	cs.Name = ps.Name
-	cs.Description = ps.Description
-	cs.CreateTime = ps.CreateTime
-	cs.UpdateTime = ps.UpdateTime
-	cs.Version = ps.Version
-	cs.VaultAddress = ps.VaultAddress
-	cs.Namespace = ps.Namespace
-	cs.CaCert = ps.CaCert
-	cs.TlsServerName = ps.TlsServerName
-	cs.TlsSkipVerify = ps.TlsSkipVerify
-	cs.privateToken = ps.token()
-	if ps.ClientCert != nil {
-		cert := allocClientCertificate()
-		cert.StoreId = ps.StoreId
-		cert.Certificate = ps.ClientCert
-		cert.CtCertificateKey = ps.CtClientKey
-		cert.CertificateKeyHmac = ps.ClientCertKeyHmac
-		cert.KeyId = ps.ClientKeyId
-		cs.privateClientCert = cert
-	}
-	return cs
-}
-
-func (ps *privateStore) token() *Token {
-	if ps.TokenHmac != nil {
-		tk := allocToken()
-		tk.StoreId = ps.StoreId
-		tk.TokenHmac = ps.TokenHmac
-		tk.LastRenewalTime = ps.TokenLastRenewalTime
-		tk.ExpirationTime = ps.TokenExpirationTime
-		tk.CreateTime = ps.TokenCreateTime
-		tk.UpdateTime = ps.TokenUpdateTime
-		tk.CtToken = ps.CtToken
-		tk.KeyId = ps.TokenKeyId
-		tk.Status = ps.TokenStatus
-
-		return tk
-	}
-
-	return nil
-}
-
-func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(privateStore).decrypt"
-
-	if ps.CtToken != nil {
-		type ptk struct {
-			Token   []byte `wrapping:"pt,token_data"`
-			CtToken []byte `wrapping:"ct,token_data"`
-		}
-		ptkv := &ptk{
-			CtToken: ps.CtToken,
-		}
-		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
-		}
-		ps.Token = ptkv.Token
-	}
-
-	if ps.CtClientKey != nil && ps.ClientCert != nil {
-		type pck struct {
-			Key   []byte `wrapping:"pt,key_data"`
-			CtKey []byte `wrapping:"ct,key_data"`
-		}
-		pckv := &pck{
-			CtKey: ps.CtClientKey,
-		}
-		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
-		}
-		ps.ClientKey = pckv.Key
-	}
-	return nil
-}
-
-func (ps *privateStore) client() (*client, error) {
-	const op = "vault.(privateStore).client"
-	clientConfig := &clientConfig{
-		Addr:          ps.VaultAddress,
-		Token:         ps.Token,
-		CaCert:        ps.CaCert,
-		TlsServerName: ps.TlsServerName,
-		TlsSkipVerify: ps.TlsSkipVerify,
-		Namespace:     ps.Namespace,
-	}
-
-	if ps.ClientKey != nil {
-		clientConfig.ClientCert = ps.ClientCert
-		clientConfig.ClientKey = ps.ClientKey
-	}
-
-	client, err := newClient(clientConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
-	}
-	return client, nil
-}
-
-// GetPublicId returns the public id.
-func (ps *privateStore) GetPublicId() string { return ps.PublicId }
-
-// TableName returns the table name for gorm.
-func (ps *privateStore) TableName() string {
-	return "credential_vault_store_private"
-}
 
 // UpdateCredentialStore updates the repository entry for cs.PublicId with
 // the values in cs for the fields listed in fieldMaskPaths. It returns a
@@ -852,16 +680,34 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var rowsDeleted int
+	var rows int
+	query, values := cs.softDeleteQuery()
 	_, err = r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			dcs := cs.clone()
-			rowsDeleted, err = w.Delete(ctx, dcs, db.WithOplog(oplogWrapper, cs.oplog(oplog.OpType_OP_TYPE_DELETE)))
-			if err == nil && rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 CredentialStore would have been deleted")
+			var msgs []*oplog.Message
+			ticket, err := w.GetTicket(cs)
+			if err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
 			}
-			return err
+
+			rows, err = w.Exec(ctx, query, values)
+			if err != nil {
+				return errors.Wrap(err, op)
+			}
+			if rows > 1 {
+				return errors.New(errors.MultipleRecords, op, "more than 1 credential store would have been deleted")
+			}
+			msg := cs.oplogMessage(db.UpdateOp)
+			msg.FieldMaskPaths = []string{"DeleteTime"}
+			msgs = append(msgs, msg)
+
+			metadata := cs.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+			}
+
+			return nil
 		},
 	)
 
@@ -869,5 +715,10 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", cs.PublicId)))
 	}
 
-	return rowsDeleted, nil
+	if rows > 0 {
+		// TODO(mgaffney) 06/2021: Schedule the token revoke job to run
+		// immediately once it is merged
+		// _ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevokeJobName, 0)
+	}
+	return rows, nil
 }

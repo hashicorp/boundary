@@ -34,6 +34,9 @@ const (
 	// no longer being used for retrieving credentials.
 	MaintainingToken TokenStatus = "maintaining"
 
+	// RevokeToken represents a token that should be revoked.
+	RevokeToken TokenStatus = "revoke"
+
 	// RevokedToken represents a token that has been revoked. This is a
 	// terminal status. It does not transition to ExpiredToken.
 	RevokedToken TokenStatus = "revoked"

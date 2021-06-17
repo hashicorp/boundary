@@ -151,7 +151,7 @@ select
 `
 
 	updateCredentialExpirationQuery = `
-update credential_vault_credential 
+update credential_vault_credential
    set last_renewal_time = now(),
        expiration_time   = wt_add_seconds_to_now(?)
  where public_id = ?;
@@ -161,5 +161,13 @@ update credential_vault_credential
 update credential_vault_credential
    set status = ?
  where public_id = ?;
+`
+
+	softDeleteStoreQuery = `
+update credential_vault_store
+   set delete_time = now()
+ where public_id = $1
+   and delete_time is null
+returning *;
 `
 )

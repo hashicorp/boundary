@@ -24,7 +24,7 @@ begin;
 
   -- insert_credential_store_subtype() is a before insert trigger
   -- function for subtypes of credential_store
-  create or replace function insert_credential_store_subtype()
+  create function insert_credential_store_subtype()
     returns trigger
   as $$
   begin
@@ -38,7 +38,7 @@ begin;
 
   -- delete_credential_store_subtype() is an after delete trigger
   -- function for subtypes of credential_store
-  create or replace function delete_credential_store_subtype()
+  create function delete_credential_store_subtype()
     returns trigger
   as $$
   begin
@@ -69,7 +69,7 @@ begin;
 
   -- insert_credential_library_subtype() is a before insert trigger
   -- function for subtypes of credential_library
-  create or replace function insert_credential_library_subtype()
+  create function insert_credential_library_subtype()
     returns trigger
   as $$
   begin
@@ -83,7 +83,7 @@ begin;
 
   -- delete_credential_library_subtype() is an after delete trigger
   -- function for subtypes of credential_library
-  create or replace function delete_credential_library_subtype()
+  create function delete_credential_library_subtype()
     returns trigger
   as $$
   begin
@@ -105,7 +105,7 @@ begin;
 
   -- insert_credential_subtype() is a before insert trigger
   -- function for subtypes of credential
-  create or replace function insert_credential_subtype()
+  create function insert_credential_subtype()
     returns trigger
   as $$
   begin
@@ -119,7 +119,7 @@ begin;
 
   -- delete_credential_subtype() is an after delete trigger
   -- function for subtypes of credential
-  create or replace function delete_credential_subtype()
+  create function delete_credential_subtype()
     returns trigger
   as $$
   begin
@@ -159,7 +159,7 @@ begin;
 
   -- insert_credential_static_subtype() is a before insert trigger
   -- function for subtypes of credential_static
-  create or replace function insert_credential_static_subtype()
+  create function insert_credential_static_subtype()
     returns trigger
   as $$
   begin
@@ -173,7 +173,7 @@ begin;
 
   -- delete_credential_static_subtype() is an after delete trigger
   -- function for subtypes of credential_static
-  create or replace function delete_credential_static_subtype()
+  create function delete_credential_static_subtype()
     returns trigger
   as $$
   begin
@@ -213,7 +213,7 @@ begin;
 
   -- insert_credential_dynamic_subtype() is a before insert trigger
   -- function for subtypes of credential_dynamic
-  create or replace function insert_credential_dynamic_subtype()
+  create function insert_credential_dynamic_subtype()
     returns trigger
   as $$
   begin
@@ -227,7 +227,7 @@ begin;
 
   -- delete_credential_dynamic_subtype() is an after delete trigger
   -- function for subtypes of credential_dynamic
-  create or replace function delete_credential_dynamic_subtype()
+  create function delete_credential_dynamic_subtype()
     returns trigger
   as $$
   begin

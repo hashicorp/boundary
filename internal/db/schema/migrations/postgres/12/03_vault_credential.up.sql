@@ -11,6 +11,8 @@ begin;
     description wt_description,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    -- delete_time is set to indicate the row has been soft deleted
+    delete_time timestamp with time zone,
     version wt_version,
     vault_address wt_url not null,
     -- the remaining text columns can be null but if they are not null, they
@@ -55,6 +57,68 @@ begin;
   create trigger delete_credential_store_subtype after delete on credential_vault_store
     for each row execute procedure delete_credential_store_subtype();
 
+  -- before_soft_delete_credential_vault_store is a before update trigger for
+  -- the credential_vault_store table that makes the delete_time column a
+  -- set once column. Once the delete_time column is set to a value other than
+  -- null, it cannot be changed. If the current delete_time of a row is not null
+  -- and an update contains a value for delete_time different from the current
+  -- value, this trigger will raise an error with error code 23602 which is a
+  -- class 23 integrity constraint violation: set_once_violation.
+  create function before_soft_delete_credential_vault_store()
+    returns trigger
+  as $$
+  begin
+    if new.delete_time is distinct from old.delete_time then
+      if old.delete_time is not null then
+        raise exception 'set_once_violation: %.%', tg_table_name, 'delete_time' using
+          errcode = '23602',
+          schema = tg_table_schema,
+          table = tg_table_name,
+          column = 'delete_time';
+      end if;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger before_soft_delete_credential_vault_store before update on credential_vault_store
+    for each row execute procedure before_soft_delete_credential_vault_store();
+
+  -- after_soft_delete_credential_vault_store is an after update trigger for the
+  -- credential_vault_store table that performs cleanup actions when a
+  -- credential store is soft deleted. A credential store is considered "soft
+  -- deleted" if the delete_time for the row is updated from null to not null.
+  --
+  -- When a credential store is soft deleted, this trigger:
+  --  * marks any active Vault tokens owned by the credential store for revocation
+  --  * deletes any credential library owned by the credential store
+  create function after_soft_delete_credential_vault_store()
+    returns trigger
+  as $$
+  begin
+    if new.delete_time is distinct from old.delete_time then
+      if old.delete_time is null then
+
+        -- mark current and maintaining tokens as revoke
+        update credential_vault_token
+           set status   = 'revoke'
+         where store_id = new.public_id
+           and status in ('current', 'maintaining');
+
+        -- delete the store's libraries
+        delete
+          from credential_vault_library
+         where store_id = new.public_id;
+
+      end if;
+    end if;
+    return null;
+  end;
+  $$ language plpgsql;
+
+  create trigger after_soft_delete_credential_vault_store after update on credential_vault_store
+    for each row execute procedure after_soft_delete_credential_vault_store();
+
   create table credential_vault_token_status_enm (
     name text primary key
       constraint only_predefined_token_statuses_allowed
@@ -62,6 +126,7 @@ begin;
         name in (
           'current',
           'maintaining',
+          'revoke',
           'revoked',
           'expired'
         )
@@ -69,12 +134,13 @@ begin;
   );
   comment on table credential_vault_token_status_enm is
     'credential_vault_token_status_enm is an enumeration table for the status of vault tokens. '
-    'It contains rows for representing the current, maintaining, revoked, and expired statuses.';
+    'It contains rows for representing the current, maintaining, revoke, revoked, and expired statuses.';
 
   insert into credential_vault_token_status_enm (name)
   values
     ('current'),
     ('maintaining'),
+    ('revoke'),
     ('revoked'),
     ('expired');
 
@@ -132,7 +198,7 @@ begin;
   -- insert_credential_vault_token() is a before insert trigger
   -- function for credential_vault_token that changes the status of the current
   -- token to 'maintaining'
-  create or replace function insert_credential_vault_token()
+  create function insert_credential_vault_token()
     returns trigger
   as $$
   begin
@@ -257,6 +323,34 @@ begin;
   create trigger delete_credential_library_subtype after delete on credential_vault_library
     for each row execute procedure delete_credential_library_subtype();
 
+
+  -- before_insert_credential_vault_library is a before insert trigger for
+  -- the credential_vault_library table that prevents a library from being
+  -- inserted for a soft deleted credential store.
+  create function before_insert_credential_vault_library()
+    returns trigger
+  as $$
+  declare
+    delete_time_val timestamp with time zone;
+  begin
+    select delete_time into delete_time_val
+      from credential_vault_store
+     where public_id = new.store_id;
+
+    if delete_time_val is not null then
+      raise exception 'foreign_key_violation: %.%', tg_table_name, 'store_id' using
+        errcode = '23503',
+        schema = tg_table_schema,
+        table = tg_table_name,
+        column = 'store_id';
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger before_insert_credential_vault_library before insert on credential_vault_library
+    for each row execute procedure before_insert_credential_vault_library();
+
   create table credential_vault_credential_status_enm (
     name text primary key
       constraint only_predefined_credential_statuses_allowed
@@ -368,7 +462,7 @@ begin;
                key_id,
                status
           from credential_vault_token
-         where status in ('current', 'maintaining')
+         where status in ('current', 'maintaining', 'revoke')
      )
      select store.public_id           as public_id,
             store.scope_id            as scope_id,
@@ -376,6 +470,7 @@ begin;
             store.description         as description,
             store.create_time         as create_time,
             store.update_time         as update_time,
+            store.delete_time         as delete_time,
             store.version             as version,
             store.vault_address       as vault_address,
             store.namespace           as namespace,
@@ -403,7 +498,7 @@ begin;
          on store.public_id = cert.store_id;
   comment on view credential_vault_store_private is
     'credential_vault_store_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
-    'The view returns a separate row for each current and maintaining token, maintaining tokens should only be used for token/credential renewal and revocation. '
+    'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
      create view credential_vault_store_public as
@@ -427,7 +522,8 @@ begin;
             client_cert,
             client_cert_key_hmac
        from credential_vault_store_private
-      where token_status = 'current';
+      where token_status = 'current'
+        and delete_time is null;
   comment on view credential_vault_store_public is
     'credential_vault_store_public is a view where each row contains a credential store. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';

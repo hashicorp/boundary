@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -138,6 +139,22 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
+func (cs *CredentialStore) oplogMessage(opType db.OpType) *oplog.Message {
+	msg := oplog.Message{
+		Message:  cs.clone(),
+		TypeName: cs.TableName(),
+	}
+	switch opType {
+	case db.CreateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case db.UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+	case db.DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	}
+	return &msg
+}
+
 // Token returns the current vault token if available.
 func (cs *CredentialStore) Token() *Token {
 	return cs.outputToken
@@ -168,4 +185,12 @@ func (cs *CredentialStore) client() (*client, error) {
 		return nil, errors.Wrap(err, op)
 	}
 	return c, nil
+}
+
+func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []interface{}) {
+	query = softDeleteStoreQuery
+	queryValues = []interface{}{
+		cs.PublicId,
+	}
+	return
 }

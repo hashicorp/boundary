@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	mrand "math/rand"
 	"net"
 	"net/http"
 	"path"
@@ -221,9 +222,11 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 	assert.NoError(err)
 	require.NotNil(databaseWrapper)
 
+	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d", storeId, i), fmt.Sprintf("accessor-%s-%d", storeId, i))
+		num := r.Int31()
+		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
 		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
