@@ -160,15 +160,15 @@ func (s *Scheduler) Start(ctx context.Context) error {
 }
 
 func (s *Scheduler) start(ctx context.Context) {
-	s.logger.Debug("starting scheduling loop")
+	s.logger.Debug("starting scheduling loop", "server id", s.serverId)
 	timer := time.NewTimer(s.runJobsInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug("scheduling loop shutting down")
+			s.logger.Debug("scheduling loop shutting down", "server id", s.serverId)
 			return
 		case <-timer.C:
-			s.logger.Debug("waking up to run jobs")
+			s.logger.Debug("waking up to run jobs", "server id", s.serverId)
 
 			repo, err := s.jobRepoFn()
 			if err != nil {
@@ -193,7 +193,7 @@ func (s *Scheduler) start(ctx context.Context) {
 			}
 		}
 
-		s.logger.Debug("scheduling loop going back to sleep")
+		s.logger.Debug("scheduling loop going back to sleep", "server id", s.serverId)
 		timer.Reset(s.runJobsInterval)
 	}
 }

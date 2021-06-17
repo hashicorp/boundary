@@ -4992,6 +4992,13 @@ create trigger
 before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 `),
+			10001: []byte(`
+alter table job_run
+    alter column server_id type text;
+alter table job_run
+    add constraint server_id_must_not_be_empty
+        check(length(trim(server_id)) > 0);
+`),
 			12001: []byte(`
 create function wt_is_sentinel(string text)
     returns bool
