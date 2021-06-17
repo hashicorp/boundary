@@ -13,18 +13,14 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-func getArgsAndPaths(in []string, parentTypeName, action string) (colArg, resArg string, colPath, resPath string) {
-	resArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(in[len(in)-1], "-", "_")))
+func getArgsAndPaths(pluralResource, parentTypeName, action string) (colArg, colPath, resPath string) {
 	strToReplace := "scope"
-	if len(in) == 1 {
-		if parentTypeName != "" {
-			strToReplace = parentTypeName
-		}
-	} else {
-		strToReplace = in[len(in)-2]
+	if parentTypeName != "" {
+		strToReplace = parentTypeName
 	}
+
 	colArg = fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(strToReplace, "-", "_")))
-	colPath = in[len(in)-1]
+	colPath = pluralResource
 	// append s at the end only if it isn't already present
 	if colPath[len(colPath)-1] != 's' {
 		colPath = fmt.Sprintf("%ss", colPath)
@@ -33,7 +29,7 @@ func getArgsAndPaths(in []string, parentTypeName, action string) (colArg, resArg
 	if action != "" {
 		action = fmt.Sprintf(":%s", action)
 	}
-	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", %s)", colPath, action, resArg)
+	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", id)", colPath, action)
 	return
 }
 
@@ -41,7 +37,7 @@ type templateInput struct {
 	Name                  string
 	Package               string
 	Fields                []fieldInfo
-	PathArgs              []string
+	PluralResourceName    string
 	CollectionFunctionArg string
 	ResourceFunctionArg   string
 	CollectionPath        string
@@ -65,7 +61,7 @@ func fillTemplates() {
 			Name:                in.generatedStructure.name,
 			Package:             in.generatedStructure.pkg,
 			Fields:              in.generatedStructure.fields,
-			PathArgs:            in.pathArgs,
+			PluralResourceName:  in.pluralResourceName,
 			ParentTypeName:      in.parentTypeName,
 			ExtraOptions:        in.extraOptions,
 			VersionEnabled:      in.versionEnabled,
@@ -74,8 +70,8 @@ func fillTemplates() {
 			RecursiveListing:    in.recursiveListing,
 		}
 
-		if len(in.pathArgs) > 0 {
-			input.CollectionFunctionArg, input.ResourceFunctionArg, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, in.parentTypeName, "")
+		if len(in.pluralResourceName) > 0 {
+			input.CollectionFunctionArg, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pluralResourceName, in.parentTypeName, "")
 		}
 
 		if err := structTemplate.Execute(outBuf, input); err != nil {
@@ -246,9 +242,9 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, error) {
-	if {{ .ResourceFunctionArg }} == "" {
-		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt... Option) (*{{ .Name }}ReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -289,9 +285,9 @@ func (c *Client) Read(ctx context.Context, {{ .ResourceFunctionArg }} string, op
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Delete(ctx context.Context, {{ .ResourceFunctionArg }} string, opt... Option) (*{{ .Name }}DeleteResult, error) { 
-	if {{ .ResourceFunctionArg }} == "" {
-		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt... Option) (*{{ .Name }}DeleteResult, error) { 
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -390,9 +386,9 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 `))
 
 var updateTemplate = template.Must(template.New("").Parse(`
-func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, error) {
-	if {{ .ResourceFunctionArg }} == "" {
-		return nil, fmt.Errorf("empty {{ .ResourceFunctionArg }} value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -405,7 +401,7 @@ func (c *Client) Update(ctx context.Context, {{ .ResourceFunctionArg }} string, 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, {{ .ResourceFunctionArg }}, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -469,10 +465,10 @@ var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 {{ range $key, $value := $input.SliceSubtypes }}
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
-{{ $resPath := getPathWithAction $input.PathArgs $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunctionArg }} string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, error) { 
-	if {{ $input.ResourceFunctionArg }} == "" {
-		return nil, fmt.Errorf("empty {{ $input.ResourceFunctionArg }} value passed into {{ $fullName }} request")
+{{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
+func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, error) { 
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into {{ $fullName }} request")
 	}
 	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value }}) == 0 {
 		return nil, errors.New("empty {{ $value }} passed into {{ $fullName }} request")
@@ -488,7 +484,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, {{ $input.ResourceFunction
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into {{ $fullName }} request")
 		}
-		existingTarget, existingErr := c.Read(ctx, {{ $input.ResourceFunctionArg }}, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -765,7 +761,7 @@ func kebabCase(in string) string {
 	return strcase.ToKebab(in)
 }
 
-func getPathWithAction(resArgs []string, parentTypeName, action string) string {
-	_, _, _, resPath := getArgsAndPaths(resArgs, parentTypeName, action)
+func getPathWithAction(plResName, parentTypeName, action string) string {
+	_, _, resPath := getArgsAndPaths(plResName, parentTypeName, action)
 	return resPath
 }

@@ -137,9 +137,9 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Ro
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleReadResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*RoleReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -147,7 +147,7 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleR
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -178,9 +178,9 @@ func (c *Client) Read(ctx context.Context, roleId string, opt ...Option) (*RoleR
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -192,7 +192,7 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -210,7 +210,7 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -241,9 +241,9 @@ func (c *Client) Update(ctx context.Context, roleId string, version uint32, opt 
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (*RoleDeleteResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*RoleDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -251,7 +251,7 @@ func (c *Client) Delete(ctx context.Context, roleId string, opt ...Option) (*Rol
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -324,9 +324,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Role
 	return target, nil
 }
 
-func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into AddGrants request")
+func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddGrants request")
 	}
 	if len(grantStrings) == 0 {
 		return nil, errors.New("empty grantStrings passed into AddGrants request")
@@ -341,7 +341,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -360,7 +360,7 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	opts.postMap["version"] = version
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddGrants request: %w", err)
 	}
@@ -391,9 +391,9 @@ func (c *Client) AddGrants(ctx context.Context, roleId string, version uint32, g
 	return target, nil
 }
 
-func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
+func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddPrincipals request")
 	}
 	if len(principalIds) == 0 {
 		return nil, errors.New("empty principalIds passed into AddPrincipals request")
@@ -408,7 +408,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddPrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -427,7 +427,7 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	opts.postMap["version"] = version
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
@@ -458,9 +458,9 @@ func (c *Client) AddPrincipals(ctx context.Context, roleId string, version uint3
 	return target, nil
 }
 
-func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into SetGrants request")
+func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetGrants request")
 	}
 
 	if c.client == nil {
@@ -473,7 +473,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -492,7 +492,7 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	opts.postMap["version"] = version
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetGrants request: %w", err)
 	}
@@ -523,9 +523,9 @@ func (c *Client) SetGrants(ctx context.Context, roleId string, version uint32, g
 	return target, nil
 }
 
-func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
+func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetPrincipals request")
 	}
 
 	if c.client == nil {
@@ -538,7 +538,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetPrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -557,7 +557,7 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	opts.postMap["version"] = version
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
@@ -588,9 +588,9 @@ func (c *Client) SetPrincipals(ctx context.Context, roleId string, version uint3
 	return target, nil
 }
 
-func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
+func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveGrants request")
 	}
 	if len(grantStrings) == 0 {
 		return nil, errors.New("empty grantStrings passed into RemoveGrants request")
@@ -605,7 +605,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveGrants request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -624,7 +624,7 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	opts.postMap["version"] = version
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
 	}
@@ -655,9 +655,9 @@ func (c *Client) RemoveGrants(ctx context.Context, roleId string, version uint32
 	return target, nil
 }
 
-func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
-	if roleId == "" {
-		return nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
+func (c *Client) RemovePrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemovePrincipals request")
 	}
 	if len(principalIds) == 0 {
 		return nil, errors.New("empty principalIds passed into RemovePrincipals request")
@@ -672,7 +672,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemovePrincipals request")
 		}
-		existingTarget, existingErr := c.Read(ctx, roleId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -691,7 +691,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, roleId string, version ui
 	opts.postMap["version"] = version
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", roleId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}

@@ -14,7 +14,25 @@ func TestClientSecret_String(t *testing.T) {
 		assert := assert.New(t)
 		const want = redactedClientSecret
 		tk := ClientSecret("super secret token")
-		assert.Equalf(want, tk.String(), "AccessToken.String() = %v, want %v", tk.String(), want)
+		assert.Equalf(want, tk.String(), "ClientSecret.String() = %v, want %v", tk.String(), want)
+
+		// Verify stringer is called
+		s := fmt.Sprintf("%#v", tk)
+		assert.Equalf(want, s, "ClientSecret.String() = %v, want %v", s, want)
+	})
+}
+
+func TestClientSecret_GoString(t *testing.T) {
+	t.Parallel()
+	t.Run("redacted", func(t *testing.T) {
+		assert := assert.New(t)
+		const want = redactedClientSecret
+		tk := ClientSecret("super secret token")
+		assert.Equalf(want, tk.GoString(), "ClientSecret.GoString() = %v, want %v", tk.GoString(), want)
+
+		// Verify gostringer is called
+		s := fmt.Sprintf("%#v", tk)
+		assert.Equalf(want, s, "ClientSecret.GoString() = %v, want %v", s, want)
 	})
 }
 
@@ -26,6 +44,6 @@ func TestClientSecret_MarshalJSON(t *testing.T) {
 		tk := ClientSecret("super secret token")
 		got, err := tk.MarshalJSON()
 		require.NoError(err)
-		assert.Equalf([]byte(want), got, "AccessToken.MarshalJSON() = %s, want %s", got, want)
+		assert.Equalf([]byte(want), got, "ClientSecret.MarshalJSON() = %s, want %s", got, want)
 	})
 }

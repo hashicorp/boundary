@@ -66,8 +66,6 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]credentiallibraries.Option) bool {
 	switch c.flagPath {
 	case "":
-	case "null":
-		*opts = append(*opts, credentiallibraries.DefaultVaultCredentialLibraryPath())
 	default:
 		*opts = append(*opts, credentiallibraries.WithVaultCredentialLibraryPath(c.flagPath))
 	}

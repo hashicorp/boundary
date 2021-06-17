@@ -169,15 +169,3 @@ func WithVaultCredentialLibraryPath(inPath string) Option {
 		o.postMap["attributes"] = val
 	}
 }
-
-func DefaultVaultCredentialLibraryPath() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["path"] = nil
-		o.postMap["attributes"] = val
-	}
-}

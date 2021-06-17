@@ -134,9 +134,9 @@ func (c *Client) Create(ctx context.Context, credentialStoreId string, opt ...Op
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, credentialLibrariesId string, opt ...Option) (*CredentialLibraryReadResult, error) {
-	if credentialLibrariesId == "" {
-		return nil, fmt.Errorf("empty credentialLibrariesId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*CredentialLibraryReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -144,7 +144,7 @@ func (c *Client) Read(ctx context.Context, credentialLibrariesId string, opt ...
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("credential-libraries/%s", credentialLibrariesId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("credential-libraries/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -175,9 +175,9 @@ func (c *Client) Read(ctx context.Context, credentialLibrariesId string, opt ...
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, credentialLibrariesId string, version uint32, opt ...Option) (*CredentialLibraryUpdateResult, error) {
-	if credentialLibrariesId == "" {
-		return nil, fmt.Errorf("empty credentialLibrariesId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*CredentialLibraryUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -189,7 +189,7 @@ func (c *Client) Update(ctx context.Context, credentialLibrariesId string, versi
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, credentialLibrariesId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -207,7 +207,7 @@ func (c *Client) Update(ctx context.Context, credentialLibrariesId string, versi
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("credential-libraries/%s", credentialLibrariesId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("credential-libraries/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -238,9 +238,9 @@ func (c *Client) Update(ctx context.Context, credentialLibrariesId string, versi
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, credentialLibrariesId string, opt ...Option) (*CredentialLibraryDeleteResult, error) {
-	if credentialLibrariesId == "" {
-		return nil, fmt.Errorf("empty credentialLibrariesId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*CredentialLibraryDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -248,7 +248,7 @@ func (c *Client) Delete(ctx context.Context, credentialLibrariesId string, opt .
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("credential-libraries/%s", credentialLibrariesId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("credential-libraries/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
