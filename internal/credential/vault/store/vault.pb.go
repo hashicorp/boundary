@@ -616,12 +616,10 @@ type Credential struct {
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// library_id of the owning vault credential library.
 	// It must be set.
-	// @inject_tag: `gorm:"not_null"`
-	LibraryId string `protobuf:"bytes,2,opt,name=library_id,json=libraryId,proto3" json:"library_id,omitempty" gorm:"not_null"`
+	LibraryId string `protobuf:"bytes,2,opt,name=library_id,json=libraryId,proto3" json:"library_id,omitempty"`
 	// session_id of the session the credential was created for.
 	// It must be set.
-	// @inject_tag: `gorm:"not_null"`
-	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" gorm:"not_null"`
+	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	// token_hmac is the foreign key of the token used to acquire the secret.
 	// @inject_tag: `gorm:"not_null"`
 	TokenHmac []byte `protobuf:"bytes,4,opt,name=token_hmac,json=tokenHmac,proto3" json:"token_hmac,omitempty" gorm:"not_null"`

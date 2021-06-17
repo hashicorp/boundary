@@ -378,15 +378,15 @@ begin;
 
   create table credential_vault_credential (
     public_id wt_public_id primary key,
-    library_id wt_public_id not null
+    library_id wt_public_id
       constraint credential_vault_library_fkey
         references credential_vault_library (public_id)
-        on delete cascade
+        on delete set null
         on update cascade,
-    session_id wt_public_id not null
+    session_id wt_public_id
       constraint session_fkey
         references session (public_id)
-        on delete cascade
+        on delete set null
         on update cascade,
     token_hmac bytea not null
       constraint credential_vault_token_fkey
@@ -424,11 +424,30 @@ begin;
   create trigger update_time_column before update on credential_vault_credential
     for each row execute procedure update_time_column();
 
+  -- update_credential_status_column() is a before update trigger function for
+  -- credential_vault_credential that changes the status of the credential to 'revoke' if
+  -- the session_id is updated to null
+  create function update_credential_status_column()
+      returns trigger
+  as $$
+  begin
+    if new.session_id is distinct from old.session_id then
+      if new.session_id is null and old.status = 'active' then
+        new.status = 'revoke';
+      end if;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger update_credential_status_column before update on credential_vault_credential
+    for each row execute procedure update_credential_status_column();
+
   create trigger default_create_time_column before insert on credential_vault_credential
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on credential_vault_credential
-    for each row execute procedure immutable_columns('external_id', 'library_id','session_id', 'create_time');
+    for each row execute procedure immutable_columns('external_id', 'create_time');
 
   create trigger insert_credential_dynamic_subtype before insert on credential_vault_credential
     for each row execute procedure insert_credential_dynamic_subtype();
