@@ -2,10 +2,10 @@ package event
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
@@ -22,7 +22,7 @@ func TestEventer_retrySend(t *testing.T) {
 	eventer, err := NewEventer(hclog.Default(), testConfig.EventerConfig)
 	require.NoError(t, err)
 
-	testError := errors.New(errors.InvalidParameter, "missing-operation", "missing operation")
+	testError := fmt.Errorf("%s: missing operation: %w", "missing operation", ErrInvalidParameter)
 	testEvent, err := newError("TestEventer_retrySend", testError, WithId("test-error"))
 	require.NoError(t, err)
 
@@ -31,7 +31,7 @@ func TestEventer_retrySend(t *testing.T) {
 		retries        uint
 		backOff        backoff
 		handler        sendHandler
-		wantErrMatch   *errors.Template
+		wantErrIs      error
 		wantErrContain string
 	}{
 		{
@@ -40,14 +40,14 @@ func TestEventer_retrySend(t *testing.T) {
 			handler: func() (eventlogger.Status, error) {
 				return eventer.broker.Send(ctx, eventlogger.EventType(ErrorType), testEvent)
 			},
-			wantErrMatch:   errors.T(errors.InvalidParameter),
+			wantErrIs:      ErrInvalidParameter,
 			wantErrContain: "missing backoff",
 		},
 		{
 			name:           "missing-handler",
 			retries:        1,
 			backOff:        expBackoff{},
-			wantErrMatch:   errors.T(errors.InvalidParameter),
+			wantErrIs:      ErrInvalidParameter,
 			wantErrContain: "missing handler",
 		},
 		{
@@ -55,9 +55,9 @@ func TestEventer_retrySend(t *testing.T) {
 			retries: 3,
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
-				return eventlogger.Status{}, errors.New(errors.InvalidParameter, "TestEventer_retrySend", "will never work")
+				return eventlogger.Status{}, fmt.Errorf("%s: will never work: %w", "TestEventer_retrySend", ErrInvalidParameter)
 			},
-			wantErrMatch:   errors.T(errors.MaxRetries),
+			wantErrIs:      ErrMaxRetries,
 			wantErrContain: "Too many retries",
 		},
 		{
@@ -66,7 +66,7 @@ func TestEventer_retrySend(t *testing.T) {
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
 				return eventlogger.Status{
-					Warnings: []error{errors.New(errors.RecordNotFound, "TestEventer_retrySend", "not found")},
+					Warnings: []error{fmt.Errorf("%s: not found: %w", "TestEventer_retrySend", ErrRecordNotFound)},
 				}, nil
 			},
 		},
@@ -87,14 +87,14 @@ func TestEventer_retrySend(t *testing.T) {
 			defer os.Remove(testConfig.ErrorEvents.Name())
 
 			err := eventer.retrySend(ctx, tt.retries, tt.backOff, tt.handler)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				multi, isMultiError := err.(*multierror.Error)
 				switch isMultiError {
 				case true:
 					matched := false
 					for _, e := range multi.WrappedErrors() {
-						if errors.Match(tt.wantErrMatch, e) {
+						if assert.ErrorIs(tt.wantErrIs, e) {
 							if tt.wantErrContain != "" {
 								assert.Contains(err.Error(), tt.wantErrContain)
 							}
@@ -103,7 +103,7 @@ func TestEventer_retrySend(t *testing.T) {
 					}
 					assert.True(matched)
 				default:
-					assert.True(errors.Match(tt.wantErrMatch, err))
+					assert.ErrorIs(tt.wantErrIs, err)
 					if tt.wantErrContain != "" {
 						assert.Contains(err.Error(), tt.wantErrContain)
 					}

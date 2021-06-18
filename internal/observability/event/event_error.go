@@ -1,6 +1,8 @@
 package event
 
-import "github.com/hashicorp/boundary/internal/errors"
+import (
+	"fmt"
+)
 
 // errorVersion defines the version of error events
 const errorVersion = "v0.1"
@@ -16,17 +18,17 @@ type err struct {
 func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 	const op = "event.newError"
 	if fromOperation == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing operation")
+		return nil, fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
 	if e == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing error")
+		return nil, fmt.Errorf("%s: missing error: %w", op, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
 		opts.withId, err = newId(string(ErrorType))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	newErr := &err{
@@ -37,7 +39,7 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 		Error:       e,
 	}
 	if err := newErr.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return newErr, nil
 }
@@ -48,13 +50,13 @@ func (e *err) EventType() string { return string(ErrorType) }
 func (e *err) validate() error {
 	const op = "event.(err).validate"
 	if e.Id == "" {
-		return errors.New(errors.InvalidParameter, op, "missing id")
+		return fmt.Errorf("%s: missing id: %w", op, ErrInvalidParameter)
 	}
 	if e.Op == "" {
-		return errors.New(errors.InvalidParameter, op, "missing operation")
+		return fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
 	if e.Error == nil {
-		return errors.New(errors.InvalidParameter, op, "missing error")
+		return fmt.Errorf("%s: missing error: %w", op, ErrInvalidParameter)
 	}
 	return nil
 }

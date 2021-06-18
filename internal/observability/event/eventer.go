@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 )
@@ -63,14 +62,14 @@ var (
 func InitSysEventer(log hclog.Logger, c EventerConfig) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
-		return errors.New(errors.InvalidParameter, op, "missing hclog")
+		return fmt.Errorf("%s: missing hclog: %w", op, ErrInvalidParameter)
 	}
 	// the order of operations is important here.  we want to determine if
 	// there's an error before setting the singleton sysEventer which can only
 	// be done one time.
 	eventer, err := NewEventer(log, c)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	sysEventerOnce.Do(func() {
 		sysEventer = eventer
@@ -87,7 +86,7 @@ func SysEventer() *Eventer {
 func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
 	}
 
 	// if there are no sinks in config, then we'll default to just one stdout
@@ -102,7 +101,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 
 	if err := c.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	type pipeline struct {
@@ -134,13 +133,13 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	// Create JSONFormatter node
 	id, err := newId("json")
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	jsonfmtId := eventlogger.NodeID(id)
 	fmtNode := &eventlogger.JSONFormatter{}
 	err = e.broker.RegisterNode(jsonfmtId, fmtNode)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to register json node")
+		return nil, fmt.Errorf("%s: failed to register json node: %w", op, err)
 	}
 
 	for _, s := range c.Sinks {
@@ -154,7 +153,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			}
 			id, err = newId("stdout")
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
 		default:
@@ -168,13 +167,13 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			}
 			id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, fmt.Errorf("%s: %w", op, err)
 			}
 			sinkId = eventlogger.NodeID(id)
 		}
 		err = e.broker.RegisterNode(sinkId, sinkNode)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to register sink node %s", sinkId)))
+			return nil, fmt.Errorf("%s: failed to register sink node %s: %w", op, sinkId, err)
 		}
 		var addToAudit, addToObservation, addToErr bool
 		for _, t := range s.EventTypes {
@@ -214,10 +213,10 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		}
 	}
 	if c.AuditEnabled && len(auditPipelines) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "audit events enabled but no sink defined for it")
+		return nil, fmt.Errorf("%s: audit event enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 	if c.ObservationsEnabled && len(observationPipelines) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "observation events enabled but no sink defined for it")
+		return nil, fmt.Errorf("%s: observation event enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
@@ -226,16 +225,16 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-audit")
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		gatedFilterNodeId := eventlogger.NodeID(gateId)
 		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
+			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
 		pipeId, err := newId(auditPipeline)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
@@ -243,7 +242,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to register audit pipeline")
+			return nil, fmt.Errorf("%s: failed to register audit pipeline: %w", op, err)
 		}
 		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
@@ -253,16 +252,16 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-observation")
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		gatedFilterNodeId := eventlogger.NodeID(gateId)
 		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to register audit gated filter"))
+			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
 		pipeId, err := newId(observationPipeline)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
@@ -270,7 +269,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to register observation pipeline")
+			return nil, fmt.Errorf("%s: failed to register observation pipeline: %w", op, err)
 		}
 		observationNodeIds = append(observationNodeIds, p.sinkId)
 	}
@@ -278,7 +277,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	for _, p := range errPipelines {
 		pipeId, err := newId(errPipeline)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
@@ -286,7 +285,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to register err pipeline")
+			return nil, fmt.Errorf("%s: failed to register err pipeline: %w", op, err)
 		}
 		errNodeIds = append(errNodeIds, p.sinkId)
 	}
@@ -297,19 +296,19 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	if c.AuditDelivery == Enforced {
 		err = e.broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
+			return nil, fmt.Errorf("%s: failed to set success threshold for audit events: %w", op, err)
 		}
 	}
 	if c.ObservationDelivery == Enforced {
 		err = e.broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to set success threshold for observation events")
+			return nil, fmt.Errorf("%s: failed to set success threshold for observation events: %w", op, err)
 		}
 	}
 	// always enforce delivery of errors
 	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set success threshold for error events")
+		return nil, fmt.Errorf("%s: failed to set success threshold for error events: %w", op, err)
 	}
 
 	return e, nil
@@ -319,7 +318,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 func (e *Eventer) writeObservation(ctx context.Context, event *observation) error {
 	const op = "event.(Eventer).writeObservation"
 	if event == nil {
-		return errors.New(errors.InvalidParameter, op, "missing event")
+		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	if !e.conf.ObservationsEnabled {
 		return nil
@@ -336,7 +335,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an observation event", "error:", err.Error())
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
@@ -345,14 +344,14 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 func (e *Eventer) writeError(ctx context.Context, event *err) error {
 	const op = "event.(Eventer).writeError"
 	if event == nil {
-		return errors.New(errors.InvalidParameter, op, "missing event")
+		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
 		return e.broker.Send(ctx, eventlogger.EventType(ErrorType), event)
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an error event", "error:", err.Error())
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
@@ -361,7 +360,7 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
 	const op = "event.(Eventer).writeAudit"
 	if event == nil {
-		return errors.New(errors.InvalidParameter, op, "missing event")
+		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
 	if !e.conf.AuditEnabled {
 		return nil
@@ -371,7 +370,7 @@ func (e *Eventer) writeAudit(ctx context.Context, event *audit) error {
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an audit event", "error:", err.Error())
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
@@ -391,7 +390,7 @@ func (e *Eventer) FlushNodes(ctx context.Context) error {
 	const op = "event.(Eventer).FlushNodes"
 	for _, n := range e.flushableNodes {
 		if err := n.FlushAll(ctx); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return nil

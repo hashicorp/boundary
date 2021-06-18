@@ -2,10 +2,10 @@ package event
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
@@ -18,17 +18,17 @@ func Test_InitSysEventer(t *testing.T) {
 	testConfig := TestEventerConfig(t, "InitSysEventer")
 
 	tests := []struct {
-		name         string
-		log          hclog.Logger
-		config       EventerConfig
-		want         *Eventer
-		wantErrMatch *errors.Template
+		name      string
+		log       hclog.Logger
+		config    EventerConfig
+		want      *Eventer
+		wantErrIs error
 	}{
 
 		{
-			name:         "missing-hclog",
-			config:       testConfig.EventerConfig,
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-hclog",
+			config:    testConfig.EventerConfig,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:   "success",
@@ -66,12 +66,10 @@ func Test_InitSysEventer(t *testing.T) {
 
 			err := InitSysEventer(tt.log, tt.config)
 			got := SysEventer()
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Nil(got)
 				require.Error(err)
-				if tt.wantErrMatch != nil {
-					assert.True(errors.Match(tt.wantErrMatch, err))
-				}
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -96,21 +94,21 @@ func TestEventer_writeObservation(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		broker       broker
-		observation  *observation
-		wantErrMatch *errors.Template
+		name        string
+		broker      broker
+		observation *observation
+		wantErrIs   error
 	}{
 		{
-			name:         "missing-observation",
-			broker:       &testMockBroker{},
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-observation",
+			broker:    &testMockBroker{},
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:         "send-fails",
-			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
-			observation:  testObservation,
-			wantErrMatch: errors.T(errors.Io),
+			name:        "send-fails",
+			broker:      &testMockBroker{errorOnSend: fmt.Errorf("%s: no msg: %w", "test", ErrIo)},
+			observation: testObservation,
+			wantErrIs:   ErrIo,
 		},
 		{
 			name:        "success",
@@ -125,9 +123,9 @@ func TestEventer_writeObservation(t *testing.T) {
 			eventer.broker = tt.broker
 
 			err = eventer.writeObservation(ctx, tt.observation)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -173,21 +171,21 @@ func TestEventer_writeAudit(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		broker       broker
-		audit        *audit
-		wantErrMatch *errors.Template
+		name      string
+		broker    broker
+		audit     *audit
+		wantErrIs error
 	}{
 		{
-			name:         "missing-audit",
-			broker:       &testMockBroker{},
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-audit",
+			broker:    &testMockBroker{},
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:         "send-fails",
-			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
-			audit:        testAudit,
-			wantErrMatch: errors.T(errors.Io),
+			name:      "send-fails",
+			broker:    &testMockBroker{errorOnSend: fmt.Errorf("%s: no msg: %w", "test", ErrIo)},
+			audit:     testAudit,
+			wantErrIs: ErrIo,
 		},
 		{
 			name:   "success",
@@ -202,9 +200,9 @@ func TestEventer_writeAudit(t *testing.T) {
 			eventer.broker = tt.broker
 
 			err = eventer.writeAudit(ctx, tt.audit)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -219,25 +217,25 @@ func TestEventer_writeError(t *testing.T) {
 	eventer, er := NewEventer(hclog.Default(), testSetup.EventerConfig)
 	require.NoError(t, er)
 
-	testError, er := newError("TestEventer_writeError", errors.New(errors.Io, "test", "no msg"))
+	testError, er := newError("TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
 	require.NoError(t, er)
 
 	tests := []struct {
-		name         string
-		broker       broker
-		err          *err
-		wantErrMatch *errors.Template
+		name      string
+		broker    broker
+		err       *err
+		wantErrIs error
 	}{
 		{
-			name:         "missing-error",
-			broker:       &testMockBroker{},
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-error",
+			broker:    &testMockBroker{},
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:         "send-fails",
-			broker:       &testMockBroker{errorOnSend: errors.New(errors.Io, "test", "no msg")},
-			err:          testError,
-			wantErrMatch: errors.T(errors.Io),
+			name:      "send-fails",
+			broker:    &testMockBroker{errorOnSend: fmt.Errorf("%s: no msg: test", ErrIo)},
+			err:       testError,
+			wantErrIs: ErrIo,
 		},
 		{
 			name:   "success",
@@ -252,9 +250,9 @@ func TestEventer_writeError(t *testing.T) {
 			eventer.broker = tt.broker
 
 			err := eventer.writeError(ctx, tt.err)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "got %q and wanted %q", err.Error(), tt.wantErrMatch)
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -277,20 +275,20 @@ func Test_NewEventer(t *testing.T) {
 		wantRegistered []string
 		wantPipelines  []string
 		wantThresholds map[eventlogger.EventType]int
-		wantErrMatch   *errors.Template
+		wantErrIs      error
 	}{
 		{
 			name: "invalid-config",
 			config: EventerConfig{
 				AuditDelivery: "invalid",
 			},
-			logger:       hclog.Default(),
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			logger:    hclog.Default(),
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
-			name:         "missing-logger",
-			config:       testSetup.EventerConfig,
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-logger",
+			config:    testSetup.EventerConfig,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:   "success-with-default-config",
@@ -403,10 +401,10 @@ func Test_NewEventer(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
 			got, err := NewEventer(tt.logger, tt.config, testWithBroker(testBroker))
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -486,7 +484,7 @@ type testFlushNode struct {
 func (t *testFlushNode) FlushAll(_ context.Context) error {
 	t.flushed = true
 	if t.raiseError {
-		return errors.New(errors.InvalidParameter, "flush-all", "test error")
+		return fmt.Errorf("%s: test error: flush-all", ErrInvalidParameter)
 	}
 	return nil
 }

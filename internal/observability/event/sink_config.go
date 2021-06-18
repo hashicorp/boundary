@@ -1,9 +1,8 @@
 package event
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // SinkConfig defines the configuration for a Eventer sink
@@ -22,23 +21,23 @@ type SinkConfig struct {
 func (sc *SinkConfig) validate() error {
 	const op = "event.(SinkConfig).validate"
 	if err := sc.SinkType.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if err := sc.Format.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	if sc.SinkType == FileSink && sc.FileName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing sink file name")
+		return fmt.Errorf("%s: missing sink file name: %w", op, ErrInvalidParameter)
 	}
 	if sc.Name == "" {
-		return errors.New(errors.InvalidParameter, op, "missing sink name")
+		return fmt.Errorf("%s: missing sink name: %w", op, ErrInvalidParameter)
 	}
 	if len(sc.EventTypes) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing event types")
+		return fmt.Errorf("%s: missing event types: %w", op, ErrInvalidParameter)
 	}
 	for _, et := range sc.EventTypes {
 		if err := et.validate(); err != nil {
-			return errors.Wrap(err, op)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	return nil

@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,15 +14,15 @@ func Test_newAudit(t *testing.T) {
 	testNow := time.Now()
 
 	tests := []struct {
-		name         string
-		fromOp       Op
-		opts         []Option
-		want         *audit
-		wantErrMatch *errors.Template
+		name      string
+		fromOp    Op
+		opts      []Option
+		want      *audit
+		wantErrIs error
 	}{
 		{
-			name:         "missing-op",
-			wantErrMatch: errors.T(errors.InvalidParameter),
+			name:      "missing-op",
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:   "valid-no-opts",
@@ -62,10 +61,10 @@ func Test_newAudit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newAudit(tt.fromOp, tt.opts...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(got)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				return
 			}
 			require.NoError(err)
@@ -87,12 +86,12 @@ func TestAudit_validate(t *testing.T) {
 	tests := []struct {
 		name            string
 		id              string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-id",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing id",
 		},
 		{
@@ -105,9 +104,9 @@ func TestAudit_validate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			a := audit{Id: tt.id}
 			err := a.validate()
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -145,12 +144,12 @@ func TestAudit_ComposeFrom(t *testing.T) {
 		name            string
 		events          []*eventlogger.Event
 		want            audit
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-events",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing events",
 		},
 		{
@@ -158,7 +157,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 			events: []*eventlogger.Event{{
 				Payload: struct{}{},
 			}},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "not an audit payload",
 		},
 		{
@@ -172,7 +171,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "invalid type",
 		},
 		{
@@ -186,7 +185,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "invalid version",
 		},
 		{
@@ -207,7 +206,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "invalid id",
 		},
 		{
@@ -259,10 +258,10 @@ func TestAudit_ComposeFrom(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			a := &audit{}
 			gotType, gotAudit, err := a.ComposeFrom(tt.events)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(gotAudit)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
