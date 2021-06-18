@@ -1066,12 +1066,6 @@ insert on test_not_null_columns
 		dropTriggers = `drop trigger test_insert_not_null_columns on test_not_null_columns`
 	)
 
-	type rowData struct {
-		Id    int
-		Two   string
-		Three string
-	}
-
 	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
