@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -416,4 +417,64 @@ func TestSendWorkerStatusError(t *testing.T) {
 		return true
 	})
 	assert.Zero(t, sessionMapLen)
+}
+
+func TestWorkerLastSuccessfulStatusTime(t *testing.T) {
+	cases := []struct {
+		name   string
+		worker func(*require.Assertions) *Worker
+		expect func(*require.Assertions, *Worker)
+	}{
+		{
+			name: "normal",
+			worker: func(require *require.Assertions) *Worker {
+				_, w := testNewMockControllerAndkWorker(require)
+				w.workerStartTime.Store(time.Now())
+				w.sendWorkerStatus(context.Background())
+				return w
+			},
+			expect: func(require *require.Assertions, w *Worker) {
+				require.True(w.lastSuccessfulStatusTime().After(w.workerStartTime.Load().(time.Time)))
+			},
+		},
+		{
+			name: "error",
+			worker: func(require *require.Assertions) *Worker {
+				c, w := testNewMockControllerAndkWorker(require)
+				w.workerStartTime.Store(time.Now())
+				c.statusErr = testStatusErr
+				w.sendWorkerStatus(context.Background())
+				return w
+			},
+			expect: func(require *require.Assertions, w *Worker) {
+				require.True(w.lastSuccessfulStatusTime() == w.workerStartTime.Load().(time.Time))
+			},
+		},
+		{
+			name: "new",
+			worker: func(require *require.Assertions) *Worker {
+				_, w := testNewMockControllerAndkWorker(require)
+				return w
+			},
+			expect: func(require *require.Assertions, w *Worker) {
+				require.True(w.lastSuccessfulStatusTime() == time.Time{})
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			tc.expect(require, tc.worker(require))
+		})
+	}
+}
+
+func testNewMockControllerAndkWorker(require *require.Assertions) (*testController, *Worker) {
+	c := new(testController)
+	w, err := testWorker(c)
+	require.NoError(err)
+	require.NotNil(w)
+
+	return c, w
 }

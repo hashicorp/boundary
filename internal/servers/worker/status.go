@@ -94,8 +94,8 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	}()
 }
 
-// LastStatusSuccess is used in tests (it's exported for tests in other
-// packages) to verify the last time we sent status
+// LastStatusSuccess reports the last time we sent a successful
+// status request.
 func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 	return w.lastStatusSuccess.Load().(*LastStatusInformation)
 }
@@ -168,11 +168,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		// scenario, as there will be no way we can really tell if these
 		// connections should continue to exist.
 
-		lastStatus := w.LastStatusSuccess()
-		gracePeriod := w.statusGracePeriod()
-		if lastStatus != nil && lastStatus.StatusTime.Before(time.Now().Add(gracePeriod*-1)) {
+		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
 			w.logger.Warn("status error grace period has expired, canceling all sessions on worker",
-				"last_status_time", lastStatus.StatusTime.String(),
+				"last_status_time", lastStatusTime.String(),
 				"grace_period", gracePeriod,
 			)
 
@@ -324,4 +322,20 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, conditions ...cle
 	for _, v := range cleanSessionIds {
 		w.sessionInfoMap.Delete(v)
 	}
+}
+
+func (w *Worker) lastSuccessfulStatusTime() time.Time {
+	lastStatus := w.LastStatusSuccess()
+	if lastStatus == nil {
+		return w.workerStartTime.Load().(time.Time)
+	}
+
+	return lastStatus.StatusTime
+}
+
+func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
+	t := w.lastSuccessfulStatusTime()
+	u := w.statusGracePeriod()
+	v := time.Since(t)
+	return v > u, t, u
 }
