@@ -327,7 +327,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, conditions ...cle
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
 	lastStatus := w.LastStatusSuccess()
 	if lastStatus == nil {
-		return w.workerStartTime.Load().(time.Time)
+		return w.workerStartTime
 	}
 
 	return lastStatus.StatusTime

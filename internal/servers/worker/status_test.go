@@ -429,25 +429,25 @@ func TestWorkerLastSuccessfulStatusTime(t *testing.T) {
 			name: "normal",
 			worker: func(require *require.Assertions) *Worker {
 				_, w := testNewMockControllerAndkWorker(require)
-				w.workerStartTime.Store(time.Now())
+				w.workerStartTime = time.Now()
 				w.sendWorkerStatus(context.Background())
 				return w
 			},
 			expect: func(require *require.Assertions, w *Worker) {
-				require.True(w.lastSuccessfulStatusTime().After(w.workerStartTime.Load().(time.Time)))
+				require.True(w.lastSuccessfulStatusTime().After(w.workerStartTime))
 			},
 		},
 		{
 			name: "error",
 			worker: func(require *require.Assertions) *Worker {
 				c, w := testNewMockControllerAndkWorker(require)
-				w.workerStartTime.Store(time.Now())
+				w.workerStartTime = time.Now()
 				c.statusErr = testStatusErr
 				w.sendWorkerStatus(context.Background())
 				return w
 			},
 			expect: func(require *require.Assertions, w *Worker) {
-				require.True(w.lastSuccessfulStatusTime() == w.workerStartTime.Load().(time.Time))
+				require.True(w.lastSuccessfulStatusTime() == w.workerStartTime)
 			},
 		},
 		{

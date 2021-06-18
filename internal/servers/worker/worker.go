@@ -28,7 +28,7 @@ type Worker struct {
 	started     *ua.Bool
 
 	controllerStatusConn *atomic.Value
-	workerStartTime      *atomic.Value
+	workerStartTime      time.Time
 	lastStatusSuccess    *atomic.Value
 
 	controllerResolver *atomic.Value
@@ -51,7 +51,6 @@ func New(conf *Config) (*Worker, error) {
 		logger:                conf.Logger.Named("worker"),
 		started:               ua.NewBool(false),
 		controllerStatusConn:  new(atomic.Value),
-		workerStartTime:       new(atomic.Value),
 		lastStatusSuccess:     new(atomic.Value),
 		controllerResolver:    new(atomic.Value),
 		controllerSessionConn: new(atomic.Value),
@@ -60,7 +59,6 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
-	w.workerStartTime.Store(time.Time{})
 	w.controllerResolver.Store((*manual.Resolver)(nil))
 
 	if conf.RawConfig.Worker == nil {
@@ -119,7 +117,7 @@ func (w *Worker) Start() error {
 	}
 
 	w.startStatusTicking(w.baseContext)
-	w.workerStartTime.Store(time.Now())
+	w.workerStartTime = time.Now()
 	w.started.Store(true)
 
 	return nil
