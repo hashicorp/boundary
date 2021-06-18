@@ -1023,6 +1023,9 @@ func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string
 	if rw.underlying == nil {
 		return errors.New(errors.InvalidParameter, op, "missing underlying db")
 	}
+	if where == "" && len(args) > 0 {
+		return errors.New(errors.InvalidParameter, op, "args provided with empty where")
+	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
@@ -1038,10 +1041,7 @@ func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string
 		db = db.Limit(opts.WithLimit)
 	}
 
-	// Perform argument subst
-	switch len(args) {
-	case 0:
-	default:
+	if where != "" {
 		db = db.Where(where, args...)
 	}
 
