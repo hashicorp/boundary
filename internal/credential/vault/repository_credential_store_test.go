@@ -2,6 +2,9 @@ package vault
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -311,13 +314,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
-	changeVaultAddress := func(n string) func(*CredentialStore) *CredentialStore {
-		return func(cs *CredentialStore) *CredentialStore {
-			cs.VaultAddress = n
-			return cs
-		}
-	}
 
 	changeNamespace := func(n string) func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
@@ -712,29 +708,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			},
 			wantCount: 1,
 		},
-		{
-			name: "change-vault-address",
-			orig: &CredentialStore{
-				CredentialStore: &store.CredentialStore{},
-			},
-			chgFn: changeVaultAddress("https://vault2.nowhere.com"),
-			masks: []string{"VaultAddress"},
-			want: &CredentialStore{
-				CredentialStore: &store.CredentialStore{
-					VaultAddress: "https://vault2.nowhere.com",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "delete-vault-address",
-			orig: &CredentialStore{
-				CredentialStore: &store.CredentialStore{},
-			},
-			chgFn:   changeVaultAddress(""),
-			masks:   []string{"VaultAddress"},
-			wantErr: errors.NotNull,
-		},
 	}
 
 	for _, tt := range tests {
@@ -816,6 +789,57 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("change-vault-address", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		vs := NewTestVaultServer(t)
+		_, token := vs.CreateToken(t)
+
+		u, err := url.Parse(vs.Addr)
+		require.NoError(err)
+		_, port, err := net.SplitHostPort(u.Host)
+		require.NoError(err)
+
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		in := &CredentialStore{
+			inputToken: []byte(token),
+			CredentialStore: &store.CredentialStore{
+				ScopeId:      prj.GetPublicId(),
+				VaultAddress: fmt.Sprintf("%v://127.0.0.1:%s", u.Scheme, port),
+			},
+		}
+
+		orig, err := repo.CreateCredentialStore(ctx, in)
+		assert.NoError(err)
+		require.NotNil(orig)
+
+		// Change Address 127.0.0.1:port -> localhost:port should work
+		orig.VaultAddress = fmt.Sprintf("%v://localhost:%s", u.Scheme, port)
+		got, gotCount, err := repo.UpdateCredentialStore(ctx, orig, 1, []string{vaultAddressField})
+		assert.NoError(err)
+		assert.Equal(1, gotCount, "count of updated records")
+		require.NotNil(got)
+		assert.Equal(orig.VaultAddress, got.VaultAddress)
+
+		// Update to new address should fail because current token not valid on new address
+		origAddr := orig.VaultAddress
+		orig.VaultAddress = "https://vault2.nowhere.com"
+		got, gotCount, err = repo.UpdateCredentialStore(ctx, orig, 2, []string{vaultAddressField})
+		assert.Error(err)
+		require.Nil(got)
+		require.Equal(0, gotCount)
+
+		cs, err := repo.LookupCredentialStore(ctx, orig.PublicId)
+		require.NoError(err)
+		assert.Equal(origAddr, cs.VaultAddress)
+	})
 
 	t.Run("change-ca-cert", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
