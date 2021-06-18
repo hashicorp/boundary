@@ -946,6 +946,7 @@ jobs:
         command: |
           make test-ci
         name: Run Acceptance Tests
+        no_output_timeout: 15m
     - run:
         command: |
           echo 'export SLACK_BUILD_STATUS="fail"' >> $BASH_ENV
