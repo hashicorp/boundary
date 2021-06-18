@@ -1014,9 +1014,12 @@ func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string,
 }
 
 // SearchWhere will search for all the resources it can find using a where
-// clause with parameters.  Supports the WithLimit option.  If
-// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
-// default limits are used for results.  Supports the WithOrder option.
+// clause with parameters. An error will be returned if args are provided without a
+// where clause.
+//
+// Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+// Supports the WithOrder option.
 func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
@@ -1059,7 +1062,7 @@ func filterPaths(paths []string) []string {
 	if len(paths) == 0 {
 		return nil
 	}
-	filtered := []string{}
+	var filtered []string
 	for _, p := range paths {
 		switch {
 		case strings.EqualFold(p, "CreateTime"):
