@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/sdk/parseutil"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,6 +114,30 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		}
 	}
 
+	assertPeriod := func(want time.Duration) func(t *testing.T, s *vault.Secret) {
+		const op = "assertPeriod"
+		return func(t *testing.T, s *vault.Secret) {
+			period, ok := s.Data["period"]
+			if assert.True(t, ok, op) {
+				require.NotNil(t, period)
+				gotPeriod, err := parseutil.ParseDurationSecond(period)
+				require.NoError(t, err)
+				if assert.True(t, ok, op) {
+					delta := 1 * time.Minute
+					assert.InDelta(t, want.Seconds(), gotPeriod.Seconds(), delta.Seconds())
+				}
+			}
+		}
+	}
+
+	assertDefaultPeriod := func() func(t *testing.T, s *vault.Secret) {
+		defaultPeriod := 24 * time.Hour
+		if deadline, ok := t.Deadline(); ok {
+			defaultPeriod = time.Until(deadline)
+		}
+		return assertPeriod(defaultPeriod)
+	}
+
 	combine := func(fns ...func(*testing.T, *vault.Secret)) func(*testing.T, *vault.Secret) {
 		return func(t *testing.T, s *vault.Secret) {
 			for _, fn := range fns {
@@ -130,7 +155,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 		{
 			name:        "DefaultOptions",
 			tokenChkFn:  combine(assertIsRenewable(), assertIsOrphan()),
-			lookupChkFn: assertIsPeriodic(),
+			lookupChkFn: combine(assertIsPeriodic(), assertDefaultPeriod()),
 		},
 		{
 			name:        "NotPeriodic",
@@ -142,13 +167,19 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 			name:        "NotOrphan",
 			opts:        []TestOption{TestOrphanToken(false)},
 			tokenChkFn:  combine(assertIsRenewable(), assertIsNotOrphan()),
-			lookupChkFn: assertIsPeriodic(),
+			lookupChkFn: combine(assertIsPeriodic(), assertDefaultPeriod()),
 		},
 		{
 			name:        "NotRenewable",
 			opts:        []TestOption{TestRenewableToken(false)},
 			tokenChkFn:  combine(assertIsNotRenewable(), assertIsOrphan()),
-			lookupChkFn: assertIsPeriodic(),
+			lookupChkFn: combine(assertIsPeriodic(), assertDefaultPeriod()),
+		},
+		{
+			name:        "TokenPeriod",
+			opts:        []TestOption{WithTokenPeriod(3 * time.Hour)},
+			tokenChkFn:  combine(assertIsRenewable(), assertIsOrphan()),
+			lookupChkFn: combine(assertIsPeriodic(), assertPeriod(3*time.Hour)),
 		},
 	}
 	for _, tt := range tests {
