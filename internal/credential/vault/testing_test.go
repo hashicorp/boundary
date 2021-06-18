@@ -175,7 +175,6 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 			}
 
 			tokenLookup := v.LookupToken(t, token)
-			require.NotNil(tokenLookup)
 			t.Log(testLogVaultSecret(t, tokenLookup))
 
 			if tt.lookupChkFn != nil {
@@ -197,7 +196,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:  v.Addr,
-			Token: v.RootToken,
+			Token: TokenSecret(v.RootToken),
 		}
 
 		client, err := newClient(conf)
@@ -216,7 +215,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:   v.Addr,
-			Token:  v.RootToken,
+			Token:  TokenSecret(v.RootToken),
 			CaCert: v.CaCert,
 		}
 
@@ -238,7 +237,7 @@ func TestNewVaultServer(t *testing.T) {
 
 		conf := &clientConfig{
 			Addr:       v.Addr,
-			Token:      v.RootToken,
+			Token:      TokenSecret(v.RootToken),
 			CaCert:     v.CaCert,
 			ClientCert: v.ClientCert,
 			ClientKey:  v.ClientKey,
@@ -397,7 +396,7 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
-		Token:      v.RootToken,
+		Token:      TokenSecret(v.RootToken),
 	}
 
 	client, err := newClient(conf)
@@ -426,4 +425,19 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 	require.NoError(err)
 	// New ttl should have moved and be lower than original lease duration
 	assert.True(cred.LeaseDuration > int(newTtl))
+}
+
+func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+
+	_, token := v.CreateToken(t)
+	client := v.clientUsingToken(t, token)
+	err := client.revokeToken()
+	require.NoError(err)
+	v.VerifyTokenInvalid(t, token)
+
+	// Verify fake token is not valid
+	v.VerifyTokenInvalid(t, "fake-token")
 }

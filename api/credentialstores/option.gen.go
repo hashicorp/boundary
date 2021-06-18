@@ -99,18 +99,6 @@ func WithVaultCredentialStoreAddress(inAddress string) Option {
 	}
 }
 
-func DefaultVaultCredentialStoreAddress() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["address"] = nil
-		o.postMap["attributes"] = val
-	}
-}
-
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes
@@ -299,18 +287,6 @@ func WithVaultCredentialStoreToken(inToken string) Option {
 		}
 		val := raw.(map[string]interface{})
 		val["token"] = inToken
-		o.postMap["attributes"] = val
-	}
-}
-
-func DefaultVaultCredentialStoreToken() Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["token"] = nil
 		o.postMap["attributes"] = val
 	}
 }

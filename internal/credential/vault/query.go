@@ -132,4 +132,42 @@ update credential_vault_credential
  where session_id = $1
    and status = 'active';
 `
+
+	revokedCredentialQuery = `
+update credential_vault_credential
+   set status = 'revoked'
+ where token_hmac = ?;
+`
+
+	credentialRenewalNextRunInQuery = `
+select
+	extract(epoch from (renewal_time - now()))::int as renewal_in
+  	from credential_vault_credential_private
+ 	where expiration_time = (
+	  select min(expiration_time)
+  	    from credential_vault_credential_private
+       where status = 'active'
+	);
+`
+
+	updateCredentialExpirationQuery = `
+update credential_vault_credential
+   set last_renewal_time = now(),
+       expiration_time   = wt_add_seconds_to_now(?)
+ where public_id = ?;
+`
+
+	updateCredentialStatusQuery = `
+update credential_vault_credential
+   set status = ?
+ where public_id = ?;
+`
+
+	softDeleteStoreQuery = `
+update credential_vault_store
+   set delete_time = now()
+ where public_id = $1
+   and delete_time is null
+returning *;
+`
 )

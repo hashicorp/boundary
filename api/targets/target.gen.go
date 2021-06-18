@@ -146,9 +146,9 @@ func (c *Client) Create(ctx context.Context, resourceType string, scopeId string
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*TargetReadResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*TargetReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -156,7 +156,7 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("targets/%s", targetId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("targets/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -187,9 +187,9 @@ func (c *Client) Read(ctx context.Context, targetId string, opt ...Option) (*Tar
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, targetId string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -201,7 +201,7 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -219,7 +219,7 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("targets/%s", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("targets/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -250,9 +250,9 @@ func (c *Client) Update(ctx context.Context, targetId string, version uint32, op
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (*TargetDeleteResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*TargetDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -260,7 +260,7 @@ func (c *Client) Delete(ctx context.Context, targetId string, opt ...Option) (*T
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("targets/%s", targetId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("targets/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -333,9 +333,9 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	return target, nil
 }
 
-func (c *Client) AddCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into AddCredentialLibraries request")
+func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddCredentialLibraries request")
 	}
 	if len(credentialLibraryIds) == 0 {
 		return nil, errors.New("empty credentialLibraryIds passed into AddCredentialLibraries request")
@@ -350,7 +350,7 @@ func (c *Client) AddCredentialLibraries(ctx context.Context, targetId string, ve
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddCredentialLibraries request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -369,7 +369,7 @@ func (c *Client) AddCredentialLibraries(ctx context.Context, targetId string, ve
 	opts.postMap["version"] = version
 	opts.postMap["credential_library_ids"] = credentialLibraryIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddCredentialLibraries request: %w", err)
 	}
@@ -400,9 +400,9 @@ func (c *Client) AddCredentialLibraries(ctx context.Context, targetId string, ve
 	return target, nil
 }
 
-func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into AddHostSets request")
+func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddHostSets request")
 	}
 	if len(hostSetIds) == 0 {
 		return nil, errors.New("empty hostSetIds passed into AddHostSets request")
@@ -417,7 +417,7 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -436,7 +436,7 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	opts.postMap["version"] = version
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddHostSets request: %w", err)
 	}
@@ -467,9 +467,9 @@ func (c *Client) AddHostSets(ctx context.Context, targetId string, version uint3
 	return target, nil
 }
 
-func (c *Client) SetCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into SetCredentialLibraries request")
+func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetCredentialLibraries request")
 	}
 
 	if c.client == nil {
@@ -482,7 +482,7 @@ func (c *Client) SetCredentialLibraries(ctx context.Context, targetId string, ve
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetCredentialLibraries request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -501,7 +501,7 @@ func (c *Client) SetCredentialLibraries(ctx context.Context, targetId string, ve
 	opts.postMap["version"] = version
 	opts.postMap["credential_library_ids"] = credentialLibraryIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetCredentialLibraries request: %w", err)
 	}
@@ -532,9 +532,9 @@ func (c *Client) SetCredentialLibraries(ctx context.Context, targetId string, ve
 	return target, nil
 }
 
-func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into SetHostSets request")
+func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetHostSets request")
 	}
 
 	if c.client == nil {
@@ -547,7 +547,7 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -566,7 +566,7 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	opts.postMap["version"] = version
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetHostSets request: %w", err)
 	}
@@ -597,9 +597,9 @@ func (c *Client) SetHostSets(ctx context.Context, targetId string, version uint3
 	return target, nil
 }
 
-func (c *Client) RemoveCredentialLibraries(ctx context.Context, targetId string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into RemoveCredentialLibraries request")
+func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraryIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveCredentialLibraries request")
 	}
 	if len(credentialLibraryIds) == 0 {
 		return nil, errors.New("empty credentialLibraryIds passed into RemoveCredentialLibraries request")
@@ -614,7 +614,7 @@ func (c *Client) RemoveCredentialLibraries(ctx context.Context, targetId string,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveCredentialLibraries request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -633,7 +633,7 @@ func (c *Client) RemoveCredentialLibraries(ctx context.Context, targetId string,
 	opts.postMap["version"] = version
 	opts.postMap["credential_library_ids"] = credentialLibraryIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveCredentialLibraries request: %w", err)
 	}
@@ -664,9 +664,9 @@ func (c *Client) RemoveCredentialLibraries(ctx context.Context, targetId string,
 	return target, nil
 }
 
-func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if targetId == "" {
-		return nil, fmt.Errorf("empty targetId value passed into RemoveHostSets request")
+func (c *Client) RemoveHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveHostSets request")
 	}
 	if len(hostSetIds) == 0 {
 		return nil, errors.New("empty hostSetIds passed into RemoveHostSets request")
@@ -681,7 +681,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveHostSets request")
 		}
-		existingTarget, existingErr := c.Read(ctx, targetId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -700,7 +700,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, targetId string, version ui
 	opts.postMap["version"] = version
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", targetId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveHostSets request: %w", err)
 	}

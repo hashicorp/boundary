@@ -1,6 +1,6 @@
 begin;
 
-  drop view credential_vault_credential_private,
+  drop view credential_vault_credential_private;
   drop view credential_vault_library_private;
   drop view credential_vault_store_public;
   drop view credential_vault_store_private;
@@ -20,6 +20,7 @@ begin;
   drop table credential_vault_store;
 
   drop function insert_credential_vault_token;
-
+  drop function after_soft_delete_credential_vault_store;
+  drop function before_soft_delete_credential_vault_store;
 commit;
 

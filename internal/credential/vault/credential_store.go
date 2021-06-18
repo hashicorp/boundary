@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -15,7 +16,7 @@ type CredentialStore struct {
 	tableName string `gorm:"-"`
 
 	clientCert  *ClientCertificate `gorm:"-"`
-	inputToken  []byte             `gorm:"-"`
+	inputToken  TokenSecret        `gorm:"-"`
 	outputToken *Token             `gorm:"-"`
 
 	privateClientCert *ClientCertificate `gorm:"-"`
@@ -26,7 +27,7 @@ type CredentialStore struct {
 // server at vaultAddress assigned to scopeId. Name, description, CA cert,
 // client cert, namespace, TLS server name, and TLS skip verify are the
 // only valid options. All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, token []byte, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(scopeId string, vaultAddress string, token TokenSecret, opt ...Option) (*CredentialStore, error) {
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
 		inputToken: token,
@@ -52,7 +53,7 @@ func allocCredentialStore() *CredentialStore {
 }
 
 func (cs *CredentialStore) clone() *CredentialStore {
-	tokenCopy := make([]byte, len(cs.inputToken))
+	tokenCopy := make(TokenSecret, len(cs.inputToken))
 	copy(tokenCopy, cs.inputToken)
 	var clientCertCopy *ClientCertificate
 	if cs.clientCert != nil {
@@ -138,6 +139,22 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
+func (cs *CredentialStore) oplogMessage(opType db.OpType) *oplog.Message {
+	msg := oplog.Message{
+		Message:  cs.clone(),
+		TypeName: cs.TableName(),
+	}
+	switch opType {
+	case db.CreateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case db.UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+	case db.DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	}
+	return &msg
+}
+
 // Token returns the current vault token if available.
 func (cs *CredentialStore) Token() *Token {
 	return cs.outputToken
@@ -152,7 +169,7 @@ func (cs *CredentialStore) client() (*client, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
-		Token:         string(cs.inputToken),
+		Token:         cs.inputToken,
 		CaCert:        cs.CaCert,
 		TlsServerName: cs.TlsServerName,
 		TlsSkipVerify: cs.TlsSkipVerify,
@@ -168,4 +185,12 @@ func (cs *CredentialStore) client() (*client, error) {
 		return nil, errors.Wrap(err, op)
 	}
 	return c, nil
+}
+
+func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []interface{}) {
+	query = softDeleteStoreQuery
+	queryValues = []interface{}{
+		cs.PublicId,
+	}
+	return
 }

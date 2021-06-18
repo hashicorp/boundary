@@ -535,8 +535,8 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 		}
 	} else {
 		var err error
-		conf.Controller.PublicClusterAddr, err = config.ParseAddress(conf.Controller.PublicClusterAddr)
-		if err != nil && err != config.ErrNotAUrl {
+		conf.Controller.PublicClusterAddr, err = configutil.ParsePath(conf.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public cluster addr: %w", err)
 		}
 	}
@@ -572,8 +572,8 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	} else {
 		var err error
-		conf.Worker.PublicAddr, err = config.ParseAddress(conf.Worker.PublicAddr)
-		if err != nil && err != config.ErrNotAUrl {
+		conf.Worker.PublicAddr, err = configutil.ParsePath(conf.Worker.PublicAddr)
+		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public addr: %w", err)
 		}
 	}

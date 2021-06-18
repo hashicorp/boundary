@@ -11,11 +11,15 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	mrand "math/rand"
 	"net"
+	"net/http"
 	"path"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/errors"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -218,9 +222,11 @@ func testTokens(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId, 
 	assert.NoError(err)
 	require.NotNil(databaseWrapper)
 
+	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
 	var tokens []*Token
 	for i := 0; i < count; i++ {
-		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d", storeId, i), fmt.Sprintf("accessor-%s-%d", storeId, i))
+		num := r.Int31()
+		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
 		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", inToken.TokenHmac))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
@@ -585,7 +591,7 @@ func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
-		Token:      token,
+		Token:      TokenSecret(token),
 		CaCert:     v.CaCert,
 		ClientCert: v.ClientCert,
 		ClientKey:  v.ClientKey,
@@ -632,7 +638,7 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.S
 	return secret, token
 }
 
-// LookupToken calls /auth/token/lookup on v for token. See
+// LookupToken calls /auth/token/lookup on v for the token. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
 func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret {
 	t.Helper()
@@ -642,6 +648,23 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 	require.NoError(err)
 	require.NotNil(secret)
 	return secret
+}
+
+// VerifyTokenInvalid calls /auth/token/lookup on v for the token. It expects the lookup to
+// fail with a StatusForbidden.  See
+// https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
+func (v *TestVaultServer) VerifyTokenInvalid(t *testing.T, token string) {
+	t.Helper()
+	require, assert := require.New(t), assert.New(t)
+	vc := v.client(t).cl
+	secret, err := vc.Auth().Token().Lookup(token)
+	require.Error(err)
+	require.Nil(secret)
+
+	// Verify error was forbidden
+	var respErr *vault.ResponseError
+	require.True(errors.As(err, &respErr))
+	assert.Equal(http.StatusForbidden, respErr.StatusCode)
 }
 
 // LookupLease calls the /sys/leases/lookup Vault endpoint and returns
