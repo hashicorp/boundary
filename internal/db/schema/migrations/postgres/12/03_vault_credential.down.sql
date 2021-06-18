@@ -19,6 +19,7 @@ begin;
   drop table credential_vault_token_status_enm;
   drop table credential_vault_store;
 
+  drop function update_credential_status_column;
   drop function insert_credential_vault_token;
   drop function after_soft_delete_credential_vault_store;
   drop function before_soft_delete_credential_vault_store;

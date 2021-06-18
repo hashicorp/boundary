@@ -133,9 +133,9 @@ update credential_vault_credential
    and status = 'active';
 `
 
-	revokedCredentialQuery = `
+	updateCredentialStatusByTokenQuery = `
 update credential_vault_credential
-   set status = 'revoked'
+   set status = ?
  where token_hmac = ?;
 `
 
@@ -169,5 +169,21 @@ update credential_vault_store
  where public_id = $1
    and delete_time is null
 returning *;
+`
+
+	credStoreCleanupWhereClause = `
+delete_time is not null
+   and public_id not in 
+   (
+     select store_id from credential_vault_token
+      where status = ?
+        and expiration_time > now()
+   )
+`
+
+	credCleanupQuery = `
+delete from credential_vault_credential 
+ where session_id is null
+   and status not in ('active', 'revoke')
 `
 )

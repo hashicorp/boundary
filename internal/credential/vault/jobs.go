@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/go-hclog"
 	vault "github.com/hashicorp/vault/api"
@@ -15,10 +16,12 @@ import (
 )
 
 const (
-	tokenRenewalJobName         = "vault_token_renewal"
-	tokenRevocationJobName      = "vault_token_revocation"
-	credentialRenewalJobName    = "vault_credential_renewal"
-	credentialRevocationJobName = "vault_credential_revocation"
+	tokenRenewalJobName           = "vault_token_renewal"
+	tokenRevocationJobName        = "vault_token_revocation"
+	credentialRenewalJobName      = "vault_credential_renewal"
+	credentialRevocationJobName   = "vault_credential_revocation"
+	credentialStoreCleanupJobName = "vault_credential_store_cleanup"
+	credentialCleanupJobName      = "vault_credential_cleanup"
 
 	defaultNextRunIn = 5 * time.Minute
 	renewalWindow    = 10 * time.Minute
@@ -53,6 +56,20 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 	}
 	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("credential revocation job"))
+	}
+	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms, logger)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, credStoreCleanup); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("credential store cleanup job"))
+	}
+	credCleanup, err := newCredentialCleanupJob(w)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	if err = scheduler.RegisterJob(ctx, credCleanup); err != nil {
+		return errors.Wrap(err, op, errors.WithMsg("credential cleanup job"))
 	}
 	return nil
 }
@@ -190,6 +207,13 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		if s.TokenStatus == string(CurrentToken) {
 			r.logger.Info("Vault credential store current token has expired", "credential store id", s.StoreId)
 		}
+
+		// Set credentials associated with this token to expired as Vault will already cascade delete them
+		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{ExpiredCredential, token.TokenHmac})
+		if err != nil {
+			return errors.Wrap(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
+		}
+
 		return nil
 	}
 	if err != nil {
@@ -345,15 +369,18 @@ func (r *TokenRevocationJob) Run(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 
-	// Fetch all tokens in the maintaining state that have no credentials in an active state
+	// Fetch all tokens in the revoke state as well as all tokens in the maintaining state
+	// that have no credentials in an active state.  Note SearchWhere requires query values
 	where := `
 token_status = ?
+or
+(token_status = ?
   and token_hmac not in (
     select token_hmac from credential_vault_credential 
      where status = ?
-)
+))
 `
-	whereArgs := []interface{}{MaintainingToken, ActiveCredential}
+	whereArgs := []interface{}{RevokeToken, MaintainingToken, ActiveCredential}
 
 	var ps []*privateStore
 	err := r.reader.SearchWhere(ctx, &ps, where, whereArgs, db.WithLimit(r.limit))
@@ -419,7 +446,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 	}
 
 	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
-	_, err = r.writer.Exec(ctx, revokedCredentialQuery, []interface{}{token.TokenHmac})
+	_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{RevokedCredential, token.TokenHmac})
 	if err != nil {
 		return errors.Wrap(err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 	}
@@ -716,13 +743,18 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		return errors.Wrap(err, op)
 	}
 
+	cred := c.toCredential()
+	var respErr *vault.ResponseError
 	err = vc.revokeLease(c.ExternalId)
+	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
+		// Vault returned a 400 when attempting a revoke lease, the lease is already expired.
+		// Clobber error and set status to "revoked" below.
+		err = nil
+	}
 	if err != nil {
-		// TODO: handle perm issue
 		return errors.Wrap(err, op, errors.WithMsg("unable to revoke credential"))
 	}
 
-	cred := c.toCredential()
 	query, values := cred.updateStatusQuery(RevokedCredential)
 	numRows, err := r.writer.Exec(ctx, query, values)
 	if err != nil {
@@ -748,4 +780,197 @@ func (r *CredentialRevocationJob) Name() string {
 // Description is the human readable description of the job.
 func (r *CredentialRevocationJob) Description() string {
 	return "Periodically revokes dynamic credentials that are no longer in use and have been set for revocation (in the revoke state)."
+}
+
+// CredentialStoreCleanupJob is the recurring job that deletes Vault credential stores that
+// have been soft deleted and tokens have been revoked or expired.
+// The CredentialStoreCleanupJob is not thread safe, an attempt to Run the job concurrently
+// will result in an JobAlreadyRunning error.
+type CredentialStoreCleanupJob struct {
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
+	logger hclog.Logger
+
+	limit        int
+	running      ua.Bool
+	numProcessed int
+	numStores    int
+}
+
+// newCredentialStoreCleanupJob creates a new in-memory CredentialStoreCleanupJob.
+//
+// No options are supported.
+func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Logger, opt ...Option) (*CredentialStoreCleanupJob, error) {
+	const op = "vault.newCredentialStoreCleanupJob"
+	switch {
+	case r == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+	case w == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+	case kms == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+	case logger == nil:
+		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+	}
+
+	opts := getOpts(opt...)
+	if opts.withLimit == 0 {
+		// zero signals the boundary defaults should be used.
+		opts.withLimit = db.DefaultLimit
+	}
+	return &CredentialStoreCleanupJob{
+		reader: r,
+		writer: w,
+		kms:    kms,
+		logger: logger,
+		limit:  opts.withLimit,
+	}, nil
+}
+
+// Status returns the current status of the credential store cleanup job.
+func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
+	return scheduler.JobStatus{
+		Completed: r.numProcessed,
+		Total:     r.numStores,
+	}
+}
+
+// Run deletes all vault credential stores in the repo that have been soft deleted.
+// Can not be run in parallel, if Run is invoked while already running an error with code
+// JobAlreadyRunning will be returned.
+func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
+	const op = "vault.(CredentialStoreCleanupJob).Run"
+	if !r.running.CAS(r.running.Load(), true) {
+		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+	}
+	defer r.running.Store(false)
+
+	// Verify context is not done before running
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	// TODO (lcr 06/2021): Oplog does not currently support bulk
+	// operations. Push cleanup to the database once bulk
+	// operations are added.
+	var stores []*CredentialStore
+	err := r.reader.SearchWhere(ctx, &stores, credStoreCleanupWhereClause, []interface{}{RevokeToken}, db.WithLimit(r.limit))
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	// Set numProcessed and numStores for status report
+	r.numProcessed, r.numStores = 0, len(stores)
+	for _, store := range stores {
+		// Verify context is not done before renewing next token
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, op)
+		}
+
+		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
+		if err != nil {
+			r.logger.Error("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId)
+			r.numProcessed++
+			continue
+		}
+
+		_, err = r.writer.Delete(ctx, store, db.WithOplog(oplogWrapper, store.oplog(oplog.OpType_OP_TYPE_DELETE)))
+		if err != nil {
+			r.logger.Error("error deleting credential store", "error", err, "credential store id", store.PublicId)
+		}
+
+		r.numProcessed++
+	}
+
+	return nil
+}
+
+// NextRunIn determine when the next credential store cleanup job should run.
+func (r *CredentialStoreCleanupJob) NextRunIn() (time.Duration, error) {
+	return defaultNextRunIn, nil
+}
+
+// Name is the unique name of the job.
+func (r *CredentialStoreCleanupJob) Name() string {
+	return credentialStoreCleanupJobName
+}
+
+// Description is the human readable description of the job.
+func (r *CredentialStoreCleanupJob) Description() string {
+	return "Periodically deletes Vault credential stores that have been soft deleted and tokens have been revoked or expired."
+}
+
+// CredentialCleanupJob is the recurring job that deletes Vault credentials that are no longer
+// attached to a session (have a null session_id) and are not active.
+// The CredentialCleanupJob is not thread safe, an attempt to Run the job concurrently
+// will result in an JobAlreadyRunning error.
+type CredentialCleanupJob struct {
+	writer db.Writer
+
+	running  ua.Bool
+	numCreds int
+}
+
+// newCredentialCleanupJob creates a new in-memory CredentialCleanupJob.
+//
+// No options are supported.
+func newCredentialCleanupJob(w db.Writer) (*CredentialCleanupJob, error) {
+	const op = "vault.newCredentialCleanupJob"
+	if w == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+	}
+
+	return &CredentialCleanupJob{
+		writer: w,
+	}, nil
+}
+
+// Status returns the current status of the credential cleanup job.
+func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
+	// Cleanup runs a single exec command to the database, therefore completed and total
+	// are both set to numCreds.
+	return scheduler.JobStatus{
+		Completed: r.numCreds,
+		Total:     r.numCreds,
+	}
+}
+
+// Run deletes all Vault credential in the repo that have a null session_id and are not active.
+// Can not be run in parallel, if Run is invoked while already running an error with code
+// JobAlreadyRunning will be returned.
+func (r *CredentialCleanupJob) Run(ctx context.Context) error {
+	const op = "vault.(CredentialCleanupJob).Run"
+	if !r.running.CAS(r.running.Load(), true) {
+		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+	}
+	defer r.running.Store(false)
+
+	// Verify context is not done before running
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, op)
+	}
+
+	numRows, err := r.writer.Exec(ctx, credCleanupQuery, nil)
+	if err != nil {
+		return errors.Wrap(err, op)
+	}
+	r.numCreds = numRows
+
+	return nil
+}
+
+// NextRunIn determine when the next credential cleanup job should run.
+func (r *CredentialCleanupJob) NextRunIn() (time.Duration, error) {
+	return defaultNextRunIn, nil
+}
+
+// Name is the unique name of the job.
+func (r *CredentialCleanupJob) Name() string {
+	return credentialCleanupJobName
+}
+
+// Description is the human readable description of the job.
+func (r *CredentialCleanupJob) Description() string {
+	return "Periodically deletes Vault credentials that are no longer attached to a session (have a null session_id) and are not active in Vault."
 }
