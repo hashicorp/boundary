@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -176,13 +175,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 
 			// Run a "cleanup" for all sessions that will not be caught by
 			// our standard cleanup routine.
-			w.cleanupConnections(
-				cancelCtx,
-				cleanupConnectionsConditionNotAnyStatus(
-					pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
-					pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
-				),
-			)
+			w.cleanupConnections(cancelCtx, true)
 		}
 	} else {
 		w.logger.Trace("successfully sent status to controller")
@@ -225,87 +218,44 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 
 	// Standard cleanup: Run through current jobs. Cancel connections
 	// for any canceling session or any session that is expired.
-	w.cleanupConnections(
-		cancelCtx,
-		cleanupConnectionsConditionAnyStatus(
-			pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
-			pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
-		),
-		cleanupConnectionsConditionExpired,
-	)
+	w.cleanupConnections(cancelCtx, false)
 }
 
-type cleanupConnectionsCondition func(si *sessionInfo) bool
-
-func cleanupConnectionsConditionAnyStatus(statuses ...services.SESSIONSTATUS) cleanupConnectionsCondition {
-	return func(si *sessionInfo) bool {
-		for _, status := range statuses {
-			if si.status == status {
-				return true
-			}
-		}
-
-		return false
-	}
-}
-
-func cleanupConnectionsConditionNotAnyStatus(statuses ...services.SESSIONSTATUS) cleanupConnectionsCondition {
-	return func(si *sessionInfo) bool {
-		var result bool
-		for _, status := range statuses {
-			if si.status == status {
-				result = true
-			}
-		}
-
-		return !result
-	}
-}
-
-func cleanupConnectionsConditionExpired(si *sessionInfo) bool {
-	return time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0
-}
-
-// cleanupConnections walks all sessions and shuts down connections
-// based on the specified criteria. Additionally, sessions without
-// connections are cleaned up from the local worker's state.
+// cleanupConnections walks all sessions and shuts down connections.
+// Additionally, sessions without connections are cleaned up from the
+// local worker's state.
 //
-// Conditions are inclusive (OR); keep this in mind when working with
-// the function.
-func (w *Worker) cleanupConnections(cancelCtx context.Context, conditions ...cleanupConnectionsCondition) {
+// Use ignoreSessionState to ignore the state checks, this closes all
+// connections, regardless of whether or not the session is still
+// active.
+func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool) {
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
 	w.sessionInfoMap.Range(func(key, value interface{}) bool {
 		si := value.(*sessionInfo)
 		si.Lock()
 		defer si.Unlock()
-		var condMatched bool
-		for _, cond := range conditions {
-			if cond(si) {
-				condMatched = true
+		switch {
+		case ignoreSessionState,
+			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
+			time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0:
+			var toClose int
+			for k, v := range si.connInfoMap {
+				if v.closeTime.IsZero() {
+					toClose++
+					v.connCancel()
+					w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
+					closeInfo[k] = si.id
+				}
 			}
-		}
-
-		if !condMatched {
-			// early exit, basically continue
-			return true
-		}
-
-		var toClose int
-		for k, v := range si.connInfoMap {
-			if v.closeTime.IsZero() {
-				toClose++
-				v.connCancel()
-				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", k)
-				closeInfo[k] = si.id
+			// closeTime is marked by closeConnections iff the
+			// status is returned for that connection as closed. If
+			// the session is no longer valid and all connections
+			// are marked closed, clean up the session.
+			if toClose == 0 {
+				cleanSessionIds = append(cleanSessionIds, si.id)
 			}
-		}
-		// closeTime is marked by closeConnections iff the
-		// status is returned for that connection as closed. If
-		// the session is no longer valid and all connections
-		// are marked closed, clean up the session.
-		if toClose == 0 {
-			cleanSessionIds = append(cleanSessionIds, si.id)
 		}
 
 		return true
