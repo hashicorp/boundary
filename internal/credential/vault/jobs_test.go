@@ -339,19 +339,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	v := NewTestVaultServer(t)
 
 	// Create 24 hour token
-	req := &vault.TokenCreateRequest{
-		DisplayName: t.Name(),
-		NoParent:    true,
-		Period:      "24h",
-		Policies:    []string{"default", "boundary-controller"},
-	}
-	vc := v.client(t).cl
-	secret, err := vc.Auth().Token().Create(req)
-	require.NoError(err)
-	require.NotNil(secret)
-	token, err := secret.TokenID()
-	require.NoError(err)
-	require.NotNil(token)
+	_, token := v.CreateToken(t, WithTokenPeriod(24*time.Hour))
 
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
@@ -461,18 +449,9 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	v := NewTestVaultServer(t)
 
 	// Create 1s token so it expires in vault before we can renew it
-	req := &vault.TokenCreateRequest{
-		DisplayName: t.Name(),
-		NoParent:    true,
-		Period:      "1s",
-		Policies:    []string{"default", "boundary-controller"},
-	}
-	vc := v.client(t).cl
-	ct, err := vc.Auth().Token().Create(req)
-	require.NoError(err)
-	require.NotNil(ct)
+	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second))
 
-	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct.Auth.ClientToken))
+	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	assert.NoError(err)
 	require.NotNil(in)
 

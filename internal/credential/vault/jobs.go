@@ -370,7 +370,7 @@ func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	}
 
 	// Fetch all tokens in the revoke state as well as all tokens in the maintaining state
-	// that have no credentials in an active state.
+	// that have no credentials in an active state.  Note SearchWhere requires query values
 	where := `
 token_status = ?
 or
@@ -851,7 +851,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 
-	// TODO(lcr) 06/2021: Oplog does not currently support bulk
+	// TODO (lcr 06/2021): Oplog does not currently support bulk
 	// operations. Push cleanup to the database once bulk
 	// operations are added.
 	var stores []*CredentialStore

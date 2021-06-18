@@ -443,6 +443,36 @@ begin;
   create trigger update_credential_status_column before update on credential_vault_credential
     for each row execute procedure update_credential_status_column();
 
+  -- not_null_columns() will make the column names not null which are passed as
+  -- parameters when the trigger is created. It raises error code 23502 which is a
+  -- class 23 integrity constraint violation: not null column
+  create function not_null_columns()
+    returns trigger
+  as $$
+  declare
+      col_name  text;
+      new_value text;
+  begin
+      foreach col_name in array tg_argv loop
+              execute format('SELECT $1.%I', col_name) into new_value using new;
+              if new_value is null then
+                  raise exception 'not null column: %.%', tg_table_name, col_name using
+                      errcode = '23502',
+                      schema = tg_table_schema,
+                      table = tg_table_name,
+                      column = col_name;
+              end if;
+          end loop;
+      return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function not_null_columns() is
+    'function used in before insert triggers to make columns not null on insert, but are allowed be updated to null';
+
+  create trigger not_null_columns before insert on credential_vault_credential
+      for each row execute procedure not_null_columns('library_id', 'session_id');
+
   create trigger default_create_time_column before insert on credential_vault_credential
     for each row execute procedure default_create_time();
 
