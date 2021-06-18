@@ -477,10 +477,16 @@ type testOptions struct {
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
 	dontCleanup   bool
+	tokenPeriod   time.Duration
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
 	t.Helper()
+	defaultPeriod := 24 * time.Hour
+	if deadline, ok := t.Deadline(); ok {
+		defaultPeriod = time.Until(deadline)
+	}
+
 	return testOptions{
 		orphan:        true,
 		periodic:      true,
@@ -490,6 +496,18 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 		roleName:      "boundary",
 		vaultTLS:      TestNoTLS,
 		dockerNetwork: false,
+		tokenPeriod:   defaultPeriod,
+	}
+}
+
+// WithTokenPeriod sets the period value in a vault.TokenCreateRequest when
+// the token being requested is a periodic token. The default token period
+// is the value of t.Deadline() or 24 hours if
+// t.Deadline() is nil.
+func WithTokenPeriod(d time.Duration) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.tokenPeriod = d
 	}
 }
 
@@ -615,10 +633,7 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.S
 
 	var period string
 	if opts.periodic {
-		period = "24h"
-		if deadline, ok := t.Deadline(); ok {
-			period = time.Until(deadline).String()
-		}
+		period = opts.tokenPeriod.String()
 	}
 	req := &vault.TokenCreateRequest{
 		DisplayName: t.Name(),
