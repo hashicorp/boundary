@@ -1,7 +1,12 @@
 package vault
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"path"
 	"testing"
 	"time"
@@ -265,6 +270,38 @@ func TestNewVaultServer(t *testing.T) {
 		assert.NotEmpty(v.CaCert)
 		assert.NotEmpty(v.ClientCert)
 		assert.NotEmpty(v.ClientKey)
+
+		conf := &clientConfig{
+			Addr:       v.Addr,
+			Token:      TokenSecret(v.RootToken),
+			CaCert:     v.CaCert,
+			ClientCert: v.ClientCert,
+			ClientKey:  v.ClientKey,
+		}
+
+		client, err := newClient(conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping())
+	})
+	t.Run("TestClientTLS-with-client-key", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		require.NoError(err)
+
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS), WithClientKey(key))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+		assert.NotEmpty(v.ClientCert)
+		assert.NotEmpty(v.ClientKey)
+
+		k, err := x509.MarshalECPrivateKey(key)
+		require.NoError(err)
+		assert.Equal(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: k}), v.ClientKey)
 
 		conf := &clientConfig{
 			Addr:       v.Addr,

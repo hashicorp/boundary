@@ -113,7 +113,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 		dockerOptions.Mounts = append(dockerOptions.Mounts, fmt.Sprintf("%s:/vault/config/certificates", dataSrcDir))
 
 		if opts.vaultTLS == TestClientTLS {
-			clientCert := testClientCert(t, testCaCert(t))
+			clientCert := testClientCert(t, testCaCert(t), opt...)
 			server.clientCertBundle = clientCert
 			server.ClientCert = clientCert.Cert.Cert
 			server.ClientKey = clientCert.Cert.Key

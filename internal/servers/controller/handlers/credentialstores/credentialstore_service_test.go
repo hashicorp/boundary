@@ -1,6 +1,9 @@
 package credentialstores
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -716,12 +719,15 @@ func TestUpdate(t *testing.T) {
 		return &fieldmaskpb.FieldMask{Paths: paths}
 	}
 
-	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoError(t, err)
+
+	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token1b := v.CreateToken(t)
 	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
 	require.NoError(t, err)
 
-	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
+	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token2 := v2.CreateToken(t)
 	clientCert2, err := vault.NewClientCertificate(v2.ClientCert, v2.ClientKey)
 	require.NoError(t, err)
@@ -917,7 +923,6 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
-				out.Attributes.Fields["ca_cert"] = structpb.NewStringValue(string(v.CaCert))
 				out.Attributes.Fields["client_certificate"] = structpb.NewStringValue(string(v2.ClientCert))
 				return out
 			},
