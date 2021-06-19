@@ -33,16 +33,19 @@ import (
 	"nhooyr.io/websocket/wspb"
 )
 
+const testSendRecvSendMax = 60
+
 func TestWorkerSessionCleanup(t *testing.T) {
+	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
 
 	conf, err := config.DevController()
-	require.NoError(t, err)
+	require.NoError(err)
 
 	pl, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
+	require.NoError(err)
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                 conf,
 		InitialResourcesSuffix: "1234567890",
@@ -56,13 +59,13 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	ctx := c1.Context()
 
 	// Wire up the testing proxies
-	require.Len(t, c1.ClusterAddrs(), 1)
+	require.Len(c1.ClusterAddrs(), 1)
 	proxy, err := dawdle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
 		dawdle.WithListener(pl),
 		dawdle.WithRbufSize(512),
 		dawdle.WithWbufSize(512),
 	)
-	require.NoError(t, err)
+	require.NoError(err)
 	defer proxy.Close()
 	require.NotEmpty(t, proxy.ListenerAddr())
 
@@ -81,62 +84,43 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	client.SetToken(c1.Token().Token)
 	tcl := targets.NewClient(client)
 	tgt, err := tcl.Read(ctx, "ttcp_1234567890")
-	require.NoError(t, err)
-	require.NotNil(t, tgt)
+	require.NoError(err)
+	require.NotNil(tgt)
 
 	// Create test server, update default port on target
-	ts := newTestTcpServer(t)
+	ts := newTestTcpServer(require, logger)
 	require.NotNil(t, ts)
 	defer ts.Close()
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
-	require.NoError(t, err)
-	require.NotNil(t, tgt)
+	require.NoError(err)
+	require.NotNil(tgt)
 
-	// Authorize
-	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
-	require.NoError(t, err)
-	require.NotNil(t, sar)
-
-	tsad := newTestSessionAuthData(t, sar)
-	require.NotNil(t, tsad)
-
-	// Connect to worker proxy
-	conn := tsad.Connect(ctx, false)
-	require.NotNil(t, conn)
-	defer conn.Close()
+	// Authorize and connect
+	sess := newTestSession(ctx, require, tcl, "ttcp_1234567890")
+	sConn := sess.Connect(ctx, t, require, logger)
 
 	// Run initial send/receive test, make sure things are working
-	actualSendRecv := testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	sConn.TestSendRecvAll(require)
 
 	// Kill the link
 	proxy.Pause()
 
-	// Run again, ensure connection is dead. Just check to make sure we
-	// didn't receive the full set of pings, as the actual figure will
-	// likely vary.
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Less(t, actualSendRecv, 60)
+	// Run again, ensure connection is dead
+	sConn.TestSendRecvFail(require)
+
+	// Assert we have no connections left (should be default behavior)
+	sess.TestNoConnectionsLeft(require)
 
 	// Resume the connection, and reconnect.
 	proxy.Resume()
-	conn.Close()                   // Close the last connection
-	conn = tsad.Connect(ctx, true) // Assert our token is no longer good
-	require.Nil(t, conn)
-	time.Sleep(time.Second * 10)                            // Sleep to wait for worker to report back as healthy
-	sar, err = tcl.AuthorizeSession(ctx, "ttcp_1234567890") // Re-authorize
-	require.NoError(t, err)
-	require.NotNil(t, sar)
-	tsad = newTestSessionAuthData(t, sar)
-	require.NotNil(t, tsad)
-	conn = tsad.Connect(ctx, false) // Should be good now
-	require.NotNil(t, conn)
-	defer conn.Close()
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	time.Sleep(time.Second * 10)                                // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, require, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	sConn = sess.Connect(ctx, t, require, logger)
+	sConn.TestSendRecvAll(require)
 }
 
 func TestWorkerSessionCleanupMultiController(t *testing.T) {
+	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
@@ -145,10 +129,10 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	// ** Controller 1 **
 	// ******************
 	conf1, err := config.DevController()
-	require.NoError(t, err)
+	require.NoError(err)
 
 	pl1, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
+	require.NoError(err)
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                 conf1,
 		InitialResourcesSuffix: "1234567890",
@@ -162,7 +146,7 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	// ** Controller 2 **
 	// ******************
 	pl2, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
+	require.NoError(err)
 	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Logger:            c1.Config().Logger.ResetNamed("c2"),
 		PublicClusterAddr: pl2.Addr().String(),
@@ -174,26 +158,26 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	// *************
 	// ** Proxy 1 **
 	// *************
-	require.Len(t, c1.ClusterAddrs(), 1)
+	require.Len(c1.ClusterAddrs(), 1)
 	p1, err := dawdle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
 		dawdle.WithListener(pl1),
 		dawdle.WithRbufSize(512),
 		dawdle.WithWbufSize(512),
 	)
-	require.NoError(t, err)
+	require.NoError(err)
 	defer p1.Close()
 	require.NotEmpty(t, p1.ListenerAddr())
 
 	// *************
 	// ** Proxy 2 **
 	// *************
-	require.Len(t, c2.ClusterAddrs(), 1)
+	require.Len(c2.ClusterAddrs(), 1)
 	p2, err := dawdle.NewProxy("tcp", "", c2.ClusterAddrs()[0],
 		dawdle.WithListener(pl2),
 		dawdle.WithRbufSize(512),
 		dawdle.WithWbufSize(512),
 	)
-	require.NoError(t, err)
+	require.NoError(err)
 	defer p2.Close()
 	require.NotEmpty(t, p2.ListenerAddr())
 
@@ -216,148 +200,84 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	client.SetToken(c1.Token().Token)
 	tcl := targets.NewClient(client)
 	tgt, err := tcl.Read(ctx, "ttcp_1234567890")
-	require.NoError(t, err)
-	require.NotNil(t, tgt)
+	require.NoError(err)
+	require.NotNil(tgt)
 
 	// Create test server, update default port on target
-	ts := newTestTcpServer(t)
-	require.NotNil(t, ts)
+	ts := newTestTcpServer(require, logger)
+	require.NotNil(ts)
 	defer ts.Close()
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
-	require.NoError(t, err)
-	require.NotNil(t, tgt)
+	require.NoError(err)
+	require.NotNil(tgt)
 
-	// Authorize
-	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
-	require.NoError(t, err)
-	require.NotNil(t, sar)
-
-	tsad := newTestSessionAuthData(t, sar)
-	require.NotNil(t, tsad)
-
-	// Connect to worker proxy
-	conn := tsad.Connect(ctx, false)
-	require.NotNil(t, conn)
-	defer conn.Close()
+	// Authorize and connect
+	sess := newTestSession(ctx, require, tcl, "ttcp_1234567890")
+	sConn := sess.Connect(ctx, t, require, logger)
 
 	// Run initial send/receive test, make sure things are working
-	actualSendRecv := testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	sConn.TestSendRecvAll(require)
 
 	// Kill connection to first controller, and run test again, should
 	// pass, deferring to other controller.
 	p1.Pause()
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	sConn.TestSendRecvAll(require)
 
 	// Resume first controller, pause second. This one should work too.
 	p1.Resume()
 	p2.Pause()
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	sConn.TestSendRecvAll(require)
 
 	// Kill the first controller connection again. This one should fail
 	// due to lack of any connection.
 	p1.Pause()
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Less(t, actualSendRecv, 60)
+	sConn.TestSendRecvFail(require)
 
 	// Finally resume both, try again. Should behave as per normal.
-	// Resume first controller, pause second. This one should work too.
 	p1.Resume()
 	p2.Resume()
-	conn.Close()                   // Close the last connection
-	conn = tsad.Connect(ctx, true) // Assert our token is no longer good
-	require.Nil(t, conn)
-	time.Sleep(time.Second * 10)                            // Sleep to wait for worker to report back as healthy
-	sar, err = tcl.AuthorizeSession(ctx, "ttcp_1234567890") // Re-authorize
-	require.NoError(t, err)
-	require.NotNil(t, sar)
-	tsad = newTestSessionAuthData(t, sar)
-	require.NotNil(t, tsad)
-	conn = tsad.Connect(ctx, false) // Should be good now
-	require.NotNil(t, conn)
-	defer conn.Close()
-	actualSendRecv = testSendRecv(t, conn, 60)
-	require.Equal(t, actualSendRecv, 60)
+	time.Sleep(time.Second * 10)                                // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, require, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	sConn = sess.Connect(ctx, t, require, logger)
+	sConn.TestSendRecvAll(require)
 }
 
-// testSendRecv runs a basic send/receive test over the returned
-// connection and returns the amount of "pings" successfully sent.
-//
-// The test is a simple sequence number, ticking up every second to
-// max. The passed in conn is expected to copy whatever it is
-// received.
-func testSendRecv(t *testing.T, conn net.Conn, max uint32) int {
-	t.Helper()
-
-	var i uint32
-	for ; i < max; i++ {
-		// Shuttle over the sequence number as base64.
-		err := binary.Write(conn, binary.LittleEndian, i)
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) ||
-				errors.Is(err, io.EOF) ||
-				errors.Is(err, &websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
-				break
-			}
-
-			require.FailNow(t, err.Error())
-		}
-
-		// Read it back
-		var j uint32
-		err = binary.Read(conn, binary.LittleEndian, &j)
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) ||
-				errors.Is(err, io.EOF) ||
-				errors.Is(err, &websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
-				break
-			}
-
-			require.FailNow(t, err.Error())
-		}
-
-		require.Equal(t, j, i)
-
-		// Sleep 1s
-		time.Sleep(time.Second)
-	}
-
-	return int(i)
+// testSession represents an authorized session.
+type testSession struct {
+	workerAddr      string
+	transport       *http.Transport
+	tofuToken       string
+	connectionsLeft int32
 }
 
-type testSessionAuthData struct {
-	t          *testing.T
-	workerAddr string
-	transport  *http.Transport
-}
+// newTestSession authorizes a session and creates all of the data
+// necessary to initialize.
+func newTestSession(
+	ctx context.Context,
+	require *require.Assertions,
+	tcl *targets.Client,
+	targetId string,
+) *testSession {
+	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
+	require.NoError(err)
+	require.NotNil(sar)
 
-// newTestSessionAuthData derives a bunch of authorization data that
-// we need from a session's authorization token. This is a relatively
-// complex process that does not have much to do with describing the
-// test, and may need to be repeated, so we abstract it here.
-func newTestSessionAuthData(t *testing.T, sar *targets.SessionAuthorizationResult) *testSessionAuthData {
-	t.Helper()
-	result := &testSessionAuthData{
-		t: t,
-	}
-
+	s := new(testSession)
 	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	marshaled, err := base58.FastBase58Decoding(authzString)
-	require.NoError(t, err)
-	require.NotZero(t, marshaled)
+	require.NoError(err)
+	require.NotZero(marshaled)
 
 	sessionAuthzData := new(targetspb.SessionAuthorizationData)
 	err = proto.Unmarshal(marshaled, sessionAuthzData)
-	require.NoError(t, err)
-	require.NotZero(t, sessionAuthzData.GetWorkerInfo())
+	require.NoError(err)
+	require.NotZero(sessionAuthzData.GetWorkerInfo())
 
-	result.workerAddr = sessionAuthzData.GetWorkerInfo()[0].GetAddress()
+	s.workerAddr = sessionAuthzData.GetWorkerInfo()[0].GetAddress()
 
 	parsedCert, err := x509.ParseCertificate(sessionAuthzData.Certificate)
-	require.NoError(t, err)
-	require.Len(t, parsedCert.DNSNames, 1)
+	require.NoError(err)
+	require.Len(parsedCert.DNSNames, 1)
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(parsedCert)
@@ -374,65 +294,149 @@ func newTestSessionAuthData(t *testing.T, sar *targets.SessionAuthorizationResul
 		MinVersion: tls.VersionTLS13,
 	}
 
-	result.transport = cleanhttp.DefaultTransport()
-	result.transport.DisableKeepAlives = false
-	result.transport.TLSClientConfig = tlsConf
-	result.transport.IdleConnTimeout = 0
+	s.transport = cleanhttp.DefaultTransport()
+	s.transport.DisableKeepAlives = false
+	s.transport.TLSClientConfig = tlsConf
+	s.transport.IdleConnTimeout = 0
 
-	return result
+	return s
 }
 
-// Connect returns a connected websocket for the stored session auth
-// data, connecting to the stored workerAddr with the configured
-// transport.
+// connect returns a connected websocket for the stored session,
+// connecting to the stored workerAddr with the configured transport.
 //
 // The returned (wrapped) net.Conn should be ready for communication.
-func (d *testSessionAuthData) Connect(ctx context.Context, expectExpired bool) net.Conn {
-	d.t.Helper()
-
+func (s *testSession) connect(ctx context.Context, require *require.Assertions) net.Conn {
 	conn, resp, err := websocket.Dial(
 		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", d.workerAddr),
+		fmt.Sprintf("wss://%s/v1/proxy", s.workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
-				Transport: d.transport,
+				Transport: s.transport,
 			},
 			Subprotocols: []string{globals.TcpProxyV1},
 		},
 	)
-	require.NoError(d.t, err)
-	require.NotNil(d.t, conn)
-	require.NotNil(d.t, resp)
-	require.Equal(d.t, resp.Header.Get("Sec-WebSocket-Protocol"), globals.TcpProxyV1)
+	require.NoError(err)
+	require.NotNil(conn)
+	require.NotNil(resp)
+	require.Equal(resp.Header.Get("Sec-WebSocket-Protocol"), globals.TcpProxyV1)
 
 	// Send the handshake.
-	tofuToken, err := base62.Random(20)
-	require.NoError(d.t, err)
-	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
+	if s.tofuToken == "" {
+		s.tofuToken, err = base62.Random(20)
+	}
+
+	require.NoError(err)
+	handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
 	err = wspb.Write(ctx, conn, &handshake)
-	require.NoError(d.t, err)
+	require.NoError(err)
 
 	// Receive/check the handshake
 	var handshakeResult proxy.HandshakeResult
 	err = wspb.Read(ctx, conn, &handshakeResult)
-	if expectExpired {
-		require.Contains(d.t, err.Error(), "tofu token not allowed")
-		return nil
-	} else {
-		require.NoError(d.t, err)
-	}
+	require.NoError(err)
+
 	// This is just a cursory check to make sure that the handshake is
 	// populated. We could check connections remaining too, but that
 	// could legitimately be a trivial (zero) value.
-	require.NotNil(d.t, handshakeResult.GetExpiration())
+	require.NotNil(handshakeResult.GetExpiration())
+	s.connectionsLeft = handshakeResult.GetConnectionsLeft()
 
 	return websocket.NetConn(ctx, conn, websocket.MessageBinary)
 }
 
+// TestNoConnectionsLeft asserts that there are no connections left.
+func (s *testSession) TestNoConnectionsLeft(require *require.Assertions) {
+	require.Zero(s.connectionsLeft)
+}
+
+// testSessionConnection abstracts a connected session.
+type testSessionConnection struct {
+	conn   net.Conn
+	logger hclog.Logger
+}
+
+// Connect returns a testSessionConnection for a testSession. Check
+// the unexported connect method for the lower-level details.
+func (s *testSession) Connect(
+	ctx context.Context,
+	t *testing.T, // Just to add cleanup
+	require *require.Assertions,
+	logger hclog.Logger,
+) *testSessionConnection {
+	conn := s.connect(ctx, require)
+	require.NotNil(conn)
+	t.Cleanup(func() {
+		conn.Close()
+	})
+	require.NotNil(conn)
+
+	return &testSessionConnection{
+		conn:   conn,
+		logger: logger,
+	}
+}
+
+// testSendRecv runs a basic send/receive test over the returned
+// connection, and returns whether or not all "pings" made it
+// through.
+//
+// The test is a simple sequence number, ticking up every second to
+// max. The passed in conn is expected to copy whatever it is
+// received.
+func (c *testSessionConnection) testSendRecv(require *require.Assertions) bool {
+	for i := uint32(0); i < testSendRecvSendMax; i++ {
+		// Shuttle over the sequence number as base64.
+		err := binary.Write(c.conn, binary.LittleEndian, i)
+		if err != nil {
+			c.logger.Debug("received error during write", "err", err)
+			if errors.Is(err, net.ErrClosed) ||
+				errors.Is(err, io.EOF) {
+				return false
+			}
+
+			require.FailNow(err.Error())
+		}
+
+		// Read it back
+		var j uint32
+		err = binary.Read(c.conn, binary.LittleEndian, &j)
+		if err != nil {
+			c.logger.Debug("received error during read", "err", err)
+			if errors.Is(err, net.ErrClosed) ||
+				errors.Is(err, io.EOF) {
+				return false
+			}
+
+			require.FailNow(err.Error())
+		}
+
+		require.Equal(j, i)
+
+		// Sleep 1s
+		time.Sleep(time.Second)
+	}
+
+	return true
+}
+
+// TestSendRecvAll asserts that we were able to send/recv all pings
+// over the test connection.
+func (c *testSessionConnection) TestSendRecvAll(require *require.Assertions) {
+	require.True(c.testSendRecv(require))
+}
+
+// TestSendRecvFail asserts that we were able to send/recv all pings
+// over the test connection.
+func (c *testSessionConnection) TestSendRecvFail(require *require.Assertions) {
+	require.False(c.testSendRecv(require))
+}
+
 type testTcpServer struct {
-	t     *testing.T // For logging
-	ln    net.Listener
-	conns map[string]net.Conn
+	logger hclog.Logger
+	ln     net.Listener
+	conns  map[string]net.Conn
 }
 
 func (ts *testTcpServer) Port() uint32 {
@@ -469,7 +473,7 @@ func (ts *testTcpServer) run() {
 		conn, err := ts.ln.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				ts.t.Logf("Accept() error in testTcpServer: %s", err)
+				ts.logger.Error("Accept() error in testTcpServer", "err", err)
 			}
 
 			return
@@ -484,16 +488,14 @@ func (ts *testTcpServer) run() {
 	}
 }
 
-func newTestTcpServer(t *testing.T) *testTcpServer {
-	t.Helper()
-
+func newTestTcpServer(require *require.Assertions, logger hclog.Logger) *testTcpServer {
 	ts := &testTcpServer{
-		t:     t,
-		conns: make(map[string]net.Conn),
+		logger: logger,
+		conns:  make(map[string]net.Conn),
 	}
 	var err error
 	ts.ln, err = net.Listen("tcp", ":0")
-	require.NoError(t, err)
+	require.NoError(err)
 
 	go ts.run()
 	return ts
