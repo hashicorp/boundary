@@ -59,21 +59,38 @@ var (
 )
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
-// singleton for Boundary
-func InitSysEventer(log hclog.Logger, c EventerConfig) error {
+// singleton for Boundary.  Support the options of: WithEventer(...) and
+// WithEventerConfig(...)
+func InitSysEventer(log hclog.Logger, opt ...Option) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
 		return errors.New(errors.InvalidParameter, op, "missing hclog")
 	}
+
 	// the order of operations is important here.  we want to determine if
 	// there's an error before setting the singleton sysEventer which can only
 	// be done one time.
-	eventer, err := NewEventer(log, c)
-	if err != nil {
-		return errors.Wrap(err, op)
+	var e *Eventer
+	opts := getOpts(opt...)
+	switch {
+	case opts.withEventer == nil && opts.withEventerConfig == nil:
+		return errors.New(errors.InvalidParameter, op, "missing both eventer and eventer config")
+
+	case opts.withEventer != nil && opts.withEventerConfig != nil:
+		return errors.New(errors.InvalidParameter, op, "both eventer and eventer config provided")
+
+	case opts.withEventerConfig != nil:
+		var err error
+		if e, err = NewEventer(log, *opts.withEventerConfig); err != nil {
+			return errors.Wrap(err, op)
+		}
+
+	case opts.withEventer != nil:
+		e = opts.withEventer
 	}
+
 	sysEventerOnce.Do(func() {
-		sysEventer = eventer
+		sysEventer = e
 	})
 	return nil
 }

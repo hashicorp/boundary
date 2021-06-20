@@ -17,32 +17,38 @@ func Test_InitSysEventer(t *testing.T) {
 	// dependency on the sysEventer
 	testConfig := TestEventerConfig(t, "InitSysEventer")
 
+	testEventer, err := NewEventer(hclog.Default(), testConfig.EventerConfig)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name         string
 		log          hclog.Logger
-		config       EventerConfig
+		opt          []Option
 		want         *Eventer
 		wantErrMatch *errors.Template
 	}{
-
 		{
-			name:         "missing-hclog",
-			config:       testConfig.EventerConfig,
+			name:         "missing-both-eventer-and-config",
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
 		{
-			name:   "success",
-			config: testConfig.EventerConfig,
-			log:    hclog.Default(),
+			name:         "missing-hclog",
+			opt:          []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "success-with-config",
+			opt:  []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:  hclog.Default(),
 			want: &Eventer{
 				logger: hclog.Default(),
 				conf:   testConfig.EventerConfig,
 			},
 		},
 		{
-			name:   "success-with-default-config",
-			config: EventerConfig{},
-			log:    hclog.Default(),
+			name: "success-with-default-config",
+			opt:  []Option{WithEventerConfig(&EventerConfig{})},
+			log:  hclog.Default(),
 			want: &Eventer{
 				logger: hclog.Default(),
 				conf: EventerConfig{
@@ -57,6 +63,12 @@ func Test_InitSysEventer(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "success-with-eventer",
+			opt:  []Option{WithEventer(testEventer)},
+			log:  hclog.Default(),
+			want: testEventer,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -64,7 +76,7 @@ func Test_InitSysEventer(t *testing.T) {
 
 			assert, require := assert.New(t), require.New(t)
 
-			err := InitSysEventer(tt.log, tt.config)
+			err := InitSysEventer(tt.log, tt.opt...)
 			got := SysEventer()
 			if tt.wantErrMatch != nil {
 				require.Nil(got)
