@@ -8,7 +8,9 @@ import (
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	return opts
 }
@@ -18,15 +20,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withId          string
-	withDetails     map[string]interface{}
-	withHeader      map[string]interface{}
-	withFlush       bool
-	withRequestInfo *RequestInfo
-	withNow         time.Time
-	withRequest     *Request
-	withResponse    *Response
-	withAuth        *Auth
+	withId             string
+	withDetails        map[string]interface{}
+	withHeader         map[string]interface{}
+	withFlush          bool
+	withRequestInfo    *RequestInfo
+	withNow            time.Time
+	withRequest        *Request
+	withResponse       *Response
+	withAuth           *Auth
+	withEventer        *Eventer
+	withEventerConfing *EventerConfig
 
 	withBroker          broker // test only option
 	withAuditSink       bool   // test only option
@@ -97,5 +101,19 @@ func WithResponse(r *Response) Option {
 func WithAuth(a *Auth) Option {
 	return func(o *options) {
 		o.withAuth = a
+	}
+}
+
+// WithEventer allows an optional eventer
+func WithEventer(e *Eventer) Option {
+	return func(o *options) {
+		o.withEventer = e
+	}
+}
+
+// WithEventer allows an optional eventer config
+func WithEventerConfig(c *EventerConfig) Option {
+	return func(o *options) {
+		o.withEventerConfing = c
 	}
 }
