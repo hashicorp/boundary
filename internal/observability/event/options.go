@@ -20,17 +20,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withId             string
-	withDetails        map[string]interface{}
-	withHeader         map[string]interface{}
-	withFlush          bool
-	withRequestInfo    *RequestInfo
-	withNow            time.Time
-	withRequest        *Request
-	withResponse       *Response
-	withAuth           *Auth
-	withEventer        *Eventer
-	withEventerConfing *EventerConfig
+	withId            string
+	withDetails       map[string]interface{}
+	withHeader        map[string]interface{}
+	withFlush         bool
+	withRequestInfo   *RequestInfo
+	withNow           time.Time
+	withRequest       *Request
+	withResponse      *Response
+	withAuth          *Auth
+	withEventer       *Eventer
+	withEventerConfig *EventerConfig
 
 	withBroker          broker // test only option
 	withAuditSink       bool   // test only option
@@ -114,6 +114,6 @@ func WithEventer(e *Eventer) Option {
 // WithEventer allows an optional eventer config
 func WithEventerConfig(c *EventerConfig) Option {
 	return func(o *options) {
-		o.withEventerConfing = c
+		o.withEventerConfig = c
 	}
 }
