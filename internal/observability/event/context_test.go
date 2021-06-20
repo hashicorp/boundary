@@ -331,7 +331,7 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -382,7 +382,7 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -637,7 +637,7 @@ func Test_WriteAudit(t *testing.T) {
 				Request: testReq,
 			},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:           func() { event.TestResetSystEventer(t) },
 			auditSinkFileName: c.AllEvents.Name(),
@@ -817,7 +817,7 @@ func Test_WriteError(t *testing.T) {
 			ctx:  context.Background(),
 			e:    testError,
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),
@@ -828,7 +828,7 @@ func Test_WriteError(t *testing.T) {
 			e:    testError,
 			info: &event.RequestInfo{},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),
