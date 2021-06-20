@@ -370,20 +370,19 @@ func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	}
 
 	// Fetch all tokens in the revoke state as well as all tokens in the maintaining state
-	// that have no credentials in an active state.  Note SearchWhere requires query values
+	// that have no credentials in an active state.
 	where := `
-token_status = ?
+token_status = 'revoke'
 or
-(token_status = ?
+(token_status = 'maintaining'
   and token_hmac not in (
     select token_hmac from credential_vault_credential 
-     where status = ?
+     where status = 'active'
 ))
 `
-	whereArgs := []interface{}{RevokeToken, MaintainingToken, ActiveCredential}
 
 	var ps []*privateStore
-	err := r.reader.SearchWhere(ctx, &ps, where, whereArgs, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &ps, where, nil, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
