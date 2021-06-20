@@ -7,16 +7,16 @@ import (
 )
 
 const (
-	StdoutSink SinkType = "stdout" // StdoutSink is written to stdout
+	StderrSink SinkType = "stderr" // StderrSink is written to stderr
 	FileSink   SinkType = "file"   // FileSink is written to a file
 )
 
-type SinkType string // SinkType defines the type of sink in a config stanza (file, stdout)
+type SinkType string // SinkType defines the type of sink in a config stanza (file, stderr)
 
 func (t SinkType) validate() error {
 	const op = "event.(SinkType).validate"
 	switch t {
-	case StdoutSink, FileSink:
+	case StderrSink, FileSink:
 		return nil
 	default:
 		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("'%s' is not a valid sink type", t))

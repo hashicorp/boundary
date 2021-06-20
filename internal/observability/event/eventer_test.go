@@ -57,7 +57,7 @@ func Test_InitSysEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StdoutSink,
+							SinkType:   StderrSink,
 						},
 					},
 				},
@@ -154,7 +154,7 @@ func TestEventer_writeObservation(t *testing.T) {
 		c := EventerConfig{
 			ObservationsEnabled: true,
 		}
-		// with no defined config, it will default to a stdout sink
+		// with no defined config, it will default to a stderr sink
 		e, err := NewEventer(logger, c)
 		require.NoError(err)
 
@@ -316,21 +316,21 @@ func Test_NewEventer(t *testing.T) {
 							Name:       "default",
 							EventTypes: []Type{EveryType},
 							Format:     JSONSinkFormat,
-							SinkType:   StdoutSink,
+							SinkType:   StderrSink,
 						},
 					},
 				},
 			},
 			wantRegistered: []string{
 				"json",              // fmt for everything
-				"stdout",            // stdout
-				"gated-observation", // stdout
-				"gated-audit",       // stdout
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
 			},
 			wantPipelines: []string{
-				"audit",       // stdout
-				"observation", // stdout
-				"error",       // stdout
+				"audit",       // stderr
+				"observation", // stderr
+				"error",       // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
 				"error": 1,
@@ -346,9 +346,9 @@ func Test_NewEventer(t *testing.T) {
 			},
 			wantRegistered: []string{
 				"json",              // fmt for everything
-				"stdout",            // stdout
-				"gated-observation", // stdout
-				"gated-audit",       // stdout
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
@@ -356,11 +356,11 @@ func Test_NewEventer(t *testing.T) {
 			},
 			wantPipelines: []string{
 				"audit",       // every-type-file-sync
-				"audit",       // stdout
+				"audit",       // stderr
 				"observation", // every-type-file-sync
-				"observation", // stdout
+				"observation", // stderr
 				"error",       // every-type-file-sync
-				"error",       // stdout
+				"error",       // stderr
 				"error",       // error-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
@@ -379,9 +379,9 @@ func Test_NewEventer(t *testing.T) {
 			},
 			wantRegistered: []string{
 				"json",              // fmt for everything
-				"stdout",            // stdout
-				"gated-observation", // stdout
-				"gated-audit",       // stdout
+				"stderr",            // stderr
+				"gated-observation", // stderr
+				"gated-audit",       // stderr
 				"tmp-all-events",    // every-type-file-sync
 				"gated-observation", // every-type-file-sync
 				"gated-audit",       // every-type-file-sync
@@ -393,11 +393,11 @@ func Test_NewEventer(t *testing.T) {
 			},
 			wantPipelines: []string{
 				"audit",       // every-type-file-sync
-				"audit",       // stdout
+				"audit",       // stderr
 				"observation", // every-type-file-sync
-				"observation", // stdout
+				"observation", // stderr
 				"error",       // every-type-file-sync
-				"error",       // stdout
+				"error",       // stderr
 				"error",       // error-file-sink
 				"audit",       // audit-file-sink
 				"observation", // observation-file-sink

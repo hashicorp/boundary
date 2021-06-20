@@ -107,14 +107,14 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
 	}
 
-	// if there are no sinks in config, then we'll default to just one stdout
+	// if there are no sinks in config, then we'll default to just one stderr
 	// sink.
 	if len(c.Sinks) == 0 {
 		c.Sinks = append(c.Sinks, SinkConfig{
 			Name:       "default",
 			EventTypes: []Type{EveryType},
 			Format:     JSONSinkFormat,
-			SinkType:   StdoutSink,
+			SinkType:   StderrSink,
 		})
 	}
 
@@ -164,12 +164,12 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
 		switch s.SinkType {
-		case StdoutSink:
+		case StderrSink:
 			sinkNode = &eventlogger.WriterSink{
 				Format: string(s.Format),
-				Writer: os.Stdout,
+				Writer: os.Stderr,
 			}
-			id, err = newId("stdout")
+			id, err = newId("stderr")
 			if err != nil {
 				return nil, errors.Wrap(err, op)
 			}

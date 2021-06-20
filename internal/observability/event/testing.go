@@ -66,8 +66,8 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 					FileName:   tmpAllFile.Name(),
 				},
 				{
-					Name:       "stdout",
-					SinkType:   StdoutSink,
+					Name:       "stderr",
+					SinkType:   StderrSink,
 					EventTypes: []Type{EveryType},
 					Format:     JSONSinkFormat,
 				},

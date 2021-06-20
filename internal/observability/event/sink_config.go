@@ -10,7 +10,7 @@ import (
 type SinkConfig struct {
 	Name           string        // Name defines a name for the sink.
 	EventTypes     []Type        // EventTypes defines a list of event types that will be sent to the sink. See the docs for EventTypes for a list of accepted values.
-	SinkType       SinkType      // SinkType defines the type of sink (StdoutSink or FileSink)
+	SinkType       SinkType      // SinkType defines the type of sink (StderrSink or FileSink)
 	Format         SinkFormat    // Format defines the format for the sink (JSONSinkFormat)
 	Path           string        // Path defines the file path for the sink
 	FileName       string        // FileName defines the file name for the sink
