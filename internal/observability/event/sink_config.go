@@ -24,7 +24,7 @@ func (sc *SinkConfig) validate() error {
 	if err := sc.SinkType.validate(); err != nil {
 		return errors.Wrap(err, op)
 	}
-	if err := sc.Format.validate(); err != nil {
+	if err := sc.Format.Validate(); err != nil {
 		return errors.Wrap(err, op)
 	}
 	if sc.SinkType == FileSink && sc.FileName == "" {
