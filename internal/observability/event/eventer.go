@@ -118,7 +118,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		})
 	}
 
-	if err := c.validate(); err != nil {
+	if err := c.Validate(); err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 

@@ -15,9 +15,9 @@ type EventerConfig struct {
 	Sinks               []SinkConfig      // Sinks are all the configured sinks
 }
 
-// validate will validate the config. BTW, a config isn't required to have any
+// Validate will Validate the config. BTW, a config isn't required to have any
 // sinks to be valid.
-func (c *EventerConfig) validate() error {
+func (c *EventerConfig) Validate() error {
 	const op = "event.(EventerConfig).validate"
 
 	if err := c.AuditDelivery.validate(); err != nil {
