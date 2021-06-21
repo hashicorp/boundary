@@ -56,8 +56,6 @@ func TestWorkerSessionCleanup(t *testing.T) {
 
 	expectWorkers(t, c1)
 
-	ctx := c1.Context()
-
 	// Wire up the testing proxies
 	require.Len(c1.ClusterAddrs(), 1)
 	proxy, err := dawdle.NewProxy("tcp", "", c1.ClusterAddrs()[0],
@@ -78,6 +76,11 @@ func TestWorkerSessionCleanup(t *testing.T) {
 
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1)
+
+	// Use an independent context for test things that take a context so
+	// that we aren't tied to any timeouts in the controller, etc. This
+	// can interfere with some of the test operations.
+	ctx := context.Background()
 
 	// Connect target
 	client := c1.Client()
@@ -140,7 +143,6 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 		PublicClusterAddr:      pl1.Addr().String(),
 	})
 	defer c1.Shutdown()
-	ctx := c1.Context()
 
 	// ******************
 	// ** Controller 2 **
@@ -194,6 +196,11 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1)
 	expectWorkers(t, c2, w1)
+
+	// Use an independent context for test things that take a context so
+	// that we aren't tied to any timeouts in the controller, etc. This
+	// can interfere with some of the test operations.
+	ctx := context.Background()
 
 	// Connect target
 	client := c1.Client()
