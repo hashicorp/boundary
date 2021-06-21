@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -880,21 +879,11 @@ func Test_WriteError(t *testing.T) {
 
 				require.NoError(err)
 
-				///// 
-				
-				//errorPayload becomes map[string]interface {}(map[string]interface {}{"Code":"code", "Msg":"test"})
-				errorPayload := gotError.Payload["error"]
-
-				errorValue := reflect.ValueOf(&errorPayload).Elem()
-
-				//reflect.ValueOf needs ptr
-
-				holdError := map[string]interface{}{
-					"Code": errorValue.FieldByName("Code").String(),
-					"Msg":  errorValue.FieldByName("Msg").String(),
+				holdError := fakeError{
+					Msg:  gotError.Payload["error"].(map[string]interface{})["Msg"].(string),
+					Code: gotError.Payload["error"].(map[string]interface{})["Code"].(string),
 				}
-				//Eventually assert they're the same somehow
-				assert.Equal(tt.e.Error(), holdError["Msg"])
+				assert.Equal(tt.e, &holdError)
 
 			}
 		})
