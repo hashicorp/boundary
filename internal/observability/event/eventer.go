@@ -54,13 +54,18 @@ type Eventer struct {
 }
 
 var (
-	sysEventer     *Eventer  // sysEventer is the system-wide Eventer
-	sysEventerOnce sync.Once // sysEventerOnce ensures that the system-wide Eventer is only initialized once.
+	sysEventer     *Eventer   // sysEventer is the system-wide Eventer
+	sysEventerLock sync.Mutex // sysEventerLock allows the sysEventer to safely be written concurrently.
 )
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
 // singleton for Boundary.  Support the options of: WithEventer(...) and
 // WithEventerConfig(...)
+//
+// IMPORTANT: Eventers cannot share file sinks, which likely means that each
+// process should only have one Eventer.  In practice this means the process
+// Server (Controller or Worker) and the SysEventer both need a pointer to a
+// single Eventer.
 func InitSysEventer(log hclog.Logger, opt ...Option) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
@@ -68,8 +73,7 @@ func InitSysEventer(log hclog.Logger, opt ...Option) error {
 	}
 
 	// the order of operations is important here.  we want to determine if
-	// there's an error before setting the singleton sysEventer which can only
-	// be done one time.
+	// there's an error before setting the singleton sysEventer
 	var e *Eventer
 	opts := getOpts(opt...)
 	switch {
@@ -89,13 +93,14 @@ func InitSysEventer(log hclog.Logger, opt ...Option) error {
 		e = opts.withEventer
 	}
 
-	sysEventerOnce.Do(func() {
-		sysEventer = e
-	})
+	sysEventerLock.Lock()
+	defer sysEventerLock.Unlock()
+	sysEventer = e
 	return nil
 }
 
-// SysEventer returns the "system wide" eventer for Boundary.
+// SysEventer returns the "system wide" eventer for Boundary and can/will return
+// a nil Eventer
 func SysEventer() *Eventer {
 	return sysEventer
 }
@@ -160,6 +165,17 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, errors.Wrap(err, "failed to register json node")
 	}
 
+	// serializedStderr will be shared among all StderrSinks so their output is not
+	// interwoven
+	serializedStderr := serializedWriter{
+		w: os.Stderr,
+		l: new(sync.Mutex),
+	}
+
+	// we need to keep track of all the Sink filenames to ensure they aren't
+	// reused.
+	allSinkFilenames := map[string]bool{}
+
 	for _, s := range c.Sinks {
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
@@ -167,7 +183,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		case StderrSink:
 			sinkNode = &eventlogger.WriterSink{
 				Format: string(s.Format),
-				Writer: os.Stderr,
+				Writer: &serializedStderr,
 			}
 			id, err = newId("stderr")
 			if err != nil {
@@ -175,6 +191,9 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 			}
 			sinkId = eventlogger.NodeID(id)
 		default:
+			if _, found := allSinkFilenames[s.Path+s.FileName]; found {
+				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("Duplicate file sink: %s %s", s.Path, s.FileName))
+			}
 			sinkNode = &eventlogger.FileSink{
 				Format:      string(s.Format),
 				Path:        s.Path,

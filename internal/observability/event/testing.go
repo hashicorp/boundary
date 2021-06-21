@@ -22,7 +22,8 @@ func TestResetSystEventer(t *testing.T) {
 	t.Helper()
 	testSysEventerLock.Lock()
 	defer testSysEventerLock.Unlock()
-	sysEventerOnce = sync.Once{}
+	sysEventerLock.Lock()
+	defer sysEventerLock.Unlock()
 	sysEventer = nil
 }
 
