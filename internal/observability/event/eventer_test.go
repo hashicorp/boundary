@@ -292,14 +292,6 @@ func Test_NewEventer(t *testing.T) {
 		wantErrMatch   *errors.Template
 	}{
 		{
-			name: "invalid-config",
-			config: EventerConfig{
-				AuditDelivery: "invalid",
-			},
-			logger:       hclog.Default(),
-			wantErrMatch: errors.T(errors.InvalidParameter),
-		},
-		{
 			name:         "missing-logger",
 			config:       testSetup.EventerConfig,
 			wantErrMatch: errors.T(errors.InvalidParameter),
@@ -364,9 +356,7 @@ func Test_NewEventer(t *testing.T) {
 				"error",       // error-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"audit":       2,
-				"error":       3,
-				"observation": 2,
+				"error": 3,
 			},
 		},
 		{
@@ -403,9 +393,7 @@ func Test_NewEventer(t *testing.T) {
 				"observation", // observation-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
-				"audit":       3,
-				"error":       3,
-				"observation": 3,
+				"error": 3,
 			},
 		},
 	}

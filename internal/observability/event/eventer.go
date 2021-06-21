@@ -327,21 +327,6 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		errNodeIds = append(errNodeIds, p.sinkId)
 	}
 
-	// TODO(jimlambrt) go-eventlogger SetSuccessThreshold currently does not
-	// specify which sink passed and which hasn't so we are unable to
-	// support multiple sinks with different delivery guarantees
-	if c.AuditDelivery == Enforced {
-		err = e.broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to set success threshold for audit events")
-		}
-	}
-	if c.ObservationDelivery == Enforced {
-		err = e.broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to set success threshold for observation events")
-		}
-	}
 	// always enforce delivery of errors
 	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {

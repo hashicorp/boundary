@@ -16,34 +16,6 @@ func TestEventerConfig_validate(t *testing.T) {
 		wantErrContains string
 	}{
 		{
-			name: "invalid-audit-delivery",
-			c: EventerConfig{
-				AuditDelivery: "invalid",
-			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "is not a valid delivery guarantee",
-		},
-		{
-			name: "valid-audit-delivery",
-			c: EventerConfig{
-				AuditDelivery: Enforced,
-			},
-		},
-		{
-			name: "invalid-observation-delivery",
-			c: EventerConfig{
-				ObservationDelivery: "invalid",
-			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "is not a valid delivery guarantee",
-		},
-		{
-			name: "valid-observation-delivery",
-			c: EventerConfig{
-				ObservationDelivery: Enforced,
-			},
-		},
-		{
 			name: "invalid-sink",
 			c: EventerConfig{
 				Sinks: []SinkConfig{

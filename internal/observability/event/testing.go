@@ -54,9 +54,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 	c := TestConfig{
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
-			ObservationDelivery: Enforced,
 			AuditEnabled:        true,
-			AuditDelivery:       Enforced,
 			Sinks: []SinkConfig{
 				{
 					Name:       "every-type-file-sink",
