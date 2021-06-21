@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 12005,
+		binarySchemaVersion: 12006,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -4999,7 +4999,7 @@ alter table job_run
     add constraint server_id_must_not_be_empty
         check(length(trim(server_id)) > 0);
 `),
-			12001: []byte(`
+			12002: []byte(`
 create function wt_is_sentinel(string text)
     returns bool
   as $$
@@ -5030,7 +5030,7 @@ create function wt_is_sentinel(string text)
   comment on function wt_to_sentinel is
     'wt_to_sentinel takes string and returns it as a wt_sentinel';
 `),
-			12002: []byte(`
+			12003: []byte(`
 -- credential_store
   create table credential_store (
     public_id wt_public_id primary key,
@@ -5289,7 +5289,7 @@ create function wt_is_sentinel(string text)
     ('ingress'),
     ('egress');
 `),
-			12003: []byte(`
+			12004: []byte(`
 create table credential_vault_store (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -5942,7 +5942,7 @@ create table credential_vault_store (
     'the vault token used to issue the credential, and the credential store data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 `),
-			12004: []byte(`
+			12005: []byte(`
 create table target_credential_library (
     target_id wt_public_id not null
       constraint target_fkey
@@ -5987,7 +5987,7 @@ create table target_credential_library (
   where
     cl.public_id = tcl.credential_library_id;
 `),
-			12005: []byte(`
+			12006: []byte(`
 create table session_credential_dynamic (
     session_id wt_public_id not null
       constraint session_fkey
