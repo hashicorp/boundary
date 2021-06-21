@@ -103,7 +103,7 @@ func TestEventer_retrySend(t *testing.T) {
 					}
 					assert.True(matched)
 				default:
-					assert.ErrorIs(tt.wantErrIs, err)
+					assert.ErrorIs(err, tt.wantErrIs)
 					if tt.wantErrContain != "" {
 						assert.Contains(err.Error(), tt.wantErrContain)
 					}
