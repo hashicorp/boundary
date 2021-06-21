@@ -571,34 +571,6 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 				}
 			}
 
-			var libraryMaps []map[string]interface{}
-			if len(item.Credentials) > 0 {
-				for _, cred := range item.Credentials {
-					m := map[string]interface{}{
-						"Credential Library ID":   cred.CredentialLibrary.Id,
-						"Credential Library Type": cred.CredentialLibrary.Type,
-						"Credential Store ID":     cred.CredentialLibrary.CredentialStoreId,
-						"Secret":                  cred.Secret,
-					}
-					if len(cred.CredentialLibrary.Name) > 0 {
-						m["Credential Library Name"] = cred.CredentialLibrary.Name
-						if l := len("Credential Library Name"); l > maxLength {
-							maxLength = l
-						}
-					}
-					if len(cred.CredentialLibrary.Description) > 0 {
-						m["Credential Library Description"] = cred.CredentialLibrary.Description
-						if l := len("Credential Library Description"); l > maxLength {
-							maxLength = l
-						}
-					}
-					libraryMaps = append(libraryMaps, m)
-				}
-				if l := len("Credential Library Type"); l > maxLength {
-					maxLength = l
-				}
-			}
-
 			ret = append(ret, "", "Target information:")
 			ret = append(ret,
 				// We do +2 because there is another +2 offset for host sets below
@@ -608,14 +580,28 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			ret = append(ret,
 				"",
 			)
-
 			if len(item.Credentials) > 0 {
 				ret = append(ret,
 					"  Credentials:",
 				)
-				for _, m := range libraryMaps {
+
+				for _, cred := range item.Credentials {
 					ret = append(ret,
-						base.WrapMap(4, maxLength, m),
+						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
+						fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type),
+						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId),
+						fmt.Sprintf("    Secret:                         %s", cred.Secret))
+
+					if len(cred.CredentialLibrary.Name) > 0 {
+						ret = append(ret,
+							fmt.Sprintf("    Credential Library Name:        %s", cred.CredentialLibrary.Name))
+					}
+					if len(cred.CredentialLibrary.Description) > 0 {
+						ret = append(ret,
+							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
+					}
+
+					ret = append(ret,
 						"",
 					)
 				}

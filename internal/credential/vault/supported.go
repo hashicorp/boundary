@@ -149,14 +149,16 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 		require.NoError(err)
 		server.network = network
 		dockerOptions.Networks = []*dockertest.Network{network}
-		t.Cleanup(func() {
-			network.Close()
-		})
+		if !opts.skipCleanup {
+			t.Cleanup(func() {
+				network.Close()
+			})
+		}
 	}
 
 	resource, err := pool.RunWithOptions(dockerOptions)
 	require.NoError(err)
-	if !opts.dontCleanup {
+	if !opts.skipCleanup {
 		t.Cleanup(func() {
 			cleanupResource(t, pool, resource)
 		})
@@ -206,11 +208,15 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *Test
 		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
 	}
 
+	opts := getTestOpts(t, opt...)
+
 	resource, err := pool.RunWithOptions(dockerOptions)
 	require.NoError(err)
-	t.Cleanup(func() {
-		cleanupResource(t, pool, resource)
-	})
+	if !opts.skipCleanup {
+		t.Cleanup(func() {
+			cleanupResource(t, pool, resource)
+		})
+	}
 	v.postgresContainer = resource
 
 	dbUrlTemplate := fmt.Sprintf("postgres://%%s:%%s@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
@@ -253,7 +259,6 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *Test
 	exec(grantOpenedRole)
 	exec(grantClosedRole)
 
-	opts := getTestOpts(t, opt...)
 	vc := v.client(t).cl
 
 	// Mount Database

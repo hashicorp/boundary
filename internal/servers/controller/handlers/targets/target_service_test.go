@@ -1822,9 +1822,9 @@ func TestAuthorizeSession(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
-	v.MountDatabase(t)
-	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database"}))
+	v := vault.NewTestVaultServer(t)
+	v.MountPKI(t)
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
@@ -1834,7 +1834,9 @@ func TestAuthorizeSession(t *testing.T) {
 		Name:              wrapperspb.String("Library Name"),
 		Description:       wrapperspb.String("Library Description"),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path": structpb.NewStringValue(path.Join("database", "creds", "opened")),
+			"path":              structpb.NewStringValue(path.Join("pki", "issue", "boundary")),
+			"http_method":       structpb.NewStringValue("POST"),
+			"http_request_body": structpb.NewStringValue(`{"common_name":"boundary.com"}`),
 		}},
 	}})
 	require.NoError(t, err)
@@ -1880,25 +1882,27 @@ func TestAuthorizeSession(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              credential.VaultSubtype.String(),
 			},
-			Secret: func() *structpb.Value {
-				s, err := structpb.NewStruct(map[string]interface{}{
-					"username": "some username",
-					"password": "some password",
-				})
-				require.NoError(t, err)
-				return structpb.NewStructValue(s)
-			}(),
 		}},
 		// TODO: validate the contents of the authorization token is what is expected
 	}
+	wantSecret := map[string]interface{}{
+		"certificate":      "-----BEGIN CERTIFICATE-----\n",
+		"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
+		"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
+		"private_key_type": "rsa",
+		"serial_number":    "",
+	}
+	_ = wantSecret
 	got := asRes1.GetItem()
 
 	require.Len(t, got.GetCredentials(), 1)
-	got.Credentials[0].Secret.GetStructValue().Fields["username"] = structpb.NewStringValue("some username")
-	got.Credentials[0].Secret.GetStructValue().Fields["password"] = structpb.NewStringValue("some password")
 
+	for _, c := range got.Credentials {
+		assert.NotEmpty(t, c.Secret)
+		c.Secret = ""
+	}
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-	assert.Empty(t, cmp.Diff(asRes1.GetItem(), want, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
