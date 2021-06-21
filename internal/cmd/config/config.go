@@ -363,6 +363,14 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
+	if result.Eventing == nil {
+		result.Eventing = event.DefaultEventerConfig()
+	} else {
+		if result.Eventing.Sinks == nil {
+			result.Eventing.Sinks = []event.SinkConfig{event.DefaultSink()}
+		}
+	}
+
 	return result, nil
 }
 

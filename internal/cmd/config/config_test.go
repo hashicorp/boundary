@@ -336,30 +336,71 @@ func TestParsingName(t *testing.T) {
 
 func TestController_EventingConfig(t *testing.T) {
 	t.Parallel()
-	testConf := `
-		events {
-			audit_enabled = true
-			observation_enabled = true
-		}
-	`
+
 	tests := []struct {
 		name              string
 		config            string
 		wantEventerConfig *event.EventerConfig
 		wantErrMatch      *errors.Template
 	}{
-		// {
-		// 	name:              "default",
-		// 	wantEventerConfig: event.DefaultEventerConfig(),
-		// },
 		{
-			name:   "all-bits",
-			config: testConf,
+			name:              "default",
+			wantEventerConfig: event.DefaultEventerConfig(),
+		},
+		{
+			name: "audit-enabled",
+			config: `
+			events {
+				audit_enabled = true
+			}
+			`,
 			wantEventerConfig: &event.EventerConfig{
 				AuditEnabled:        true,
+				ObservationsEnabled: false,
+				Sinks: []event.SinkConfig{
+					event.DefaultSink(),
+				},
+			},
+		},
+		{
+			name: "observations-enabled",
+			config: `
+			events {
+				observations_enabled = true
+			}
+			`,
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled:        false,
 				ObservationsEnabled: true,
 				Sinks: []event.SinkConfig{
 					event.DefaultSink(),
+				},
+			},
+		},
+		{
+			name: "sinks-configured",
+			config: `
+			events {
+				audit_enabled = false
+				observations_enabled = true
+				sinks = [
+					{
+						name = "configured-sink"
+						file_name = "file-name"
+						event_types = [ "audit", "observation" ] 
+					}
+				]
+			}
+			`,
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled:        false,
+				ObservationsEnabled: true,
+				Sinks: []event.SinkConfig{
+					{
+						Name:       "configured-sink",
+						FileName:   "file-name",
+						EventTypes: []event.Type{"audit", "observation"},
+					},
 				},
 			},
 		},
@@ -367,7 +408,6 @@ func TestController_EventingConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			fmt.Println(tt.config)
 			c, err := Parse(tt.config)
 			if tt.wantErrMatch != nil {
 				require.NoError(err)
