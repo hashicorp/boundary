@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
@@ -99,6 +100,9 @@ type Config struct {
 	DevControllerKey     string `hcl:"-"`
 	DevWorkerAuthKey     string `hcl:"-"`
 	DevRecoveryKey       string `hcl:"-"`
+
+	// Eventing configuration for the controller
+	Eventing *event.EventerConfig `hcl:"events"`
 }
 
 type Controller struct {
