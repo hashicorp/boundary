@@ -1824,7 +1824,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
 	v.MountDatabase(t)
-	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database"}))
 
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)

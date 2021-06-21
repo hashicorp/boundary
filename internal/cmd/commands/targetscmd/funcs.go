@@ -25,17 +25,21 @@ func init() {
 }
 
 type extraCmdVars struct {
-	flagHostSets []string
-	flagHostId   string
-	sar          *targets.SessionAuthorizationResult
+	flagHostSets            []string
+	flagCredentialLibraries []string
+	flagHostId              string
+	sar                     *targets.SessionAuthorizationResult
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"authorize-session": {"id", "host-id"},
-		"add-host-sets":     {"id", "host-set", "version"},
-		"remove-host-sets":  {"id", "host-set", "version"},
-		"set-host-sets":     {"id", "host-set", "version"},
+		"authorize-session":           {"id", "host-id"},
+		"add-host-sets":               {"id", "host-set", "version"},
+		"remove-host-sets":            {"id", "host-set", "version"},
+		"set-host-sets":               {"id", "host-set", "version"},
+		"add-credential-libraries":    {"id", "credential-library", "version"},
+		"remove-credential-libraries": {"id", "credential-library", "version"},
+		"set-credential-libraries":    {"id", "credential-library", "version"},
 	}
 }
 
@@ -50,6 +54,18 @@ func extraSynopsisFuncImpl(c *Command) string {
 			in = "Set the full contents of the host sets on"
 		case strings.HasPrefix(c.Func, "remove"):
 			in = "Remove host sets from"
+		}
+		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
+
+	case "add-credential-libraries", "set-credential-libraries", "remove-credential-libraries":
+		var in string
+		switch {
+		case strings.HasPrefix(c.Func, "add"):
+			in = "Add credential library to"
+		case strings.HasPrefix(c.Func, "set"):
+			in = "Set the full contents of the credential libraries on"
+		case strings.HasPrefix(c.Func, "remove"):
+			in = "Remove credential libraries from"
 		}
 		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
 
@@ -136,6 +152,42 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"",
 		})
+	case "add-credential-libraries":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target add-credential-libraries [options] [args]",
+			"",
+			"  This command allows adding credential-library resources to target resources. Example:",
+			"",
+			"    Add credential-library resources to a tcp-type target:",
+			"",
+			`      $ boundary targets add-credential-libraries -id ttcp_1234567890 -credential-library clvl_1234567890 -credential-library clvlt_0987654321`,
+			"",
+			"",
+		})
+	case "remove-credential-libraries":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target remove-credential-libraries [options] [args]",
+			"",
+			"  This command allows removing credential-library resources from target resources. Example:",
+			"",
+			"    Remove credential-library resources from a tcp-type target:",
+			"",
+			`      $ boundary targets remove-credential-libraries -id ttcp_1234567890 -credential-library clvlt_1234567890 -credential-library clvlt_0987654321`,
+			"",
+			"",
+		})
+	case "set-credential-libraries":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target set-credential-libraries [options] [args]",
+			"",
+			"  This command allows setting the complete set of credential-library resources on a target resource. Example:",
+			"",
+			"    Set credential-library resources on a tcp-type target:",
+			"",
+			`      $ boundary targets set-credential-libraries -id ttcp_1234567890 -credential-library clvlt_1234567890`,
+			"",
+			"",
+		})
 	case "authorize-session":
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary target authorize-session [options] [args]",
@@ -170,6 +222,12 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Name:   "host-id",
 				Target: &c.flagHostId,
 				Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
+			})
+		case "credential-library":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "credential-library",
+				Target: &c.flagCredentialLibraries,
+				Usage:  "The credential-library resource to add, remove, or set.  May be specified multiple times.",
 			})
 		}
 	}
@@ -252,6 +310,23 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			}
 		}
 
+	case "add-credential-libraries", "remove-credential-libraries":
+		if len(c.flagCredentialLibraries) == 0 {
+			c.UI.Error("No credential-library supplied via -credential-library")
+			return false
+		}
+
+	case "set-credential-libraries":
+		switch len(c.flagCredentialLibraries) {
+		case 0:
+			c.UI.Error("No credential-libraries supplied via -credential-library")
+			return false
+		case 1:
+			if c.flagCredentialLibraries[0] == "null" {
+				c.flagCredentialLibraries = nil
+			}
+		}
+
 	case "authorize-session":
 		if len(c.flagHostId) != 0 {
 			*opts = append(*opts, targets.WithHostId(c.flagHostId))
@@ -269,6 +344,12 @@ func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError
 		return targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
 	case "set-host-sets":
 		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+	case "add-credential-libraries":
+		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
+	case "remove-credential-libraries":
+		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
+	case "set-credential-libraries":
+		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"
@@ -388,6 +469,20 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
+	var libraryMaps []map[string]interface{}
+	if len(item.CredentialLibraries) > 0 {
+		for _, lib := range item.CredentialLibraries {
+			m := map[string]interface{}{
+				"ID":                  lib.Id,
+				"Credential Store ID": lib.CredentialStoreId,
+			}
+			libraryMaps = append(libraryMaps, m)
+		}
+		if l := len("Credential Store ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+
 	ret := []string{
 		"",
 		"Target information:",
@@ -419,6 +514,18 @@ func printItemTable(result api.GenericResult) string {
 			"  Host Sets:",
 		)
 		for _, m := range hostSetMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
+
+	if len(item.CredentialLibraries) > 0 {
+		ret = append(ret,
+			"  Credential Libraries:",
+		)
+		for _, m := range libraryMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
 				"",
@@ -464,11 +571,56 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 				}
 			}
 
+			var libraryMaps []map[string]interface{}
+			if len(item.Credentials) > 0 {
+				for _, cred := range item.Credentials {
+					m := map[string]interface{}{
+						"Credential Library ID":   cred.CredentialLibrary.Id,
+						"Credential Library Type": cred.CredentialLibrary.Type,
+						"Credential Store ID":     cred.CredentialLibrary.CredentialStoreId,
+						"Secret":                  cred.Secret,
+					}
+					if len(cred.CredentialLibrary.Name) > 0 {
+						m["Credential Library Name"] = cred.CredentialLibrary.Name
+						if l := len("Credential Library Name"); l > maxLength {
+							maxLength = l
+						}
+					}
+					if len(cred.CredentialLibrary.Description) > 0 {
+						m["Credential Library Description"] = cred.CredentialLibrary.Description
+						if l := len("Credential Library Description"); l > maxLength {
+							maxLength = l
+						}
+					}
+					libraryMaps = append(libraryMaps, m)
+				}
+				if l := len("Credential Library Type"); l > maxLength {
+					maxLength = l
+				}
+			}
+
 			ret = append(ret, "", "Target information:")
 			ret = append(ret,
 				// We do +2 because there is another +2 offset for host sets below
 				base.WrapMap(2, maxLength+2, nonAttributeMap),
 			)
+
+			ret = append(ret,
+				"",
+			)
+
+			if len(item.Credentials) > 0 {
+				ret = append(ret,
+					"  Credentials:",
+				)
+				for _, m := range libraryMaps {
+					ret = append(ret,
+						base.WrapMap(4, maxLength, m),
+						"",
+					)
+				}
+			}
+
 			c.UI.Output(base.WrapForHelpText(ret))
 			return true, nil
 
@@ -509,6 +661,17 @@ func exampleOutput() string {
 			{
 				Id:            "hsst_0987654321",
 				HostCatalogId: "hcst_1234567890",
+			},
+		},
+		CredentialLibraryIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
+		CredentialLibraries: []*targets.CredentialLibrary{
+			{
+				Id:                "clvlt_1234567890",
+				CredentialStoreId: "csvlt_1234567890",
+			},
+			{
+				Id:                "clvlt_098765421",
+				CredentialStoreId: "clvlt_0987654321",
 			},
 		},
 		Attributes: map[string]interface{}{

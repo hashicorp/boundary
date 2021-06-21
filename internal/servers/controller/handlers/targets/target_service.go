@@ -56,6 +56,9 @@ var (
 		action.AddHostSets,
 		action.SetHostSets,
 		action.RemoveHostSets,
+		action.AddCredentialLibraries,
+		action.SetCredentialLibraries,
+		action.RemoveCredentialLibraries,
 		action.AuthorizeSession,
 	}
 
