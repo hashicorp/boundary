@@ -789,7 +789,10 @@ func Test_WriteError(t *testing.T) {
 	require.NoError(t, err)
 	noId.Id = ""
 
-	testError := fmt.Errorf("%s: you lookin' at me? :%w", "test", event.ErrInvalidParameter)
+	testError := fakeError{
+		Msg:  "test",
+		Code: "code",
+	}
 
 	tests := []struct {
 		name            string
@@ -805,21 +808,21 @@ func Test_WriteError(t *testing.T) {
 		{
 			name:        "missing-caller",
 			ctx:         testCtx,
-			e:           testError,
+			e:           &testError,
 			noOperation: true,
 			noOutput:    true,
 		},
 		{
 			name:            "no-ctx-eventer-and-syseventer-not-initialized",
 			ctx:             context.Background(),
-			e:               testError,
+			e:               &testError,
 			errSinkFileName: c.ErrorEvents.Name(),
 			noOutput:        true,
 		},
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
-			e:    testError,
+			e:    &testError,
 			setup: func() error {
 				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
 			},
@@ -829,7 +832,7 @@ func Test_WriteError(t *testing.T) {
 		{
 			name: "no-info-id",
 			ctx:  testCtxNoInfoId,
-			e:    testError,
+			e:    &testError,
 			info: &event.RequestInfo{},
 			setup: func() error {
 				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
@@ -840,7 +843,7 @@ func Test_WriteError(t *testing.T) {
 		{
 			name:            "simple",
 			ctx:             testCtx,
-			e:               testError,
+			e:               &testError,
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
@@ -864,6 +867,7 @@ func Test_WriteError(t *testing.T) {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
 				require.NoError(err)
+				fmt.Printf("hello!  %v \n", string(b))
 
 				if tt.noOutput {
 					assert.Lenf(b, 0, "should be an empty file: %s", string(b))
@@ -874,44 +878,35 @@ func Test_WriteError(t *testing.T) {
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
 
-				actualJson, err := json.Marshal(gotError)
 				require.NoError(err)
 
-				errorValue := reflect.ValueOf(tt.e).Elem()
-				// have to get Elem() because it's a ptr
+				///// 
+				
+				//errorPayload becomes map[string]interface {}(map[string]interface {}{"Code":"code", "Msg":"test"})
+				errorPayload := gotError.Payload["error"]
 
-				var wantError eventJson
-				if !errorValue.FieldByName("Code").IsValid() {
-					wantError = eventJson{
-						CreatedAt: gotError.CreatedAt,
-						EventType: string(gotError.EventType),
+				errorValue := reflect.ValueOf(&errorPayload).Elem()
 
-						Payload: map[string]interface{}{
-							"error": map[string]interface{}{
-								"Code":    errorValue.FieldByName("Code").Uint(),
-								"Msg":     errorValue.FieldByName("Msg").String(),
-								"Op":      errorValue.FieldByName("Op").String(),
-								"Wrapped": errorValue.FieldByName("Wrapped").Interface(),
-							},
-							"id":      gotError.Payload["id"],
-							"op":      op,
-							"version": testErrorVersion,
-						},
-					}
+				//reflect.ValueOf needs ptr
 
+				holdError := map[string]interface{}{
+					"Code": errorValue.FieldByName("Code").String(),
+					"Msg":  errorValue.FieldByName("Msg").String(),
 				}
+				//Eventually assert they're the same somehow
+				assert.Equal(tt.e.Error(), holdError["Msg"])
 
-				if tt.info != nil && tt.info.Id != "" {
-					wantError.Payload["id"] = tt.info.Id
-				}
-				if tt.info != nil {
-					wantError.Payload["request_info"] = tt.info
-				}
-				wantJson, err := json.Marshal(wantError)
-				require.NoError(err)
-
-				assert.JSONEq(string(wantJson), string(actualJson))
 			}
 		})
 	}
+}
+
+//todo(s-christoff): break
+type fakeError struct {
+	Code string
+	Msg  string
+}
+
+func (f *fakeError) Error() string {
+	return f.Msg
 }
