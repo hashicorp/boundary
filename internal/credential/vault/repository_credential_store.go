@@ -359,7 +359,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 	cs = cs.clone()
 
-	updateToken := false
+	var validateToken, updateToken bool
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold(nameField, f):
@@ -369,11 +369,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		case strings.EqualFold(tlsSkipVerifyField, f):
 		case strings.EqualFold(caCertField, f):
 		case strings.EqualFold(vaultAddressField, f):
+			validateToken = true
 		case strings.EqualFold(certificateField, f):
 		case strings.EqualFold(certificateKeyField, f):
 		case strings.EqualFold(tokenField, f):
 			if len(cs.inputToken) != 0 {
 				updateToken = true
+				validateToken = true
 			}
 		default:
 			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
@@ -466,11 +468,11 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	var token *Token
-	if updateToken {
-		client, err := updatedStore.client()
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
-		}
+	client, err := updatedStore.client()
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get client for updated store"))
+	}
+	if validateToken {
 		tokenLookup, err := client.lookupToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("cannot lookup token for updated store"))
@@ -489,7 +491,8 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				db.NoRowsAffected,
 				errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 		}
-
+	}
+	if updateToken {
 		renewedToken, err := client.renewToken()
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to renew vault token"))
@@ -716,9 +719,9 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 	}
 
 	if rows > 0 {
-		// TODO(mgaffney) 06/2021: Schedule the token revoke job to run
-		// immediately once it is merged
-		// _ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevokeJobName, 0)
+		// Schedule token revocation and credential store cleanup jobs to run immediately
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, tokenRevocationJobName, 0)
+		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialStoreCleanupJobName, 0)
 	}
 	return rows, nil
 }
