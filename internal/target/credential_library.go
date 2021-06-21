@@ -75,7 +75,7 @@ func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 
 // A TargetLibrary represents the relationship between a target and a
 // credential library and includes the id of the credential store that the
-// library is a part of.
+// library is a part of and the library's name and description.
 type TargetLibrary struct {
 	*store.CredentialLibrary
 	StoreId string

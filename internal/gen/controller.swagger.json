@@ -4155,6 +4155,16 @@
           "type": "string",
           "description": "The ID of the Credential Library."
         },
+        "name": {
+          "type": "string",
+          "description": "Output only.  The name of the Credential Library.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Output only. The description of the Credential Library.",
+          "readOnly": true
+        },
         "credential_store_id": {
           "type": "string",
           "description": "Output only. The Credential Store to which this Credential Library belongs.",
@@ -4163,6 +4173,11 @@
         "purpose": {
           "type": "string",
           "description": "The library's purpose for this target."
+        },
+        "type": {
+          "type": "string",
+          "description": "Output only. The type of the credential library.",
+          "readOnly": true
         }
       }
     },
@@ -4234,9 +4249,33 @@
           "type": "string",
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
           "readOnly": true
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.SessionCredential"
+          },
+          "description": "Output only. The credentials for this session.",
+          "readOnly": true
         }
       },
       "description": "SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action."
+    },
+    "controller.api.resources.targets.v1.SessionCredential": {
+      "type": "object",
+      "properties": {
+        "credential_library": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary",
+          "description": "Output only. The library which generated this credential.",
+          "readOnly": true
+        },
+        "secret": {
+          "type": "object",
+          "description": "Output only. The secret of this credential.",
+          "readOnly": true
+        }
+      },
+      "description": "A credential for a session."
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",

@@ -190,18 +190,18 @@ type VaultCredentialStoreAttributes struct {
 	TlsServerName *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=tls_server_name,proto3" json:"tls_server_name,omitempty"`
 	// When set to true verification of the TLS certificate is disabled.
 	TlsSkipVerify *wrapperspb.BoolValue `protobuf:"bytes,50,opt,name=tls_skip_verify,proto3" json:"tls_skip_verify,omitempty"`
-	// Input only field. The current vault token used by this credential store for creating new credentials.
+	// Input only. The current vault token used by this credential store for creating new credentials.
 	Token *wrapperspb.StringValue `protobuf:"bytes,60,opt,name=token,proto3" json:"token,omitempty"`
-	// Output only field. The hmac value of the vault token used by this credential store.
+	// Output only. The hmac value of the vault token used by this credential store.
 	TokenHmac string `protobuf:"bytes,70,opt,name=token_hmac,proto3" json:"token_hmac,omitempty"`
-	// Input only field. A PEM encoded client certificate for vault with an
+	// Input only. A PEM encoded client certificate for vault with an
 	// optional private key included in the bundle.  It is an error to include
 	// the private key in this bundle as well as setting the certificate_key
 	// field.
 	ClientCertificate *wrapperspb.StringValue `protobuf:"bytes,80,opt,name=client_certificate,proto3" json:"client_certificate,omitempty"`
-	// Input only field. A client certificate private key.
+	// Input only. A client certificate private key.
 	ClientCertificateKey *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=client_certificate_key,proto3" json:"client_certificate_key,omitempty"`
-	// Output only field. The hmac value of the private key used by the credential store.
+	// Output only. The hmac value of the private key used by the credential store.
 	ClientCertificateKeyHmac string `protobuf:"bytes,100,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty"`
 }
 
