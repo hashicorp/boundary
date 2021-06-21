@@ -105,7 +105,8 @@ func SysEventer() *Eventer {
 	return sysEventer
 }
 
-// NewEventer creates a new Eventer using the config.  Supports options: WithNow
+// NewEventer creates a new Eventer using the config.  Supports options:
+// WithNow, WithSerializationLock, WithBroker
 func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
@@ -160,11 +161,15 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, errors.Wrap(err, "failed to register json node")
 	}
 
+	if opts.withSerializationLock == nil {
+		opts.withSerializationLock = new(sync.Mutex)
+	}
+
 	// serializedStderr will be shared among all StderrSinks so their output is not
 	// interwoven
 	serializedStderr := serializedWriter{
 		w: os.Stderr,
-		l: new(sync.Mutex),
+		l: opts.withSerializationLock,
 	}
 
 	// we need to keep track of all the Sink filenames to ensure they aren't

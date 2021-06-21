@@ -1,6 +1,7 @@
 package event
 
 import (
+	"sync"
 	"time"
 )
 
@@ -20,17 +21,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withId            string
-	withDetails       map[string]interface{}
-	withHeader        map[string]interface{}
-	withFlush         bool
-	withRequestInfo   *RequestInfo
-	withNow           time.Time
-	withRequest       *Request
-	withResponse      *Response
-	withAuth          *Auth
-	withEventer       *Eventer
-	withEventerConfig *EventerConfig
+	withId                string
+	withDetails           map[string]interface{}
+	withHeader            map[string]interface{}
+	withFlush             bool
+	withRequestInfo       *RequestInfo
+	withNow               time.Time
+	withRequest           *Request
+	withResponse          *Response
+	withAuth              *Auth
+	withEventer           *Eventer
+	withEventerConfig     *EventerConfig
+	withSerializationLock *sync.Mutex
 
 	withBroker          broker // test only option
 	withAuditSink       bool   // test only option
@@ -115,5 +117,14 @@ func WithEventer(e *Eventer) Option {
 func WithEventerConfig(c *EventerConfig) Option {
 	return func(o *options) {
 		o.withEventerConfig = c
+	}
+}
+
+// WithSerializationLock allows an optional eventer serialization lock.  This
+// option allows us to serialize writes to sink that uses a SerializedWriter and
+// an hclog.Logger because they can share the same mutex.
+func WithSerializationLock(l *sync.Mutex) Option {
+	return func(o *options) {
+		o.withSerializationLock = l
 	}
 }
