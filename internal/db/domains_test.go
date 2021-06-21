@@ -1045,3 +1045,80 @@ select wt_to_sentinel($1);
 		})
 	}
 }
+
+func TestDomain_not_null_columns_func(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_not_null_columns (
+  id bigint generated always as identity primary key,
+  one text,
+  two text,
+  three text
+);
+`
+		addTriggers = `
+create trigger
+  test_insert_not_null_columns
+before
+insert on test_not_null_columns
+  for each row execute procedure not_null_columns('one', 'two');
+`
+		dropTriggers = `drop trigger test_insert_not_null_columns on test_not_null_columns`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		stmt    string
+		wantErr bool
+	}{
+		{
+			name:    "null one",
+			stmt:    "insert into test_not_null_columns (one, two, three) values (null, 'two', 'three');",
+			wantErr: true,
+		},
+		{
+			name:    "null two",
+			stmt:    "insert into test_not_null_columns (one, two, three) values ('one', null, 'three');",
+			wantErr: true,
+		},
+		{
+			name:    "all null",
+			stmt:    "insert into test_not_null_columns (one, two, three) values (null, null, null);",
+			wantErr: true,
+		},
+		{
+			name:    "null three",
+			stmt:    "insert into test_not_null_columns (one, two, three) values ('one', 'two', null);",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+
+			_, err = db.Exec(addTriggers)
+			require.NoError(err)
+
+			_, err = db.Exec(tt.stmt)
+
+			if !tt.wantErr {
+				assert.NoError(err)
+				return
+			}
+			require.Error(err)
+
+			// Drop trigger and run insert again, it should now insert successfully
+			_, err = db.Exec(dropTriggers)
+			assert.NoError(err)
+
+			_, err = db.Exec(tt.stmt)
+			assert.NoError(err)
+		})
+	}
+}
