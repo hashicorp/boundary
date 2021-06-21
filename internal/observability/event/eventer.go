@@ -115,12 +115,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	// if there are no sinks in config, then we'll default to just one stderr
 	// sink.
 	if len(c.Sinks) == 0 {
-		c.Sinks = append(c.Sinks, SinkConfig{
-			Name:       "default",
-			EventTypes: []Type{EveryType},
-			Format:     JSONSinkFormat,
-			SinkType:   StderrSink,
-		})
+		c.Sinks = append(c.Sinks, DefaultSink())
 	}
 
 	if err := c.Validate(); err != nil {
@@ -256,7 +251,6 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, errors.New(errors.InvalidParameter, op, "observation events enabled but no sink defined for it")
 	}
 
-	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
@@ -281,9 +275,8 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to register audit pipeline")
 		}
-		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
-	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
+
 	for _, p := range observationPipelines {
 		gatedFilterNode := eventlogger.GatedFilter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
@@ -308,7 +301,6 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to register observation pipeline")
 		}
-		observationNodeIds = append(observationNodeIds, p.sinkId)
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
@@ -334,6 +326,23 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 
 	return e, nil
+}
+
+func DefaultEventerConfig() *EventerConfig {
+	return &EventerConfig{
+		AuditEnabled:        false,
+		ObservationsEnabled: true,
+		Sinks:               []SinkConfig{DefaultSink()},
+	}
+}
+
+func DefaultSink() SinkConfig {
+	return SinkConfig{
+		Name:       "default",
+		EventTypes: []Type{EveryType},
+		Format:     JSONSinkFormat,
+		SinkType:   StderrSink,
+	}
 }
 
 // writeObservation writes/sends an Observation event.
