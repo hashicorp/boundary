@@ -137,6 +137,11 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.SerializationLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
+	}
+
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
