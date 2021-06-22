@@ -601,7 +601,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					}
 					switch cred.CredentialLibrary.Type {
 					case "vault":
-						cm, err := targets.VaultSecretMap(cred.Secret)
+						cm, err := targets.DecodeJsonSecret(cred.Secret)
 						if err != nil {
 							c.UI.Error("Unable to parse vault credential. Printing base 64 encoded secret instead.")
 							c.UI.Error(err.Error())

@@ -1911,7 +1911,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	gotCred := got.Credentials[0]
 	assert.NotEmpty(t, gotCred.Secret)
-	dSec, err := targetsapi.VaultSecretMap(gotCred.Secret)
+	dSec, err := targetsapi.DecodeJsonSecret(gotCred.Secret)
 	require.NoError(t, err)
 	for k, v := range wantSecret {
 		gotV, ok := dSec[k]
