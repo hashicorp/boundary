@@ -619,13 +619,15 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 							return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
 						}
 						secretStr = dst.String()
-					default:							// If it's not Vault, and not another known type,
+					default:
+						// If it's not Vault, and not another known type,
 						// print out the base64-encoded value and leave it
 						// to the user to sort out.
 						secretStr = fmt.Sprintf("      %s", secretStr)
 					}
 					ret = append(ret,
-						fmt.Sprintf("    Secret:                         \n%s", secretStr),
+						fmt.Sprintf("    Secret:"),
+						fmt.Sprintf("      %s", secretStr),
 						"",
 					)
 				}
