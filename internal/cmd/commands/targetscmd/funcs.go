@@ -1,6 +1,9 @@
 package targetscmd
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -573,7 +576,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 			ret = append(ret, "", "Target information:")
 			ret = append(ret,
-				// We do +2 because there is another +2 offset for host sets below
+				// We do +2 because there is another +2 offset for credentials below
 				base.WrapMap(2, maxLength+2, nonAttributeMap),
 			)
 
@@ -599,24 +602,30 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						ret = append(ret,
 							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
 					}
+					var secretStr string
 					switch cred.CredentialLibrary.Type {
 					case "vault":
-						cm, err := targets.DecodeJsonSecret(cred.Secret)
+						// If it's Vault, the result will be JSON, except in
+						// specific circumstances that aren't used for
+						// credential fetching. So we can take the bytes
+						// as-is (after base64-decoding), but we'll format
+						// it nicely.
+						in, err := base64.StdEncoding.DecodeString(cred.Secret)
 						if err != nil {
-							c.UI.Error("Unable to parse vault credential. Printing base 64 encoded secret instead.")
-							c.UI.Error(err.Error())
-							ret = append(ret,
-								fmt.Sprintf("    Secret:                         %s", cred.Secret))
-							break
+							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
 						}
-						ret = append(ret,
-							"    Secret:",
-							base.WrapMap(6, 6, cm))
-					default:
-						fmt.Sprintf("    Secret:                         %s", cred.Secret)
+						dst := new(bytes.Buffer)
+						if err := json.Indent(dst, in, "", "      "); err != nil {
+							return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
+						}
+						secretStr = dst.String()
+					default:							// If it's not Vault, and not another known type,
+						// print out the base64-encoded value and leave it
+						// to the user to sort out.
+						secretStr = fmt.Sprintf("      %s", secretStr)
 					}
-
 					ret = append(ret,
+						fmt.Sprintf("    Secret:                         \n%s", secretStr),
 						"",
 					)
 				}
