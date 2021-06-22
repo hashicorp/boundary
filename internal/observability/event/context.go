@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"fmt"
+
+	"github.com/hashicorp/go-hclog"
 )
 
 type key int
@@ -115,7 +117,8 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			fmt.Errorf("%s: no eventer available to write error: %s", op, e)
+			logger := hclog.New(nil)
+			logger.Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
 			return
 		}
 	}
@@ -123,17 +126,18 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if opts.withRequestInfo == nil {
 		var err error
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
-			fmt.Errorf("%s: unable to process context options to write error: %w", op, e)
+			eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
+			eventer.logger.Error(fmt.Sprintf("%s: unable to process context options to write error: %v", op, e))
 			return
 		}
 	}
 	ev, err := newError(caller, e, opt...)
 	if err != nil {
-		fmt.Errorf("%s: unable to create new error to write error: %w", op, e)
+		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %v", op, e))
 		return
 	}
 	if err := eventer.writeError(ctx, ev); err != nil {
-		fmt.Errorf("%s: unable to write error: %w", op, e)
+		eventer.logger.Error(fmt.Sprintf("%s: unable to write error: %v", op, e))
 		return
 	}
 }

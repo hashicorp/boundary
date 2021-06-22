@@ -68,7 +68,6 @@ func TestEventer_retrySend(t *testing.T) {
 				return eventlogger.Status{
 					Warnings: []error{fmt.Errorf("%s: not found: %w", "TestEventer_retrySend", ErrRecordNotFound)},
 				}, nil
-
 			},
 		},
 		{

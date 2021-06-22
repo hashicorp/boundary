@@ -122,7 +122,6 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 		}
 		if gated.Type != string(apiRequest) {
 			return "", nil, fmt.Errorf("%s: event %d has an invalid type: %s != %s: %w", op, i, gated.Type, string(AuditType), ErrInvalidParameter)
-
 		}
 		if gated.RequestInfo != nil {
 			payload.RequestInfo = gated.RequestInfo

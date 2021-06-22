@@ -72,7 +72,7 @@ func Test_NewRequestInfoContext(t *testing.T) {
 			ctx:             context.Background(),
 			requestInfo:     testInfoMissingId,
 			wantErrIs:       event.ErrInvalidParameter,
-			wantErrContains: "missing request",
+			wantErrContains: "missing request info id",
 		},
 		{
 			name:        "valid",
