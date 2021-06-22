@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -15,13 +14,15 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testSysEventerLock sync.Mutex
+// TestGetEventerConfig is a test accessor for the eventer's config
+func TestGetEventerConfig(t *testing.T, e *Eventer) EventerConfig {
+	t.Helper()
+	return e.conf
+}
 
 // TestResetSysEventer will reset event.syseventer to an uninitialized state.
 func TestResetSystEventer(t *testing.T) {
 	t.Helper()
-	testSysEventerLock.Lock()
-	defer testSysEventerLock.Unlock()
 	sysEventerLock.Lock()
 	defer sysEventerLock.Unlock()
 	sysEventer = nil
