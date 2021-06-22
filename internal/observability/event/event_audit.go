@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 )
 
@@ -35,14 +34,14 @@ type audit struct {
 func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 	const op = "event.newAudit"
 	if fromOperation == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing from operation")
+		return nil, fmt.Errorf("%s: missing from operation: %w", op, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
 		opts.withId, err = newId(string(AuditType))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 	var dtm time.Time
@@ -65,7 +64,7 @@ func newAudit(fromOperation Op, opt ...Option) (*audit, error) {
 		Flush:       opts.withFlush,
 	}
 	if err := a.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return a, nil
 }
@@ -76,7 +75,7 @@ func (a *audit) EventType() string { return string(AuditType) }
 func (a *audit) validate() error {
 	const op = "event.(audit).validate"
 	if a.Id == "" {
-		return errors.New(errors.InvalidParameter, op, "missing id")
+		return fmt.Errorf("%s: missing id: %w", op, ErrInvalidParameter)
 	}
 	return nil
 }
@@ -98,31 +97,31 @@ func (a *audit) FlushEvent() bool {
 func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, interface{}, error) {
 	const op = "event.(audit).ComposedFrom"
 	if len(events) == 0 {
-		return "", nil, errors.New(errors.InvalidParameter, op, "missing events")
+		return "", nil, fmt.Errorf("%s: missing events: %w", op, ErrInvalidParameter)
 	}
 	var validId string
 	payload := audit{}
 	for i, v := range events {
 		gated, ok := v.Payload.(*audit)
 		if !ok {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d is not an audit payload", i))
+			return "", nil, fmt.Errorf("%s: event %d is not an audit payload: %w", op, i, ErrInvalidParameter)
 		}
 		if gated.Id == "" {
 			// can't really happen since it has to have an id to be gated, but
 			// I'll add this check in the name of completeness
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d: id is required", i))
+			return "", nil, fmt.Errorf("%s: event %d: id is required: %w", op, i, ErrInvalidParameter)
 		}
 		if validId == "" {
 			validId = gated.Id
 		}
 		if gated.Id != validId {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid id: %s != %s", i, gated.Id, validId))
+			return "", nil, fmt.Errorf("%s: event %d has an invalid id: %s != %s: %w", op, i, gated.Id, validId, ErrInvalidParameter)
 		}
 		if gated.Version != auditVersion {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid version: %s != %s", i, gated.Version, auditVersion))
+			return "", nil, fmt.Errorf("%s: event %d has an invalid version: %s != %s: %w", op, i, gated.Version, auditVersion, ErrInvalidParameter)
 		}
 		if gated.Type != string(apiRequest) {
-			return "", nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("event %d has an invalid type: %s != %s", i, gated.Type, string(AuditType)))
+			return "", nil, fmt.Errorf("%s: event %d has an invalid type: %s != %s: %w", op, i, gated.Type, string(AuditType), ErrInvalidParameter)
 		}
 		if gated.RequestInfo != nil {
 			payload.RequestInfo = gated.RequestInfo

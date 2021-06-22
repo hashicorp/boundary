@@ -2,8 +2,6 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
@@ -19,6 +17,6 @@ func (t SinkType) validate() error {
 	case StderrSink, FileSink:
 		return nil
 	default:
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("'%s' is not a valid sink type", t))
+		return fmt.Errorf("%s: '%s' is not a valid sink type: %w", op, t, ErrInvalidParameter)
 	}
 }

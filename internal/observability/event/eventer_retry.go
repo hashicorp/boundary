@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-multierror"
 )
@@ -41,10 +40,10 @@ type sendHandler func() (eventlogger.Status, error)
 func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, handler sendHandler) error {
 	const op = "event.(Eventer).retrySend"
 	if backOff == nil {
-		return errors.New(errors.InvalidParameter, op, "missing backoff")
+		return fmt.Errorf("%s: missing backoff: %w", op, ErrInvalidParameter)
 	}
 	if handler == nil {
-		return errors.New(errors.InvalidParameter, op, "missing handler")
+		return fmt.Errorf("%s: missing handler: %w", op, ErrInvalidParameter)
 	}
 	success := false
 	var retryErrors error
@@ -52,7 +51,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 	info := retryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
-			retryErrors = multierror.Append(retryErrors, errors.New(errors.MaxRetries, op, fmt.Sprintf("Too many retries: reached max of %d", retries)))
+			retryErrors = multierror.Append(retryErrors, fmt.Errorf("%s: reached max of %d: %w", op, retries, ErrMaxRetries))
 			return retryErrors
 		}
 		var err error
@@ -65,7 +64,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 			e.logger.Error("unable to send event", "operation", op, "warning", retryWarnings)
 		}
 		if err != nil {
-			retryErrors = multierror.Append(retryErrors, errors.Wrap(err, op))
+			retryErrors = multierror.Append(retryErrors, fmt.Errorf("%s: %w", op, err))
 			d := backOff.duration(attempts)
 			info.retries++
 			info.backoff = info.backoff + d
@@ -76,7 +75,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 		break
 	}
 	if !success {
-		return errors.Wrap(retryErrors, op, errors.WithMsg("failed to send event"))
+		return fmt.Errorf("%s: failed to send event: %w", op, retryErrors)
 	}
 	return nil
 }

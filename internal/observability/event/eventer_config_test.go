@@ -3,7 +3,6 @@ package event
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +11,7 @@ func TestEventerConfig_validate(t *testing.T) {
 	tests := []struct {
 		name            string
 		c               EventerConfig
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
@@ -24,7 +23,7 @@ func TestEventerConfig_validate(t *testing.T) {
 					},
 				},
 			},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "is not a valid sink type",
 		},
 		{
@@ -37,9 +36,9 @@ func TestEventerConfig_validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			err := tt.c.Validate()
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch, err)
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}

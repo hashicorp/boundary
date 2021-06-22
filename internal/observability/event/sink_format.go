@@ -2,8 +2,6 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
@@ -18,6 +16,6 @@ func (f SinkFormat) Validate() error {
 	case JSONSinkFormat:
 		return nil
 	default:
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("'%s' is not a valid sink format", f))
+		return fmt.Errorf("%s: '%s' is not a valid sink format: %w", op, f, ErrInvalidParameter)
 	}
 }

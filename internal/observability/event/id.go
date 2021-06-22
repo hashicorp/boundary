@@ -1,15 +1,16 @@
 package event
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 func newId(prefix string) (string, error) {
 	const op = "event.newId"
 	id, err := db.NewPublicId(prefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	return id, nil
 }

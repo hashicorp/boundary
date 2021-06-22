@@ -2,8 +2,6 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // EventerConfig supplies all the configuration needed to create/config an Eventer.
@@ -19,7 +17,7 @@ func (c *EventerConfig) Validate() error {
 	const op = "event.(EventerConfig).validate"
 	for i, s := range c.Sinks {
 		if err := s.validate(); err != nil {
-			return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("sink %d is invalid", i)))
+			return fmt.Errorf("%s: sink %d is invalid: %w", op, i, err)
 		}
 	}
 	return nil

@@ -2,8 +2,6 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // Type represents the event's type
@@ -22,6 +20,6 @@ func (et Type) validate() error {
 	case EveryType, ObservationType, AuditType, ErrorType:
 		return nil
 	default:
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("'%s' is not a valid event type", et))
+		return fmt.Errorf("%s: '%s' is not a valid event type: %w", op, et, ErrInvalidParameter)
 	}
 }
