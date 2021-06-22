@@ -91,7 +91,7 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Create test server, update default port on target
-	ts := newTestTcpServer(require, logger)
+	ts := newTestTcpServer(t, logger)
 	require.NotNil(t, ts)
 	defer ts.Close()
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
@@ -99,27 +99,27 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := newTestSession(ctx, require, tcl, "ttcp_1234567890")
-	sConn := sess.Connect(ctx, t, require, logger)
+	sess := newTestSession(ctx, t, tcl, "ttcp_1234567890")
+	sConn := sess.Connect(ctx, t, logger)
 
 	// Run initial send/receive test, make sure things are working
-	sConn.TestSendRecvAll(require)
+	sConn.TestSendRecvAll(t)
 
 	// Kill the link
 	proxy.Pause()
 
 	// Run again, ensure connection is dead
-	sConn.TestSendRecvFail(require)
+	sConn.TestSendRecvFail(t)
 
 	// Assert we have no connections left (should be default behavior)
-	sess.TestNoConnectionsLeft(require)
+	sess.TestNoConnectionsLeft(t)
 
 	// Resume the connection, and reconnect.
 	proxy.Resume()
-	time.Sleep(time.Second * 10)                                // Sleep to wait for worker to report back as healthy
-	sess = newTestSession(ctx, require, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
-	sConn = sess.Connect(ctx, t, require, logger)
-	sConn.TestSendRecvAll(require)
+	time.Sleep(time.Second * 10)                          // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	sConn = sess.Connect(ctx, t, logger)
+	sConn.TestSendRecvAll(t)
 }
 
 func TestWorkerSessionCleanupMultiController(t *testing.T) {
@@ -211,7 +211,7 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Create test server, update default port on target
-	ts := newTestTcpServer(require, logger)
+	ts := newTestTcpServer(t, logger)
 	require.NotNil(ts)
 	defer ts.Close()
 	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
@@ -219,34 +219,34 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := newTestSession(ctx, require, tcl, "ttcp_1234567890")
-	sConn := sess.Connect(ctx, t, require, logger)
+	sess := newTestSession(ctx, t, tcl, "ttcp_1234567890")
+	sConn := sess.Connect(ctx, t, logger)
 
 	// Run initial send/receive test, make sure things are working
-	sConn.TestSendRecvAll(require)
+	sConn.TestSendRecvAll(t)
 
 	// Kill connection to first controller, and run test again, should
 	// pass, deferring to other controller.
 	p1.Pause()
-	sConn.TestSendRecvAll(require)
+	sConn.TestSendRecvAll(t)
 
 	// Resume first controller, pause second. This one should work too.
 	p1.Resume()
 	p2.Pause()
-	sConn.TestSendRecvAll(require)
+	sConn.TestSendRecvAll(t)
 
 	// Kill the first controller connection again. This one should fail
 	// due to lack of any connection.
 	p1.Pause()
-	sConn.TestSendRecvFail(require)
+	sConn.TestSendRecvFail(t)
 
 	// Finally resume both, try again. Should behave as per normal.
 	p1.Resume()
 	p2.Resume()
-	time.Sleep(time.Second * 10)                                // Sleep to wait for worker to report back as healthy
-	sess = newTestSession(ctx, require, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
-	sConn = sess.Connect(ctx, t, require, logger)
-	sConn.TestSendRecvAll(require)
+	time.Sleep(time.Second * 10)                          // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	sConn = sess.Connect(ctx, t, logger)
+	sConn.TestSendRecvAll(t)
 }
 
 // testSession represents an authorized session.
@@ -261,10 +261,11 @@ type testSession struct {
 // necessary to initialize.
 func newTestSession(
 	ctx context.Context,
-	require *require.Assertions,
+	t *testing.T,
 	tcl *targets.Client,
 	targetId string,
 ) *testSession {
+	require := require.New(t)
 	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
 	require.NoError(err)
 	require.NotNil(sar)
@@ -313,7 +314,8 @@ func newTestSession(
 // connecting to the stored workerAddr with the configured transport.
 //
 // The returned (wrapped) net.Conn should be ready for communication.
-func (s *testSession) connect(ctx context.Context, require *require.Assertions) net.Conn {
+func (s *testSession) connect(ctx context.Context, t *testing.T) net.Conn {
+	require := require.New(t)
 	conn, resp, err := websocket.Dial(
 		ctx,
 		fmt.Sprintf("wss://%s/v1/proxy", s.workerAddr),
@@ -354,8 +356,8 @@ func (s *testSession) connect(ctx context.Context, require *require.Assertions) 
 }
 
 // TestNoConnectionsLeft asserts that there are no connections left.
-func (s *testSession) TestNoConnectionsLeft(require *require.Assertions) {
-	require.Zero(s.connectionsLeft)
+func (s *testSession) TestNoConnectionsLeft(t *testing.T) {
+	require.Zero(t, s.connectionsLeft)
 }
 
 // testSessionConnection abstracts a connected session.
@@ -369,10 +371,10 @@ type testSessionConnection struct {
 func (s *testSession) Connect(
 	ctx context.Context,
 	t *testing.T, // Just to add cleanup
-	require *require.Assertions,
 	logger hclog.Logger,
 ) *testSessionConnection {
-	conn := s.connect(ctx, require)
+	require := require.New(t)
+	conn := s.connect(ctx, t)
 	require.NotNil(conn)
 	t.Cleanup(func() {
 		conn.Close()
@@ -392,7 +394,8 @@ func (s *testSession) Connect(
 // The test is a simple sequence number, ticking up every second to
 // max. The passed in conn is expected to copy whatever it is
 // received.
-func (c *testSessionConnection) testSendRecv(require *require.Assertions) bool {
+func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
+	require := require.New(t)
 	for i := uint32(0); i < testSendRecvSendMax; i++ {
 		// Shuttle over the sequence number as base64.
 		err := binary.Write(c.conn, binary.LittleEndian, i)
@@ -430,14 +433,14 @@ func (c *testSessionConnection) testSendRecv(require *require.Assertions) bool {
 
 // TestSendRecvAll asserts that we were able to send/recv all pings
 // over the test connection.
-func (c *testSessionConnection) TestSendRecvAll(require *require.Assertions) {
-	require.True(c.testSendRecv(require))
+func (c *testSessionConnection) TestSendRecvAll(t *testing.T) {
+	require.True(t, c.testSendRecv(t))
 }
 
 // TestSendRecvFail asserts that we were able to send/recv all pings
 // over the test connection.
-func (c *testSessionConnection) TestSendRecvFail(require *require.Assertions) {
-	require.False(c.testSendRecv(require))
+func (c *testSessionConnection) TestSendRecvFail(t *testing.T) {
+	require.False(t, c.testSendRecv(t))
 }
 
 type testTcpServer struct {
@@ -495,7 +498,8 @@ func (ts *testTcpServer) run() {
 	}
 }
 
-func newTestTcpServer(require *require.Assertions, logger hclog.Logger) *testTcpServer {
+func newTestTcpServer(t *testing.T, logger hclog.Logger) *testTcpServer {
+	require := require.New(t)
 	ts := &testTcpServer{
 		logger: logger,
 		conns:  make(map[string]net.Conn),
