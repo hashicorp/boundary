@@ -50,7 +50,19 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-host-sets", "set-host-sets", "remove-host-sets", "authorize-session"}
+var testAuthorizedActions = []string{
+	"no-op",
+	"read",
+	"update",
+	"delete",
+	"add-host-sets",
+	"set-host-sets",
+	"remove-host-sets",
+	"add-credential-libraries",
+	"set-credential-libraries",
+	"remove-credential-libraries",
+	"authorize-session",
+}
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
