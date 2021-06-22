@@ -62,21 +62,21 @@ func Test_NewRequestInfoContext(t *testing.T) {
 		{
 			name:            "missing-ctx",
 			requestInfo:     testInfo,
-			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "event.NewRequestInfoContext: missing context: invalid parameter",
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing context",
 		},
 		{
 			name:            "missing-request-info",
 			ctx:             context.Background(),
-			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "event.NewRequestInfoContext: missing request info: invalid parameter",
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing request info",
 		},
 		{
 			name:            "missing-request-info-id",
 			ctx:             context.Background(),
 			requestInfo:     testInfoMissingId,
-			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "event.NewRequestInfoContext: missing request info id: invalid parameter",
+			wantErrIs:       event.ErrInvalidParameter,
+			wantErrContains: "missing request",
 		},
 		{
 			name:        "valid",
@@ -91,9 +91,9 @@ func Test_NewRequestInfoContext(t *testing.T) {
 			if tt.wantErrIs != nil {
 				require.Errorf(err, "should have gotten an error")
 				assert.Nilf(ctx, "context should be nil")
-				assert.Contains(err, tt.wantErrIs, fmt.Sprintf("wanted %v, got %v", tt.wantErrIs, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
-					assert.Contains(err.Error(), tt.wantErrContains, fmt.Sprintf("wanted %v, got %v", tt.wantErrContains, err.Error()))
+					assert.Contains(err.Error(), tt.wantErrContains)
 				}
 				return
 			}
@@ -341,7 +341,7 @@ func Test_WriteObservation(t *testing.T) {
 		{
 			name:               "missing-ctx",
 			observationPayload: testPayloads,
-			wantErrIs:          ErrInvalidParameter,
+			wantErrIs:          event.ErrInvalidParameter,
 			wantErrContains:    "missing context",
 		},
 		{
@@ -349,7 +349,7 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:                testCtx,
 			noOperation:        true,
 			observationPayload: testPayloads,
-			wantErrIs:          ErrInvalidParameter,
+			wantErrIs:          event.ErrInvalidParameter,
 			wantErrContains:    "missing operation",
 		},
 		{
@@ -359,14 +359,14 @@ func Test_WriteObservation(t *testing.T) {
 			observationPayload: []observationPayload{
 				{},
 			},
-			wantErrIs:       ErrInvalidParameter,
+			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "specify either header or details options",
 		},
 		{
 			name:               "no-ctx-eventer-and-syseventer-not-initialized",
 			ctx:                context.Background(),
 			observationPayload: testPayloads,
-			wantErrIs:          ErrInvalidParameter,
+			wantErrIs:          event.ErrInvalidParameter,
 			wantErrContains:    "missing both context and system eventer",
 		},
 		{
@@ -866,7 +866,6 @@ func Test_WriteError(t *testing.T) {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
 				b, err := ioutil.ReadFile(tt.errSinkFileName)
 				require.NoError(err)
-				fmt.Printf("hello!  %v \n", string(b))
 
 				if tt.noOutput {
 					assert.Lenf(b, 0, "should be an empty file: %s", string(b))
@@ -890,7 +889,6 @@ func Test_WriteError(t *testing.T) {
 	}
 }
 
-//todo(s-christoff): break
 type fakeError struct {
 	Code string
 	Msg  string

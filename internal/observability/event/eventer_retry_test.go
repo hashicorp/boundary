@@ -55,10 +55,10 @@ func TestEventer_retrySend(t *testing.T) {
 			retries: 3,
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
-				return eventlogger.Status{}, fmt.Errorf("%s: will never work: %w", "TestEventer_retrySend", ErrInvalidParameter)
+				return eventlogger.Status{}, fmt.Errorf("%s: will never work: %w", "TestEventer_retrySend", ErrMaxRetries)
 			},
 			wantErrIs:      ErrMaxRetries,
-			wantErrContain: "Too many retries",
+			wantErrContain: "too many retries",
 		},
 		{
 			name:    "success-with-warnings",
@@ -68,6 +68,7 @@ func TestEventer_retrySend(t *testing.T) {
 				return eventlogger.Status{
 					Warnings: []error{fmt.Errorf("%s: not found: %w", "TestEventer_retrySend", ErrRecordNotFound)},
 				}, nil
+
 			},
 		},
 		{
@@ -94,7 +95,7 @@ func TestEventer_retrySend(t *testing.T) {
 				case true:
 					matched := false
 					for _, e := range multi.WrappedErrors() {
-						if assert.ErrorIs(tt.wantErrIs, e) {
+						if assert.ErrorIs(e, tt.wantErrIs) {
 							if tt.wantErrContain != "" {
 								assert.Contains(err.Error(), tt.wantErrContain)
 							}

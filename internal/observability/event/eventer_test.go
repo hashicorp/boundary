@@ -108,7 +108,7 @@ func TestEventer_writeObservation(t *testing.T) {
 			name:        "send-fails",
 			broker:      &testMockBroker{errorOnSend: fmt.Errorf("%s: no msg: %w", "test", ErrIo)},
 			observation: testObservation,
-			wantErrIs:   ErrIo,
+			wantErrIs:   ErrMaxRetries,
 		},
 		{
 			name:        "success",
