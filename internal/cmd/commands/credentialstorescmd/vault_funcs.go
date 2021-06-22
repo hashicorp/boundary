@@ -166,7 +166,7 @@ func (c *VaultCommand) extraVaultHelpFunc(helpMap map[string]func() string) stri
 			"",
 			"  Create a vault-type credential store. Example:",
 			"",
-			`    $ boundary credential-stores create vault -vault-address "http://localhost:55002" -vault-token"s.s0m3t0k3n"`,
+			`    $ boundary credential-stores create vault -vault-address "http://localhost:8200" -vault-token "s.s0m3t0k3n"`,
 			"",
 			"",
 		})

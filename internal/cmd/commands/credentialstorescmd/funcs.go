@@ -33,7 +33,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Create a vault-type credential store:",
 			"",
-			`      $ boundary credential-stores create vault -vault-address "http://localhost:55002" -vault-token"s.s0m3t0k3n"`,
+			`      $ boundary credential-stores create vault -vault-address "http://localhost:8200" -vault-token "s.s0m3t0k3n"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
