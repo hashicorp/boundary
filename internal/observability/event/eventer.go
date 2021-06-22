@@ -213,10 +213,10 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		}
 	}
 	if c.AuditEnabled && len(auditPipelines) == 0 {
-		return nil, fmt.Errorf("%s: audit event enabled but no sink defined for it: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: audit events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 	if c.ObservationsEnabled && len(observationPipelines) == 0 {
-		return nil, fmt.Errorf("%s: observation event enabled but no sink defined for it: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: observation events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))

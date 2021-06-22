@@ -123,20 +123,17 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if opts.withRequestInfo == nil {
 		var err error
 		if opt, err = addCtxOptions(ctx, opt...); err != nil {
-			fmt.Errorf("%s: %w", op, err)
-			fmt.Errorf("%s: unable to process context options to write error: %s", op, e)
+			fmt.Errorf("%s: unable to process context options to write error: %w", op, e)
 			return
 		}
 	}
 	ev, err := newError(caller, e, opt...)
 	if err != nil {
-		fmt.Errorf("%s: %w", op, err)
-		fmt.Errorf("%s: unable to create new error to write error: %s", op, e)
+		fmt.Errorf("%s: unable to create new error to write error: %w", op, e)
 		return
 	}
 	if err := eventer.writeError(ctx, ev); err != nil {
-		fmt.Errorf("%s: %w", op, err)
-		fmt.Errorf("%s: unable to write error: %s", op, e)
+		fmt.Errorf("%s: unable to write error: %w", op, e)
 		return
 	}
 }

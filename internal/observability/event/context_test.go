@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"errors"
-
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
@@ -25,8 +23,6 @@ import (
 )
 
 const apiRequest = "APIRequest"
-
-var ErrInvalidParameter = errors.New("invalid parameter")
 
 const (
 	testAuditVersion       = "v0.1"
@@ -878,11 +874,11 @@ func Test_WriteError(t *testing.T) {
 
 				require.NoError(err)
 
-				holdError := fakeError{
+				actualError := fakeError{
 					Msg:  gotError.Payload["error"].(map[string]interface{})["Msg"].(string),
 					Code: gotError.Payload["error"].(map[string]interface{})["Code"].(string),
 				}
-				assert.Equal(tt.e, &holdError)
+				assert.Equal(tt.e, &actualError)
 
 			}
 		})
