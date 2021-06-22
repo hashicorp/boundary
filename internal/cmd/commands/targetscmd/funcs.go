@@ -1,6 +1,9 @@
 package targetscmd
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -573,24 +576,24 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 			ret = append(ret, "", "Target information:")
 			ret = append(ret,
-				// We do +2 because there is another +2 offset for host sets below
+				// We do +2 because there is another +2 offset for credentials below
 				base.WrapMap(2, maxLength+2, nonAttributeMap),
 			)
 
-			ret = append(ret,
-				"",
-			)
 			if len(item.Credentials) > 0 {
 				ret = append(ret,
+					"",
 					"  Credentials:",
 				)
 
 				for _, cred := range item.Credentials {
-					ret = append(ret,
-						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
-						fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type),
-						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId),
-						fmt.Sprintf("    Secret:                         %s", cred.Secret))
+					if true {
+						ret = append(ret,
+							"",
+							fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
+							fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type),
+							fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId))
+					}
 
 					if len(cred.CredentialLibrary.Name) > 0 {
 						ret = append(ret,
@@ -601,9 +604,36 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
 					}
 
-					ret = append(ret,
-						"",
-					)
+					if true {
+						var secretStr string
+						switch cred.CredentialLibrary.Type {
+						case "vault":
+							// If it's Vault, the result will be JSON, except in
+							// specific circumstances that aren't used for
+							// credential fetching. So we can take the bytes
+							// as-is (after base64-decoding), but we'll format
+							// it nicely.
+							in, err := base64.StdEncoding.DecodeString(cred.Secret)
+							if err != nil {
+								return false, fmt.Errorf("Error decoding secret as base64: %w", err)
+							}
+							dst := new(bytes.Buffer)
+							if err := json.Indent(dst, in, "", "      "); err != nil {
+								return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
+							}
+							secretStr = dst.String()
+
+						default:
+							// If it's not Vault, and not another known type,
+							// print out the base64-encoded value and leave it
+							// to the user to sort out.
+							secretStr = fmt.Sprintf("      %s", secretStr)
+						}
+						ret = append(ret,
+							fmt.Sprintf("    Secret:                         \n%s", secretStr),
+							"",
+						)
+					}
 				}
 			}
 

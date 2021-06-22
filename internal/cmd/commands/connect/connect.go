@@ -90,6 +90,7 @@ type Command struct {
 
 	Func string
 
+	sessionAuthz     *targets.SessionAuthorization
 	sessionAuthzData *targetspb.SessionAuthorizationData
 
 	connWg             *sync.WaitGroup
@@ -103,6 +104,8 @@ type Command struct {
 	proxyCtx           context.Context
 	proxyCancel        context.CancelFunc
 	outputJsonErrors   bool
+
+	cleanupFuncs []func() error
 }
 
 func (c *Command) Synopsis() string {
@@ -350,9 +353,9 @@ func (c *Command) Run(args []string) (retCode int) {
 		if authzString[0] == '{' {
 			// Attempt to decode the JSON output of an authorize-session call
 			// and pull the token out of there
-			sessionAuthz := new(targets.SessionAuthorization)
-			if err := json.Unmarshal([]byte(authzString), sessionAuthz); err == nil {
-				authzString = sessionAuthz.AuthorizationToken
+			c.sessionAuthz = new(targets.SessionAuthorization)
+			if err := json.Unmarshal([]byte(authzString), c.sessionAuthz); err == nil {
+				authzString = c.sessionAuthz.AuthorizationToken
 			}
 		}
 
@@ -387,7 +390,8 @@ func (c *Command) Run(args []string) (retCode int) {
 			c.PrintCliError(fmt.Errorf("Error trying to authorize a session against target: %w", err))
 			return base.CommandCliError
 		}
-		authzString = sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
+		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
+		authzString = c.sessionAuthz.AuthorizationToken
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
@@ -616,6 +620,12 @@ func (c *Command) Run(args []string) (retCode int) {
 		cancel()
 	}
 
+	for _, f := range c.cleanupFuncs {
+		if err := f(); err != nil {
+			c.PrintCliError(err)
+		}
+	}
+
 	if termInfo.Reason != "" {
 		switch base.Format(c.UI) {
 		case "table":
@@ -770,6 +780,8 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	addr := c.listenerAddr.String()
 
 	var args []string
+	var envs []string
+	var argsErr error
 
 	switch c.Func {
 	case "http":
@@ -782,7 +794,13 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		args = append(args, c.postgresFlags.buildArgs(c, port, ip, addr)...)
+		pgArgs, pgEnvs, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr)
+		if pgErr != nil {
+			argsErr = pgErr
+			break
+		}
+		args = append(args, pgArgs...)
+		envs = append(envs, pgEnvs...)
 
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
@@ -798,6 +816,12 @@ func (c *Command) handleExec(passthroughArgs []string) {
 			return
 		}
 		args = append(args, kubeArgs...)
+	}
+
+	if argsErr != nil {
+		c.PrintCliError(fmt.Errorf("Failed to collect args: %w", argsErr))
+		c.execCmdReturnValue.Store(int32(2))
+		return
 	}
 
 	args = append(passthroughArgs, args...)
@@ -824,11 +848,14 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	// terminal in a weird state. It suffices to simply close the connection,
 	// which already happens, so we don't need/want CommandContext here.
 	cmd := exec.Command(c.flagExec, args...)
+	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
 		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
+	// Envs that came from subcommand handling
+	cmd.Env = append(cmd.Env, envs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
