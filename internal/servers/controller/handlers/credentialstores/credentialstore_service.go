@@ -355,7 +355,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, 
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.Store, error) {
-	const op = "credentialstores.(Servivce).createInRepo"
+	const op = "credentialstores.(Service).createInRepo"
 	cs, err := toStorageVaultStore(projId, item)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
