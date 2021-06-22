@@ -133,10 +133,12 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	}
 	ev, err := newError(caller, e, opt...)
 	if err != nil {
+		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to create new error to write error: %v", op, e))
 		return
 	}
 	if err := eventer.writeError(ctx, ev); err != nil {
+		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
 		eventer.logger.Error(fmt.Sprintf("%s: unable to write error: %v", op, e))
 		return
 	}
