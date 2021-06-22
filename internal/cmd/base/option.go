@@ -118,12 +118,14 @@ func withDialect(dialect string) Option {
 	}
 }
 
+// WithEventer allows an optional eventer config
 func WithEventerConfig(config *event.EventerConfig) Option {
 	return func(o *Options) {
 		o.withEventerConfig = config
 	}
 }
 
+// WithEventer allows an optional event configuration flags
 func WithEventFlags(flags *EventFlags) Option {
 	return func(o *Options) {
 		o.withEventFlags = flags
