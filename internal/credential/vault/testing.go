@@ -398,12 +398,17 @@ func testServerCert(t *testing.T, ca *testCert, hosts ...string) *testCertBundle
 }
 
 // testClientCert will generate a test x509 client cert.
-func testClientCert(t *testing.T, ca *testCert) *testCertBundle {
+func testClientCert(t *testing.T, ca *testCert, opt ...TestOption) *testCertBundle {
 	t.Helper()
 	require := require.New(t)
 
-	priv, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	require.NoError(err)
+	var err error
+	opts := getTestOpts(t, opt...)
+	priv := opts.clientKey
+	if priv == nil {
+		priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		require.NoError(err)
+	}
 
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
@@ -478,6 +483,7 @@ type testOptions struct {
 	dockerNetwork bool
 	dontCleanup   bool
 	tokenPeriod   time.Duration
+	clientKey     *ecdsa.PrivateKey
 }
 
 func getDefaultTestOptions(t *testing.T) testOptions {
@@ -535,6 +541,15 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
+	}
+}
+
+// WithClientKey sets the private key that will be used to generate the
+// client certificate.  The option is only valid when used together with TestClientTLS.
+func WithClientKey(k *ecdsa.PrivateKey) TestOption {
+	return func(t *testing.T, o *testOptions) {
+		t.Helper()
+		o.clientKey = k
 	}
 }
 

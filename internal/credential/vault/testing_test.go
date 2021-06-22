@@ -1,7 +1,12 @@
 package vault
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"path"
 	"testing"
 	"time"
@@ -279,6 +284,38 @@ func TestNewVaultServer(t *testing.T) {
 		require.NotNil(client)
 		require.NoError(client.ping())
 	})
+	t.Run("TestClientTLS-with-client-key", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		require.NoError(err)
+
+		v := NewTestVaultServer(t, WithTestVaultTLS(TestClientTLS), WithClientKey(key))
+		require.NotNil(v)
+
+		assert.NotEmpty(v.RootToken)
+		assert.NotEmpty(v.Addr)
+		assert.NotEmpty(v.CaCert)
+		assert.NotEmpty(v.ClientCert)
+		assert.NotEmpty(v.ClientKey)
+
+		k, err := x509.MarshalECPrivateKey(key)
+		require.NoError(err)
+		assert.Equal(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: k}), v.ClientKey)
+
+		conf := &clientConfig{
+			Addr:       v.Addr,
+			Token:      TokenSecret(v.RootToken),
+			CaCert:     v.CaCert,
+			ClientCert: v.ClientCert,
+			ClientKey:  v.ClientKey,
+		}
+
+		client, err := newClient(conf)
+		require.NoError(err)
+		require.NotNil(client)
+		require.NoError(client.ping())
+	})
 }
 
 func TestTestVaultServer_MountPKI(t *testing.T) {
@@ -471,4 +508,35 @@ func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
 
 	// Verify fake token is not valid
 	v.VerifyTokenInvalid(t, "fake-token")
+}
+
+func Test_testClientCert(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	cert := testClientCert(t, testCaCert(t))
+	require.NotNil(cert)
+	assert.NotEmpty(cert.Cert.Cert)
+	assert.NotEmpty(cert.Cert.Key)
+
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoError(err)
+
+	cert1 := testClientCert(t, testCaCert(t), WithClientKey(key))
+	require.NotNil(cert1)
+	assert.NotEmpty(cert1.Cert.Cert)
+	assert.NotEmpty(cert1.Cert.Key)
+
+	// cert and cert1 should have different certs and keys
+	assert.NotEqual(cert1.Cert.Cert, cert.Cert.Cert)
+	assert.NotEqual(cert1.Cert.Key, cert.Cert.Key)
+
+	// Generate new cert with same key as cert1
+	cert2 := testClientCert(t, testCaCert(t), WithClientKey(key))
+	require.NotNil(cert2)
+	assert.NotEmpty(cert2.Cert.Cert)
+	assert.NotEmpty(cert2.Cert.Key)
+
+	// cert1 and cert2 should have different certs but the same key
+	assert.NotEqual(cert1.Cert.Cert, cert2.Cert.Cert)
+	assert.Equal(cert1.Cert.Key, cert2.Cert.Key)
 }
