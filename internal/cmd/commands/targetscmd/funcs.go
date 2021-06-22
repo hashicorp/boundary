@@ -587,10 +587,9 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 				for _, cred := range item.Credentials {
 					ret = append(ret,
-						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
-						fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type),
 						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId),
-						fmt.Sprintf("    Secret:                         %s", cred.Secret))
+						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
+						fmt.Sprintf("    Credential Library Type:        %s", cred.CredentialLibrary.Type))
 
 					if len(cred.CredentialLibrary.Name) > 0 {
 						ret = append(ret,
@@ -599,6 +598,22 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					if len(cred.CredentialLibrary.Description) > 0 {
 						ret = append(ret,
 							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
+					}
+					switch cred.CredentialLibrary.Type {
+					case "vault":
+						cm, err := targets.VaultSecretMap(cred.Secret)
+						if err != nil {
+							c.UI.Error("Unable to parse vault credential. Printing base 64 encoded secret instead.")
+							c.UI.Error(err.Error())
+							ret = append(ret,
+								fmt.Sprintf("    Secret:                         %s", cred.Secret))
+							break
+						}
+						ret = append(ret,
+							"    Secret:",
+							base.WrapMap(6, 6, cm))
+					default:
+						fmt.Sprintf("    Secret:                         %s", cred.Secret)
 					}
 
 					ret = append(ret,
