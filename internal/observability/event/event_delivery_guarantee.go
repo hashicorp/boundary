@@ -2,8 +2,6 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
@@ -20,6 +18,6 @@ func (g DeliveryGuarantee) validate() error {
 	case DefaultDeliveryGuarantee, BestEffort, Enforced:
 		return nil
 	default:
-		return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid delivery guarantee", g))
+		return fmt.Errorf("%s: %s is not a valid delivery guarantee: %w", op, g, ErrInvalidParameter)
 	}
 }
