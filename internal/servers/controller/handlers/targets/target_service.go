@@ -834,6 +834,7 @@ HostSetIterationLoop:
 	var creds []*pb.SessionCredential
 	for _, c := range cs {
 		l := c.Library()
+		// TODO: Access the json directly from the vault response instead of re-marshalling it.
 		jSecret, err := json.Marshal(c.Secret())
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("marshalling secret to json"))

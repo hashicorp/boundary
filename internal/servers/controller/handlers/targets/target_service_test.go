@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	targetsapi "github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
@@ -1902,17 +1903,23 @@ func TestAuthorizeSession(t *testing.T) {
 		"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
 		"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
 		"private_key_type": "rsa",
-		"serial_number":    "",
 	}
 	_ = wantSecret
 	got := asRes1.GetItem()
 
 	require.Len(t, got.GetCredentials(), 1)
 
-	for _, c := range got.Credentials {
-		assert.NotEmpty(t, c.Secret)
-		c.Secret = ""
+	gotCred := got.Credentials[0]
+	assert.NotEmpty(t, gotCred.Secret)
+	dSec, err := targetsapi.VaultSecretMap(gotCred.Secret)
+	require.NoError(t, err)
+	for k, v := range wantSecret {
+		gotV, ok := dSec[k]
+		require.True(t, ok)
+		assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
 	}
+	gotCred.Secret = ""
+
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
 	assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 }
