@@ -2,6 +2,8 @@ package targets_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -11,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	targetsapi "github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
@@ -1911,7 +1912,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	gotCred := got.Credentials[0]
 	assert.NotEmpty(t, gotCred.Secret)
-	dSec, err := targetsapi.DecodeJsonSecret(gotCred.Secret)
+	dSec := decodeJsonSecret(t, gotCred.Secret)
 	require.NoError(t, err)
 	for k, v := range wantSecret {
 		gotV, ok := dSec[k]
@@ -2110,4 +2111,13 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			require.NotNil(t, res)
 		})
 	}
+}
+
+func decodeJsonSecret(t *testing.T, in string) map[string]interface{} {
+	t.Helper()
+	ret := make(map[string]interface{})
+	dec := json.NewDecoder(base64.NewDecoder(base64.StdEncoding, strings.NewReader(in)))
+	dec.UseNumber()
+	require.NoError(t, dec.Decode(&ret))
+	return ret
 }
