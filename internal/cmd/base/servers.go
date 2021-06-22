@@ -17,10 +17,13 @@ import (
 	"syscall"
 
 	"github.com/armon/go-metrics"
+	berrors "github.com/hashicorp/boundary/internal/errors"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/version"
@@ -50,6 +53,9 @@ type Server struct {
 	Logger      hclog.Logger
 	CombineLogs bool
 	LogLevel    hclog.Level
+
+	SerializationLock *sync.Mutex
+	Eventer           *event.Eventer
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
@@ -107,7 +113,73 @@ func NewServer(cmd *Command) *Server {
 		SecureRandomReader: rand.Reader,
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
+		SerializationLock:  new(sync.Mutex),
 	}
+}
+
+// SetupEventing will setup the server's eventer and initialize the "system
+// wide" eventer with a pointer to the same eventer
+func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mutex, opt ...Option) error {
+	const op = "base.(Server).SetupEventing"
+
+	if logger == nil {
+		return berrors.New(berrors.InvalidParameter, op, "missing logger")
+	}
+	if serializationLock == nil {
+		return berrors.New(berrors.InvalidParameter, op, "missing serialization lock")
+	}
+
+	opts := getOpts(opt...)
+	if opts.withEventerConfig != nil {
+		if err := opts.withEventerConfig.Validate(); err != nil {
+			return berrors.Wrap(err, op, berrors.WithMsg("invalid eventer config"))
+		}
+	}
+	if opts.withEventerConfig == nil {
+		opts.withEventerConfig = event.DefaultEventerConfig()
+	}
+
+	if opts.withEventFlags != nil {
+		if err := opts.withEventFlags.Validate(); err != nil {
+			return berrors.Wrap(err, op, berrors.WithMsg("invalid event flags"))
+		}
+		if opts.withEventFlags.Format != "" {
+			for _, s := range opts.withEventerConfig.Sinks {
+				s.Format = opts.withEventFlags.Format
+			}
+		}
+		if opts.withEventFlags.AuditEnabled != nil {
+			opts.withEventerConfig.AuditEnabled = *opts.withEventFlags.AuditEnabled
+		}
+		if opts.withEventFlags.ObservationsEnabled != nil {
+			opts.withEventerConfig.ObservationsEnabled = *opts.withEventFlags.ObservationsEnabled
+		}
+	}
+
+	e, err := event.NewEventer(logger, *opts.withEventerConfig, event.WithSerializationLock(serializationLock))
+	if err != nil {
+		return berrors.Wrap(err, op, berrors.WithMsg("unable to create eventer"))
+	}
+	b.Eventer = e
+
+	if err := event.InitSysEventer(logger, event.WithEventer(e)); err != nil {
+		return berrors.Wrap(err, op, berrors.WithMsg("unable to initialize system eventer"))
+	}
+
+	return nil
+}
+
+// AddEventerToContext will add the server eventer to the context provided
+func (b *Server) AddEventerToContext(ctx context.Context) (context.Context, error) {
+	const op = "base.(Server).AddEventerToContext"
+	if b.Eventer == nil {
+		return nil, berrors.New(berrors.InvalidParameter, op, "missing server eventer")
+	}
+	e, err := event.NewEventerContext(ctx, b.Eventer)
+	if err != nil {
+		return nil, berrors.Wrap(err, op, berrors.WithMsg("unable to add eventer to context"))
+	}
+	return e, nil
 }
 
 func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) error {
@@ -128,6 +200,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		// Note that if logFormat is either unspecified or standard, then
 		// the resulting logger's format will be standard.
 		JSONFormat: logFormat == logging.JSONFormat,
+		Mutex:      b.SerializationLock,
 	})
 
 	// create GRPC logger
