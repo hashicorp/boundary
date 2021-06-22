@@ -367,6 +367,10 @@ type TestControllerOpts struct {
 
 	// The logger to use, or one will be created
 	Logger hclog.Logger
+
+	// A cluster address for overriding the advertised controller listener
+	// (overrides address provided in config, if any)
+	PublicClusterAddr string
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -503,6 +507,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		t.Fatal(err)
 	}
 
+	// Set cluster address if we supplied one (overrides one in config)
+	if opts.PublicClusterAddr != "" {
+		opts.Config.Controller.PublicClusterAddr = opts.PublicClusterAddr
+	}
+
 	if opts.DatabaseUrl != "" {
 		tc.b.DatabaseUrl = opts.DatabaseUrl
 		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
@@ -600,6 +609,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		DefaultPassword:             tc.b.DevPassword,
 		DisableKmsKeyCreation:       true,
 		DisableAuthMethodCreation:   true,
+		PublicClusterAddr:           opts.PublicClusterAddr,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger

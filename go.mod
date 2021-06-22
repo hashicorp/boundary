@@ -20,6 +20,7 @@ require (
 	github.com/hashicorp/boundary/api v0.0.11
 	github.com/hashicorp/boundary/sdk v0.0.4
 	github.com/hashicorp/cap v0.1.0
+	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746
