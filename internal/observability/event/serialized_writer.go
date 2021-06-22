@@ -14,7 +14,7 @@ type serializedWriter struct {
 	w io.Writer
 }
 
-// Write uses a mutext to serialize all writes
+// Write uses a mutex to serialize all writes
 func (s *serializedWriter) Write(p []byte) (int, error) {
 	const op = "event.(serializedWriter).Write"
 	if s == nil {
