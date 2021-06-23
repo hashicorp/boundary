@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -314,26 +315,35 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		}
 
 	case "add-credential-libraries":
+		// TODO: As we add other purposes, add them to this check
 		if len(c.flagApplicationCredentialLibraries) == 0 {
-			c.UI.Error("No credential-library supplied via -application-credential-library")
-			return false
-		}
-
-	case "remove-credential-libraries":
-		if len(c.flagApplicationCredentialLibraries) == 0 {
-			c.UI.Error("No credential-library supplied via -application-credential-library")
-			return false
-		}
-
-	case "set-credential-libraries":
-		switch len(c.flagApplicationCredentialLibraries) {
-		case 0:
 			c.UI.Error("No credential-libraries supplied via -application-credential-library")
 			return false
+		}
+		*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
+
+	case "remove-credential-libraries":
+		// TODO: As we add other purposes, add them to this check
+		if len(c.flagApplicationCredentialLibraries) == 0 {
+			c.UI.Error("No credential-libraries supplied via -application-credential-library")
+			return false
+		}
+		*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
+
+	case "set-credential-libraries":
+		// TODO: As we add other purposes, add them to this check
+		if len(c.flagApplicationCredentialLibraries) == 0 {
+			c.UI.Error("No credential-libraries supplied via -application-credential-library")
+			return false
+		}
+		switch len(c.flagApplicationCredentialLibraries) {
+		case 0:
 		case 1:
 			if c.flagApplicationCredentialLibraries[0] == "null" {
-				c.flagApplicationCredentialLibraries = nil
+				*opts = append(*opts, targets.DefaultApplicationCredentialLibraryIds())
 			}
+		default:
+			*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
 		}
 
 	case "authorize-session":
@@ -346,13 +356,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
-	var credLibs []targets.CredentialLibraryInput
-	for _, v := range c.flagApplicationCredentialLibraries {
-		credLibs = append(credLibs, targets.CredentialLibraryInput{
-			Id:      v,
-			Purpose: "application",
-		})
-	}
 	switch c.Func {
 	case "add-host-sets":
 		return targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
@@ -361,11 +364,11 @@ func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError
 	case "set-host-sets":
 		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
 	case "add-credential-libraries":
-		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
+		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, opts...)
 	case "remove-credential-libraries":
-		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
+		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, opts...)
 	case "set-credential-libraries":
-		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
+		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, opts...)
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"
@@ -485,15 +488,17 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	var libraryMaps []map[string]interface{}
-	if len(item.CredentialLibraries) > 0 {
-		for _, lib := range item.CredentialLibraries {
+	var libraryMaps map[credential.Purpose][]map[string]interface{}
+	if len(item.ApplicationCredentialLibraries) > 0 {
+		var applicationLibraryMaps []map[string]interface{}
+		for _, lib := range item.ApplicationCredentialLibraries {
 			m := map[string]interface{}{
 				"ID":                  lib.Id,
 				"Credential Store ID": lib.CredentialStoreId,
 			}
-			libraryMaps = append(libraryMaps, m)
+			applicationLibraryMaps = append(applicationLibraryMaps, m)
 		}
+		libraryMaps[credential.ApplicationPurpose] = applicationLibraryMaps
 		if l := len("Credential Store ID"); l > maxLength {
 			maxLength = l
 		}
@@ -537,15 +542,17 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	if len(item.CredentialLibraries) > 0 {
-		ret = append(ret,
-			"  Credential Libraries:",
-		)
-		for _, m := range libraryMaps {
+	if len(libraryMaps) > 0 {
+		if appMap := libraryMaps[credential.ApplicationPurpose]; len(appMap) > 0 {
 			ret = append(ret,
-				base.WrapMap(4, maxLength, m),
-				"",
+				"  Application Credential Libraries:",
 			)
+			for _, m := range appMap {
+				ret = append(ret,
+					base.WrapMap(4, maxLength, m),
+					"",
+				)
+			}
 		}
 	}
 
@@ -688,8 +695,8 @@ func exampleOutput() string {
 				HostCatalogId: "hcst_1234567890",
 			},
 		},
-		CredentialLibraryIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
-		CredentialLibraries: []*targets.CredentialLibrary{
+		ApplicationCredentialLibraryIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
+		ApplicationCredentialLibraries: []*targets.CredentialLibrary{
 			{
 				Id:                "clvlt_1234567890",
 				CredentialStoreId: "csvlt_1234567890",
