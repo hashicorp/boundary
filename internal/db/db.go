@@ -2,12 +2,23 @@ package db
 
 import (
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 )
+
+var (
+	NegativeInfinityTS = time.Date(math.MinInt32, time.January, 1, 0, 0, 0, 0, time.UTC)
+	PositiveInfinityTS = time.Date(math.MaxInt32, time.December, 31, 23, 59, 59, 1e9-1, time.UTC)
+)
+
+func init() {
+	pq.EnableInfinityTs(NegativeInfinityTS, PositiveInfinityTS)
+}
 
 var StartDbInDocker = docker.StartDbInDocker
 

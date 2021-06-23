@@ -213,6 +213,30 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "add-credential-libraries":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-credential-libraries":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-credential-libraries":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {
@@ -240,7 +264,9 @@ func (c *Command) Run(args []string) int {
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+			var opts []base.Option
+
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
 		}
 		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))

@@ -53,7 +53,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.HostCatalog{}, &pb.HostCatalog{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
 }
@@ -342,7 +342,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*static
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
-	const op = "host_catalogs.(Servivce).createInRepo"
+	const op = "host_catalogs.(Service).createInRepo"
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))

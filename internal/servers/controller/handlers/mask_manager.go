@@ -14,12 +14,17 @@ import (
 
 type MaskManager map[string]string
 
+type (
+	MaskDestination []protoreflect.ProtoMessage
+	MaskSource      []protoreflect.ProtoMessage
+)
+
 // NewMaskManager returns a mask manager that can translate field masks into the first proto from all subsequent
 // protos assuming they are both using the mask_mapping custom option.  Error is returned if no mappings are
 // found or if one of the passed protos has a mapping that doesn't reciprocate.
-func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMessage) (MaskManager, error) {
+func NewMaskManager(dest MaskDestination, src MaskSource) (MaskManager, error) {
 	const op = "handlers.NewMaskManager"
-	srcToDest, err := mapFromProto(src...)
+	srcToDest, err := mapFromProto(src)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +56,7 @@ func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMes
 	return result, nil
 }
 
-func mapFromProto(ps ...protoreflect.ProtoMessage) (map[string]string, error) {
+func mapFromProto(ps []protoreflect.ProtoMessage) (map[string]string, error) {
 	const op = "handlers.mapFromProto"
 	mapping := make(map[string]string)
 	for _, p := range ps {

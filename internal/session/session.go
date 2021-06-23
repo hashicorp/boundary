@@ -49,6 +49,9 @@ type ComposedOf struct {
 	// existed at creation time. Round tripping it through here saves a lookup
 	// in the DB. It is not stored in the warehouse.
 	WorkerFilter string
+	// DynamicCredentials are dynamic credentials that will be retrieved
+	// for the session. DynamicCredentials optional.
+	DynamicCredentials []*DynamicCredential
 }
 
 // Session contains information about a user's session with a target
@@ -104,8 +107,12 @@ type Session struct {
 
 	// States for the session which are for read only and are ignored during
 	// write operations
-	States    []*State `gorm:"-"`
-	tableName string   `gorm:"-"`
+	States []*State `gorm:"-"`
+
+	// DynamicCredentials for the session.
+	DynamicCredentials []*DynamicCredential `gorm:"-"`
+
+	tableName string `gorm:"-"`
 }
 
 func (s *Session) GetPublicId() string {
@@ -121,16 +128,17 @@ var (
 func New(c ComposedOf, _ ...Option) (*Session, error) {
 	const op = "session.New"
 	s := Session{
-		UserId:          c.UserId,
-		HostId:          c.HostId,
-		TargetId:        c.TargetId,
-		HostSetId:       c.HostSetId,
-		AuthTokenId:     c.AuthTokenId,
-		ScopeId:         c.ScopeId,
-		Endpoint:        c.Endpoint,
-		ExpirationTime:  c.ExpirationTime,
-		ConnectionLimit: c.ConnectionLimit,
-		WorkerFilter:    c.WorkerFilter,
+		UserId:             c.UserId,
+		HostId:             c.HostId,
+		TargetId:           c.TargetId,
+		HostSetId:          c.HostSetId,
+		AuthTokenId:        c.AuthTokenId,
+		ScopeId:            c.ScopeId,
+		Endpoint:           c.Endpoint,
+		ExpirationTime:     c.ExpirationTime,
+		ConnectionLimit:    c.ConnectionLimit,
+		WorkerFilter:       c.WorkerFilter,
+		DynamicCredentials: c.DynamicCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -167,6 +175,13 @@ func (s *Session) Clone() interface{} {
 		for _, ss := range s.States {
 			cp := ss.Clone().(*State)
 			clone.States = append(clone.States, cp)
+		}
+	}
+	if len(s.DynamicCredentials) > 0 {
+		clone.DynamicCredentials = make([]*DynamicCredential, 0, len(s.DynamicCredentials))
+		for _, sc := range s.DynamicCredentials {
+			cp := sc.clone()
+			clone.DynamicCredentials = append(clone.DynamicCredentials, cp)
 		}
 	}
 	if s.TofuToken != nil {
@@ -252,6 +267,8 @@ func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, 
 			return errors.New(errors.InvalidParameter, op, "connection limit is immutable")
 		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
 			return errors.New(errors.InvalidParameter, op, "worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
+			return errors.New(errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(err, op)

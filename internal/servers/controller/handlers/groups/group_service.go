@@ -49,7 +49,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.Group{}, &pb.Group{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Group{}}, handlers.MaskSource{&pb.Group{}}); err != nil {
 		panic(err)
 	}
 }
