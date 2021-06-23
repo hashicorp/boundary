@@ -547,6 +547,10 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			default:
 				rowsUpdated, err = w.Update(ctx, cs, filteredDbMask, filteredNullFields, db.NewOplogMsg(&csOplogMsg), db.WithVersion(&version))
 				if err != nil {
+					if errors.IsUniqueError(err) {
+						return errors.New(errors.NotUnique, op,
+							fmt.Sprintf("name %s already exists: %s", cs.Name, cs.PublicId))
+					}
 					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
 				}
 				switch rowsUpdated {
@@ -591,6 +595,10 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				query, values := token.insertQuery()
 				rows, err := w.Exec(ctx, query, values)
 				if err != nil {
+					if errors.IsUniqueError(err) {
+						return errors.New(errors.NotUnique, op,
+							fmt.Sprintf("token already exists"))
+					}
 					return errors.Wrap(err, op)
 				}
 				if rows > 1 {
@@ -616,10 +624,6 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	)
 
 	if err != nil {
-		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
-				fmt.Sprintf("name %s already exists: %s", cs.Name, cs.PublicId))
-		}
 		return nil, db.NoRowsAffected, err
 	}
 
