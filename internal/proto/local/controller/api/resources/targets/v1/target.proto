@@ -43,8 +43,8 @@ message SessionCredential {
 	// Output only. The library which generated this credential.
 	CredentialLibrary credential_library = 1;
 
-	// Output only. The secret of this credential.
-	google.protobuf.Value secret = 2;
+	// Output only. The secret of this credential base64 encoded.
+	string secret = 2;
 }
 
 // Target contains all fields related to a Target resource

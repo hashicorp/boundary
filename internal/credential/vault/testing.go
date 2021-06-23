@@ -481,7 +481,7 @@ type testOptions struct {
 	roleName      string
 	vaultTLS      TestVaultTLS
 	dockerNetwork bool
-	dontCleanup   bool
+	skipCleanup   bool
 	tokenPeriod   time.Duration
 	clientKey     *ecdsa.PrivateKey
 }
@@ -583,7 +583,7 @@ func WithTestRoleName(n string) TestOption {
 func WithDontCleanUp() TestOption {
 	return func(t *testing.T, o *testOptions) {
 		t.Helper()
-		o.dontCleanup = true
+		o.skipCleanup = true
 	}
 }
 

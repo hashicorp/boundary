@@ -2,6 +2,8 @@ package targets
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"math/rand"
@@ -38,7 +40,6 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -56,6 +57,9 @@ var (
 		action.AddHostSets,
 		action.SetHostSets,
 		action.RemoveHostSets,
+		action.AddCredentialLibraries,
+		action.SetCredentialLibraries,
+		action.RemoveCredentialLibraries,
 		action.AuthorizeSession,
 	}
 
@@ -830,9 +834,10 @@ HostSetIterationLoop:
 	var creds []*pb.SessionCredential
 	for _, c := range cs {
 		l := c.Library()
-		sVal, err := structpb.NewValue(c.Secret())
+		// TODO: Access the json directly from the vault response instead of re-marshalling it.
+		jSecret, err := json.Marshal(c.Secret())
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("converting secret to proto value"))
+			return nil, errors.Wrap(err, op, errors.WithMsg("marshalling secret to json"))
 		}
 		creds = append(creds, &pb.SessionCredential{
 			CredentialLibrary: &pb.CredentialLibrary{
@@ -842,7 +847,7 @@ HostSetIterationLoop:
 				CredentialStoreId: l.GetStoreId(),
 				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
-			Secret: sVal,
+			Secret: base64.StdEncoding.EncodeToString(jSecret),
 		})
 	}
 

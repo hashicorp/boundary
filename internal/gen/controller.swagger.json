@@ -4270,8 +4270,8 @@
           "readOnly": true
         },
         "secret": {
-          "type": "object",
-          "description": "Output only. The secret of this credential.",
+          "type": "string",
+          "description": "Output only. The secret of this credential base64 encoded.",
           "readOnly": true
         }
       },

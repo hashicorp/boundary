@@ -2,6 +2,8 @@ package targets_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -50,7 +52,19 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-host-sets", "set-host-sets", "remove-host-sets", "authorize-session"}
+var testAuthorizedActions = []string{
+	"no-op",
+	"read",
+	"update",
+	"delete",
+	"add-host-sets",
+	"set-host-sets",
+	"remove-host-sets",
+	"add-credential-libraries",
+	"set-credential-libraries",
+	"remove-credential-libraries",
+	"authorize-session",
+}
 
 func testService(t *testing.T, conn *gorm.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
@@ -1822,9 +1836,9 @@ func TestAuthorizeSession(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	v := vault.NewTestVaultServer(t, vault.WithDockerNetwork(true))
-	v.MountDatabase(t)
-	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
+	v := vault.NewTestVaultServer(t)
+	v.MountPKI(t)
+	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 	credService, err := credentiallibraries.NewService(credentialRepoFn, iamRepoFn)
@@ -1834,7 +1848,9 @@ func TestAuthorizeSession(t *testing.T) {
 		Name:              wrapperspb.String("Library Name"),
 		Description:       wrapperspb.String("Library Description"),
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path": structpb.NewStringValue(path.Join("database", "creds", "opened")),
+			"path":              structpb.NewStringValue(path.Join("pki", "issue", "boundary")),
+			"http_method":       structpb.NewStringValue("POST"),
+			"http_request_body": structpb.NewStringValue(`{"common_name":"boundary.com"}`),
 		}},
 	}})
 	require.NoError(t, err)
@@ -1880,25 +1896,33 @@ func TestAuthorizeSession(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              credential.VaultSubtype.String(),
 			},
-			Secret: func() *structpb.Value {
-				s, err := structpb.NewStruct(map[string]interface{}{
-					"username": "some username",
-					"password": "some password",
-				})
-				require.NoError(t, err)
-				return structpb.NewStructValue(s)
-			}(),
 		}},
 		// TODO: validate the contents of the authorization token is what is expected
 	}
+	wantSecret := map[string]interface{}{
+		"certificate":      "-----BEGIN CERTIFICATE-----\n",
+		"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
+		"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
+		"private_key_type": "rsa",
+	}
+	_ = wantSecret
 	got := asRes1.GetItem()
 
 	require.Len(t, got.GetCredentials(), 1)
-	got.Credentials[0].Secret.GetStructValue().Fields["username"] = structpb.NewStringValue("some username")
-	got.Credentials[0].Secret.GetStructValue().Fields["password"] = structpb.NewStringValue("some password")
+
+	gotCred := got.Credentials[0]
+	assert.NotEmpty(t, gotCred.Secret)
+	dSec := decodeJsonSecret(t, gotCred.Secret)
+	require.NoError(t, err)
+	for k, v := range wantSecret {
+		gotV, ok := dSec[k]
+		require.True(t, ok)
+		assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
+	}
+	gotCred.Secret = ""
 
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-	assert.Empty(t, cmp.Diff(asRes1.GetItem(), want, protocmp.Transform()))
+	assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
@@ -2087,4 +2111,13 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			require.NotNil(t, res)
 		})
 	}
+}
+
+func decodeJsonSecret(t *testing.T, in string) map[string]interface{} {
+	t.Helper()
+	ret := make(map[string]interface{})
+	dec := json.NewDecoder(base64.NewDecoder(base64.StdEncoding, strings.NewReader(in)))
+	dec.UseNumber()
+	require.NoError(t, dec.Decode(&ret))
+	return ret
 }
