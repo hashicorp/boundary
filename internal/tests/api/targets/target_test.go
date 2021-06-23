@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -64,7 +63,7 @@ func TestHostSetASD(t *testing.T) {
 }
 
 func defaultCredLibrary(r *credentiallibraries.CredentialLibrary) *targets.CredentialLibrary {
-	return &targets.CredentialLibrary{Id: r.Id, Purpose: string(credential.ApplicationPurpose), CredentialStoreId: r.CredentialStoreId}
+	return &targets.CredentialLibrary{Id: r.Id, CredentialStoreId: r.CredentialStoreId}
 }
 
 func TestCredentialLibraryASD(t *testing.T) {
@@ -97,30 +96,26 @@ func TestCredentialLibraryASD(t *testing.T) {
 	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.Empty(tar.Item.CredentialLibraryIds)
+	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
 
-	tar, err = tarClient.AddCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		[]targets.CredentialLibraryInput{{Id: r1.Item.Id, Purpose: string(credential.ApplicationPurpose)}},
-	)
+	tar, err = tarClient.AddCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithApplicationCredentialLibraryIds([]string{ r1.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.CredentialLibraryIds, []string{r1.Item.Id})
-	assert.ElementsMatch(tar.Item.CredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r1.Item)})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r1.Item.Id})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r1.Item)})
 
 	tar, err = tarClient.SetCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		[]targets.CredentialLibraryInput{{Id: r2.Item.Id, Purpose: string(credential.ApplicationPurpose)}},
-	)
+		targets.WithApplicationCredentialLibraryIds([]string{ r2.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.CredentialLibraryIds, []string{r2.Item.Id})
-	assert.ElementsMatch(tar.Item.CredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r2.Item)})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r2.Item.Id})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r2.Item)})
 
 	tar, err = tarClient.RemoveCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		[]targets.CredentialLibraryInput{{Id: r2.Item.Id, Purpose: string(credential.ApplicationPurpose)}},
-	)
+		targets.WithApplicationCredentialLibraryIds([]string{ r2.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.Empty(tar.Item.CredentialLibraryIds)
+	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
 }
 
 func TestList(t *testing.T) {
