@@ -8,6 +8,7 @@ import (
 // SinkConfig defines the configuration for a Eventer sink
 type SinkConfig struct {
 	Name           string        `hcl:"name"`             // Name defines a name for the sink.
+	Description    string        `hcl:"description"`      // Description defines a description for the sink.
 	EventTypes     []Type        `hcl:"event_types"`      // EventTypes defines a list of event types that will be sent to the sink. See the docs for EventTypes for a list of accepted values.
 	SinkType       SinkType      `hcl:"sink_type"`        // SinkType defines the type of sink (StderrSink or FileSink)
 	Format         SinkFormat    `hcl:"format"`           // Format defines the format for the sink (JSONSinkFormat)
