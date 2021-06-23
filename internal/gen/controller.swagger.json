@@ -4613,8 +4613,7 @@
             "type": "string"
           }
         }
-      },
-      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
+      }
     },
     "controller.api.services.v1.AddTargetCredentialLibrariesResponse": {
       "type": "object",
@@ -5660,7 +5659,7 @@
           }
         }
       },
-      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
+      "description": "Sets the values for application_credential_library_ids.  If any\ncredential_library_id field that is not set in the request will result in\nthose fields being cleared."
     },
     "controller.api.services.v1.SetTargetCredentialLibrariesResponse": {
       "type": "object",

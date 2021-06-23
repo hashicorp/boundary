@@ -861,9 +861,6 @@ func (x *RemoveTargetHostSetsResponse) GetItem() *targets.Target {
 	return nil
 }
 
-// The ids from both credential_library_ids and credential_libraries are used.
-// When using credential_library_ids the default value "application" is used
-// for the purpose.
 type AddTargetCredentialLibrariesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -976,9 +973,9 @@ func (x *AddTargetCredentialLibrariesResponse) GetItem() *targets.Target {
 	return nil
 }
 
-// The ids from both credential_library_ids and credential_libraries are used.
-// When using credential_library_ids the default value "application" is used
-// for the purpose.
+// Sets the values for application_credential_library_ids.  If any
+// credential_library_id field that is not set in the request will result in
+// those fields being cleared.
 type SetTargetCredentialLibrariesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

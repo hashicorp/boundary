@@ -284,9 +284,6 @@ message RemoveTargetHostSetsResponse {
   api.resources.targets.v1.Target item = 1;
 }
 
-// The ids from both credential_library_ids and credential_libraries are used.
-// When using credential_library_ids the default value "application" is used
-// for the purpose.
 message AddTargetCredentialLibrariesRequest {
   string id = 1;
   // Version is used to ensure this resource has not changed.
@@ -302,9 +299,9 @@ message AddTargetCredentialLibrariesResponse {
   api.resources.targets.v1.Target item = 1;
 }
 
-// The ids from both credential_library_ids and credential_libraries are used.
-// When using credential_library_ids the default value "application" is used
-// for the purpose.
+// Sets the values for application_credential_library_ids.  If any
+// credential_library_id field that is not set in the request will result in
+// those fields being cleared.
 message SetTargetCredentialLibrariesRequest {
   string id = 1;
   // Version is used to ensure this resource has not changed.
