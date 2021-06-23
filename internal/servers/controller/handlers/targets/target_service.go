@@ -1521,11 +1521,11 @@ func validateRemoveLibrariesRequest(req *pbs.RemoveTargetCredentialLibrariesRequ
 		badFields[globals.VersionField] = "Required field."
 	}
 	if len(req.GetApplicationCredentialLibraryIds()) == 0 {
-		badFields[globals.ApplicationCredentialLibrariesField] = "Must be non-empty."
+		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
 	}
 	for _, cl := range req.GetApplicationCredentialLibraryIds() {
 		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
-			badFields[globals.ApplicationCredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
+			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
 			break
 		}
 	}
