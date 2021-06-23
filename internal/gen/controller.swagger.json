@@ -4358,14 +4358,14 @@
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the application credential libraries associated with this Target."
+          "description": "The IDs of the application credential library ids associated with this Target."
         },
         "application_credential_libraries": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary"
           },
-          "description": "Output only. The credential libraries associated with this Target.",
+          "description": "Output only. The application credential libraries associated with this Target.",
           "readOnly": true
         },
         "attributes": {

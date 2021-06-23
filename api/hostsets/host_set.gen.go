@@ -326,9 +326,11 @@ func (c *Client) AddHosts(ctx context.Context, id string, version uint32, hostId
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddHosts request")
 	}
+
 	if len(hostIds) == 0 {
 		return nil, errors.New("empty hostIds passed into AddHosts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -356,6 +358,7 @@ func (c *Client) AddHosts(ctx context.Context, id string, version uint32, hostId
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", id), opts.postMap, apiOpts...)
@@ -421,6 +424,7 @@ func (c *Client) SetHosts(ctx context.Context, id string, version uint32, hostId
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", id), opts.postMap, apiOpts...)
@@ -458,9 +462,11 @@ func (c *Client) RemoveHosts(ctx context.Context, id string, version uint32, hos
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveHosts request")
 	}
+
 	if len(hostIds) == 0 {
 		return nil, errors.New("empty hostIds passed into RemoveHosts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -488,6 +494,7 @@ func (c *Client) RemoveHosts(ctx context.Context, id string, version uint32, hos
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_ids"] = hostIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", id), opts.postMap, apiOpts...)

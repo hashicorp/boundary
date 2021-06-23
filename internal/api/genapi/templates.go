@@ -472,13 +472,17 @@ var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value.VarName }} {{ $value.SliceType }}, opt... Option) (*{{ $input.Name }}UpdateResult, error) {
+func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ if ( not ( eq $value.VarName "" ) ) }}{{ $value.VarName }} {{ $value.SliceType }},{{ end }} opt... Option) (*{{ $input.Name }}UpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into {{ $fullName }} request")
 	}
-	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value.VarName }}) == 0 {
-		return nil, errors.New("empty {{ $value.VarName }} passed into {{ $fullName }} request")
-	}{{ end }}
+	{{ if ( not ( eq $op "Set" ) ) }}
+	  {{ if ( not ( eq $value.VarName "" ) ) }}
+		if len({{ $value.VarName }}) == 0 {
+			return nil, errors.New("empty {{ $value.VarName }} passed into {{ $fullName }} request")
+		}
+	  {{ end }}
+	{{ end }}
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -507,7 +511,9 @@ func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32,
 	}
 	{{ end }}
 	opts.postMap["version"] = version
+	{{ if ( not ( eq $value.VarName "" ) ) }}
 	opts.postMap["{{ snakeCase $value.VarName }}"] = {{ $value.VarName }}
+	{{ end }}
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
 	if err != nil {

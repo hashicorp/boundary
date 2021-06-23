@@ -329,9 +329,11 @@ func (c *Client) AddAccounts(ctx context.Context, id string, version uint32, acc
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddAccounts request")
 	}
+
 	if len(accountIds) == 0 {
 		return nil, errors.New("empty accountIds passed into AddAccounts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -359,6 +361,7 @@ func (c *Client) AddAccounts(ctx context.Context, id string, version uint32, acc
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:add-accounts", id), opts.postMap, apiOpts...)
@@ -424,6 +427,7 @@ func (c *Client) SetAccounts(ctx context.Context, id string, version uint32, acc
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:set-accounts", id), opts.postMap, apiOpts...)
@@ -461,9 +465,11 @@ func (c *Client) RemoveAccounts(ctx context.Context, id string, version uint32, 
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveAccounts request")
 	}
+
 	if len(accountIds) == 0 {
 		return nil, errors.New("empty accountIds passed into RemoveAccounts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -491,6 +497,7 @@ func (c *Client) RemoveAccounts(ctx context.Context, id string, version uint32, 
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:remove-accounts", id), opts.postMap, apiOpts...)

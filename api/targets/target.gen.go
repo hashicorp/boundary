@@ -333,13 +333,11 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	return target, nil
 }
 
-func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddCredentialLibraries request")
 	}
-	if len(credentialLibraries) == 0 {
-		return nil, errors.New("empty credentialLibraries passed into AddCredentialLibraries request")
-	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -367,7 +365,6 @@ func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version 
 	}
 
 	opts.postMap["version"] = version
-	opts.postMap["credential_libraries"] = credentialLibraries
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
@@ -404,9 +401,11 @@ func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hos
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddHostSets request")
 	}
+
 	if len(hostSetIds) == 0 {
 		return nil, errors.New("empty hostSetIds passed into AddHostSets request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -434,6 +433,7 @@ func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hos
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", id), opts.postMap, apiOpts...)
@@ -467,7 +467,7 @@ func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hos
 	return target, nil
 }
 
-func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetCredentialLibraries request")
 	}
@@ -499,7 +499,6 @@ func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version 
 	}
 
 	opts.postMap["version"] = version
-	opts.postMap["credential_libraries"] = credentialLibraries
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
@@ -564,6 +563,7 @@ func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hos
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", id), opts.postMap, apiOpts...)
@@ -597,13 +597,11 @@ func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hos
 	return target, nil
 }
 
-func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveCredentialLibraries request")
 	}
-	if len(credentialLibraries) == 0 {
-		return nil, errors.New("empty credentialLibraries passed into RemoveCredentialLibraries request")
-	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -631,7 +629,6 @@ func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, versi
 	}
 
 	opts.postMap["version"] = version
-	opts.postMap["credential_libraries"] = credentialLibraries
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", id), opts.postMap, apiOpts...)
 	if err != nil {
@@ -668,9 +665,11 @@ func (c *Client) RemoveHostSets(ctx context.Context, id string, version uint32, 
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveHostSets request")
 	}
+
 	if len(hostSetIds) == 0 {
 		return nil, errors.New("empty hostSetIds passed into RemoveHostSets request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -698,6 +697,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, id string, version uint32, 
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["host_set_ids"] = hostSetIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", id), opts.postMap, apiOpts...)

@@ -268,9 +268,9 @@ type Target struct {
 	SessionConnectionLimit *wrapperspb.Int32Value `protobuf:"bytes,130,opt,name=session_connection_limit,proto3" json:"session_connection_limit,omitempty"`
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,140,opt,name=worker_filter,proto3" json:"worker_filter,omitempty"`
-	// The IDs of the application credential libraries associated with this Target.
+	// The IDs of the application credential library ids associated with this Target.
 	ApplicationCredentialLibraryIds []string `protobuf:"bytes,150,rep,name=application_credential_library_ids,proto3" json:"application_credential_library_ids,omitempty"`
-	// Output only. The credential libraries associated with this Target.
+	// Output only. The application credential libraries associated with this Target.
 	ApplicationCredentialLibraries []*CredentialLibrary `protobuf:"bytes,180,rep,name=application_credential_libraries,proto3" json:"application_credential_libraries,omitempty"`
 	// The attributes that are applicable for the specific Target.
 	Attributes *structpb.Struct `protobuf:"bytes,200,opt,name=attributes,proto3" json:"attributes,omitempty"`

@@ -62,7 +62,8 @@ type structInfo struct {
 	parentTypeName string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
-	// role principals and group members
+	// role principals and group members. If sliceSubtypeInfo is blank for a
+	// key, the function is created but no required parameter is produced.
 	sliceSubtypes map[string]sliceSubtypeInfo
 
 	// skipOptions indicates that we shouldn't create options for setting
@@ -594,10 +595,7 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "hostSetIds",
 			},
-			"CredentialLibraries": {
-				SliceType: "[]string",
-				VarName:   "credentialLibraries",
-			},
+			"CredentialLibraries": {},
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -617,6 +615,11 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
+			},
+			{
+				Name:      "ApplicationCredentialLibraryIds",
+				ProtoName: "application_credential_library_ids",
+				FieldType: "[]string",
 			},
 		},
 		versionEnabled:      true,
