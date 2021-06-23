@@ -490,6 +490,9 @@ func printItemTable(result api.GenericResult) string {
 
 	var libraryMaps map[credential.Purpose][]map[string]interface{}
 	if len(item.ApplicationCredentialLibraries) > 0 {
+		if libraryMaps == nil {
+			libraryMaps = make(map[credential.Purpose][]map[string]interface{})
+		}
 		var applicationLibraryMaps []map[string]interface{}
 		for _, lib := range item.ApplicationCredentialLibraries {
 			m := map[string]interface{}{
@@ -646,8 +649,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						secretStr = fmt.Sprintf("      %s", secretStr)
 					}
 					ret = append(ret,
-						fmt.Sprintf("    Secret:"),
-						fmt.Sprintf("      %s", secretStr),
+						fmt.Sprintf("    Secret:\n%s", secretStr),
 						"",
 					)
 				}
