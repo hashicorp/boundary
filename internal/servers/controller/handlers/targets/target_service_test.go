@@ -1318,51 +1318,44 @@ func TestAddTargetLibraries(t *testing.T) {
 	addCases := []struct {
 		name             string
 		tar              *target.TcpTarget
-		addLibraryIds    []string
 		addLibraries     []*pbs.CredentialLibrary
 		resultLibraryIds []string
 	}{
 		{
-			name:             "Add set on empty target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
-			addLibraryIds:    []string{cls[1].GetPublicId()},
+			name: "Add library on empty target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty for libraries"),
+			addLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:             "Add library on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			addLibraryIds:    []string{cls[1].GetPublicId()},
+			name: "Add library on populated target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			addLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
-			name:             "Add duplicated libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			addLibraryIds:    []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
-			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
-		},
-		{
-			name:             "Add library on empty target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty for libraries"),
-			addLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}},
-			resultLibraryIds: []string{cls[1].GetPublicId()},
-		},
-		{
-			name:             "Add library on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			addLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}},
-			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
-		},
-		{
-			name:             "Add duplicated libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			addLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}, {Id: cls[1].GetPublicId()}},
-			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
-		},
-		{
-			name:             "Add duplicated libraries across 2 fields on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated mixed", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			addLibraryIds:    []string{cls[1].GetPublicId()},
-			addLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}},
+			name: "Add duplicated libraries on populated target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicated for libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			addLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 	}
@@ -1370,10 +1363,9 @@ func TestAddTargetLibraries(t *testing.T) {
 	for _, tc := range addCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   tc.tar.GetPublicId(),
-				Version:              tc.tar.GetVersion(),
-				CredentialLibraryIds: tc.addLibraryIds,
-				CredentialLibraries:  tc.addLibraries,
+				Id:                  tc.tar.GetPublicId(),
+				Version:             tc.tar.GetVersion(),
+				CredentialLibraries: tc.addLibraries,
 			}
 
 			got, err := s.AddTargetCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1402,20 +1394,30 @@ func TestAddTargetLibraries(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Bad library Id",
+			name: "Bad target id",
 			req: &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   "bad id",
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Bad version",
 			req: &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion() + 2,
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 2,
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
@@ -1428,29 +1430,30 @@ func TestAddTargetLibraries(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Incorrect library ids",
+			name: "Incorrect library id",
 			req: &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{"incorrect"},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      "incorrect",
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Incorrect library id in libraries",
+			name: "Incorrect purpose",
 			req: &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                  tar.GetPublicId(),
-				Version:             tar.GetVersion(),
-				CredentialLibraries: []*pbs.CredentialLibrary{{Id: "incorrect"}},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Incorrect purpose in libraries",
-			req: &pbs.AddTargetCredentialLibrariesRequest{
-				Id:                  tar.GetPublicId(),
-				Version:             tar.GetVersion(),
-				CredentialLibraries: []*pbs.CredentialLibrary{{Id: cls[0].GetPublicId(), Purpose: "Wrong"}},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: "Wrong",
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1496,58 +1499,60 @@ func TestSetTargetLibraries(t *testing.T) {
 	setCases := []struct {
 		name             string
 		tar              *target.TcpTarget
-		setLibraryIds    []string
 		setLibraries     []*pbs.CredentialLibrary
 		resultLibraryIds []string
 		resultLibraries  []*pb.CredentialLibrary
 	}{
 		{
-			name:             "Set on empty target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
-			setLibraryIds:    []string{cls[1].GetPublicId()},
+			name: "Set on empty target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			setLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:             "Set on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			setLibraryIds:    []string{cls[1].GetPublicId()},
+			name: "Set on populated target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			setLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:             "Set duplicate libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			setLibraryIds:    []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
+			name: "Set duplicate libraries on populated target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
+			setLibraries: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
 			resultLibraryIds: []string{cls[1].GetPublicId()},
-		},
-		{
-			name:             "Set duplicate libraries on populated target",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "duplicate with libraries", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			setLibraryIds:    []string{cls[1].GetPublicId()},
-			setLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}},
-			resultLibraryIds: []string{cls[1].GetPublicId()},
-		},
-		{
-			name:             "Set across libraries and library",
-			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "across fields"),
-			setLibraryIds:    []string{cls[0].GetPublicId()},
-			setLibraries:     []*pbs.CredentialLibrary{{Id: cls[1].GetPublicId()}},
-			resultLibraryIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
-			resultLibraries:  []*pb.CredentialLibrary{resultingTargetLibrary(cls[0].GetPublicId()), resultingTargetLibrary(cls[1].GetPublicId())},
 		},
 		{
 			name:             "Set empty on populated target",
 			tar:              target.TestTcpTarget(t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]string{cls[0].GetPublicId()})),
-			setLibraryIds:    []string{},
+			setLibraries:     []*pbs.CredentialLibrary{},
 			resultLibraryIds: nil,
 		},
 	}
 	for _, tc := range setCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                   tc.tar.GetPublicId(),
-				Version:              tc.tar.GetVersion(),
-				CredentialLibraryIds: tc.setLibraryIds,
-				CredentialLibraries:  tc.setLibraries,
+				Id:                  tc.tar.GetPublicId(),
+				Version:             tc.tar.GetVersion(),
+				CredentialLibraries: tc.setLibraries,
 			}
 
 			got, err := s.SetTargetCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1581,45 +1586,56 @@ func TestSetTargetLibraries(t *testing.T) {
 		{
 			name: "Bad target Id",
 			req: &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                   "bad id",
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Bad version",
 			req: &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion() + 3,
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 3,
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
 		{
 			name: "Bad library id",
 			req: &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{"invalid"},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      "invalid",
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Incorrect library id in libraries",
+			name: "Incorrect purpose",
 			req: &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                  tar.GetPublicId(),
-				Version:             tar.GetVersion(),
-				CredentialLibraries: []*pbs.CredentialLibrary{{Id: "incorrect"}},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Incorrect purpose in libraries",
-			req: &pbs.SetTargetCredentialLibrariesRequest{
-				Id:                  tar.GetPublicId(),
-				Version:             tar.GetVersion(),
-				CredentialLibraries: []*pbs.CredentialLibrary{{Id: cls[0].GetPublicId(), Purpose: "Wrong"}},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: "wrong",
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1655,44 +1671,72 @@ func TestRemoveTargetLibraries(t *testing.T) {
 	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
 
 	removeCases := []struct {
-		name       string
-		tar        *target.TcpTarget
-		removeLibs []string
-		resultLibs []string
-		wantErr    bool
+		name         string
+		tar          *target.TcpTarget
+		removeLibs   []*pbs.CredentialLibrary
+		resultLibIds []string
+		wantErr      bool
 	}{
 		{
-			name:       "Remove from empty",
-			tar:        target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
-			removeLibs: []string{cls[1].GetPublicId()},
-			wantErr:    true,
+			name: "Remove from empty",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "empty"),
+			removeLibs: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
+			wantErr: true,
 		},
 		{
-			name:       "Remove 1 of 2 libraries",
-			tar:        target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
-			removeLibs: []string{cls[1].GetPublicId()},
-			resultLibs: []string{cls[0].GetPublicId()},
+			name: "Remove 1 of 2 libraries",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeLibs: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
+			resultLibIds: []string{cls[0].GetPublicId()},
 		},
 		{
-			name:       "Remove 1 duplicate set of 2 libraries",
-			tar:        target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
-			removeLibs: []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
-			resultLibs: []string{cls[0].GetPublicId()},
+			name: "Remove 1 duplicate set of 2 libraries",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeLibs: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
+			resultLibIds: []string{cls[0].GetPublicId()},
 		},
 		{
-			name:       "Remove all libraries from target",
-			tar:        target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
-			removeLibs: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
-			resultLibs: []string{},
+			name: "Remove all libraries from target",
+			tar:  target.TestTcpTarget(t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]string{cls[0].GetPublicId(), cls[1].GetPublicId()})),
+			removeLibs: []*pbs.CredentialLibrary{
+				{
+					Id:      cls[0].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+				{
+					Id:      cls[1].GetPublicId(),
+					Purpose: string(credential.ApplicationPurpose),
+				},
+			},
+			resultLibIds: []string{},
 		},
 	}
 
 	for _, tc := range removeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := &pbs.RemoveTargetCredentialLibrariesRequest{
-				Id:                   tc.tar.GetPublicId(),
-				Version:              tc.tar.GetVersion(),
-				CredentialLibraryIds: tc.removeLibs,
+				Id:                  tc.tar.GetPublicId(),
+				Version:             tc.tar.GetVersion(),
+				CredentialLibraries: tc.removeLibs,
 			}
 
 			got, err := s.RemoveTargetCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1702,7 +1746,7 @@ func TestRemoveTargetLibraries(t *testing.T) {
 			}
 			require.NoError(t, err, "Got error: %v", s)
 
-			assert.ElementsMatch(t, tc.resultLibs, got.GetItem().GetCredentialLibraryIds())
+			assert.ElementsMatch(t, tc.resultLibIds, got.GetItem().GetCredentialLibraryIds())
 		})
 	}
 
@@ -1716,36 +1760,65 @@ func TestRemoveTargetLibraries(t *testing.T) {
 		{
 			name: "Bad version",
 			req: &pbs.RemoveTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion() + 3,
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion() + 3,
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
 		},
 		{
 			name: "Bad target Id",
 			req: &pbs.RemoveTargetCredentialLibrariesRequest{
-				Id:                   "bad id",
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{cls[0].GetPublicId()},
+				Id:      "bad id",
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "empty libraries",
+			name: "Empty libraries",
 			req: &pbs.RemoveTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{},
+				Id:                  tar.GetPublicId(),
+				Version:             tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Invalid library ids",
 			req: &pbs.RemoveTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				Version:              tar.GetVersion(),
-				CredentialLibraryIds: []string{"invalid"},
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      "invalid",
+						Purpose: string(credential.ApplicationPurpose),
+					},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid library purpose",
+			req: &pbs.RemoveTargetCredentialLibrariesRequest{
+				Id:      tar.GetPublicId(),
+				Version: tar.GetVersion(),
+				CredentialLibraries: []*pbs.CredentialLibrary{
+					{
+						Id:      cls[0].GetPublicId(),
+						Purpose: "Wrong",
+					},
+				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1857,9 +1930,9 @@ func TestAuthorizeSession(t *testing.T) {
 
 	_, err = s.AddTargetCredentialLibraries(ctx,
 		&pbs.AddTargetCredentialLibrariesRequest{
-			Id:                   tar.GetPublicId(),
-			CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-			Version:              apiTar.GetItem().GetVersion(),
+			Id:                  tar.GetPublicId(),
+			CredentialLibraries: []*pbs.CredentialLibrary{{Id: clsResp.GetItem().GetId(), Purpose: string(credential.ApplicationPurpose)}},
+			Version:             apiTar.GetItem().GetVersion(),
 		})
 	require.NoError(t, err)
 
@@ -2034,9 +2107,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 		tr, err := s.AddTargetCredentialLibraries(ctx,
 			&pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-				Version:              tar.GetVersion(),
+				Id:                  tar.GetPublicId(),
+				CredentialLibraries: []*pbs.CredentialLibrary{{Id: clsResp.GetItem().GetId(), Purpose: string(credential.ApplicationPurpose)}},
+				Version:             tar.GetVersion(),
 			})
 		require.NoError(t, err)
 		return tr.GetItem().GetVersion()
@@ -2056,9 +2129,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 		tr, err := s.AddTargetCredentialLibraries(ctx,
 			&pbs.AddTargetCredentialLibrariesRequest{
-				Id:                   tar.GetPublicId(),
-				CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
-				Version:              tar.GetVersion(),
+				Id:                  tar.GetPublicId(),
+				CredentialLibraries: []*pbs.CredentialLibrary{{Id: clsResp.GetItem().GetId(), Purpose: string(credential.ApplicationPurpose)}},
+				Version:             tar.GetVersion(),
 			})
 		require.NoError(t, err)
 		return tr.GetItem().GetVersion()

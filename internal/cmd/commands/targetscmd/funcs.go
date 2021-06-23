@@ -28,10 +28,10 @@ func init() {
 }
 
 type extraCmdVars struct {
-	flagHostSets            []string
-	flagCredentialLibraries []string
-	flagHostId              string
-	sar                     *targets.SessionAuthorizationResult
+	flagHostSets                       []string
+	flagApplicationCredentialLibraries []string
+	flagHostId                         string
+	sar                                *targets.SessionAuthorizationResult
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
@@ -40,9 +40,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-host-sets":               {"id", "host-set", "version"},
 		"remove-host-sets":            {"id", "host-set", "version"},
 		"set-host-sets":               {"id", "host-set", "version"},
-		"add-credential-libraries":    {"id", "credential-library", "version"},
+		"add-credential-libraries":    {"id", "application-credential-library", "version"},
 		"remove-credential-libraries": {"id", "credential-library", "version"},
-		"set-credential-libraries":    {"id", "credential-library", "version"},
+		"set-credential-libraries":    {"id", "application-credential-library", "version"},
 	}
 }
 
@@ -163,7 +163,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Add credential-library resources to a tcp-type target:",
 			"",
-			`      $ boundary targets add-credential-libraries -id ttcp_1234567890 -credential-library clvlt_1234567890 -credential-library clvlt_0987654321`,
+			`      $ boundary targets add-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890 -credential-library clvlt_0987654321`,
 			"",
 			"",
 		})
@@ -187,7 +187,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Set credential-library resources on a tcp-type target:",
 			"",
-			`      $ boundary targets set-credential-libraries -id ttcp_1234567890 -credential-library clvlt_1234567890`,
+			`      $ boundary targets set-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890`,
 			"",
 			"",
 		})
@@ -226,11 +226,11 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagHostId,
 				Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
 			})
-		case "credential-library":
+		case "application-credential-library":
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "credential-library",
-				Target: &c.flagCredentialLibraries,
-				Usage:  "The credential-library resource to add, remove, or set.  May be specified multiple times.",
+				Name:   "application-credential-library",
+				Target: &c.flagApplicationCredentialLibraries,
+				Usage:  "The credential-library resource for application purpose to add, set, or remove.  May be specified multiple times.",
 			})
 		}
 	}
@@ -313,20 +313,26 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			}
 		}
 
-	case "add-credential-libraries", "remove-credential-libraries":
-		if len(c.flagCredentialLibraries) == 0 {
-			c.UI.Error("No credential-library supplied via -credential-library")
+	case "add-credential-libraries":
+		if len(c.flagApplicationCredentialLibraries) == 0 {
+			c.UI.Error("No credential-library supplied via -application-credential-library")
+			return false
+		}
+
+	case "remove-credential-libraries":
+		if len(c.flagApplicationCredentialLibraries) == 0 {
+			c.UI.Error("No credential-library supplied via -application-credential-library")
 			return false
 		}
 
 	case "set-credential-libraries":
-		switch len(c.flagCredentialLibraries) {
+		switch len(c.flagApplicationCredentialLibraries) {
 		case 0:
-			c.UI.Error("No credential-libraries supplied via -credential-library")
+			c.UI.Error("No credential-libraries supplied via -application-credential-library")
 			return false
 		case 1:
-			if c.flagCredentialLibraries[0] == "null" {
-				c.flagCredentialLibraries = nil
+			if c.flagApplicationCredentialLibraries[0] == "null" {
+				c.flagApplicationCredentialLibraries = nil
 			}
 		}
 
@@ -340,6 +346,13 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 }
 
 func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
+	var credLibs []targets.CredentialLibraryInput
+	for _, v := range c.flagApplicationCredentialLibraries {
+		credLibs = append(credLibs, targets.CredentialLibraryInput{
+			Id:      v,
+			Purpose: "application",
+		})
+	}
 	switch c.Func {
 	case "add-host-sets":
 		return targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
@@ -348,11 +361,11 @@ func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError
 	case "set-host-sets":
 		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
 	case "add-credential-libraries":
-		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
+		return targetClient.AddCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
 	case "remove-credential-libraries":
-		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
+		return targetClient.RemoveCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
 	case "set-credential-libraries":
-		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, c.flagCredentialLibraries, opts...)
+		return targetClient.SetCredentialLibraries(c.Context, c.FlagId, version, credLibs, opts...)
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"

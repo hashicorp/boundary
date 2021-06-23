@@ -472,7 +472,7 @@ var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value.VarName }} {{ if ( not (eq $op "Remove" ) ) }}{{ $value.SliceType }}{{ else }}[]string{{ end }}, opt... Option) (*{{ $input.Name }}UpdateResult, error) {
+func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value.VarName }} {{ $value.SliceType }}, opt... Option) (*{{ $input.Name }}UpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into {{ $fullName }} request")
 	}

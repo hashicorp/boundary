@@ -597,7 +597,7 @@ func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hos
 	return target, nil
 }
 
-func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []CredentialLibraryInput, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveCredentialLibraries request")
 	}

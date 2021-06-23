@@ -285,12 +285,16 @@ message RemoveTargetHostSetsResponse {
 }
 
 message CredentialLibrary {
+  // NOTE: The field numbers here match those in CredentialLibrary in the target
+  // package. This allows us to switch it later if we want while remaining
+  // compatible.
+
   // The id of the credential library.
-  string id = 1;
+  string id = 10;
   // The purpose of the credential library for this target. Currently this can
   // only be "application" or left empty (which defaults the value to
   // "application").
-  string purpose = 2;
+  string purpose = 50;
 }
 
 // The ids from both credential_library_ids and credential_libraries are used.
@@ -301,8 +305,7 @@ message AddTargetCredentialLibrariesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
-  repeated CredentialLibrary credential_libraries = 4 [json_name="credential_libraries"];
+  repeated CredentialLibrary credential_libraries = 3 [json_name="credential_libraries"];
 }
 
 message AddTargetCredentialLibrariesResponse {
@@ -317,8 +320,7 @@ message SetTargetCredentialLibrariesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
-  repeated CredentialLibrary credential_libraries = 4 [json_name="credential_libraries"];
+  repeated CredentialLibrary credential_libraries = 3 [json_name="credential_libraries"];
 }
 
 message SetTargetCredentialLibrariesResponse {
@@ -330,7 +332,7 @@ message RemoveTargetCredentialLibrariesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
-  repeated string credential_library_ids = 3 [json_name="credential_library_ids"];
+  repeated CredentialLibrary credential_libraries = 3 [json_name="credential_libraries"];
 }
 
 message RemoveTargetCredentialLibrariesResponse {

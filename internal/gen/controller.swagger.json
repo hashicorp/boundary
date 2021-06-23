@@ -4606,12 +4606,6 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "credential_libraries": {
           "type": "array",
           "items": {
@@ -5457,10 +5451,10 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "credential_library_ids": {
+        "credential_libraries": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/controller.api.services.v1.CredentialLibrary"
           }
         }
       }
@@ -5670,12 +5664,6 @@
           "type": "integer",
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-        },
-        "credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         },
         "credential_libraries": {
           "type": "array",
