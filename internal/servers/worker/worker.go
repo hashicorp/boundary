@@ -137,6 +137,11 @@ func (w *Worker) Shutdown(skipListeners bool) error {
 		}
 	}
 	w.started.Store(false)
+	if w.conf.Eventer != nil {
+		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
+			return fmt.Errorf("error flushing worker eventer nodes: %w", err)
+		}
+	}
 	return nil
 }
 
