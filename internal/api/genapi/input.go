@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -552,12 +551,6 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 	},
 	{
-		inProto:         &services.CredentialLibrary{},
-		outFile:         "targets/credential_library_input.gen.go",
-		packageOverride: "targets",
-		nameOverride:    "CredentialLibraryInput",
-	},
-	{
 		inProto: &targets.HostSet{},
 		outFile: "targets/host_set.gen.go",
 	},
@@ -602,7 +595,7 @@ var inputStructs = []*structInfo{
 				VarName:   "hostSetIds",
 			},
 			"CredentialLibraries": {
-				SliceType: "[]CredentialLibraryInput",
+				SliceType: "[]string",
 				VarName:   "credentialLibraries",
 			},
 		},

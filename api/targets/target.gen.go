@@ -13,24 +13,24 @@ import (
 )
 
 type Target struct {
-	Id                     string                 `json:"id,omitempty"`
-	ScopeId                string                 `json:"scope_id,omitempty"`
-	Scope                  *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name                   string                 `json:"name,omitempty"`
-	Description            string                 `json:"description,omitempty"`
-	CreatedTime            time.Time              `json:"created_time,omitempty"`
-	UpdatedTime            time.Time              `json:"updated_time,omitempty"`
-	Version                uint32                 `json:"version,omitempty"`
-	Type                   string                 `json:"type,omitempty"`
-	HostSetIds             []string               `json:"host_set_ids,omitempty"`
-	HostSets               []*HostSet             `json:"host_sets,omitempty"`
-	SessionMaxSeconds      uint32                 `json:"session_max_seconds,omitempty"`
-	SessionConnectionLimit int32                  `json:"session_connection_limit,omitempty"`
-	WorkerFilter           string                 `json:"worker_filter,omitempty"`
-	CredentialLibraryIds   []string               `json:"credential_library_ids,omitempty"`
-	CredentialLibraries    []*CredentialLibrary   `json:"credential_libraries,omitempty"`
-	Attributes             map[string]interface{} `json:"attributes,omitempty"`
-	AuthorizedActions      []string               `json:"authorized_actions,omitempty"`
+	Id                              string                 `json:"id,omitempty"`
+	ScopeId                         string                 `json:"scope_id,omitempty"`
+	Scope                           *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                            string                 `json:"name,omitempty"`
+	Description                     string                 `json:"description,omitempty"`
+	CreatedTime                     time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                     time.Time              `json:"updated_time,omitempty"`
+	Version                         uint32                 `json:"version,omitempty"`
+	Type                            string                 `json:"type,omitempty"`
+	HostSetIds                      []string               `json:"host_set_ids,omitempty"`
+	HostSets                        []*HostSet             `json:"host_sets,omitempty"`
+	SessionMaxSeconds               uint32                 `json:"session_max_seconds,omitempty"`
+	SessionConnectionLimit          int32                  `json:"session_connection_limit,omitempty"`
+	WorkerFilter                    string                 `json:"worker_filter,omitempty"`
+	ApplicationCredentialLibraryIds []string               `json:"application_credential_library_ids,omitempty"`
+	ApplicationCredentialLibraries  []*CredentialLibrary   `json:"application_credential_libraries,omitempty"`
+	Attributes                      map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions               []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }
@@ -333,7 +333,7 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	return target, nil
 }
 
-func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []CredentialLibraryInput, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddCredentialLibraries request")
 	}
@@ -467,7 +467,7 @@ func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hos
 	return target, nil
 }
 
-func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []CredentialLibraryInput, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetCredentialLibraries request")
 	}
@@ -597,7 +597,7 @@ func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hos
 	return target, nil
 }
 
-func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []CredentialLibraryInput, opt ...Option) (*TargetUpdateResult, error) {
+func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, credentialLibraries []string, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveCredentialLibraries request")
 	}
