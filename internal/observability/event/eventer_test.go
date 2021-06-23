@@ -88,6 +88,9 @@ func Test_InitSysEventer(t *testing.T) {
 			require.NotNil(got)
 			tt.want.broker = got.broker
 			tt.want.flushableNodes = got.flushableNodes
+			tt.want.auditPipelines = got.auditPipelines
+			tt.want.errPipelines = got.errPipelines
+			tt.want.observationPipelines = got.observationPipelines
 			assert.Equal(tt.want, got)
 		})
 	}
@@ -411,30 +414,69 @@ func Test_NewEventer(t *testing.T) {
 			require.NotNil(got)
 			tt.want.broker = got.broker
 			tt.want.flushableNodes = got.flushableNodes
+			tt.want.auditPipelines = got.auditPipelines
+			tt.want.errPipelines = got.errPipelines
+			tt.want.observationPipelines = got.observationPipelines
 			assert.Equal(tt.want, got)
 
 			assert.Lenf(testBroker.registeredNodeIds, len(tt.wantRegistered), "got nodes: %q", testBroker.registeredNodeIds)
+			registeredNodeIds := map[string]bool{}
+			for _, id := range testBroker.registeredNodeIds {
+				registeredNodeIds[string(id)] = true
+			}
 			for _, want := range tt.wantRegistered {
 				found := false
-				for _, got := range testBroker.registeredNodeIds {
-					if strings.Contains(string(got), want) {
+				for got := range registeredNodeIds {
+					if strings.Contains(got, want) {
 						found = true
+						delete(registeredNodeIds, got)
 						break
 					}
 				}
 				assert.Truef(found, "did not find %s in the registered nodes: %s", want, testBroker.registeredNodeIds)
 			}
+
 			assert.Lenf(testBroker.pipelines, len(tt.wantPipelines), "got pipelines: %q", testBroker.pipelines)
+			registeredPipelines := map[string]eventlogger.Pipeline{}
+			gotAuditCnt := 0
+			gotErrCnt := 0
+			gotObservationCnt := 0
+			for _, got := range testBroker.pipelines {
+				registeredPipelines[string(got.PipelineID)] = got
+				switch got.EventType {
+				case eventlogger.EventType(AuditType):
+					gotAuditCnt += 1
+				case eventlogger.EventType(ErrorType):
+					gotErrCnt += 1
+				case eventlogger.EventType(ObservationType):
+					gotObservationCnt += 1
+				}
+			}
+			wantAuditCnt := 0
+			wantErrCnt := 0
+			wantObservationCnt := 0
 			for _, want := range tt.wantPipelines {
+				switch want {
+				case string(AuditType):
+					wantAuditCnt += 1
+				case string(ErrorType):
+					wantErrCnt += 1
+				case string(ObservationType):
+					wantObservationCnt += 1
+				}
 				found := false
-				for _, got := range testBroker.pipelines {
+				for id, got := range registeredPipelines {
 					if strings.Contains(string(got.EventType), want) {
 						found = true
+						delete(registeredPipelines, id)
 						break
 					}
 				}
 				assert.Truef(found, "did not find %s in the registered pipelines: %s", want, testBroker.pipelines)
 			}
+			assert.Equal(wantAuditCnt, gotAuditCnt)
+			assert.Equal(wantErrCnt, gotErrCnt)
+			assert.Equal(wantObservationCnt, gotObservationCnt)
 
 			assert.Equal(tt.wantThresholds, testBroker.successThresholds)
 		})
