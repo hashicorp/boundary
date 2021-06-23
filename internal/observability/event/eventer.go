@@ -46,10 +46,21 @@ type broker interface {
 
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
-	broker         broker
-	flushableNodes []flushable
-	conf           EventerConfig
-	logger         hclog.Logger
+	broker               broker
+	flushableNodes       []flushable
+	conf                 EventerConfig
+	logger               hclog.Logger
+	auditPipelines       []pipeline
+	observationPipelines []pipeline
+	errPipelines         []pipeline
+}
+
+type pipeline struct {
+	eventType  Type
+	fmtId      eventlogger.NodeID
+	sinkId     eventlogger.NodeID
+	gateId     eventlogger.NodeID
+	sinkConfig SinkConfig
 }
 
 var (
@@ -122,11 +133,6 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	type pipeline struct {
-		eventType Type
-		fmtId     eventlogger.NodeID
-		sinkId    eventlogger.NodeID
-	}
 	var auditPipelines, observationPipelines, errPipelines []pipeline
 
 	opts := getOpts(opt...)
@@ -228,23 +234,26 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		}
 		if addToAudit {
 			auditPipelines = append(auditPipelines, pipeline{
-				eventType: AuditType,
-				fmtId:     jsonfmtId,
-				sinkId:    sinkId,
+				eventType:  AuditType,
+				fmtId:      jsonfmtId,
+				sinkId:     sinkId,
+				sinkConfig: s,
 			})
 		}
 		if addToObservation {
 			observationPipelines = append(observationPipelines, pipeline{
-				eventType: ObservationType,
-				fmtId:     jsonfmtId,
-				sinkId:    sinkId,
+				eventType:  ObservationType,
+				fmtId:      jsonfmtId,
+				sinkId:     sinkId,
+				sinkConfig: s,
 			})
 		}
 		if addToErr {
 			errPipelines = append(errPipelines, pipeline{
-				eventType: ErrorType,
-				fmtId:     jsonfmtId,
-				sinkId:    sinkId,
+				eventType:  ErrorType,
+				fmtId:      jsonfmtId,
+				sinkId:     sinkId,
+				sinkConfig: s,
 			})
 		}
 	}
@@ -262,8 +271,8 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		gatedFilterNodeId := eventlogger.NodeID(gateId)
-		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+		p.gateId = eventlogger.NodeID(gateId)
+		if err := e.broker.RegisterNode(p.gateId, &gatedFilterNode); err != nil {
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
@@ -274,7 +283,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
+			NodeIDs:    []eventlogger.NodeID{p.gateId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register audit pipeline: %w", op, err)
@@ -288,8 +297,8 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		gatedFilterNodeId := eventlogger.NodeID(gateId)
-		if err := e.broker.RegisterNode(gatedFilterNodeId, &gatedFilterNode); err != nil {
+		p.gateId = eventlogger.NodeID(gateId)
+		if err := e.broker.RegisterNode(p.gateId, &gatedFilterNode); err != nil {
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
@@ -300,7 +309,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
 			EventType:  eventlogger.EventType(p.eventType),
 			PipelineID: eventlogger.PipelineID(pipeId),
-			NodeIDs:    []eventlogger.NodeID{gatedFilterNodeId, p.fmtId, p.sinkId},
+			NodeIDs:    []eventlogger.NodeID{p.gateId, p.fmtId, p.sinkId},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register observation pipeline: %w", op, err)
@@ -328,6 +337,10 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to set success threshold for error events: %w", op, err)
 	}
+
+	e.auditPipelines = append(e.auditPipelines, auditPipelines...)
+	e.errPipelines = append(e.errPipelines, errPipelines...)
+	e.observationPipelines = append(e.observationPipelines, observationPipelines...)
 
 	return e, nil
 }
