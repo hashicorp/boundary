@@ -43,7 +43,7 @@ type templateInput struct {
 	CollectionPath        string
 	ResourcePath          string
 	ParentTypeName        string
-	SliceSubtypes         map[string]string
+	SliceSubtypes         map[string]sliceSubtypeInfo
 	ExtraOptions          []fieldInfo
 	VersionEnabled        bool
 	TypeOnCreate          bool
@@ -68,6 +68,12 @@ func fillTemplates() {
 			TypeOnCreate:        in.typeOnCreate,
 			CreateResponseTypes: in.createResponseTypes,
 			RecursiveListing:    in.recursiveListing,
+		}
+		if in.packageOverride != "" {
+			input.Package = in.packageOverride
+		}
+		if in.nameOverride != "" {
+			input.Name = in.nameOverride
 		}
 
 		if len(in.pluralResourceName) > 0 {
@@ -95,7 +101,7 @@ func fillTemplates() {
 		// collate them all here for writing later. The map argument of the
 		// package map is to prevent duplicates since we may have multiple e.g.
 		// Name or Description fields.
-		if !in.outputOnly {
+		if !in.skipOptions {
 			pkgOptionMap := map[string]fieldInfo{}
 			for _, val := range input.Fields {
 				if val.GenerateSdkOption {
@@ -466,12 +472,12 @@ var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}UpdateResult, error) { 
+func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ $value.VarName }} {{ if ( not (eq $op "Remove" ) ) }}{{ $value.SliceType }}{{ else }}[]string{{ end }}, opt... Option) (*{{ $input.Name }}UpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into {{ $fullName }} request")
 	}
-	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value }}) == 0 {
-		return nil, errors.New("empty {{ $value }} passed into {{ $fullName }} request")
+	{{ if ( not ( eq $op "Set" ) ) }}if len({{ $value.VarName }}) == 0 {
+		return nil, errors.New("empty {{ $value.VarName }} passed into {{ $fullName }} request")
 	}{{ end }}
 	if c.client == nil {
 		return nil, errors.New("nil client")
@@ -501,7 +507,7 @@ func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32,
 	}
 	{{ end }}
 	opts.postMap["version"] = version
-	opts.postMap["{{ snakeCase $value }}"] = {{ $value }}
+	opts.postMap["{{ snakeCase $value.VarName }}"] = {{ $value.VarName }}
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.postMap, apiOpts...)
 	if err != nil {
