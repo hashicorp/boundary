@@ -12,7 +12,8 @@ const (
 )
 
 // Prefix returns s prefixed with the sentinel character '\ufffe'.
-// If s is already prefixed with the sentinel character, s is returned unchanged.
+// If s is already prefixed with the sentinel character or s is an empty string,
+// s is returned unchanged.
 func Prefix(s string) string {
 	if s == "" || strings.HasPrefix(s, sentinel) {
 		return s
@@ -26,7 +27,7 @@ func Strip(s string) string {
 	return strings.TrimPrefix(s, sentinel)
 }
 
-// Sanitize cleans s by replacing the all occurrences of the sentinel character '\ufffe'
+// Sanitize cleans s by replacing all occurrences of the sentinel character '\ufffe'
 // as well as '\uffff' (not a character) with the replacement character '\ufffd'.
 // Sanitize should be called before calling Prefix and before a database insert occurs.
 func Sanitize(s string) string {
