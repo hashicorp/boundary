@@ -98,21 +98,21 @@ func TestCredentialLibraryASD(t *testing.T) {
 	require.NotNil(tar)
 	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
 
-	tar, err = tarClient.AddCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithApplicationCredentialLibraryIds([]string{ r1.Item.Id}))
+	tar, err = tarClient.AddCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithApplicationCredentialLibraryIds([]string{r1.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r1.Item.Id})
 	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r1.Item)})
 
 	tar, err = tarClient.SetCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithApplicationCredentialLibraryIds([]string{ r2.Item.Id}))
+		targets.WithApplicationCredentialLibraryIds([]string{r2.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
 	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r2.Item.Id})
 	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r2.Item)})
 
 	tar, err = tarClient.RemoveCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithApplicationCredentialLibraryIds([]string{ r2.Item.Id}))
+		targets.WithApplicationCredentialLibraryIds([]string{r2.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
 	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)

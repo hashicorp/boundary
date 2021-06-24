@@ -42,7 +42,7 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"remove-host-sets":            {"id", "host-set", "version"},
 		"set-host-sets":               {"id", "host-set", "version"},
 		"add-credential-libraries":    {"id", "application-credential-library", "version"},
-		"remove-credential-libraries": {"id", "credential-library", "version"},
+		"remove-credential-libraries": {"id", "application-credential-library", "version"},
 		"set-credential-libraries":    {"id", "application-credential-library", "version"},
 	}
 }
@@ -314,15 +314,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 			}
 		}
 
-	case "add-credential-libraries":
-		// TODO: As we add other purposes, add them to this check
-		if len(c.flagApplicationCredentialLibraries) == 0 {
-			c.UI.Error("No credential-libraries supplied via -application-credential-library")
-			return false
-		}
-		*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
-
-	case "remove-credential-libraries":
+	case "add-credential-libraries", "remove-credential-libraries":
 		// TODO: As we add other purposes, add them to this check
 		if len(c.flagApplicationCredentialLibraries) == 0 {
 			c.UI.Error("No credential-libraries supplied via -application-credential-library")

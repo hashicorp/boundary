@@ -40,12 +40,13 @@ import (
 const sessionCancelTimeout = 10 * time.Second
 
 type SessionInfo struct {
-	Address         string    `json:"address"`
-	Port            int       `json:"port"`
-	Protocol        string    `json:"protocol"`
-	Expiration      time.Time `json:"expiration"`
-	ConnectionLimit int32     `json:"connection_limit"`
-	SessionId       string    `json:"session_id"`
+	Address         string                       `json:"address"`
+	Port            int                          `json:"port"`
+	Protocol        string                       `json:"protocol"`
+	Expiration      time.Time                    `json:"expiration"`
+	ConnectionLimit int32                        `json:"connection_limit"`
+	SessionId       string                       `json:"session_id"`
+	Credentials     []*targets.SessionCredential `json:"credentials"`
 }
 
 type ConnectionInfo struct {
@@ -486,7 +487,10 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	if c.flagExec == "" {
+	creds := c.sessionAuthz.Credentials
+	switch c.Func {
+	case "postgres":
+	case "connect":
 		sessInfo := SessionInfo{
 			Protocol:        "tcp",
 			Address:         c.listenerAddr.IP.String(),
@@ -494,13 +498,29 @@ func (c *Command) Run(args []string) (retCode int) {
 			Expiration:      c.expiration,
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
+			Credentials:     creds,
 		}
-
+		// "connect" indicates there is no subcommand to the connect function.
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateSessionInfoTableOutput(sessInfo))
 		case "json":
 			out, err := json.Marshal(&sessInfo)
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
+				return base.CommandCliError
+			}
+			c.UI.Output(string(out))
+		}
+	default:
+		if len(creds) == 0 {
+			break
+		}
+		switch base.Format(c.UI) {
+		case "table":
+			c.UI.Output(generateCredentialTableOutput(creds))
+		case "json":
+			out, err := json.Marshal(&struct{ Credentials []*targets.SessionCredential }{Credentials: creds})
 			if err != nil {
 				c.PrintCliError(fmt.Errorf("error marshaling session information: %w", err))
 				return base.CommandCliError
