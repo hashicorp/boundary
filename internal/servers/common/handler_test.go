@@ -2,15 +2,38 @@ package common
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type testFlusher struct {
+	http.ResponseWriter
+}
+
+func (t *testFlusher) Flush() {}
+
+type testPusher struct {
+	http.ResponseWriter
+}
+
+func (t *testPusher) Push(target string, opts *http.PushOptions) error { return nil }
+
+type testHijacker struct {
+	http.ResponseWriter
+}
+
+func (t *testHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
 
 func Test_WrapWithOptionals(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -147,20 +170,77 @@ func Test_WrapWithOptionals(t *testing.T) {
 	}
 }
 
-type testFlusher struct {
-	http.ResponseWriter
+func Test_WrapWithEventsHandler(t *testing.T) {
+	t.Parallel()
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	testEventer, err := event.NewEventer(hclog.Default(), *event.DefaultEventerConfig())
+	require.NoError(t, err)
+	testKms := kms.TestKms(t, conn, wrapper)
+	tests := []struct {
+		name            string
+		h               http.Handler
+		e               *event.Eventer
+		logger          hclog.Logger
+		kms             *kms.Kms
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing handler",
+			e:               testEventer,
+			logger:          hclog.Default(),
+			kms:             testKms,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing handler",
+		},
+		{
+			name: "missing eventer",
+			h: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, "Hello, client")
+			}),
+			logger:          hclog.Default(),
+			kms:             testKms,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing eventer",
+		},
+		{
+			name: "missing logger",
+			h: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, "Hello, client")
+			}),
+			e:               testEventer,
+			kms:             testKms,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing logger",
+		},
+		{
+			name: "missing kms",
+			h: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, "Hello, client")
+			}),
+			e:               testEventer,
+			logger:          hclog.Default(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing kms",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.logger, tt.kms)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Nil(got)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(got)
+		})
+	}
+
 }
-
-func (t *testFlusher) Flush() {}
-
-type testPusher struct {
-	http.ResponseWriter
-}
-
-func (t *testPusher) Push(target string, opts *http.PushOptions) error { return nil }
-
-type testHijacker struct {
-	http.ResponseWriter
-}
-
-func (t *testHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
