@@ -74,7 +74,7 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 
 func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	prefixStr := strings.Repeat(" ", indent)
-	origSecret := []string{fmt.Sprintf("%s  %s", prefixStr, sc.Secret)}
+	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret)}
 	switch sc.CredentialLibrary.Type {
 	case "vault":
 		// If it's Vault, the result will be JSON, except in
