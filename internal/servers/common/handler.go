@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
@@ -45,53 +46,60 @@ func (w *writerWrapper) StatusCode() int {
 // an http.ResponseWriter that satisfies those optional interfaces.
 //
 // See: https://medium.com/@cep21/interface-wrapping-method-erasure-c523b3549912
-func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) http.ResponseWriter {
+func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.ResponseWriter, error) {
+	const op = "common.WrapWithOptionals"
+	if with == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing writer wrapper")
+	}
+	if wrap == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing response writer")
+	}
 	flusher, _ := wrap.(http.Flusher)
 	pusher, _ := wrap.(http.Pusher)
 	hijacker, _ := wrap.(http.Hijacker)
 	switch {
 	case flusher == nil && pusher == nil && hijacker == nil:
-		return with
+		return with, nil
 	case flusher != nil && pusher == nil && hijacker == nil:
 		return struct {
 			*writerWrapper
 			http.Flusher
-		}{with, flusher}
+		}{with, flusher}, nil
 	case flusher == nil && pusher != nil && hijacker == nil:
 		return struct {
 			*writerWrapper
 			http.Pusher
-		}{with, pusher}
+		}{with, pusher}, nil
 	case flusher == nil && pusher == nil && hijacker != nil:
 		return struct {
 			*writerWrapper
 			http.Hijacker
-		}{with, hijacker}
+		}{with, hijacker}, nil
 	case flusher != nil && pusher != nil && hijacker == nil:
 		return struct {
 			*writerWrapper
 			http.Flusher
 			http.Pusher
-		}{with, flusher, pusher}
+		}{with, flusher, pusher}, nil
 	case flusher != nil && pusher == nil && hijacker != nil:
 		return struct {
 			*writerWrapper
 			http.Flusher
 			http.Hijacker
-		}{with, flusher, hijacker}
+		}{with, flusher, hijacker}, nil
 	case flusher == nil && pusher != nil && hijacker != nil:
 		return struct {
 			*writerWrapper
 			http.Pusher
 			http.Hijacker
-		}{with, pusher, hijacker}
+		}{with, pusher, hijacker}, nil
 	default:
 		return struct {
 			*writerWrapper
 			http.Flusher
 			http.Pusher
 			http.Hijacker
-		}{with, flusher, pusher, hijacker}
+		}{with, flusher, pusher, hijacker}, nil
 	}
 }
 
@@ -132,7 +140,10 @@ func WrapHandlerWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog
 			start := time.Now()
 			startGatedEvents(ctx, logger, method, url, start)
 
-			wrapper := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
+			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
+			if err != nil {
+				logger.Trace("wrap handler with optional interfaces", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			}
 			h.ServeHTTP(wrapper, r)
 
 			i, _ := wrapper.(interface{ StatusCode() int })
