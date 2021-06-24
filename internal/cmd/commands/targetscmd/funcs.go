@@ -629,7 +629,6 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						// credential fetching. So we can take the bytes
 						// as-is (after base64-decoding), but we'll format
 						// it nicely.
-						fmt.Print(string(cred.Secret))
 						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
 						if err != nil {
 							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
@@ -659,7 +658,37 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			if ok := c.PrintJsonItem(c.sar); !ok {
+			if len(item.Credentials) > 0 {
+				for _, cred := range item.Credentials {
+					if len(cred.Secret) == 0 {
+						continue
+					}
+
+					switch cred.CredentialLibrary.Type {
+					case "vault":
+						// If it's Vault, the result will be JSON, except in
+						// specific circumstances that aren't used for
+						// credential fetching. So we can take the bytes
+						// as-is (after base64-decoding), but we'll format
+						// it nicely.
+						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
+						if err != nil {
+							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
+						}
+						// Now that it's decoded, pop it back in the same place
+						// as marshaled JSON
+						cred.Secret = in
+					default:
+						// If it's not Vault, and not another known type,
+						// leave it alone.
+					}
+				}
+			}
+			marshaledItem, err := json.Marshal(item)
+			if err != nil {
+				return false, fmt.Errorf("Error marshaling as JSON: %w", err)
+			}
+			if ok := c.PrintJson(marshaledItem, base.WithStatusCode(c.sar.GetResponse().StatusCode())); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil
