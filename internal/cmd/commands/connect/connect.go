@@ -490,7 +490,13 @@ func (c *Command) Run(args []string) (retCode int) {
 	creds := c.sessionAuthz.Credentials
 	switch c.Func {
 	case "postgres":
+		// Credentials are brokered when connecting to the postgres db.
+		// TODO: Figure out how to handle cases where we don't automatically know how to
+		//  broker the credentials like unrecognized or multiple credentials.
 	case "connect":
+		// "connect" indicates there is no subcommand to the connect function.
+		// The only way a user will be able to connect to the session is by
+		// connecting directly to the port and address we report to them here.
 		sessInfo := SessionInfo{
 			Protocol:        "tcp",
 			Address:         c.listenerAddr.IP.String(),
@@ -500,7 +506,6 @@ func (c *Command) Run(args []string) (retCode int) {
 			SessionId:       c.sessionAuthzData.GetSessionId(),
 			Credentials:     creds,
 		}
-		// "connect" indicates there is no subcommand to the connect function.
 		switch base.Format(c.UI) {
 		case "table":
 			c.UI.Output(generateSessionInfoTableOutput(sessInfo))

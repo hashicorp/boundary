@@ -21,7 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSleepyDevEnvironment(t *testing.T) {
+func TestSetupSleepyDevEnvironment(t *testing.T) {
+	t.Skip("This test exists to make manual testing and debugging easier by setting up an environment to test against.\n" +
+		"Comment out this line to run the environment establishing test.")
+
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Info,
 	})
