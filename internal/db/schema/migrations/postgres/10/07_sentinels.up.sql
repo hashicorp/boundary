@@ -31,4 +31,6 @@ alter domain wt_sentinel
 comment on domain wt_sentinel is
     'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
 
+drop function wt_to_sentinel; -- wt_to_sentinel is not needed dropping and not re-creating
+
 commit;

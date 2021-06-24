@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db/sanitize"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -33,7 +34,7 @@ const (
 )
 
 const (
-	externalIdSentinel = "\ufffenone"
+	externalIdSentinel = "\ufffenone\uffff"
 
 	// UnknownCredentialStatus represents a credential that has an unknown
 	// status.
@@ -60,6 +61,7 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	}
 
 	status := string(ActiveCredential)
+	externalId = sanitize.String(externalId)
 	if externalId == "" {
 		externalId = externalIdSentinel
 		status = string(UnknownCredentialStatus)

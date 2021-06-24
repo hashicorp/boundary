@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10006,
+		binarySchemaVersion: 10007,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6041,6 +6041,38 @@ create table session_credential_dynamic (
   $$ language plpgsql;
   create trigger revoke_credentials after insert on session_state
     for each row execute procedure revoke_credentials();
+`),
+			10007: []byte(`
+update credential_vault_credential
+  set external_id = concat(external_id, u&'\ffff')
+  where wt_is_sentinel(external_id)
+    and not starts_with(reverse(external_id), u&'\ffff');
+
+alter domain wt_sentinel
+    drop constraint wt_sentinel_not_valid;
+
+drop function wt_is_sentinel;
+
+create function wt_is_sentinel(string text)
+    returns bool
+as $$
+select starts_with(string, u&'\fffe') and starts_with(reverse(string), u&'\ffff');
+$$ language sql
+    immutable
+    returns null on null input;
+comment on function wt_is_sentinel is
+    'wt_is_sentinel returns true if string is a sentinel value';
+
+alter domain wt_sentinel
+    add constraint wt_sentinel_not_valid
+        check(
+                wt_is_sentinel(value)
+                or
+                length(trim(trailing u&'\ffff' from trim(leading u&'\fffe ' from value))) > 0
+            );
+
+comment on domain wt_sentinel is
+    'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
