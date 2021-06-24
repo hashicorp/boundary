@@ -19,6 +19,10 @@ if [ "$1" = 'server' ]; then
     shift
     set -- boundary server \
         "$@"
+elif boundary --help "$1" 2>&1 | grep -q "boundary $1"; then
+    # We can't use the return code to check for the existence of a subcommand, so
+    # we have to use grep to look for a pattern in the help output.
+    set -- boundary "$@"
 fi
 
 # If we are running Boundary, make sure it executes as the proper user.
