@@ -927,13 +927,15 @@ returning id;
 		value   string
 		wantErr bool
 	}{
-		{"normal", "\ufffefoo", false},
+		{"normal", "\ufffefoo\uffff", false},
 		{"normal non-sentinel", "foo", false},
 		{"trailing sentinel", "\ufffefoo\ufffe", false},
-		{"sentinel with space before word", "\ufffe foo", false},
-		{"sentinel with empty string", "\ufffe  ", true},
-		{"multiple sentinels with empty string", "\ufffe\ufffe  ", true},
-		{"multiple sentinels", "\ufffe\ufffefoo", false},
+		{"sentinel with space before word", "\ufffe foo\uffff", false},
+		{"sentinel with space after word", "\ufffefoo \uffff", false},
+		{"start sentinel with empty string", "\ufffe  ", true},
+		{"multiple sentinels with empty string", "\ufffe\ufffe  \uffff\uffff", true},
+		{"multiple sentinels", "\ufffe\ufffefoo\uffff\uffff", false},
+		{"multiple sentinels inverted", "\uffff\ufffffoo\ufffe\ufffe", false},
 		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", false},
 		{"empty string", "  ", true},
 	}
@@ -967,15 +969,21 @@ select wt_is_sentinel($1);
 		value string
 		want  bool
 	}{
-		{"normal", "\ufffefoo", true},
+		{"normal", "\ufffefoo\uffff", true},
 		{"non-sentinel", "foo", false},
-		{"trailing sentinel", "\ufffefoo\ufffe", true},
-		{"sentinel with space before word", "\ufffe foo", true},
-		{"sentinel with empty string", "\ufffe  ", false},
-		{"multiple sentinels with empty string", "\ufffe\ufffe  ", false},
-		{"multiple sentinels", "\ufffe\ufffefoo", true},
-		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", true},
-		{"empty string", "  ", false},
+		{"trailing start sentinel", "\ufffefoo\ufffe", false},
+		{"leading end sentinel", "\ufffffoo\uffff", false},
+		{"sentinel with space before word", "\ufffe foo\uffff", true},
+		{"sentinel with empty string", "\ufffe  \uffff", false},
+		{"multiple start sentinels with empty string", "\ufffe\ufffe  \uffff", false},
+		{"multiple start sentinels", "\ufffe\ufffefoo\uffff", true},
+		{"start sentinel space start sentinel space string", "\ufffe \ufffe foo \uffff", true},
+		{"sentinel with space after word", "\ufffefoo   \uffff", true},
+		{"multiple end sentinels with empty string", "\ufffe    \uffff\uffff\uffff", false},
+		{"multiple end sentinels", "\ufffefoo\uffff\uffff\uffff", true},
+		{"string space end sentinel space end sentinel", "\ufffefoo \uffff \uffff", true},
+		{"only spaces", "  ", false},
+		{"empty string", "", false},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -984,54 +992,6 @@ select wt_is_sentinel($1);
 			t.Logf("query value: %q", tt.value)
 
 			var got bool
-			rows, err := db.Query(query, tt.value)
-			require.NoError(err)
-			defer rows.Close()
-
-			require.True(rows.Next())
-			require.NoError(rows.Scan(&got))
-			assert.Equal(tt.want, got)
-
-			require.False(rows.Next())
-			require.NoError(rows.Err())
-		})
-	}
-}
-
-func TestDomain_wt_to_sentinel(t *testing.T) {
-	const (
-		query = `
-select wt_to_sentinel($1);
-`
-	)
-
-	conn, _ := TestSetup(t, "postgres")
-	db := conn.DB()
-
-	tests := []struct {
-		name  string
-		value string
-		want  string
-	}{
-		{"V", "foo", "\ufffefoo"},
-		{"space V", " foo", "\ufffefoo"},
-		{"V space", "foo ", "\ufffefoo"},
-		{"space space V", "  foo  ", "\ufffefoo"},
-		{"sentinel V", "\ufffefoo", "\ufffefoo"},
-		{"sentinel space V", "\ufffe foo", "\ufffefoo"},
-		{"sentinel V space", "\ufffefoo ", "\ufffefoo"},
-		{"sentinel sentinel V", "\ufffe\ufffefoo", "\ufffefoo"},
-		{"sentinel sentinel space V", "\ufffe\ufffe foo", "\ufffefoo"},
-		{"sentinel sentinel V space", "\ufffe\ufffefoo ", "\ufffefoo"},
-		{"sentinel space sentinel space V space", "\ufffe \ufffe foo ", "\ufffefoo"},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			t.Logf("query value: %q", tt.value)
-
-			var got string
 			rows, err := db.Query(query, tt.value)
 			require.NoError(err)
 			defer rows.Close()

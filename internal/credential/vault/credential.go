@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
-	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -61,7 +61,7 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	}
 
 	status := string(ActiveCredential)
-	externalId = db.Sanitize(externalId)
+	externalId = sentinel.Sanitize(externalId)
 	if externalId == "" {
 		externalId = externalIdSentinel
 		status = string(UnknownCredentialStatus)

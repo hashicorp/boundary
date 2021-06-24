@@ -5003,7 +5003,7 @@ alter table job_run
 create function wt_is_sentinel(string text)
     returns bool
   as $$
-    select length(trim(leading u&'\fffe ' from string)) > 0 AND starts_with(string, u&'\fffe');
+    select length(trim(trailing u&'\ffff' from trim(leading u&'\fffe ' from string))) > 0 AND starts_with(string, u&'\fffe') AND starts_with(reverse(string), u&'\ffff');
   $$ language sql
      immutable
      returns null on null input;
@@ -5015,20 +5015,10 @@ create function wt_is_sentinel(string text)
       check(
         wt_is_sentinel(value)
         or
-        length(trim(u&'\fffe ' from value)) > 0
+        length(trim(trailing u&'\ffff' from trim(leading u&'\fffe ' from value))) > 0
       );
   comment on domain wt_sentinel is
-  'A non-empty string with a Unicode prefix of U+FFFE to indicate it is a sentinel value';
-
-  create function wt_to_sentinel(string text)
-    returns text
-  as $$
-    select concat(u&'\fffe', trim(ltrim(string, u&'\fffe ')));
-  $$ language sql
-     immutable
-     returns null on null input;
-  comment on function wt_to_sentinel is
-    'wt_to_sentinel takes string and returns it as a wt_sentinel';
+  'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
 `),
 			10003: []byte(`
 -- credential_store

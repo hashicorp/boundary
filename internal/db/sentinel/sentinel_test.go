@@ -1,40 +1,35 @@
-package db
+package sentinel
 
 import (
 	"testing"
 )
 
-func TestPrefix(t *testing.T) {
+func TestIs(t *testing.T) {
 	tests := []struct {
 		name string
 		s    string
-		want string
+		want bool
 	}{
-		{
-			name: "no-sentinel",
-			s:    "string",
-			want: "\ufffestring",
-		},
-		{
-			name: "already-has-sentinel",
-			s:    "\ufffestring",
-			want: "\ufffestring",
-		},
-		{
-			name: "empty-string",
-			s:    "",
-			want: "",
-		},
-		{
-			name: "space",
-			s:    " ",
-			want: "\ufffe ",
-		},
+		{"normal", "\ufffefoo\uffff", true},
+		{"non-sentinel", "foo", false},
+		{"trailing start sentinel", "\ufffefoo\ufffe", false},
+		{"leading end sentinel", "\ufffffoo\uffff", false},
+		{"sentinel with space before word", "\ufffe foo\uffff", true},
+		{"sentinel with empty string", "\ufffe  \uffff", false},
+		{"multiple start sentinels with empty string", "\ufffe\ufffe  \uffff", false},
+		{"multiple start sentinels", "\ufffe\ufffefoo\uffff", true},
+		{"start sentinel space start sentinel space string", "\ufffe \ufffe foo \uffff", true},
+		{"sentinel with space after word", "\ufffefoo   \uffff", true},
+		{"multiple end sentinels with empty string", "\ufffe    \uffff\uffff\uffff", false},
+		{"multiple end sentinels", "\ufffefoo\uffff\uffff\uffff", true},
+		{"string space end sentinel space end sentinel", "\ufffefoo \uffff \uffff", true},
+		{"only spaces", "  ", false},
+		{"empty string", "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Prefix(tt.s); got != tt.want {
-				t.Errorf("Prefix() = %v, want %v", got, tt.want)
+			if got := Is(tt.s); got != tt.want {
+				t.Errorf("Is() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -96,42 +91,6 @@ func TestSanitize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Sanitize(tt.s); got != tt.want {
 				t.Errorf("Sanitize() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestStrip(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-		want string
-	}{
-		{
-			name: "no-sentinel",
-			s:    "string",
-			want: "string",
-		},
-		{
-			name: "has-sentinel",
-			s:    "\ufffestring",
-			want: "string",
-		},
-		{
-			name: "space",
-			s:    "\ufffe ",
-			want: " ",
-		},
-		{
-			name: "empty-string",
-			s:    "",
-			want: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Strip(tt.s); got != tt.want {
-				t.Errorf("Strip() = %v, want %v", got, tt.want)
 			}
 		})
 	}
