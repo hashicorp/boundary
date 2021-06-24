@@ -612,6 +612,10 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 				)
 
 				for _, cred := range item.Credentials {
+					if len(cred.Secret) == 0 {
+						continue
+					}
+
 					ret = append(ret,
 						fmt.Sprintf("    Credential Store ID:            %s", cred.CredentialLibrary.CredentialStoreId),
 						fmt.Sprintf("    Credential Library ID:          %s", cred.CredentialLibrary.Id),
@@ -625,7 +629,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						ret = append(ret,
 							fmt.Sprintf("    Credential Library Description: %s", cred.CredentialLibrary.Description))
 					}
-					var secretStr string
+					var secretStr []string
 					switch cred.CredentialLibrary.Type {
 					case "vault":
 						// If it's Vault, the result will be JSON, except in
@@ -638,20 +642,23 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
 						}
 						dst := new(bytes.Buffer)
-						if err := json.Indent(dst, in, "", "      "); err != nil {
+						if err := json.Indent(dst, in, "      ", "  "); err != nil {
 							return false, fmt.Errorf("Error pretty-printing JSON: %w", err)
 						}
-						secretStr = dst.String()
+						secretStr = strings.Split(dst.String(), "\n")
+						if len(secretStr) > 0 {
+							// Indent doesn't apply to the first line 🙄
+							secretStr[0] = fmt.Sprintf("      %s", secretStr[0])
+						}
 					default:
 						// If it's not Vault, and not another known type,
 						// print out the base64-encoded value and leave it
 						// to the user to sort out.
-						secretStr = fmt.Sprintf("      %s", secretStr)
+						secretStr = []string{fmt.Sprintf("      %s", secretStr)}
 					}
-					ret = append(ret,
-						fmt.Sprintf("    Secret:\n%s", secretStr),
-						"",
-					)
+					ret = append(ret, "    Secret:")
+					ret = append(ret, secretStr...)
+					ret = append(ret, "")
 				}
 			}
 
