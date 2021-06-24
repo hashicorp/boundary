@@ -3,6 +3,8 @@ package vault
 import (
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -60,6 +62,7 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	}
 
 	status := string(ActiveCredential)
+	externalId = db.Sanitize(externalId)
 	if externalId == "" {
 		externalId = externalIdSentinel
 		status = string(UnknownCredentialStatus)
