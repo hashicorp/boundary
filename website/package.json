@@ -20,7 +20,7 @@
     "@hashicorp/react-product-features-list": "4.0.1",
     "@hashicorp/react-section-header": "5.0.2",
     "@hashicorp/react-subnav": "8.1.0",
-    "@hashicorp/react-use-cases": "3.0.2",
+    "@hashicorp/react-use-cases": "4.0.0",
     "@hashicorp/react-vertical-text-block-list": "6.0.2",
     "change-case": "4.1.2",
     "classnames": "2.2.6",
