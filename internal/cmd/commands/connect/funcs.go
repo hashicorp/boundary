@@ -48,7 +48,7 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 	prefixString := strings.Repeat(" ", prefixIndent)
 	for _, crd := range creds {
 		libMap := map[string]interface{}{
-			"Credential Store ID:":  crd.CredentialLibrary.CredentialStoreId,
+			"Credential Store ID":   crd.CredentialLibrary.CredentialStoreId,
 			"Credential Library ID": crd.CredentialLibrary.Id,
 			"Credential Store Type": crd.CredentialLibrary.Type,
 			"Purpose":               crd.Purpose,
@@ -61,7 +61,7 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 		}
 		maxLength := base.MaxAttributesLength(libMap, nil, nil)
 		ret = append(ret,
-			fmt.Sprintf("%sCredential:", prefixString),
+			fmt.Sprintf("%sCredentials:", prefixString),
 			base.WrapMap(2+prefixIndent, maxLength, libMap),
 			fmt.Sprintf("%s  Secret:", prefixString))
 		ret = append(ret,
