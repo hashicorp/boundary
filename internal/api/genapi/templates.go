@@ -80,6 +80,17 @@ func fillTemplates() {
 			input.CollectionFunctionArg, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pluralResourceName, in.parentTypeName, "")
 		}
 
+		for _, override := range in.fieldOverrides {
+			for i, field := range in.generatedStructure.fields {
+				if field.Name == override.Name {
+					if override.FieldType != "" {
+						field.FieldType = override.FieldType
+					}
+					in.generatedStructure.fields[i] = field
+				}
+			}
+		}
+
 		if err := structTemplate.Execute(outBuf, input); err != nil {
 			fmt.Printf("error executing struct template for resource %s: %v\n", in.generatedStructure.name, err)
 			os.Exit(1)

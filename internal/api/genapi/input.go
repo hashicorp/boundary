@@ -562,6 +562,12 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &targets.SessionCredential{},
 		outFile: "targets/session_credential.gen.go",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "Secret",
+				FieldType: "json.RawMessage",
+			},
+		},
 	},
 	{
 		inProto:     &targets.SessionAuthorization{},

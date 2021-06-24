@@ -66,7 +66,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 			switch cred.CredentialLibrary.Type {
 			case "vault":
 				// Vault will be base64-encoded JSON.
-				in, err := base64.StdEncoding.DecodeString(cred.Secret)
+				in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
 				if err != nil {
 					return nil, nil, fmt.Errorf("Error decoding secret as base64: %w", err)
 				}

@@ -492,7 +492,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	case "postgres":
 		// Credentials are brokered when connecting to the postgres db.
 		// TODO: Figure out how to handle cases where we don't automatically know how to
-		//  broker the credentials like unrecognized or multiple credentials.
+		// broker the credentials like unrecognized or multiple credentials.
 	case "connect":
 		// "connect" indicates there is no subcommand to the connect function.
 		// The only way a user will be able to connect to the session is by

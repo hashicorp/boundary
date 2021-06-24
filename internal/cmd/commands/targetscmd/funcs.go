@@ -629,7 +629,8 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						// credential fetching. So we can take the bytes
 						// as-is (after base64-decoding), but we'll format
 						// it nicely.
-						in, err := base64.StdEncoding.DecodeString(cred.Secret)
+						fmt.Print(string(cred.Secret))
+						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
 						if err != nil {
 							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
 						}

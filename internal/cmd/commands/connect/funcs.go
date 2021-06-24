@@ -62,10 +62,10 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 		maxLength := base.MaxAttributesLength(libMap, nil, nil)
 		ret = append(ret,
 			fmt.Sprintf("%sCredential:", prefixString),
-			base.WrapMap(2 + prefixIndent, maxLength, libMap),
+			base.WrapMap(2+prefixIndent, maxLength, libMap),
 			fmt.Sprintf("%s  Secret:", prefixString))
 		ret = append(ret,
-			fmtSecretForTable(2 + prefixIndent, crd)...
+			fmtSecretForTable(2+prefixIndent, crd)...,
 		)
 	}
 
@@ -81,7 +81,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 		// specific circumstances that aren't used for
 		// credential fetching. So we can take the bytes
 		// as-is (after base64-decoding)
-		in, err := base64.StdEncoding.DecodeString(sc.Secret)
+		in, err := base64.StdEncoding.DecodeString(strings.Trim(string(sc.Secret), `"`))
 		if err != nil {
 			return origSecret
 		}
@@ -91,7 +91,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 		}
 		secretStr := strings.Split(dst.String(), "\n")
 		if len(secretStr) > 0 {
-			secretStr[0] = fmt.Sprintf("%s    %s",prefixStr, secretStr[0])
+			secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
 		}
 		return secretStr
 	default:
