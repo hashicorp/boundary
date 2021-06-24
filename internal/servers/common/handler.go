@@ -103,10 +103,23 @@ func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.Resp
 	}
 }
 
-// WrapHandlerWithEventsHandler will wrap the provided http.Handler with a
+// WrapWithEventsHandler will wrap the provided http.Handler with a
 // handler that adds an Eventer to the request context and starts/flushes gated
 // events of type: observation and audit
-func WrapHandlerWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger, kms *kms.Kms) http.Handler {
+func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger, kms *kms.Kms) (http.Handler, error) {
+	const op = "common.WrapWithEventsHandler"
+	if h == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing handler")
+	}
+	if e == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing eventer")
+	}
+	if logger == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+	}
+	if kms == nil {
+		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		publicId, _, _ := auth.GetTokenFromRequest(logger, kms, r)
@@ -149,7 +162,7 @@ func WrapHandlerWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog
 			i, _ := wrapper.(interface{ StatusCode() int })
 			flushGatedEvents(ctx, logger, method, url, i.StatusCode(), start)
 		}
-	})
+	}), nil
 }
 
 // startGatedEvents will send "initial" events for all event types which are
