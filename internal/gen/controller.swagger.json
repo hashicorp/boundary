@@ -4265,11 +4265,6 @@
           "description": "Output only. The library which generated this credential.",
           "readOnly": true
         },
-        "purpose": {
-          "type": "string",
-          "description": "Output only.  The purpose for this credential inherited from the credential library.",
-          "readOnly": true
-        },
         "secret": {
           "type": "string",
           "description": "Output only. The secret of this credential base64 encoded.",

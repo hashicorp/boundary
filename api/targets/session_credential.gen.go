@@ -5,6 +5,5 @@ import "encoding/json"
 
 type SessionCredential struct {
 	CredentialLibrary *CredentialLibrary `json:"credential_library,omitempty"`
-	Purpose           string             `json:"purpose,omitempty"`
 	Secret            json.RawMessage    `json:"secret,omitempty"`
 }

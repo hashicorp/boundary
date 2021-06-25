@@ -40,9 +40,6 @@ message SessionCredential {
 	// Output only. The library which generated this credential.
 	CredentialLibrary credential_library = 10;
 
-	// Output only.  The purpose for this credential inherited from the credential library.
-	string purpose = 20;
-
 	// Output only. The secret of this credential base64 encoded.
 	string secret = 30;
 }

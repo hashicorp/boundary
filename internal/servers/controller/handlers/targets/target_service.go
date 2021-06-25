@@ -847,7 +847,6 @@ HostSetIterationLoop:
 				CredentialStoreId: l.GetStoreId(),
 				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
-			Purpose: string(c.Purpose()),
 			Secret:  base64.StdEncoding.EncodeToString(jSecret),
 		})
 	}

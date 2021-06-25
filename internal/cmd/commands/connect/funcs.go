@@ -51,7 +51,6 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 			"Credential Store ID":   crd.CredentialLibrary.CredentialStoreId,
 			"Credential Library ID": crd.CredentialLibrary.Id,
 			"Credential Store Type": crd.CredentialLibrary.Type,
-			"Purpose":               crd.Purpose,
 		}
 		if crd.CredentialLibrary.Name != "" {
 			libMap["Credential Library Name"] = crd.CredentialLibrary.Name

@@ -1828,7 +1828,6 @@ func TestAuthorizeSession(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              credential.VaultSubtype.String(),
 			},
-			Purpose: string(credential.ApplicationPurpose),
 		}},
 		// TODO: validate the contents of the authorization token is what is expected
 	}
