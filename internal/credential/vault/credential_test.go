@@ -110,7 +110,7 @@ func TestCredential_New(t *testing.T) {
 				Credential: &store.Credential{
 					LibraryId:  lib.GetPublicId(),
 					SessionId:  session.GetPublicId(),
-					ExternalId: "\ufffenone",
+					ExternalId: externalIdSentinel,
 					TokenHmac:  token.GetTokenHmac(),
 					Status:     string(UnknownCredentialStatus),
 				},
