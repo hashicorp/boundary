@@ -164,7 +164,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Add credential-library resources to a tcp-type target:",
 			"",
-			`      $ boundary targets add-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890 -credential-library clvlt_0987654321`,
+			`      $ boundary targets add-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890 -application-credential-library clvlt_0987654321`,
 			"",
 			"",
 		})
@@ -176,7 +176,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Remove credential-library resources from a tcp-type target:",
 			"",
-			`      $ boundary targets remove-credential-libraries -id ttcp_1234567890 -credential-library clvlt_1234567890 -credential-library clvlt_0987654321`,
+			`      $ boundary targets remove-credential-libraries -id ttcp_1234567890 -application-credential-library clvlt_1234567890 -application-credential-library clvlt_0987654321`,
 			"",
 			"",
 		})
