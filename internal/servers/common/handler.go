@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -111,12 +108,6 @@ func WrapWithOptionals(with *writerWrapper, wrap http.ResponseWriter) (http.Resp
 // events of type: observation and audit
 func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger, kms *kms.Kms) (http.Handler, error) {
 	const op = "common.WrapWithEventsHandler"
-
-	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
-	// generally available.
-	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
-		return h, nil
-	}
 	if h == nil {
 		return nil, errors.New(errors.InvalidParameter, op, "missing handler")
 	}
