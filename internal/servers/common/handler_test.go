@@ -20,25 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testFlusher struct {
-	http.ResponseWriter
-}
-
-func (t *testFlusher) Flush() {}
-
-type testPusher struct {
-	http.ResponseWriter
-}
-
-func (t *testPusher) Push(target string, opts *http.PushOptions) error { return nil }
-
-type testHijacker struct {
-	http.ResponseWriter
-}
-
-func (t *testHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
-
 func Test_WrapWithOptionals(t *testing.T) {
+	t.Parallel()
 	w := httptest.NewRecorder()
 	testWriterWrapper := writerWrapper{w, 0}
 
@@ -389,3 +372,21 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 	require.NoError(err)
 	return b
 }
+
+type testFlusher struct {
+	http.ResponseWriter
+}
+
+func (t *testFlusher) Flush() {}
+
+type testPusher struct {
+	http.ResponseWriter
+}
+
+func (t *testPusher) Push(target string, opts *http.PushOptions) error { return nil }
+
+type testHijacker struct {
+	http.ResponseWriter
+}
+
+func (t *testHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
