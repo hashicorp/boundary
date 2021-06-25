@@ -1826,16 +1826,6 @@ func TestAuthorizeSession(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Tell our DB that there is a worker ready to serve the data
-	workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
-	_, err = workerService.Status(ctx, &spbs.StatusRequest{
-		Worker: &spb.Server{
-			PrivateId: "testworker",
-			Address:   "localhost:8457",
-		},
-	})
-	require.NoError(t, err)
-
 	v := vault.NewTestVaultServer(t)
 	v.MountPKI(t)
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
@@ -1861,6 +1851,16 @@ func TestAuthorizeSession(t *testing.T) {
 			CredentialLibraryIds: []string{clsResp.GetItem().GetId()},
 			Version:              apiTar.GetItem().GetVersion(),
 		})
+	require.NoError(t, err)
+
+	// Tell our DB that there is a worker ready to serve the data
+	workerService := workers.NewWorkerServiceServer(hclog.Default(), serversRepoFn, sessionRepoFn, &sync.Map{}, kms)
+	_, err = workerService.Status(ctx, &spbs.StatusRequest{
+		Worker: &spb.Server{
+			PrivateId: "testworker",
+			Address:   "localhost:8457",
+		},
+	})
 	require.NoError(t, err)
 
 	asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
