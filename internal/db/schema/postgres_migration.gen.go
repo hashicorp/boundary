@@ -6044,9 +6044,9 @@ create table session_credential_dynamic (
 `),
 			10007: []byte(`
 update credential_vault_credential
-  set external_id = concat(external_id, u&'\ffff')
-  where wt_is_sentinel(external_id)
-    and not starts_with(reverse(external_id), u&'\ffff');
+   set external_id = concat(external_id, u&'\ffff')
+ where wt_is_sentinel(external_id)
+   and not starts_with(reverse(external_id), u&'\ffff');
 
 alter domain wt_sentinel
     drop constraint wt_sentinel_not_valid;
@@ -6073,6 +6073,8 @@ alter domain wt_sentinel
 
 comment on domain wt_sentinel is
     'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
+
+drop function wt_to_sentinel; -- wt_to_sentinel is not needed, dropping and not re-creating
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
