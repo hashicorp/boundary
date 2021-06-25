@@ -325,9 +325,11 @@ func (c *Client) AddMembers(ctx context.Context, id string, version uint32, memb
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddMembers request")
 	}
+
 	if len(memberIds) == 0 {
 		return nil, errors.New("empty memberIds passed into AddMembers request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -355,6 +357,7 @@ func (c *Client) AddMembers(ctx context.Context, id string, version uint32, memb
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", id), opts.postMap, apiOpts...)
@@ -420,6 +423,7 @@ func (c *Client) SetMembers(ctx context.Context, id string, version uint32, memb
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:set-members", id), opts.postMap, apiOpts...)
@@ -457,9 +461,11 @@ func (c *Client) RemoveMembers(ctx context.Context, id string, version uint32, m
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveMembers request")
 	}
+
 	if len(memberIds) == 0 {
 		return nil, errors.New("empty memberIds passed into RemoveMembers request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -487,6 +493,7 @@ func (c *Client) RemoveMembers(ctx context.Context, id string, version uint32, m
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["member_ids"] = memberIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", id), opts.postMap, apiOpts...)
