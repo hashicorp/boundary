@@ -19,7 +19,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hashicorp/boundary/api v0.0.11
 	github.com/hashicorp/boundary/sdk v0.0.4
-	github.com/hashicorp/cap v0.1.0
+	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746
@@ -29,9 +29,11 @@ require (
 	github.com/hashicorp/go-kms-wrapping v0.6.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
+	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.6
+	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.2.0
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79

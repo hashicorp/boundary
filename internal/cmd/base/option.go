@@ -30,6 +30,7 @@ type Options struct {
 	withDialect                    string
 	withEventerConfig              *event.EventerConfig
 	withEventFlags                 *EventFlags
+	withAttributeFieldPrefix       string
 }
 
 func getDefaultOptions() Options {
@@ -129,5 +130,13 @@ func WithEventerConfig(config *event.EventerConfig) Option {
 func WithEventFlags(flags *EventFlags) Option {
 	return func(o *Options) {
 		o.withEventFlags = flags
+	}
+}
+
+// WithAttributeFieldPrefix tells the command what prefix
+// to attach to attribute fields when they are returned as errors.
+func WithAttributeFieldPrefix(p string) Option {
+	return func(o *Options) {
+		o.withAttributeFieldPrefix = p
 	}
 }

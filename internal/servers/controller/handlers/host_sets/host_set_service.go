@@ -48,7 +48,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.HostSet{}, &pb.HostSet{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
 }
@@ -172,11 +172,11 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, err := s.createInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetItem())
+	hs, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem().GetHostCatalogId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}

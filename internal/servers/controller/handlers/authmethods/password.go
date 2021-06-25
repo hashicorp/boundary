@@ -28,7 +28,7 @@ var pwMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(&pwstore.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pwstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 

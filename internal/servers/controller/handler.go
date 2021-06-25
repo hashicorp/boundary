@@ -21,6 +21,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
@@ -143,7 +145,8 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 		c.IamRepoFn,
 		c.ServersRepoFn,
 		c.SessionRepoFn,
-		c.StaticHostRepoFn)
+		c.StaticHostRepoFn,
+		c.VaultCredentialRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target handler service: %w", err)
 	}
@@ -177,6 +180,20 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterManagedGroupServiceHandlerServer(ctx, mux, mgs); err != nil {
 		return nil, fmt.Errorf("failed to register managed groups service handler: %w", err)
+	}
+	cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credential store handler service: %w", err)
+	}
+	if err := services.RegisterCredentialStoreServiceHandlerServer(ctx, mux, cs); err != nil {
+		return nil, fmt.Errorf("failed to register credential store service handler: %w", err)
+	}
+	cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credential library handler service: %w", err)
+	}
+	if err := services.RegisterCredentialLibraryServiceHandlerServer(ctx, mux, cl); err != nil {
+		return nil, fmt.Errorf("failed to register credential library service handler: %w", err)
 	}
 
 	return mux, nil

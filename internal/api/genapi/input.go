@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/accounts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
@@ -67,13 +69,8 @@ type structInfo struct {
 	// fields.
 	versionEnabled bool
 
-	// The parameters passed into the path.  These should be non-pluralized resource names.
-	// The templates will convert '-' to '_' and append an _id to them in the SDK param
-	// and append an 's' to it when building the path.
-	// The final value should be the path name of the resource since for single resource
-	// operations all values are used for the function argument.
-	// For collection based operations the last value is ignored for generating function argument.
-	pathArgs []string
+	// This is used for building the api path.
+	pluralResourceName string
 
 	// typeOnCreate indicates that create will be creating a concrete
 	// implementation of an abstract type and thus a type field is necessary
@@ -138,7 +135,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"scope"},
+		pluralResourceName: "scopes",
 		extraOptions: []fieldInfo{
 			{
 				Name:      "SkipAdminRoleCreation",
@@ -177,7 +174,7 @@ var inputStructs = []*structInfo{
 		sliceSubtypes: map[string]string{
 			"Accounts": "accountIds",
 		},
-		pathArgs:            []string{"user"},
+		pluralResourceName:  "users",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -202,7 +199,7 @@ var inputStructs = []*structInfo{
 		sliceSubtypes: map[string]string{
 			"Members": "memberIds",
 		},
-		pathArgs:            []string{"group"},
+		pluralResourceName:  "groups",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -238,7 +235,7 @@ var inputStructs = []*structInfo{
 			"Principals": "principalIds",
 			"Grants":     "grantStrings",
 		},
-		pathArgs:            []string{"role"},
+		pluralResourceName:  "roles",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -270,7 +267,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"auth-method"},
+		pluralResourceName:  "auth-methods",
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -298,7 +295,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"account"},
+		pluralResourceName:  "accounts",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -326,7 +323,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"managed-group"},
+		pluralResourceName:  "managed-groups",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -341,9 +338,70 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"auth-token"},
+		pluralResourceName:  "auth-tokens",
 		createResponseTypes: true,
 		recursiveListing:    true,
+	},
+	// Credentials
+	{
+		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName: "VaultCredentialStore",
+	},
+	{
+		inProto: &credentialstores.CredentialStore{},
+		outFile: "credentialstores/credential_store.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
+		recursiveListing:    true,
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Address",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Token",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &credentiallibraries.CredentialLibrary{},
+		outFile: "credentiallibraries/credential_library.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-libraries",
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
 	},
 	// Host related resources
 	{
@@ -357,7 +415,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"host-catalog"},
+		pluralResourceName:  "host-catalogs",
 		typeOnCreate:        true,
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -374,7 +432,7 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"host"},
+		pluralResourceName:  "hosts",
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -395,8 +453,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-set"},
-		parentTypeName: "host-catalog",
+		pluralResourceName: "host-sets",
+		parentTypeName:     "host-catalog",
 		sliceSubtypes: map[string]string{
 			"Hosts": "hostIds",
 		},
@@ -406,6 +464,14 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &targets.HostSet{},
 		outFile: "targets/host_set.gen.go",
+	},
+	{
+		inProto: &targets.CredentialLibrary{},
+		outFile: "targets/credential_library.gen.go",
+	},
+	{
+		inProto: &targets.SessionCredential{},
+		outFile: "targets/session_credential.gen.go",
 	},
 	{
 		inProto:     &targets.SessionAuthorization{},
@@ -433,9 +499,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"target"},
+		pluralResourceName: "targets",
 		sliceSubtypes: map[string]string{
-			"HostSets": "hostSetIds",
+			"HostSets":            "hostSetIds",
+			"CredentialLibraries": "credentialLibraryIds",
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -478,7 +545,7 @@ var inputStructs = []*structInfo{
 			readTemplate,
 			listTemplate,
 		},
-		pathArgs:            []string{"session"},
+		pluralResourceName:  "sessions",
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,

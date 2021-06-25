@@ -183,6 +183,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		logger          hclog.Logger
 		kms             *kms.Kms
 		statusCode      int
+		noEventJson     bool
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
@@ -230,9 +231,10 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:     hclog.Default(),
-			kms:        testKms,
-			statusCode: http.StatusInternalServerError,
+			logger:      hclog.Default(),
+			kms:         testKms,
+			statusCode:  http.StatusInternalServerError,
+			noEventJson: true,
 		},
 		{
 			name: "audit-flushGatedEvents",
@@ -244,9 +246,10 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:     hclog.Default(),
-			kms:        testKms,
-			statusCode: http.StatusInternalServerError,
+			logger:      hclog.Default(),
+			kms:         testKms,
+			statusCode:  http.StatusTeapot, // this isn't ideal, but the write by the test handler will send an teapot status
+			noEventJson: true,
 		},
 		{
 			name:       "success",
@@ -285,7 +288,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				b, err := ioutil.ReadFile(c.ObservationEvents.Name())
 				assert.NoError(err)
 
-				if tt.statusCode == http.StatusInternalServerError {
+				if tt.noEventJson {
 					assert.Lenf(b, 0, "expected no json for internal errors but got %s", string(b))
 					return
 				}

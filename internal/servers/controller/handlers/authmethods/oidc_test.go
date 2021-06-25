@@ -148,9 +148,6 @@ func TestList_FilterNonPublic(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
-	authTokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
-	}
 	serversRepoFn := func() (*servers.Repository, error) {
 		return servers.NewRepository(rw, rw, kmsCache)
 	}
@@ -206,7 +203,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 				return auth.NewVerifierContext(requests.NewRequestContext(context.Background()),
 					nil,
 					iamRepoFn,
-					authTokenRepoFn,
+					atRepoFn,
 					serversRepoFn,
 					kmsCache,
 					auth.RequestInfo{

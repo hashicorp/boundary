@@ -51,4 +51,7 @@ const (
 	EmailField                       = "email"
 	ManagedGroupIdsField             = "managed_group_ids"
 	FilterField                      = "filter"
+	CredentialStoreIdField           = "credential_store_id"
+	CredentialLibraryIdsField        = "credential_library_ids"
+	CredentialLibrariesField         = "credential_libraries"
 )

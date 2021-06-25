@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -41,14 +42,15 @@ type Controller struct {
 	workerStatusUpdateTimes *sync.Map
 
 	// Repo factory methods
-	AuthTokenRepoFn    common.AuthTokenRepoFactory
-	IamRepoFn          common.IamRepoFactory
-	OidcRepoFn         common.OidcAuthRepoFactory
-	PasswordAuthRepoFn common.PasswordAuthRepoFactory
-	ServersRepoFn      common.ServersRepoFactory
-	SessionRepoFn      common.SessionRepoFactory
-	StaticHostRepoFn   common.StaticRepoFactory
-	TargetRepoFn       common.TargetRepoFactory
+	AuthTokenRepoFn       common.AuthTokenRepoFactory
+	VaultCredentialRepoFn common.VaultCredentialRepoFactory
+	IamRepoFn             common.IamRepoFactory
+	OidcRepoFn            common.OidcAuthRepoFactory
+	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
+	ServersRepoFn         common.ServersRepoFactory
+	SessionRepoFn         common.SessionRepoFactory
+	StaticHostRepoFn      common.StaticRepoFactory
+	TargetRepoFn          common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -112,7 +114,6 @@ func New(conf *Config) (*Controller, error) {
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
-
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
@@ -130,6 +131,9 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
+	}
+	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
+		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)
@@ -163,7 +167,6 @@ func (c *Controller) Start() error {
 	if err := c.scheduler.Start(c.baseContext); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
 	}
-
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
@@ -178,7 +181,8 @@ func (c *Controller) Start() error {
 }
 
 func (c *Controller) registerJobs() error {
-	return nil
+	rw := db.New(c.conf.Database)
+	return vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.logger)
 }
 
 func (c *Controller) Shutdown(serversOnly bool) error {

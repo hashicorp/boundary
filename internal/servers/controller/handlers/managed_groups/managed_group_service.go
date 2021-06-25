@@ -52,7 +52,7 @@ var (
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.ManagedGroup{}, &pb.ManagedGroup{}, &pb.OidcManagedGroupAttributes{}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.ManagedGroup{}}, handlers.MaskSource{&pb.ManagedGroup{}, &pb.OidcManagedGroupAttributes{}}); err != nil {
 		panic(err)
 	}
 }

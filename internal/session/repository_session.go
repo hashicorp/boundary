@@ -85,8 +85,17 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			returnedSession = newSession.Clone().(*Session)
+			returnedSession.DynamicCredentials = nil
 			if err = w.Create(ctx, returnedSession); err != nil {
 				return errors.Wrap(err, op)
+			}
+			for _, cred := range newSession.DynamicCredentials {
+				cred.SessionId = newSession.PublicId
+				returnedCred := cred.clone()
+				if err = w.Create(ctx, returnedCred); err != nil {
+					return errors.Wrap(err, op)
+				}
+				returnedSession.DynamicCredentials = append(returnedSession.DynamicCredentials, returnedCred)
 			}
 			var foundStates []*State
 			// trigger will create new "Pending" state
@@ -136,6 +145,14 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 				return errors.Wrap(err, op)
 			}
 			session.States = states
+
+			var creds []*DynamicCredential
+			if err := read.SearchWhere(ctx, &creds, "session_id = ?", []interface{}{sessionId}); err != nil {
+				return errors.Wrap(err, op)
+			}
+			if len(creds) > 0 {
+				session.DynamicCredentials = creds
+			}
 			return nil
 		},
 	)

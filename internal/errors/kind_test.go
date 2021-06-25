@@ -38,6 +38,11 @@ func TestKind_String(t *testing.T) {
 			e:    External,
 			want: "external system issue",
 		},
+		{
+			name: "VaultToken",
+			e:    VaultToken,
+			want: "vault token issue",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

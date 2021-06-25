@@ -49,7 +49,7 @@ var oidcMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(&oidcstore.AuthMethod{}, &pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 

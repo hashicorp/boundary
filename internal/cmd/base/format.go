@@ -139,8 +139,10 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 }
 
 // PrintApiError prints the given API error, optionally with context
-// information, to the UI in the appropriate format
-func (c *Command) PrintApiError(in *api.Error, contextStr string) {
+// information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
+// used, all other options are ignored.
+func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
+	opts := getOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
 		output := struct {
@@ -204,8 +206,14 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 						// TODO: Report useful error messages related to "update_mask".
 						continue
 					}
+					var fNameParts []string
+					if opts.withAttributeFieldPrefix != "" && strings.HasPrefix(field.Name, "attributes.") {
+						fNameParts = append(fNameParts, opts.withAttributeFieldPrefix)
+					}
+					fNameParts = append(fNameParts, strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-"))
+					fName := strings.Join(fNameParts, "-")
 					output = append(output,
-						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-")),
+						fmt.Sprintf("    Name:              -%s", fName),
 						fmt.Sprintf("      Error:           %s", field.Description),
 					)
 				}

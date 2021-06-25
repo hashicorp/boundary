@@ -79,6 +79,14 @@ func Test_Resource(t *testing.T) {
 			typeString: "managed-group",
 			want:       ManagedGroup,
 		},
+		{
+			typeString: "credential-store",
+			want:       CredentialStore,
+		},
+		{
+			typeString: "credential-library",
+			want:       CredentialLibrary,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {
