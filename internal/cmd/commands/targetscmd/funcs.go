@@ -684,11 +684,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 					}
 				}
 			}
-			marshaledItem, err := json.Marshal(item)
-			if err != nil {
-				return false, fmt.Errorf("Error marshaling as JSON: %w", err)
-			}
-			if ok := c.PrintJson(marshaledItem, base.WithStatusCode(c.sar.GetResponse().StatusCode())); !ok {
+			if ok := c.PrintJsonItem(c.sar, base.WithDecodedCredentials(item.Credentials)); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil
