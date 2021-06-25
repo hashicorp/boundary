@@ -248,7 +248,10 @@ func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
 		return false
 	}
-	return c.PrintJson(resp.Body.Bytes(), append(opt, WithStatusCode(resp.HttpResponse().StatusCode))...)
+	if r := resp.HttpResponse(); r != nil {
+		opt = append(opt, WithStatusCode(r.StatusCode))
+	}
+	return c.PrintJson(resp.Body.Bytes(), opt...)
 }
 
 // PrintJson prints the given raw JSON in our common format
