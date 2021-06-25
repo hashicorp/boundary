@@ -22,6 +22,7 @@ func TestDevController(t *testing.T) {
 	truePointer := new(bool)
 	*truePointer = true
 	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
@@ -154,6 +155,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
