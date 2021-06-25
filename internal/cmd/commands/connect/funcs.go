@@ -2,7 +2,6 @@ package connect
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -76,16 +75,8 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret)}
 	switch sc.CredentialLibrary.Type {
 	case "vault":
-		// If it's Vault, the result will be JSON, except in
-		// specific circumstances that aren't used for
-		// credential fetching. So we can take the bytes
-		// as-is (after base64-decoding)
-		in, err := base64.StdEncoding.DecodeString(strings.Trim(string(sc.Secret), `"`))
-		if err != nil {
-			return origSecret
-		}
 		dst := new(bytes.Buffer)
-		if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+		if err := json.Indent(dst, sc.Secret, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
 			return origSecret
 		}
 		secretStr := strings.Split(dst.String(), "\n")
@@ -93,9 +84,6 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 			secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
 		}
 		return secretStr
-	default:
-		// If we don't know the type of the backing secrets engine we'll pass
-		// the data on w/o decoding.
 	}
 	return origSecret
 }

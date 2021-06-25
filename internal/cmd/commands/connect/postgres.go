@@ -1,7 +1,6 @@
 package connect
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -65,13 +64,8 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 			// TODO: Could allow switching on library ID or name
 			switch cred.CredentialLibrary.Type {
 			case "vault":
-				// Vault will be base64-encoded JSON.
-				in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
-				if err != nil {
-					return nil, nil, fmt.Errorf("Error decoding secret as base64: %w", err)
-				}
 				// Attempt unmarshaling into creds
-				if err := json.Unmarshal(in, &creds); err != nil {
+				if err := json.Unmarshal(cred.Secret, &creds); err != nil {
 					return nil, nil, fmt.Errorf("Error unmarshaling Vault secret: %w", err)
 				}
 			}
