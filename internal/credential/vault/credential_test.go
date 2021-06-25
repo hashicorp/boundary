@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	temp "github.com/hashicorp/boundary/internal/session"
@@ -110,7 +111,7 @@ func TestCredential_New(t *testing.T) {
 				Credential: &store.Credential{
 					LibraryId:  lib.GetPublicId(),
 					SessionId:  session.GetPublicId(),
-					ExternalId: externalIdSentinel,
+					ExternalId: sentinel.ExternalIdNone,
 					TokenHmac:  token.GetTokenHmac(),
 					Status:     string(UnknownCredentialStatus),
 				},
