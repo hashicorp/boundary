@@ -6,6 +6,5 @@ type CredentialLibrary struct {
 	Name              string `json:"name,omitempty"`
 	Description       string `json:"description,omitempty"`
 	CredentialStoreId string `json:"credential_store_id,omitempty"`
-	Purpose           string `json:"purpose,omitempty"`
 	Type              string `json:"type,omitempty"`
 }
