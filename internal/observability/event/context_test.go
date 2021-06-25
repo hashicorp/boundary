@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/hashicorp/boundary/globals"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -244,10 +243,7 @@ func Test_EventerFromContext(t *testing.T) {
 }
 
 func Test_WriteObservation(t *testing.T) {
-	os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
-	t.Cleanup(func() {
-		defer os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
-	})
+	event.TestEnableEventing(t, true)
 
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
@@ -525,10 +521,7 @@ type eventJson struct {
 }
 
 func Test_WriteAudit(t *testing.T) {
-	os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
-	t.Cleanup(func() {
-		defer os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
-	})
+	event.TestEnableEventing(t, true)
 
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
@@ -768,10 +761,7 @@ func Test_WriteAudit(t *testing.T) {
 }
 
 func Test_WriteError(t *testing.T) {
-	os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
-	t.Cleanup(func() {
-		defer os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
-	})
+	event.TestEnableEventing(t, true)
 
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
