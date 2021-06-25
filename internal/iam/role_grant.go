@@ -28,10 +28,10 @@ var (
 func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) {
 	const op = "iam.NewRoleGrant"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if grant == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing grant")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
@@ -69,7 +69,7 @@ func (g *RoleGrant) Clone() interface{} {
 func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "iam.(RoleGrant).VetForWrite"
 	if g.RawGrant == "" {
-		return errors.New(errors.InvalidParameter, op, "missing grant")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope

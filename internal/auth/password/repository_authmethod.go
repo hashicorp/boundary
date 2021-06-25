@@ -25,16 +25,16 @@ import (
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	const op = "password.(Repository).CreateAuthMethod"
 	if m == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing AuthMethod")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing AuthMethod")
 	}
 	if m.AuthMethod == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing embedded AuthMethod")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded AuthMethod")
 	}
 	if m.ScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if m.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	m = m.Clone()
 
@@ -42,7 +42,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, errors.New(errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
+			return nil, errors.NewDeprecated(errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
 		}
 		m.PublicId = opts.withPublicId
 	} else {
@@ -55,7 +55,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	c, ok := opts.withConfig.(*Argon2Configuration)
 	if !ok {
-		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
+		return nil, errors.NewDeprecated(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 	if err := c.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -91,7 +91,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in scope: %s: name %s already exists", m.ScopeId, m.Name))
+			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("in scope: %s: name %s already exists", m.ScopeId, m.Name))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(m.ScopeId))
 	}
@@ -103,7 +103,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ...Option) (*AuthMethod, error) {
 	const op = "password.(Repository).LookupAuthMethod"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	return r.lookupAuthMethod(ctx, publicId)
 }
@@ -113,7 +113,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, _ ..
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "password.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, opt ...Option) (int, error) {
 	const op = "password.(Repository).DeleteAuthMethod"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	am := allocAuthMethod()
 	am.PublicId = publicId
@@ -151,7 +151,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -179,13 +179,13 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	const op = "password.(Repository).UpdateAuthMethod"
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing authMethod")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing authMethod")
 	}
 	if authMethod.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing authMethod public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing authMethod public id")
 	}
 	if authMethod.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -194,7 +194,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		case strings.EqualFold("MinLoginNameLength", f):
 		case strings.EqualFold("MinPasswordLength", f):
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -209,7 +209,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "field mask must not be empty")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "field mask must not be empty")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
@@ -241,7 +241,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -256,14 +256,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if upAuthMethod == nil {
-				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(authMethod.PublicId))
 	}
@@ -282,7 +282,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	case len(ams) == 0:
 		return nil, nil // not an error to return no rows for a "lookup"
 	case len(ams) > 1:
-		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
+		return nil, errors.NewDeprecated(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
 	default:
 		return ams[0], nil
 	}
@@ -300,10 +300,10 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "password.(Repository).getAuthMethods"
 	if authMethodId == "" && len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
 	}
 	if authMethodId != "" && len(scopeIds) > 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
 	}
 
 	dbArgs := []db.Option{}

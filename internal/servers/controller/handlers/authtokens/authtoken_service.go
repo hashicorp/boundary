@@ -51,10 +51,10 @@ type Service struct {
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing auth token repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
@@ -173,7 +173,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
 		if !ok {
-			return nil, errors.New(errors.Internal, op, "no request context found")
+			return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 		}
 	}
 
@@ -236,7 +236,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*authtoken.AuthTok
 		return nil, errors.Wrap(err, op)
 	}
 	if at == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
 	}
 	return at, nil
 }

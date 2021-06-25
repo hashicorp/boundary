@@ -24,7 +24,7 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 	case 1:
 		pkPem = pks[0]
 	default:
-		return nil, nil, errors.New(errors.InvalidParameter, op, "private key payload contained multiple pem blocks")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "private key payload contained multiple pem blocks")
 	}
 
 	bs, err := decodePemBlocks(cert)
@@ -38,9 +38,9 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 			case pkPem == nil:
 				pkIdx, pkPem = i, b
 			case pkIdx < 0:
-				return nil, nil, errors.New(errors.InvalidParameter, op, "client certificate contains a private key when one was also provided separately")
+				return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "client certificate contains a private key when one was also provided separately")
 			default:
-				return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("second primary key found at %d after previous one found at %d", i, pkIdx))
+				return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("second primary key found at %d after previous one found at %d", i, pkIdx))
 			}
 		}
 	}
@@ -64,7 +64,7 @@ func decodePemBlocks(input string) ([]*pem.Block, error) {
 		ret = append(ret, p)
 	}
 	if len(cpIn) > 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "not all data parseable by pem block")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not all data parseable by pem block")
 	}
 	return ret, nil
 }

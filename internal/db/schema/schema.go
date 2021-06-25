@@ -28,7 +28,7 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option
 		return false, errors.Wrap(err, op)
 	}
 	if st.Dirty {
-		return false, errors.New(errors.MigrationIntegrity, op, "db marked dirty")
+		return false, errors.NewDeprecated(errors.MigrationIntegrity, op, "db marked dirty")
 	}
 
 	if st.InitializationStarted && st.DatabaseSchemaVersion == st.BinarySchemaVersion {

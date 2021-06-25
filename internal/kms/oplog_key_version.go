@@ -25,13 +25,13 @@ type OplogKeyVersion struct {
 func NewOplogKeyVersion(oplogKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*OplogKeyVersion, error) {
 	const op = "kms.NewOplogKeyVersion"
 	if oplogKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oplog key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oplog key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &OplogKeyVersion{
@@ -64,17 +64,17 @@ func (k *OplogKeyVersion) Clone() interface{} {
 func (k *OplogKeyVersion) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(OplogKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 		}
 		if k.OplogKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing oplog key id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing oplog key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key version id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil

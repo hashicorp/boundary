@@ -145,19 +145,19 @@ func (s *ConnectionState) SetTableName(n string) {
 func (s *ConnectionState) validate() error {
 	const op = "session.(ConnectionState).validate"
 	if s.Status == "" {
-		return errors.New(errors.InvalidParameter, op, "missing status")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
 	}
 	if s.ConnectionId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing connection id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing connection id")
 	}
 	if s.StartTime != nil {
-		return errors.New(errors.InvalidParameter, op, "start time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "previous end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

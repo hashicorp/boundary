@@ -19,7 +19,7 @@ import (
 func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option) ([]*Run, error) {
 	const op = "job.(Repository).RunJobs"
 	if serverId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 
 	opts := getOpts(opt...)
@@ -58,7 +58,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed, total int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).UpdateProgress"
 	if runId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -74,7 +74,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
@@ -91,7 +91,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 					return errors.Wrap(err, op)
 				}
 
-				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			return nil
@@ -117,7 +117,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).CompleteRun"
 	if runId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -133,7 +133,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
@@ -150,7 +150,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 					return errors.Wrap(err, op)
 				}
 
-				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
@@ -163,7 +163,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			rowCnt = 0
 			for rows1.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows1, job)
@@ -192,7 +192,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).FailRun"
 	if runId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -208,7 +208,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job run would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job run would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, run)
@@ -225,7 +225,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 					return errors.Wrap(err, op)
 				}
 
-				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
+				return errors.NewDeprecated(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
 			return nil
@@ -295,7 +295,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).LookupRun"
 	if runId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -316,7 +316,7 @@ func (r *Repository) LookupRun(ctx context.Context, runId string, _ ...Option) (
 func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteRun"
 	if runId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing run id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing run id")
 	}
 
 	run := allocRun()
@@ -330,7 +330,7 @@ func (r *Repository) deleteRun(ctx context.Context, runId string, _ ...Option) (
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

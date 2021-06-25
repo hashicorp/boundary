@@ -17,13 +17,13 @@ import (
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, _ ...Option) ([]*RoleGrant, error) {
 	const op = "iam.(Repository).AddRoleGrants"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if len(grants) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing grants")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grants")
 	}
 	if roleVersion == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -67,7 +67,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
 			roleGrantOplogMsgs := make([]*oplog.Message, 0, len(newRoleGrants))
@@ -106,13 +106,13 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteRoleGrants"
 	if roleId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing role id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if len(grants) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing grants")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing grants")
 	}
 	if roleVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -146,7 +146,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
 
@@ -191,7 +191,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				return errors.Wrap(err, op, errors.WithMsg("unable to delete role grant"))
 			}
 			if rowsDeleted != len(deleteRoleGrants) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
 			}
 			totalRowsDeleted = rowsDeleted
 			msgs = append(msgs, roleGrantOplogMsgs...)
@@ -221,15 +221,15 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, _ ...Option) ([]*RoleGrant, int, error) {
 	const op = "iam.(Repository).SetRoleGrants"
 	if roleId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if roleVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 
 	// Explicitly set to zero clears, but treat nil as a mistake
 	if grants == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing grants")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing grants")
 	}
 
 	role := allocRole()
@@ -320,7 +320,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
 
@@ -341,7 +341,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete role grant"))
 				}
 				if rowsDeleted != len(deleteRoleGrants) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
 				}
 				totalRowsDeleted = rowsDeleted
 				msgs = append(msgs, roleGrantOplogMsgs...)
@@ -376,7 +376,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...Option) ([]*RoleGrant, error) {
 	const op = "iam.(Repository).ListRoleGrants"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	var roleGrants []*RoleGrant
 	if err := r.list(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -388,7 +388,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 
 	const (

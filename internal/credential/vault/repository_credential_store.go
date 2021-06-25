@@ -41,25 +41,25 @@ import (
 func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialStore, _ ...Option) (*CredentialStore, error) {
 	const op = "vault.(Repository).CreateCredentialStore"
 	if cs == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil CredentialStore")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil CredentialStore")
 	}
 	if cs.CredentialStore == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded CredentialStore")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded CredentialStore")
 	}
 	if cs.ScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if len(cs.inputToken) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token")
 	}
 	if cs.VaultAddress == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault address")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault address")
 	}
 	if cs.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	if cs.clientCert != nil && len(cs.clientCert.CertificateKey) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "client certificate without private key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "client certificate without private key")
 	}
 
 	cs = cs.clone()
@@ -92,7 +92,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	missing := available.missing(requiredCapabilities)
 	if len(missing) > 0 {
 		return nil,
-			errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+			errors.NewDeprecated(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 	}
 
 	renewedToken, err := client.renewToken()
@@ -161,7 +161,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 				return errors.Wrap(err, op)
 			}
 			if rows > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 token would have been created")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 token would have been created")
 			}
 			msgs = append(msgs, newToken.oplogMessage(db.CreateOp))
 
@@ -209,33 +209,33 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 func validateTokenLookup(op errors.Op, s *vault.Secret) error {
 	if s.Data == nil {
-		return errors.New(errors.InvalidParameter, op, "vault secret is not a token lookup")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "vault secret is not a token lookup")
 	}
 
 	if s.Data["renewable"] == nil {
-		return errors.E(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
 	}
 	renewable, err := parseutil.ParseBool(s.Data["renewable"])
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
 	if !renewable {
-		return errors.E(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
 	}
 
 	if s.Data["orphan"] == nil {
-		return errors.E(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
 	orphan, err := parseutil.ParseBool(s.Data["orphan"])
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
 	if !orphan {
-		return errors.E(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
 
 	if s.Data["period"] == nil {
-		return errors.E(errors.WithCode(errors.VaultTokenNotPeriodic), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotPeriodic), errors.WithOp(op))
 	}
 
 	return nil
@@ -246,7 +246,7 @@ func validateTokenLookup(op errors.Op, s *vault.Secret) error {
 func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string, _ ...Option) (*CredentialStore, error) {
 	const op = "vault.(Repository).LookupCredentialStore"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	agg := allocPublicStore()
 	agg.PublicId = publicId
@@ -343,19 +343,19 @@ func (ps *publicStore) GetPublicId() string { return ps.PublicId }
 func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialStore, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialStore, int, error) {
 	const op = "vault.(Repository).UpdateCredentialStore"
 	if cs == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing CredentialStore")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing CredentialStore")
 	}
 	if cs.CredentialStore == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded CredentialStore")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded CredentialStore")
 	}
 	if cs.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if cs.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	cs = cs.clone()
 
@@ -378,7 +378,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				validateToken = true
 			}
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
 		}
 	}
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
@@ -410,10 +410,10 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		fieldMaskPaths, nil,
 	)
 	if len(certNullFields) != 0 && len(certNullFields) != 2 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "attempting to unset a required field on a client cert")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "attempting to unset a required field on a client cert")
 	}
 	if len(append(dbMask, certDbMask...)) == 0 && len(append(nullFields, certNullFields...)) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	var filteredDbMask, filteredNullFields []string
@@ -427,7 +427,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	for _, f := range nullFields {
 		switch {
 		case strings.EqualFold(tokenField, f):
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "attempting to unset the value for token")
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "attempting to unset the value for token")
 		default:
 			filteredNullFields = append(filteredNullFields, f)
 		}
@@ -449,7 +449,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to lookup private credential store"))
 	}
 	if ps == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.RecordNotFound, op, fmt.Sprintf("credential store %s", cs.PublicId))
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("credential store %s", cs.PublicId))
 	}
 	origStore := ps.toCredentialStore()
 	origStore.inputToken = ps.Token
@@ -489,7 +489,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if len(missing) > 0 {
 			return nil,
 				db.NoRowsAffected,
-				errors.New(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
+				errors.NewDeprecated(errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 		}
 	}
 	if updateToken {
@@ -542,13 +542,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				case 0:
 					return nil
 				default:
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store version and %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated credential store version and %d rows updated", rowsUpdated))
 				}
 			default:
 				rowsUpdated, err = w.Update(ctx, cs, filteredDbMask, filteredNullFields, db.NewOplogMsg(&csOplogMsg), db.WithVersion(&version))
 				if err != nil {
 					if errors.IsUniqueError(err) {
-						return errors.New(errors.NotUnique, op,
+						return errors.NewDeprecated(errors.NotUnique, op,
 							fmt.Sprintf("name %s already exists: %s", cs.Name, cs.PublicId))
 					}
 					return errors.Wrap(err, op, errors.WithMsg("unable to update credential store"))
@@ -558,7 +558,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				case 0:
 					return nil
 				default:
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated credential store and %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated credential store and %d rows updated", rowsUpdated))
 				}
 			}
 			msgs = append(msgs, &csOplogMsg)
@@ -574,12 +574,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete client certificate"))
 				}
 				if rows > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 client certificate would have been deleted")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 client certificate would have been deleted")
 				}
 				msgs = append(msgs, deleteCert.oplogMessage(db.DeleteOp))
 			case len(certDbMask) > 0:
 				if updatedStore.clientCert == nil {
-					return errors.New(errors.InvalidParameter, op, "updated cert")
+					return errors.NewDeprecated(errors.InvalidParameter, op, "updated cert")
 				}
 				query, values := updatedStore.clientCert.insertQuery()
 				rows, err := w.Exec(ctx, query, values)
@@ -587,7 +587,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 					return errors.Wrap(err, op, errors.WithMsg("unable to upsert client certificate"))
 				}
 				if rows > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 client certificate would have been upserted")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 client certificate would have been upserted")
 				}
 			}
 
@@ -596,13 +596,13 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 				rows, err := w.Exec(ctx, query, values)
 				if err != nil {
 					if errors.IsUniqueError(err) {
-						return errors.New(errors.NotUnique, op,
+						return errors.NewDeprecated(errors.NotUnique, op,
 							fmt.Sprintf("token already exists"))
 					}
 					return errors.Wrap(err, op)
 				}
 				if rows > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 token would have been created")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 token would have been created")
 				}
 				msgs = append(msgs, token.oplogMessage(db.CreateOp))
 			}
@@ -642,7 +642,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string, opt ...Option) ([]*CredentialStore, error) {
 	const op = "vault.(Repository).ListCredentialStores"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no scopeIds")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scopeIds")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -667,7 +667,7 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "vault.(Repository).DeleteCredentialStore"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 
 	cs := allocCredentialStore()
@@ -679,7 +679,7 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	if cs.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
@@ -703,7 +703,7 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 				return errors.Wrap(err, op)
 			}
 			if rows > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 credential store would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 credential store would have been deleted")
 			}
 			msg := cs.oplogMessage(db.UpdateOp)
 			msg.FieldMaskPaths = []string{"DeleteTime"}

@@ -28,10 +28,10 @@ var _ db.VetForWriter = (*TargetHostSet)(nil)
 func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, error) {
 	const op = "target.NewTargetHostSet"
 	if targetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if hostSetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing hostSetId id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing hostSetId id")
 	}
 	t := &TargetHostSet{
 		TargetHostSet: &store.TargetHostSet{
@@ -63,10 +63,10 @@ func (t *TargetHostSet) VetForWrite(_ context.Context, _ db.Reader, opType db.Op
 	const op = "target.(TargetHostSet).VetForWrite"
 	if opType == db.CreateOp {
 		if t.TargetId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing target id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 		}
 		if t.HostSetId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing host set id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
 		}
 	}
 	return nil

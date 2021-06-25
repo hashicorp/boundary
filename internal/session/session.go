@@ -229,7 +229,7 @@ func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, 
 	const op = "session.(Session).VetForWrite"
 	opts := db.GetOpts(opt...)
 	if s.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	switch opType {
 	case db.CreateOp:
@@ -237,38 +237,38 @@ func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, 
 			return errors.Wrap(err, op)
 		}
 		if len(s.Certificate) == 0 {
-			return errors.New(errors.InvalidParameter, op, "missing certificate")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing certificate")
 		}
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return errors.New(errors.InvalidParameter, op, "public id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "public id is immutable")
 		case contains(opts.WithFieldMaskPaths, "UserId"):
-			return errors.New(errors.InvalidParameter, op, "user id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "user id is immutable")
 		case contains(opts.WithFieldMaskPaths, "HostId"):
-			return errors.New(errors.InvalidParameter, op, "host id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "host id is immutable")
 		case contains(opts.WithFieldMaskPaths, "TargetId"):
-			return errors.New(errors.InvalidParameter, op, "target id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "target id is immutable")
 		case contains(opts.WithFieldMaskPaths, "HostSetId"):
-			return errors.New(errors.InvalidParameter, op, "host set id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "host set id is immutable")
 		case contains(opts.WithFieldMaskPaths, "AuthTokenId"):
-			return errors.New(errors.InvalidParameter, op, "auth token id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "auth token id is immutable")
 		case contains(opts.WithFieldMaskPaths, "Certificate"):
-			return errors.New(errors.InvalidParameter, op, "certificate is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "certificate is immutable")
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return errors.New(errors.InvalidParameter, op, "create time is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "create time is immutable")
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return errors.New(errors.InvalidParameter, op, "update time is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "Endpoint"):
-			return errors.New(errors.InvalidParameter, op, "endpoint is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "endpoint is immutable")
 		case contains(opts.WithFieldMaskPaths, "ExpirationTime"):
-			return errors.New(errors.InvalidParameter, op, "expiration time is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "expiration time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ConnectionLimit"):
-			return errors.New(errors.InvalidParameter, op, "connection limit is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "connection limit is immutable")
 		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
-			return errors.New(errors.InvalidParameter, op, "worker filter is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "worker filter is immutable")
 		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
-			return errors.New(errors.InvalidParameter, op, "dynamic credentials are immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(err, op)
@@ -297,43 +297,43 @@ func (s *Session) SetTableName(n string) {
 func (s *Session) validateNewSession() error {
 	const op = "session.(Session).validateNewSession"
 	if s.UserId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing user id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if s.HostId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing host id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing host id")
 	}
 	if s.TargetId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing target id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if s.HostSetId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing host set id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
 	}
 	if s.AuthTokenId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing auth token id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token id")
 	}
 	if s.ScopeId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing scope id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if s.Endpoint == "" {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint")
 	}
 	if s.ExpirationTime.GetTimestamp().AsTime().IsZero() {
-		return errors.New(errors.InvalidParameter, op, "missing expiration time")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing expiration time")
 	}
 	if s.TerminationReason != "" {
-		return errors.New(errors.InvalidParameter, op, "termination reason must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "termination reason must be empty")
 	}
 	if s.ServerId != "" {
-		return errors.New(errors.InvalidParameter, op, "server id must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "server id must be empty")
 	}
 	if s.ServerType != "" {
-		return errors.New(errors.InvalidParameter, op, "server type must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "server type must be empty")
 	}
 	if s.TofuToken != nil {
-		return errors.New(errors.InvalidParameter, op, "tofu token must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "tofu token must be empty")
 	}
 	if s.CtTofuToken != nil {
-		return errors.New(errors.InvalidParameter, op, "ct must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "ct must be empty")
 	}
 	// It is okay for the worker filter to be empty, so it is not checked here.
 	return nil
@@ -351,13 +351,13 @@ func contains(ss []string, t string) bool {
 func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
 	if wrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
 	}
 	if userId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if jobId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing job id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job id")
 	}
 	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
 	if err != nil {

@@ -49,13 +49,13 @@ type Scheduler struct {
 func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 	if jobRepoFn == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing job repo function")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
 	}
 	if logger == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -112,7 +112,7 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) error {
 	const op = "scheduler.(Scheduler).UpdateJobNextRunInAtLeast"
 	if name == "" {
-		return errors.New(errors.InvalidParameter, op, "missing name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 	repo, err := s.jobRepoFn()
 	if err != nil {

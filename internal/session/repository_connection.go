@@ -15,7 +15,7 @@ import (
 func (r *Repository) LookupConnection(ctx context.Context, connectionId string, _ ...Option) (*Connection, []*ConnectionState, error) {
 	const op = "session.(Repository).LookupConnection"
 	if connectionId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing connectionId id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing connectionId id")
 	}
 	connection := AllocConnection()
 	connection.PublicId = connectionId
@@ -49,7 +49,7 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId string, opt ...Option) ([]*Connection, error) {
 	const op = "session.(Repository).ListConnectionsBySessionId"
 	if sessionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no session ID supplied")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no session ID supplied")
 	}
 	var connections []*Connection
 	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
@@ -63,7 +63,7 @@ func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId s
 func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "session.(Repository).DeleteConnection"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	connection := AllocConnection()
 	connection.PublicId = publicId
@@ -88,7 +88,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -112,7 +112,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, serverId string, foundConns []string) (int, error) {
 	const op = "session.(Repository).CloseDeadConnectionsOnWorkerReport"
 	if serverId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing server id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 
 	args := make([]interface{}, 0, len(foundConns)+1)

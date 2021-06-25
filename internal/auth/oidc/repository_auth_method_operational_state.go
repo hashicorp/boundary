@@ -55,17 +55,17 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, versio
 func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId string, desiredState AuthMethodState, version uint32, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).transitionAuthMethodTo"
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if !validState(string(desiredState)) {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid auth method state", desiredState))
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	if am == nil {
-		return nil, errors.New(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
+		return nil, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
 	}
 	opts := getOpts(opt...)
 	if am.OperationalState == string(desiredState) && am.DisableDiscoveredConfigValidation == opts.withForce {
@@ -104,12 +104,12 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			case err != nil:
 				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
 			case err == nil && rowsUpdated > 1:
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			case err == nil && rowsUpdated == 0:
 				// this is different than how "no rows updated" is handled in
 				// the typical update pattern since we are not returning the
 				// number of rows updated, we need to raise an error here.
-				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			default:
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
@@ -125,7 +125,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if updatedAm == nil {
-				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return err
 		},

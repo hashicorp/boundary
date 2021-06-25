@@ -23,46 +23,46 @@ import (
 func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, _ ...Option) (*Session, ed25519.PrivateKey, error) {
 	const op = "session.(Repository).CreateSession"
 	if newSession == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing session")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session")
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "public id is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id is not empty")
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "certificate is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "certificate is not empty")
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if newSession.HostId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing host id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing host id")
 	}
 	if newSession.UserId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if newSession.HostSetId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing host set id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing auth token id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token id")
 	}
 	if newSession.ScopeId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if newSession.ServerId != "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "server id is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "server id is not empty")
 	}
 	if newSession.ServerType != "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "server type is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "server type is not empty")
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "ct is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "ct is not empty")
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "tofu token is not empty")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "tofu token is not empty")
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing expiration time")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing expiration time")
 	}
 
 	id, err := newId()
@@ -103,14 +103,14 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				return errors.Wrap(err, op)
 			}
 			if len(foundStates) != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("%d states found for new session %s", len(foundStates), returnedSession.PublicId))
 			}
 			if len(foundStates) == 0 {
-				return errors.New(errors.SessionNotFound, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
+				return errors.NewDeprecated(errors.SessionNotFound, op, fmt.Sprintf("no states found for new session %s", returnedSession.PublicId))
 			}
 			returnedSession.States = foundStates
 			if returnedSession.States[0].Status != StatusPending {
-				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status))
+				return errors.NewDeprecated(errors.InvalidSessionState, op, fmt.Sprintf("new session %s state is not valid: %s", returnedSession.PublicId, returnedSession.States[0].Status))
 			}
 			return nil
 		},
@@ -128,7 +128,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...Option) (*Session, *ConnectionAuthzSummary, error) {
 	const op = "session.(Repository).LookupSession"
 	if sessionId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing session id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	session := AllocSession()
 	session.PublicId = sessionId
@@ -271,7 +271,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "session.(Repository).DeleteSession"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	session := AllocSession()
 	session.PublicId = publicId
@@ -296,7 +296,7 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Op
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -315,10 +315,10 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Op
 func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
 	const op = "session.(Repository).CancelSession"
 	if sessionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session version")
 	}
 	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling)
 	if err != nil {
@@ -334,10 +334,10 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 func (r *Repository) TerminateSession(ctx context.Context, sessionId string, sessionVersion uint32, reason TerminationReason) (*Session, error) {
 	const op = "session.(Repository).TerminateSession"
 	if sessionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session version")
 	}
 
 	updatedSession := AllocSession()
@@ -353,14 +353,14 @@ func (r *Repository) TerminateSession(ctx context.Context, sessionId string, ses
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to terminate session %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("unable to terminate session %s", sessionId))
+				return errors.NewDeprecated(errors.InvalidSessionState, op, fmt.Sprintf("unable to terminate session %s", sessionId))
 			}
 			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"TerminationReason"}, nil, db.WithVersion(&sessionVersion))
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("update to session %s would have updated %d session", updatedSession.PublicId, rowsUpdated))
 			}
 			states, err := fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
@@ -473,7 +473,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	var info *ConnectionAuthzSummary
 	for rows.Next() {
 		if info != nil {
-			return nil, errors.New(errors.MultipleRecords, op, "query returned more than one row")
+			return nil, errors.NewDeprecated(errors.MultipleRecords, op, "query returned more than one row")
 		}
 		info = &ConnectionAuthzSummary{}
 		if err := r.reader.ScanRows(rows, info); err != nil {
@@ -515,7 +515,7 @@ func (r *Repository) ConnectConnection(ctx context.Context, c ConnectWith) (*Con
 			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			newState, err := NewConnectionState(connection.PublicId, StatusConnected)
 			if err != nil {
@@ -550,7 +550,7 @@ type CloseConnectionResp struct {
 func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith, _ ...Option) ([]CloseConnectionResp, error) {
 	const op = "session.(Repository).CloseConnections"
 	if len(closeWith) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing connections")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing connections")
 	}
 	for _, cw := range closeWith {
 		if err := cw.validate(); err != nil {
@@ -581,7 +581,7 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 					return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to update connection %s", cw.ConnectionId)))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("%d would have been updated for connection %s", rowsUpdated, cw.ConnectionId))
 				}
 				states, err := fetchConnectionStates(ctx, reader, cw.ConnectionId, db.WithOrder("start_time desc"))
 				if err != nil {
@@ -610,19 +610,19 @@ func (r *Repository) CloseConnections(ctx context.Context, closeWith []CloseWith
 func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
 	const op = "session.(Repository).ActivateSession"
 	if sessionId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing session id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if serverId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing server id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 	if serverType == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing server type")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server type")
 	}
 	if len(tofuToken) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing tofu token")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing tofu token")
 	}
 
 	updatedSession := AllocSession()
@@ -638,7 +638,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to activate session %s", sessionId)))
 			}
 			if rowsAffected == 0 {
-				return errors.New(errors.InvalidSessionState, op, "session is not in a pending state")
+				return errors.NewDeprecated(errors.InvalidSessionState, op, "session is not in a pending state")
 			}
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
@@ -650,7 +650,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
 			}
 			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
-				return errors.New(errors.TokenMismatch, op, "tofu token mismatch")
+				return errors.NewDeprecated(errors.TokenMismatch, op, "tofu token mismatch")
 			}
 
 			updatedSession.TofuToken = tofuToken
@@ -665,7 +665,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
 			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
@@ -687,16 +687,16 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, _ ...Option) (*Session, []*State, error) {
 	const op = "session.(Repository).updateState"
 	if sessionId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing session id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if s == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing session status")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session status")
 	}
 	if s == StatusActive {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "you must call ActivateSession to update a session's state to active")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "you must call ActivateSession to update a session's state to active")
 	}
 
 	var rowsAffected int
@@ -716,7 +716,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
 			if len(updatedSession.CtTofuToken) > 0 {
 				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase)
@@ -735,14 +735,14 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to update session %s state to %s", sessionId, s.String())))
 			}
 			if rowsAffected != 0 && rowsAffected != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated session %s to state %s and %d rows inserted (should be 0 or 1)", sessionId, s.String(), rowsAffected))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated session %s to state %s and %d rows inserted (should be 0 or 1)", sessionId, s.String(), rowsAffected))
 			}
 			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
-				return errors.New(errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
+				return errors.NewDeprecated(errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
 			return nil
 		},

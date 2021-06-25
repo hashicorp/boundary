@@ -1075,7 +1075,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.EDeprecated(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1091,7 +1091,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.EDeprecated(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1107,7 +1107,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.EDeprecated(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1123,7 +1123,7 @@ func TestDb_DoTx(t *testing.T) {
 			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
-					return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+					return errors.EDeprecated(errors.WithCode(errors.TicketAlreadyRedeemed))
 				}
 				return nil
 			})
@@ -1163,7 +1163,7 @@ func TestDb_DoTx(t *testing.T) {
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error {
 			attempts += 1
-			return errors.E(errors.WithCode(errors.TicketAlreadyRedeemed))
+			return errors.EDeprecated(errors.WithCode(errors.TicketAlreadyRedeemed))
 		})
 		require.Error(err)
 		assert.Equal(3, got.Retries)

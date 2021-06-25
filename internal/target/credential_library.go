@@ -22,10 +22,10 @@ type CredentialLibrary struct {
 func NewCredentialLibrary(targetId, credentialLibraryId string, _ ...Option) (*CredentialLibrary, error) {
 	const op = "target.NewCredentialLibrary"
 	if targetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no target id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no target id")
 	}
 	if credentialLibraryId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no credential library id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no credential library id")
 	}
 
 	t := &CredentialLibrary{

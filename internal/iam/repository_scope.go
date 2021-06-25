@@ -21,13 +21,13 @@ import (
 func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	const op = "iam.(Repository).CreateScope"
 	if s == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope")
 	}
 	if s.Scope == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope store")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope store")
 	}
 	if s.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 
 	var parentOplogWrapper wrapping.Wrapper
@@ -35,13 +35,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var err error
 	switch s.Type {
 	case scope.Unknown.String():
-		return nil, errors.New(errors.InvalidParameter, op, "unknown type")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown type")
 	case scope.Global.String():
-		return nil, errors.New(errors.InvalidParameter, op, "invalid type")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "invalid type")
 	default:
 		switch s.ParentId {
 		case "":
-			return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing parent id")
 		case scope.Global.String():
 			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 		default:
@@ -50,7 +50,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		externalWrappers = r.kms.GetExternalWrappers()
 	}
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "unable to get oplog wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unable to get oplog wrapper")
 	}
 
 	opts := getOpts(opt...)
@@ -62,7 +62,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeType := scope.Map[s.Type]
 		if opts.withPublicId != "" {
 			if !strings.HasPrefix(opts.withPublicId, scopeType.Prefix()+"_") {
-				return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, scopeType.String(), scopeType.Prefix()))
+				return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, scopeType.String(), scopeType.Prefix()))
 			}
 			scopePublicId = opts.withPublicId
 		} else {
@@ -186,7 +186,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			}
 			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, kms.WithRepository(kmsRepo))
 			if err != nil {
-				return errors.New(errors.InvalidParameter, op, "unable to get oplog wrapper")
+				return errors.NewDeprecated(errors.InvalidParameter, op, "unable to get oplog wrapper")
 			}
 
 			// We create a new role, then set grants and principals on it. This
@@ -216,7 +216,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
 				}
 
 				msgs = append(msgs, &roleOplogMsg)
@@ -279,7 +279,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
 				}
 				msgs = append(msgs, &roleOplogMsg)
 
@@ -365,7 +365,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))
+			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", scopePublicId)))
 	}
@@ -381,13 +381,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint32, fieldMaskPaths []string, _ ...Option) (*Scope, int, error) {
 	const op = "iam.(Repository).UpdateScope"
 	if scope == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope")
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if contains(fieldMaskPaths, "ParentId") {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, "you cannot change a scope's parent")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, "you cannot change a scope's parent")
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
@@ -401,12 +401,12 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	)
 	// nada to update, so reload scope from db and return it
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.E(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
+		return nil, db.NoRowsAffected, errors.EDeprecated(errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("%s name %s already exists", scope.PublicId, scope.Name))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("%s name %s already exists", scope.PublicId, scope.Name))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
 	}
@@ -418,7 +418,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...Option) (*Scope, error) {
 	const op = "iam.(Repository).LookupScope"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	scope := AllocScope()
 	scope.PublicId = withPublicId
@@ -435,10 +435,10 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteScope"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if withPublicId == scope.Global.String() {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "invalid to delete global scope")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "invalid to delete global scope")
 	}
 	scope := AllocScope()
 	scope.PublicId = withPublicId
@@ -456,7 +456,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt ...Option) ([]*Scope, error) {
 	const op = "iam.(Repository).ListScopes"
 	if len(withParentIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing parent id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing parent id")
 	}
 	var items []*Scope
 	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
@@ -487,7 +487,7 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 		args = append(args, rootScopeId)
 	default:
 		// We have no idea what scope type this is so bail
-		return nil, errors.New(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op+":TypeSwitch", "invalid scope ID")
 	}
 	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {

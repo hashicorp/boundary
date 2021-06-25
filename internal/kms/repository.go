@@ -25,10 +25,10 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, opt ...Option) (*Repository, error) {
 	const op = "kms.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -84,19 +84,19 @@ type Keys map[KeyType]KeyIder
 func CreateKeysTx(ctx context.Context, dbReader db.Reader, dbWriter db.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string) (Keys, error) {
 	const op = "kms.CreateKeysTx"
 	if dbReader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db reader")
 	}
 	if dbWriter == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db writer")
 	}
 	if rootWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root wrapper")
 	}
 	if randomReader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing random reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing random reader")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	k, err := generateKey(randomReader)
 	if err != nil {

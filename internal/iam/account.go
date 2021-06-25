@@ -46,7 +46,7 @@ func (a *authAccount) Clone() interface{} {
 func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(authAccount).VetForWrite"
 	if a.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
 		return errors.Wrap(err, op)

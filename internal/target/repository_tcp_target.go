@@ -19,26 +19,26 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	const op = "target.(Repository).CreateTcpTarget"
 	opts := getOpts(opt...)
 	if target == nil {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target")
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target store")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target store")
 	}
 	if target.ScopeId == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if target.Name == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 	if target.PublicId != "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 
 	t := target.Clone().(*TcpTarget)
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, TcpTargetPrefix+"_") {
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, TcpTargetPrefix))
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, TcpTargetPrefix))
 		}
 		t.PublicId = opts.withPublicId
 	} else {
@@ -134,13 +134,13 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).UpdateTcpTarget"
 	if target == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target")
 	}
 	if target.TcpTarget == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target store")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target store")
 	}
 	if target.PublicId == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target public id")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -151,7 +151,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		case strings.EqualFold("sessionconnectionlimit", f):
 		case strings.EqualFold("workerfilter", f):
 		default:
-			return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -168,7 +168,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 	var returnedTarget Target
 	var rowsUpdated int
@@ -190,7 +190,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.Name, target.ScopeId))
+			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.Name, target.ScopeId))
 		}
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
 	}

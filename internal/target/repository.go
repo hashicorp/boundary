@@ -31,13 +31,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "target.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -61,7 +61,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	opts := getOpts(opt...)
 
 	if publicIdOrName == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 
 	var where []string
@@ -71,27 +71,27 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	scopeNameEmpty := opts.withScopeName == ""
 	if !nameEmpty {
 		if opts.withName != publicIdOrName {
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "name passed in but does not match publicId")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "name passed in but does not match publicId")
 		}
 		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.withName)
 		switch {
 		case scopeIdEmpty && scopeNameEmpty:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
 		case !scopeIdEmpty && !scopeNameEmpty:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
 		case !scopeIdEmpty:
 			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.withScopeId)
 		case !scopeNameEmpty:
 			where, whereArgs = append(where, "scope_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.withScopeName)
 		default:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "unknown combination of parameters")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown combination of parameters")
 		}
 	} else {
 		switch {
 		case !scopeIdEmpty:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
 		case !scopeNameEmpty:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
 		}
 	}
 
@@ -143,7 +143,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	const op = "target.(Repository).ListTargets"
 	opts := getOpts(opt...)
 	if len(opts.withScopeIds) == 0 && opts.withUserId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "must specify either scope id or user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "must specify either scope id or user id")
 	}
 	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
@@ -195,7 +195,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTarget"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	t := allocTargetView()
 	t.PublicId = publicId
@@ -211,7 +211,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 		deleteTarget = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_DELETE)
 	default:
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", publicId, t.Type))
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", publicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.ScopeId, kms.KeyPurposeOplog)
@@ -237,7 +237,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -253,14 +253,14 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).update"
 	if version == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if target == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil target")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil target")
 	}
 	cloner, ok := target.(Cloneable)
 	if !ok {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "target is not cloneable")
+		return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "target is not cloneable")
 	}
 	dbOpts := []db.Option{
 		db.WithVersion(&version),
@@ -303,7 +303,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
 			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {

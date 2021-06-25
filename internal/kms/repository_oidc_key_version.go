@@ -15,20 +15,20 @@ import (
 func (r *Repository) CreateOidcKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, oidcKeyId string, key []byte, _ ...Option) (*OidcKeyVersion, error) {
 	const op = "kms.(Repository).CreateOidcKeyVersion"
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 	if oidcKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oidc key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocOidcKeyVersion()
 	id, err := newOidcKeyVersionId()
@@ -68,10 +68,10 @@ func (r *Repository) CreateOidcKeyVersion(ctx context.Context, rkvWrapper wrappi
 func (r *Repository) LookupOidcKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*OidcKeyVersion, error) {
 	const op = "kms.(Repository).LookupOidcKeyVersion"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocOidcKeyVersion()
 	k.PrivateId = privateId
@@ -90,7 +90,7 @@ func (r *Repository) LookupOidcKeyVersion(ctx context.Context, keyWrapper wrappi
 func (r *Repository) DeleteOidcKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteOidcKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocOidcKeyVersion()
 	k.PrivateId = privateId
@@ -111,7 +111,7 @@ func (r *Repository) DeleteOidcKeyVersion(ctx context.Context, privateId string,
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -128,17 +128,17 @@ func (r *Repository) DeleteOidcKeyVersion(ctx context.Context, privateId string,
 func (r *Repository) LatestOidcKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, OidcKeyId string, _ ...Option) (*OidcKeyVersion, error) {
 	const op = "kms.(Repository).LatestOidcKeyVersion"
 	if OidcKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oidc key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*OidcKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "oidc_key_id = ?", []interface{}{OidcKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", OidcKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		return nil, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -150,10 +150,10 @@ func (r *Repository) LatestOidcKeyVersion(ctx context.Context, rkvWrapper wrappi
 func (r *Repository) ListOidcKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, OidcKeyId string, opt ...Option) ([]DekVersion, error) {
 	const op = "kms.(Repository).ListOidcKeyVersions"
 	if OidcKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing oidc key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*OidcKeyVersion
 	err := r.list(ctx, &versions, "oidc_key_id = ?", []interface{}{OidcKeyId}, opt...)

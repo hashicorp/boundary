@@ -80,10 +80,10 @@ type Service struct {
 func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
 	const op = "credentialstores.NewService"
 	if iamRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
@@ -189,7 +189,7 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -234,7 +234,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -282,7 +282,7 @@ func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCrede
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -349,7 +349,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, 
 		return nil, errors.Wrap(err, op)
 	}
 	if cs == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("credential store %q not found", id))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("credential store %q not found", id))
 	}
 	return cs, err
 }
@@ -505,7 +505,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		case credential.VaultSubtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
-				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential store")
+				return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential store")
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{
 				Address: wrapperspb.String(vaultIn.GetVaultAddress()),

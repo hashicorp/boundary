@@ -113,7 +113,7 @@ func (c *Connection) VetForWrite(_ context.Context, _ db.Reader, opType db.OpTyp
 	const op = "session.(Connection).VetForWrite"
 	opts := db.GetOpts(opt...)
 	if c.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	switch opType {
 	case db.CreateOp:
@@ -123,13 +123,13 @@ func (c *Connection) VetForWrite(_ context.Context, _ db.Reader, opType db.OpTyp
 	case db.UpdateOp:
 		switch {
 		case contains(opts.WithFieldMaskPaths, "PublicId"):
-			return errors.New(errors.InvalidParameter, op, "public id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "public id is immutable")
 		case contains(opts.WithFieldMaskPaths, "SessionId"):
-			return errors.New(errors.InvalidParameter, op, "session id is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "session id is immutable")
 		case contains(opts.WithFieldMaskPaths, "CreateTime"):
-			return errors.New(errors.InvalidParameter, op, "create time is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "create time is immutable")
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
-			return errors.New(errors.InvalidParameter, op, "update time is immutable")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
 			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
 				return errors.Wrap(err, op)
@@ -158,19 +158,19 @@ func (c *Connection) SetTableName(n string) {
 func (c *Connection) validateNewConnection() error {
 	const op = "session.(Connection).validateNewConnection"
 	if c.SessionId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing session id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return errors.New(errors.InvalidParameter, op, "missing client address")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client address")
 	}
 	if c.ClientTcpPort == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing client port")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint address")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing endpoint port")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint port")
 	}
 	return nil
 }

@@ -25,22 +25,22 @@ import (
 func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, _ ...Option) (*CredentialLibrary, error) {
 	const op = "vault.(Repository).CreateCredentialLibrary"
 	if l == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil CredentialLibrary")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil CredentialLibrary")
 	}
 	if l.CredentialLibrary == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded l")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded l")
 	}
 	if l.StoreId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no store id")
 	}
 	if l.VaultPath == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault path")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault path")
 	}
 	if l.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	l = l.clone()
 
@@ -97,19 +97,19 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialLibrary, int, error) {
 	const op = "vault.(Repository).UpdateCredentialLibrary"
 	if l == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing CredentialLibrary")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing CredentialLibrary")
 	}
 	if l.CredentialLibrary == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded CredentialLibrary")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded CredentialLibrary")
 	}
 	if l.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	l = l.clone()
 
@@ -121,7 +121,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		case strings.EqualFold(httpMethodField, f):
 		case strings.EqualFold(httpRequestBodyField, f):
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -144,7 +144,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	}
 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -163,7 +163,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 				db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return err
 		},
@@ -171,7 +171,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", l.Name, l.PublicId))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(l.PublicId))
@@ -185,7 +185,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId string, _ ...Option) (*CredentialLibrary, error) {
 	const op = "vault.(Repository).LookupCredentialLibrary"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	l := allocCredentialLibrary()
 	l.PublicId = publicId
@@ -203,10 +203,10 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string, publicId string, _ ...Option) (int, error) {
 	const op = "vault.(Repository).DeleteCredentialLibrary"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 
 	l := allocCredentialLibrary()
@@ -224,7 +224,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string
 			dl := l.clone()
 			rowsDeleted, err = w.Delete(ctx, dl, db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 CredentialLibrary would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 CredentialLibrary would have been deleted")
 			}
 			return err
 		},
@@ -242,7 +242,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string
 func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*CredentialLibrary, error) {
 	const op = "vault.(Repository).ListCredentialLibraries"
 	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no storeId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no storeId")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit

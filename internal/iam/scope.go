@@ -59,7 +59,7 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	const op = "iam.newScope"
 	if parent == nil || parent.PublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "child scope is missing its parent")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "child scope is missing its parent")
 	}
 	var typ scope.Type
 	switch {
@@ -69,7 +69,7 @@ func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 		typ = scope.Project
 	}
 	if typ == scope.Unknown {
-		return nil, errors.New(errors.InvalidParameter, op, "unknown scope type")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown scope type")
 	}
 
 	opts := getOpts(opt...)
@@ -106,31 +106,31 @@ func (s *Scope) Clone() interface{} {
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(Scope).VetForWrite"
 	if s.Type == scope.Unknown.String() {
-		return errors.New(errors.InvalidParameter, op, "unknown scope type")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "unknown scope type")
 	}
 	if s.PublicId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing public id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.UpdateOp {
 		dbOptions := db.GetOpts(opt...)
 		for _, path := range dbOptions.WithFieldMaskPaths {
 			switch path {
 			case "ParentId":
-				return errors.New(errors.InvalidParameter, op, "you cannot change a scope's parent")
+				return errors.NewDeprecated(errors.InvalidParameter, op, "you cannot change a scope's parent")
 			case "Type":
-				return errors.New(errors.InvalidParameter, op, "you cannot change a scope's type")
+				return errors.NewDeprecated(errors.InvalidParameter, op, "you cannot change a scope's type")
 			}
 		}
 	}
 	if opType == db.CreateOp {
 		switch {
 		case s.Type == scope.Global.String():
-			return errors.New(errors.InvalidParameter, op, "you cannot create a global scope")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "you cannot create a global scope")
 		case s.ParentId == "":
-			return errors.New(errors.InvalidParameter, op, "scope must have a parent")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "scope must have a parent")
 		case s.Type == scope.Org.String():
 			if s.ParentId != "global" {
-				return errors.New(errors.InvalidParameter, op, `org's parent must be "global"`)
+				return errors.NewDeprecated(errors.InvalidParameter, op, `org's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
 			parentScope := AllocScope()
@@ -139,7 +139,7 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 				return errors.Wrap(err, op, errors.WithMsg("unable to verify project's org scope"))
 			}
 			if parentScope.Type != scope.Org.String() {
-				return errors.New(errors.InvalidParameter, op, "project parent scope is not an org")
+				return errors.NewDeprecated(errors.InvalidParameter, op, "project parent scope is not an org")
 			}
 		}
 	}
@@ -160,10 +160,10 @@ func (*Scope) Actions() map[string]action.Type {
 func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	const op = "iam.(Scope).GetScope"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if s.PublicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if s.Type == "" && s.ParentId == "" {
 		if err := r.LookupByPublicId(ctx, s); err != nil {

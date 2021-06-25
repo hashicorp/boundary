@@ -149,19 +149,19 @@ func (s *State) SetTableName(n string) {
 func (s *State) validate() error {
 	const op = "session.(State).validate"
 	if s.Status == "" {
-		return errors.New(errors.InvalidParameter, op, "missing status")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
 	}
 	if s.SessionId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing session id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if s.StartTime != nil {
-		return errors.New(errors.InvalidParameter, op, "start time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return errors.New(errors.InvalidParameter, op, "previous end time is not settable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

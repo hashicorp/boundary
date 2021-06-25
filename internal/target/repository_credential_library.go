@@ -18,13 +18,13 @@ import (
 func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).AddTargetCredentialLibraries"
 	if targetId == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if len(clIds) == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing credential library ids")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing credential library ids")
 	}
 
 	addCredLibs := make([]interface{}, 0, len(clIds))
@@ -52,7 +52,7 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 	default:
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
@@ -80,10 +80,10 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.NewDeprecated(errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -118,13 +118,13 @@ func (r *Repository) AddTargetCredentialLibraries(ctx context.Context, targetId 
 func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTargetCredentialLibraries"
 	if targetId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if len(clIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing credential library ids")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing credential library ids")
 	}
 
 	deleteCredLibs := make([]interface{}, 0, len(clIds))
@@ -152,7 +152,7 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 	default:
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
@@ -178,10 +178,10 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.NewDeprecated(errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -191,7 +191,7 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 				return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential libraries"))
 			}
 			if rowsDeleted != len(deleteCredLibs) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
 			}
 			msgs = append(msgs, credLibsOplogMsgs...)
 
@@ -213,10 +213,10 @@ func (r *Repository) DeleteTargetCredentialLibraries(ctx context.Context, target
 func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId string, targetVersion uint32, clIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).SetTargetCredentialLibraries"
 	if targetId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 
 	changes, err := r.changes(ctx, targetId, clIds)
@@ -265,7 +265,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 		target = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	default:
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -292,10 +292,10 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.VersionMismatch, op, "invalid target version")
+				return errors.NewDeprecated(errors.VersionMismatch, op, "invalid target version")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -318,7 +318,7 @@ func (r *Repository) SetTargetCredentialLibraries(ctx context.Context, targetId 
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete target credential libraries"))
 				}
 				if rowsDeleted != len(delMsgs) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
 				}
 				rowsAffected += rowsDeleted
 				msgs = append(msgs, delMsgs...)

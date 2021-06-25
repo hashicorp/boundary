@@ -70,19 +70,19 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 func (e *Entry) validate() error {
 	const op = "oplog.(Entry).validate"
 	if e.Cipherer == nil {
-		return errors.New(errors.InvalidParameter, op, "nil cipherer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil cipherer")
 	}
 	if e.Ticketer == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticketer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticketer")
 	}
 	if e.Entry == nil {
-		return errors.New(errors.InvalidParameter, op, "nil entry")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil entry")
 	}
 	if e.Entry.Version == "" {
-		return errors.New(errors.InvalidParameter, op, "missing entry version")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry version")
 	}
 	if e.Entry.AggregateName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing entry aggregate name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing entry aggregate name")
 	}
 	return nil
 }
@@ -91,10 +91,10 @@ func (e *Entry) validate() error {
 func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 	const op = "oplog.(Entry).UnmarshalData"
 	if types == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil type catalog")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil type catalog")
 	}
 	if len(e.Data) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing data")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing data")
 	}
 	msgs := []Message{}
 	queue := Queue{
@@ -123,21 +123,21 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
-		return errors.New(errors.InvalidParameter, op, "nil writer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if err := e.validate(); err != nil {
 		return errors.Wrap(err, op)
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticket")
 	}
 	if ticket.Version == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing ticket version")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket version")
 	}
 	queue := Queue{}
 	for _, m := range msgs {
 		if m == nil {
-			return errors.New(errors.InvalidParameter, op, "nil message")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "nil message")
 		}
 		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
 			return errors.Wrap(err, op, errors.WithMsg("error adding message to queue"))
@@ -167,10 +167,10 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 		return errors.Wrap(err, op)
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "nil ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil ticket")
 	}
 	if ticket.Version == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing ticket version")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket version")
 	}
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
@@ -217,7 +217,7 @@ func (e *Entry) Replay(_ context.Context, tx Writer, types *TypeCatalog, tableSu
 	for _, m := range msgs {
 		em, ok := m.Message.(ReplayableMessage)
 		if !ok {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m.Message))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%T is not a replayable message", m.Message))
 		}
 		origTableName := em.TableName()
 		defer em.SetTableName(origTableName)
@@ -255,7 +255,7 @@ func (e *Entry) Replay(_ context.Context, tx Writer, types *TypeCatalog, tableSu
 				return errors.Wrap(err, op)
 			}
 		default:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid operation %T", m.OpType))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("invalid operation %T", m.OpType))
 		}
 	}
 	return nil

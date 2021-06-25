@@ -125,7 +125,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		return nil, err // intentionally not wrapped.
 	}
 	if a.ClientSecretHmac != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "client secret hmac should be empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "client secret hmac should be empty")
 	}
 	return a, nil
 }
@@ -143,23 +143,23 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 // will enforce that MaxAge is either -1, NULL or greater than zero.
 func (a *AuthMethod) validate(caller errors.Op) error {
 	if a.ScopeId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing scope id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing scope id")
 	}
 	if !validState(a.OperationalState) {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
+		return errors.NewDeprecated(errors.InvalidParameter, caller, fmt.Sprintf("invalid state: %s", a.OperationalState))
 	}
 	if a.Issuer != "" {
 		if _, err := url.Parse(a.Issuer); err != nil {
-			return errors.New(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
+			return errors.NewDeprecated(errors.InvalidParameter, caller, "not a valid issuer", errors.WithWrap(err))
 		}
 	}
 	if a.ApiUrl != "" {
 		if _, err := url.Parse(a.ApiUrl); err != nil {
-			return errors.New(errors.InvalidParameter, caller, "not a valid api url", errors.WithWrap(err))
+			return errors.NewDeprecated(errors.InvalidParameter, caller, "not a valid api url", errors.WithWrap(err))
 		}
 	}
 	if a.MaxAge < -1 {
-		return errors.New(errors.InvalidParameter, caller, "max age cannot be less than -1")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "max age cannot be less than -1")
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
 func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).encrypt"
 	if cipher == nil {
-		return errors.New(errors.InvalidParameter, op, "missing cipher")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
@@ -223,7 +223,7 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).decrypt"
 	if cipher == nil {
-		return errors.New(errors.InvalidParameter, op, "missing cipher")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
 		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
@@ -235,7 +235,7 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "oidc.(AuthMethod).hmacClientSecret"
 	if cipher == nil {
-		return errors.New(errors.InvalidParameter, op, "missing cipher")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
 	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
 	if err != nil {
@@ -243,7 +243,7 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
-		return errors.New(errors.Encrypt, op, "unable to generate derived key")
+		return errors.NewDeprecated(errors.Encrypt, op, "unable to generate derived key")
 	}
 	mac := hmac.New(sha256.New, key)
 	_, _ = mac.Write([]byte(a.ClientSecret))
@@ -260,19 +260,19 @@ func (am *AuthMethod) isComplete() error {
 		result = multierror.Append(result, errors.Wrap(err, op))
 	}
 	if am.Issuer == "" {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing issuer"))
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing issuer"))
 	}
 	if am.ApiUrl == "" {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing api url"))
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing api url"))
 	}
 	if am.ClientId == "" {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client id"))
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing client id"))
 	}
 	if am.ClientSecret == "" {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing client secret"))
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing client secret"))
 	}
 	if len(am.SigningAlgs) == 0 {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op, "missing signing algorithms"))
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing signing algorithms"))
 	}
 	return result.ErrorOrNil()
 }
@@ -290,7 +290,7 @@ type convertedValues struct {
 func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 	const op = "oidc.(AuthMethod).valueObjects"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
 	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []interface{}
@@ -324,7 +324,7 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 func (am *AuthMethod) convertSigningAlgs() ([]interface{}, error) {
 	const op = "oidc.(AuthMethod).convertSigningAlgs"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(am.SigningAlgs))
 	for _, a := range am.SigningAlgs {
@@ -343,7 +343,7 @@ func (am *AuthMethod) convertSigningAlgs() ([]interface{}, error) {
 func (am *AuthMethod) convertAudClaims() ([]interface{}, error) {
 	const op = "oidc.(AuthMethod).convertAudClaims"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(am.AudClaims))
 	for _, a := range am.AudClaims {
@@ -362,7 +362,7 @@ func (am *AuthMethod) convertAudClaims() ([]interface{}, error) {
 func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
 	const op = "oidc.(AuthMethod).convertCertificates"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(am.Certificates))
 	for _, cert := range am.Certificates {
@@ -381,7 +381,7 @@ func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
 func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
 	const op = "oidc.(AuthMethod).convertClaimsScopes"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(am.ClaimsScopes))
 	for _, cs := range am.ClaimsScopes {
@@ -401,7 +401,7 @@ func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
 func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 	const op = "oidc.(AuthMethod).convertAccountClaimMaps"
 	if am.PublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	newInterfaces := make([]interface{}, 0, len(am.AccountClaimMaps))
 	const (
@@ -437,7 +437,7 @@ func ParseAccountClaimMaps(m ...string) ([]ClaimMap, error) {
 	const op = "oidc.parseAccountClaimMaps"
 	var b kvbuilder.Builder
 	if err := b.Add(m...); err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "error parsing map", errors.WithWrap(err))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "error parsing map", errors.WithWrap(err))
 	}
 	fromKeys := make([]string, 0, len(m))
 	for k := range b.Map() {
@@ -450,7 +450,7 @@ func ParseAccountClaimMaps(m ...string) ([]ClaimMap, error) {
 		var ok bool
 		to, ok := b.Map()[from].(string)
 		if !ok {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("account claim map %s value %q is not a string", from, b.Map()[from]))
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("account claim map %s value %q is not a string", from, b.Map()[from]))
 		}
 		claimMap = append(claimMap, ClaimMap{
 			To:   to,

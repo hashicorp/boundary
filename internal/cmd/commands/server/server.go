@@ -701,5 +701,5 @@ func (c *Command) verifyKmsSetup() error {
 			return nil
 		}
 	}
-	return errors.New(errors.MigrationIntegrity, op, "can't find global scoped root key")
+	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
 }

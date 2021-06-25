@@ -21,13 +21,13 @@ import (
 func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).CreateAuthMethod"
 	if am == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id must be empty")
 	}
 	if am.Version != 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "version must be empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "version must be empty")
 	}
 	if err := am.validate(op); err != nil {
 		return nil, err // validate properly sets the op to the caller, the code and the msg, so just return it.
@@ -43,7 +43,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		am.PublicId = id
 	} else {
 		if !strings.HasPrefix(am.PublicId, AuthMethodPrefix+"_") {
-			return nil, errors.New(errors.InvalidParameter, op, "wrong auth method id prefix")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "wrong auth method id prefix")
 		}
 	}
 

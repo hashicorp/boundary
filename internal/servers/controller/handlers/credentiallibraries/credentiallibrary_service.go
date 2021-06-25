@@ -70,10 +70,10 @@ type Service struct {
 func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
 	const op = "credentiallibraries.NewService"
 	if iamRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
@@ -155,7 +155,7 @@ func (s Service) GetCredentialLibrary(ctx context.Context, req *pbs.GetCredentia
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -193,7 +193,7 @@ func (s Service) CreateCredentialLibrary(ctx context.Context, req *pbs.CreateCre
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -234,7 +234,7 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -294,7 +294,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 		return nil, errors.Wrap(err, op)
 	}
 	if cs == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
 	}
 	return cs, err
 }
@@ -391,13 +391,13 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			parentId = cl.GetStoreId()
 		default:
-			res.Error = errors.New(errors.InvalidParameter, op, "unrecognized credential library subtype from id")
+			res.Error = errors.NewDeprecated(errors.InvalidParameter, op, "unrecognized credential library subtype from id")
 			return res
 		}
 	}
 
 	if parentId == "" {
-		res.Error = errors.New(errors.RecordNotFound, op, "unable to find credential store for provided library")
+		res.Error = errors.NewDeprecated(errors.RecordNotFound, op, "unable to find credential store for provided library")
 		return res
 	}
 
@@ -416,7 +416,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		}
 		opts = append(opts, auth.WithScopeId(cs.GetScopeId()))
 	default:
-		res.Error = errors.New(errors.InvalidParameter, op, "unrecognized credential store subtype from id")
+		res.Error = errors.NewDeprecated(errors.InvalidParameter, op, "unrecognized credential store subtype from id")
 		return res
 	}
 
@@ -468,7 +468,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 		case credential.VaultSubtype:
 			vaultIn, ok := in.(*vault.CredentialLibrary)
 			if !ok {
-				return nil, errors.New(errors.Internal, op, "unable to cast to vault credential library")
+				return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential library")
 			}
 			attrs := &pb.VaultCredentialLibraryAttributes{
 				Path: wrapperspb.String(vaultIn.GetVaultPath()),

@@ -17,16 +17,16 @@ import (
 func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option) (*Group, error) {
 	const op = "iam.(Repository).CreateGroup"
 	if group == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group")
 	}
 	if group.Group == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group store")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group store")
 	}
 	if group.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	if group.ScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	id, err := newGroupId()
 	if err != nil {
@@ -37,7 +37,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option)
 	resource, err := r.create(ctx, g)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
+			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", g.PublicId)))
 	}
@@ -52,20 +52,20 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option)
 func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, _ ...Option) (*Group, []*GroupMember, int, error) {
 	const op = "iam.(Repository).UpdateGroup"
 	if group == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing group")
 	}
 	if group.Group == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group store")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing group store")
 	}
 	if group.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -78,7 +78,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 	var resource Resource
 	var rowsUpdated int
@@ -107,7 +107,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, db.NoRowsAffected, errors.New(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
+			return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
 		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
 	}
@@ -119,7 +119,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...Option) (*Group, []*GroupMember, error) {
 	const op = "iam.(Repository).LookupGroup"
 	if withPublicId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -156,7 +156,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteGroup"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	g := allocGroup()
 	g.PublicId = withPublicId
@@ -174,7 +174,7 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...
 func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt ...Option) ([]*Group, error) {
 	const op = "iam.(Repository).ListGroups"
 	if len(withScopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	var grps []*Group
 	err := r.list(ctx, &grps, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
@@ -188,7 +188,7 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt 
 func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, opt ...Option) ([]*GroupMember, error) {
 	const op = "iam.(Repository).ListGroupMembers"
 	if withGroupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	members := []*GroupMember{}
 	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
@@ -204,13 +204,13 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) ([]*GroupMember, error) {
 	const op = "iam.(Repository).AddGroupMembers"
 	if groupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if len(userIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user ids")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user ids")
 	}
 	if groupVersion == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -253,7 +253,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &groupOplogMsg)
 			memberOplogMsgs := make([]*oplog.Message, 0, len(newGroupMembers))
@@ -297,13 +297,13 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeleteGroupMembers"
 	if groupId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if len(userIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing either user or groups to delete")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing either user or groups to delete")
 	}
 	if groupVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -346,7 +346,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &groupOplogMsg)
 			userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
@@ -355,7 +355,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				return errors.Wrap(err, op, errors.WithMsg("unable to delete group members"))
 			}
 			if rowsDeleted != len(deleteMembers) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
 			}
 			totalRowsDeleted += rowsDeleted
 			msgs = append(msgs, userOplogMsgs...)
@@ -383,10 +383,10 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, _ ...Option) ([]*GroupMember, int, error) {
 	const op = "iam.(Repository).SetGroupMembers"
 	if groupId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing group id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if groupVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -451,7 +451,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 				return errors.Wrap(err, op, errors.WithMsg("unable to update group verison"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
 			}
 			if len(deleteMembers) > 0 {
 				userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
@@ -460,7 +460,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete group member"))
 				}
 				if rowsDeleted != len(deleteMembers) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
 				}
 				totalRowsAffected += rowsDeleted
 				msgs = append(msgs, userOplogMsgs...)
@@ -534,7 +534,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	deleteMembers := []interface{}{}
 	for _, c := range changes {
 		if c.MemberId == "" {
-			return nil, nil, errors.New(errors.InvalidParameter, op, "missing user id in change result")
+			return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id in change result")
 		}
 		switch c.Action {
 		case "add":
@@ -550,7 +550,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 			}
 			deleteMembers = append(deleteMembers, gm)
 		default:
-			return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown action %s for %s", c.Action, c.MemberId))
+			return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown action %s for %s", c.Action, c.MemberId))
 		}
 
 	}

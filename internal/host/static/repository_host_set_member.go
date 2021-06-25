@@ -20,16 +20,16 @@ import (
 func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
 	const op = "static.(Repository).AddSetMembers"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no set id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no host ids")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no host ids")
 	}
 
 	// Create in-memory host set members
@@ -100,7 +100,7 @@ func updateVersion(ctx context.Context, w db.Writer, wrapper wrapping.Wrapper, m
 	case err != nil:
 		return errors.Wrap(err, op)
 	case rowsUpdated > 1:
-		return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+		return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 	}
 	msgs = append(msgs, setMsg)
 
@@ -161,16 +161,16 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteSetMembers"
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no set id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no version")
 	}
 	if len(hostIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no host ids")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no host ids")
 	}
 
 	// Create in-memory host set members
@@ -216,7 +216,7 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 		return nil, errors.Wrap(err, op)
 	}
 	if rowsDeleted != len(members) {
-		return nil, errors.E(errors.WithMsg(fmt.Sprintf("set members deleted %d did not match request for %d", rowsDeleted, len(members))))
+		return nil, errors.EDeprecated(errors.WithMsg(fmt.Sprintf("set members deleted %d did not match request for %d", rowsDeleted, len(members))))
 	}
 	return msgs, nil
 }
@@ -229,13 +229,13 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
 	const op = "static.(Repository).SetSetMembers"
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if setId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no set id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no set id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no version")
 	}
 
 	// TODO(mgaffney) 08/2020: Oplog does not currently support bulk

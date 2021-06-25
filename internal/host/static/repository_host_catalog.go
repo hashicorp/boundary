@@ -23,16 +23,16 @@ import (
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
 	const op = "static.(Repository).CreateCatalog"
 	if c == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded HostCatalog")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.ScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if c.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	c = c.clone()
 
@@ -40,7 +40,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostCatalogPrefix+"_") {
-			return nil, errors.New(
+			return nil, errors.NewDeprecated(
 				errors.InvalidPublicId,
 				op,
 				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostCatalogPrefix),
@@ -104,19 +104,19 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
 	const op = "static.(Repository).UpdateCatalog"
 	if c == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostCatalog")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil HostCatalog")
 	}
 	if c.HostCatalog == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil embedded HostCatalog")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
 	if c.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	if c.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	if len(fieldMask) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	var dbMask, nullFields []string
@@ -132,7 +132,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 			dbMask = append(dbMask, "description")
 
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 
@@ -166,7 +166,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -187,7 +187,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
 	const op = "static.(Repository).LookupCatalog"
 	if id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	c := allocCatalog()
 	c.PublicId = id
@@ -204,7 +204,7 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...Option) ([]*HostCatalog, error) {
 	const op = "static.(Repository).ListCatalogs"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -225,7 +225,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteCatalog"
 	if id == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 
 	c := allocCatalog()
@@ -237,7 +237,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
 	}
 	if c.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
@@ -264,7 +264,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

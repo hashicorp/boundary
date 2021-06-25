@@ -39,13 +39,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) {
 	const op = "servers.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	return &Repository{
 		reader: r,
@@ -116,7 +116,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	const op = "servers.UpsertServer"
 
 	if server == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "server is nil")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "server is nil")
 	}
 
 	opts := getOpts(opt...)
@@ -168,7 +168,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					tags := make([]interface{}, 0, len(server.Tags))
 					for k, v := range server.Tags {
 						if v == nil {
-							return errors.New(errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
+							return errors.NewDeprecated(errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
 						}
 						for _, val := range v.Values {
 							tags = append(tags, ServerTag{
@@ -202,7 +202,7 @@ type RecoveryNonce struct {
 func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...Option) error {
 	const op = "servers.AddRecoveryNonce"
 	if nonce == "" {
-		return errors.New(errors.InvalidParameter, op, "empty nonce")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "empty nonce")
 	}
 	rn := &RecoveryNonce{Nonce: nonce}
 	if err := r.writer.Create(ctx, rn); err != nil {

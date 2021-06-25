@@ -25,13 +25,13 @@ type SessionKeyVersion struct {
 func NewSessionKeyVersion(sessionKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*SessionKeyVersion, error) {
 	const op = "kms.NewSessionKeyVersion"
 	if sessionKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing session key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &SessionKeyVersion{
@@ -64,17 +64,17 @@ func (k *SessionKeyVersion) Clone() interface{} {
 func (k *SessionKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "kms.(SessionKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 		}
 		if k.SessionKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing session key id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing session key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key version id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 		}
 	}
 	return nil

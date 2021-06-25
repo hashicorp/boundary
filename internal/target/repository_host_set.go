@@ -18,13 +18,13 @@ import (
 func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (Target, []*TargetSet, []*TargetLibrary, error) {
 	const op = "target.(Repository).AddTargetHostSets"
 	if targetId == "" {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if len(hostSetIds) == 0 {
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, "missing host set ids")
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing host set ids")
 	}
 	newHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
@@ -50,7 +50,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 	default:
-		return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -113,13 +113,13 @@ func (r *Repository) AddTargetHostSets(ctx context.Context, targetId string, tar
 func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTargeHostSets"
 	if targetId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if len(hostSetIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing host set ids")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing host set ids")
 	}
 	deleteTargeHostSets := make([]interface{}, 0, len(hostSetIds))
 	for _, id := range hostSetIds {
@@ -147,7 +147,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 		metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 	default:
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -172,7 +172,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -182,7 +182,7 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 				return errors.Wrap(err, op, errors.WithMsg("unable to delete target host sets"))
 			}
 			if rowsDeleted != len(deleteTargeHostSets) {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteTargeHostSets)))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteTargeHostSets)))
 			}
 			totalRowsDeleted += rowsDeleted
 			msgs = append(msgs, hostSetsOplogMsgs...)
@@ -206,10 +206,10 @@ func (r *Repository) DeleteTargeHostSets(ctx context.Context, targetId string, t
 func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, targetVersion uint32, hostSetIds []string, _ ...Option) ([]*TargetSet, []*TargetLibrary, int, error) {
 	const op = "target.(Repository).SetTargetHostSets"
 	if targetId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing target id")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
@@ -269,7 +269,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 		target = &tcpT
 		metadata = tcpT.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	default:
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
@@ -296,7 +296,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 				return errors.Wrap(err, op, errors.WithMsg("unable to update target version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("set target host sets: updated target and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("set target host sets: updated target and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
@@ -319,7 +319,7 @@ func (r *Repository) SetTargetHostSets(ctx context.Context, targetId string, tar
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete target host set"))
 				}
 				if rowsDeleted != len(deleteHostSets) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteHostSets)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("target host sets deleted %d did not match request for %d", rowsDeleted, len(deleteHostSets)))
 				}
 				totalRowsAffected += rowsDeleted
 				msgs = append(msgs, hostSetOplogMsgs...)

@@ -15,20 +15,20 @@ import (
 func (r *Repository) CreateDatabaseKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, key []byte, _ ...Option) (*DatabaseKeyVersion, error) {
 	const op = "kms.(Repository).CreateDatabaseKeyVersion"
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 	if databaseKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing database key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocDatabaseKeyVersion()
 	id, err := newDatabaseKeyVersionId()
@@ -68,10 +68,10 @@ func (r *Repository) CreateDatabaseKeyVersion(ctx context.Context, rkvWrapper wr
 func (r *Repository) LookupDatabaseKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*DatabaseKeyVersion, error) {
 	const op = "kms.(Repository).LookupDatabaseKeyVersion"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocDatabaseKeyVersion()
 	k.PrivateId = privateId
@@ -90,7 +90,7 @@ func (r *Repository) LookupDatabaseKeyVersion(ctx context.Context, keyWrapper wr
 func (r *Repository) DeleteDatabaseKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteDatabaseKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocDatabaseKeyVersion()
 	k.PrivateId = privateId
@@ -111,7 +111,7 @@ func (r *Repository) DeleteDatabaseKeyVersion(ctx context.Context, privateId str
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -128,17 +128,17 @@ func (r *Repository) DeleteDatabaseKeyVersion(ctx context.Context, privateId str
 func (r *Repository) LatestDatabaseKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, _ ...Option) (*DatabaseKeyVersion, error) {
 	const op = "kms.(Repository).LatestDatabaseKeyVersion"
 	if databaseKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing database key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*DatabaseKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "database_key_id = ?", []interface{}{databaseKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", databaseKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		return nil, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -150,10 +150,10 @@ func (r *Repository) LatestDatabaseKeyVersion(ctx context.Context, rkvWrapper wr
 func (r *Repository) ListDatabaseKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]DekVersion, error) {
 	const op = "kms.(Repository).ListDatabaseKeyVersions"
 	if databaseKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing database key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*DatabaseKeyVersion
 	err := r.list(ctx, &versions, "database_key_id = ?", []interface{}{databaseKeyId}, opt...)

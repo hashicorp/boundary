@@ -23,7 +23,7 @@ type TokenKey struct {
 func NewTokenKey(rootKeyId string, _ ...Option) (*TokenKey, error) {
 	const op = "kms.NewTokenKey"
 	if rootKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	c := &TokenKey{
 		TokenKey: &store.TokenKey{
@@ -53,11 +53,11 @@ func (k *TokenKey) Clone() interface{} {
 func (k *TokenKey) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(TokenKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if opType == db.CreateOp {
 		if k.RootKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 		}
 	}
 	return nil

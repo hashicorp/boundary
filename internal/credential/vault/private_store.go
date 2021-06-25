@@ -42,7 +42,7 @@ func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option)
 func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*privateStore, error) {
 	const op = "vault.(Repository).lookupPrivateStore"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocPrivateStore()
 	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", publicId, CurrentToken); err != nil {

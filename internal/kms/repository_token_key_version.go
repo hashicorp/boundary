@@ -15,20 +15,20 @@ import (
 func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, key []byte, _ ...Option) (*TokenKeyVersion, error) {
 	const op = "kms.(Repository).CreateTokenKeyVersion"
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 	if tokenKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	kv := AllocTokenKeyVersion()
 	id, err := newTokenKeyVersionId()
@@ -68,10 +68,10 @@ func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*TokenKeyVersion, error) {
 	const op = "kms.(Repository).LookupTokenKeyVersion"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
@@ -90,7 +90,7 @@ func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapp
 func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteTokenKeyVersion"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
@@ -111,7 +111,7 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -128,17 +128,17 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, _ ...Option) (*TokenKeyVersion, error) {
 	const op = "kms.(Repository).LatestTokenKeyVersion"
 	if tokenKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var foundKeys []*TokenKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "token_key_id = ?", []interface{}{tokenKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
 		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", tokenKeyId)))
 	}
 	if len(foundKeys) == 0 {
-		return nil, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		return nil, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -150,10 +150,10 @@ func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, tokenKeyId string, opt ...Option) ([]DekVersion, error) {
 	const op = "kms.(Repository).ListTokenKeyVersions"
 	if tokenKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token key id")
 	}
 	if rkvWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version wrapper")
 	}
 	var versions []*TokenKeyVersion
 	err := r.list(ctx, &versions, "token_key_id = ?", []interface{}{tokenKeyId}, opt...)

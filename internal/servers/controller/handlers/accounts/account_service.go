@@ -100,10 +100,10 @@ type Service struct {
 func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	const op = "accounts.NewService"
 	if pwRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing password repository")
 	}
 	if oidcRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing oidc repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
 	}
 	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
@@ -188,7 +188,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -230,7 +230,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -269,7 +269,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -324,7 +324,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -363,7 +363,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -431,7 +431,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []st
 func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.(Service).createPwInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing item")
 	}
 	pwAttrs := &pb.PasswordAccountAttributes{}
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
@@ -471,7 +471,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (*oidc.Account, error) {
 	const op = "accounts.(Service).createOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing item")
 	}
 	var opts []oidc.Option
 	if item.GetName() != nil {
@@ -514,7 +514,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.Account) (auth.Account, error) {
 	const op = "accounts.(Service).createInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.Account
 	switch auth.SubtypeFromId(am.GetPublicId()) {
@@ -576,7 +576,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.Account) (*oidc.Account, error) {
 	const op = "accounts.(Service).updateOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil account.")
 	}
 	u := oidc.AllocAccount()
 	u.PublicId = id
@@ -891,7 +891,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.toStoragePwAccount"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil account.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil account.")
 	}
 	var opts []password.Option
 	if item.GetName() != nil {
@@ -925,7 +925,7 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 func validateGetRequest(req *pbs.GetAccountRequest) error {
 	const op = "accounts.validateGetRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
 }
@@ -933,7 +933,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	const op = "accounts.validateCreateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -988,7 +988,7 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 	const op = "accounts.validateUpdateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1029,7 +1029,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	const op = "accounts.validateDeleteRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
 }
@@ -1037,7 +1037,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 func validateListRequest(req *pbs.ListAccountsRequest) error {
 	const op = "accounts.validateListRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
@@ -1055,7 +1055,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	const op = "accounts.validateChangePasswordRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix) {
@@ -1079,7 +1079,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	const op = "accounts.validateSetPasswordRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix) {

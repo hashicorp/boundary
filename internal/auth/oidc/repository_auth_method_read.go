@@ -20,7 +20,7 @@ import (
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
 	const op = "oidc.(Repository).LookupAuthMethod"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	opts := getOpts(opt...)
 	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
@@ -32,7 +32,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope IDs")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope IDs")
 	}
 	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	case len(ams) == 0:
 		return nil, nil // not an error to return no rows for a "lookup"
 	case len(ams) > 1:
-		return nil, errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
+		return nil, errors.NewDeprecated(errors.NotSpecificIntegrity, op, fmt.Sprintf("%s matched more than 1 ", authMethodId))
 	default:
 		return ams[0], nil
 	}
@@ -73,10 +73,10 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).getAuthMethods"
 	if authMethodId == "" && len(scopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing search criteria: both auth method id and Scope IDs are empty")
 	}
 	if authMethodId != "" && len(scopeIds) > 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "searching for both an auth method id and Scope IDs is not supported")
 	}
 
 	const aggregateDelimiter = "|"

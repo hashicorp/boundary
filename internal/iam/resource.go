@@ -50,13 +50,13 @@ type ResourceWithScope interface {
 func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithScope) (*Scope, error) {
 	const op = "iam.LookupScope"
 	if reader == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if resource == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing resource")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing resource")
 	}
 	if resource.GetPublicId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
@@ -65,7 +65,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		}
 		// if it's still not set after getting it from the db...
 		if resource.GetScopeId() == "" {
-			return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 		}
 	}
 	var p Scope
@@ -82,12 +82,12 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 
 	if opType == db.CreateOp {
 		if resource.GetScopeId() == "" {
-			return errors.New(errors.InvalidParameter, op, "error scope id not set for user write")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "error scope id not set for user write")
 		}
 		ps, err := LookupScope(ctx, r, resource)
 		if err != nil {
 			if errors.IsNotFoundError(err) {
-				return errors.New(errors.RecordNotFound, op, "scope is not found")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "scope is not found")
 			}
 			return errors.Wrap(err, op)
 		}
@@ -98,13 +98,13 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 			}
 		}
 		if !validScopeType {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s not a valid scope type for this resource", ps.Type))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s not a valid scope type for this resource", ps.Type))
 		}
 
 	}
 	if opType == db.UpdateOp && resource.GetScopeId() != "" {
 		if contains(opts.WithFieldMaskPaths, "ScopeId") || contains(opts.WithNullPaths, "ScopeId") {
-			return errors.New(errors.InvalidParameter, op, "not allowed to change a resource's scope")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "not allowed to change a resource's scope")
 		}
 	}
 	return nil
