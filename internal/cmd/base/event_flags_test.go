@@ -3,7 +3,6 @@ package base
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,7 @@ func TestEventFlags_Validate(t *testing.T) {
 		flags           EventFlags
 		wantErr         bool
 		wantErrContains string
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 	}{
 		{
 			name: "valid-JsonFormat",
@@ -28,7 +27,7 @@ func TestEventFlags_Validate(t *testing.T) {
 			flags:           EventFlags{},
 			wantErr:         true,
 			wantErrContains: "not a valid sink format",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       event.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-format",
@@ -37,7 +36,7 @@ func TestEventFlags_Validate(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrContains: "not a valid sink format",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       event.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -46,8 +45,8 @@ func TestEventFlags_Validate(t *testing.T) {
 			err := tt.flags.Validate()
 			if tt.wantErr {
 				require.Error(err)
-				if tt.wantErrMatch != nil {
-					assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch, err)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
 				}
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)

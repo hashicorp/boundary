@@ -45,6 +45,7 @@ func TestServer_SetupEventing(t *testing.T) {
 		opt             []Option
 		want            event.EventerConfig
 		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
@@ -93,7 +94,7 @@ func TestServer_SetupEventing(t *testing.T) {
 			opt: []Option{WithEventFlags(&EventFlags{
 				Format: "invalid-format",
 			})},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "not a valid sink format",
 		},
 		{
@@ -124,7 +125,7 @@ func TestServer_SetupEventing(t *testing.T) {
 					},
 				},
 			})},
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       event.ErrInvalidParameter,
 			wantErrContains: "sink 0 is invalid",
 		},
 	}
@@ -135,11 +136,16 @@ func TestServer_SetupEventing(t *testing.T) {
 			event.TestResetSystEventer(t)
 
 			err := tt.s.SetupEventing(tt.logger, tt.lock, tt.opt...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrMatch != nil || tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(tt.s.Eventer)
 				assert.Nil(event.SysEventer())
-				assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrMatch != nil {
+					assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch.Code, err.Error())
+				}
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
