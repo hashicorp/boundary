@@ -2,6 +2,7 @@ package common
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,11 +11,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,24 +160,29 @@ func Test_WrapWithOptionals(t *testing.T) {
 }
 
 func Test_WrapWithEventsHandler(t *testing.T) {
-	t.Parallel()
+	// this cannot run in parallel because it relies on envvar
+	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
+	event.TestEnableEventing(t, true)
 	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	c := event.TestEventerConfig(t, "Test_WrapWithEventsHandler", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
-	testEventer, err := event.NewEventer(hclog.Default(), c.EventerConfig)
-	require.NoError(t, err)
 	testKms := kms.TestKms(t, conn, wrapper)
 
 	testHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 		fmt.Fprintln(w, "I'm a little teapot short and stout")
 	})
+
+	c := event.TestEventerConfig(t, "Test_WrapWithEventsHandler", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	testEventer, err := event.NewEventer(hclog.Default(), c.EventerConfig)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name            string
 		h               http.Handler
 		e               *event.Eventer
 		logger          hclog.Logger
 		kms             *kms.Kms
+		statusCode      int
 		wantErrMatch    *errors.Template
 		wantErrContains string
 	}{
@@ -213,11 +221,40 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			wantErrContains: "missing kms",
 		},
 		{
-			name:   "success",
-			h:      testHander,
-			e:      testEventer,
-			logger: hclog.Default(),
-			kms:    testKms,
+			name: "audit-startGatedEvents",
+			h:    testHander,
+			e: func() *event.Eventer {
+				b := &testMockBroker{errorOnSendAudit: true}
+				c := event.EventerConfig{AuditEnabled: true}
+				e, err := event.NewEventer(hclog.Default(), c, event.TestWithBroker(t, b))
+				require.NoError(t, err)
+				return e
+			}(),
+			logger:     hclog.Default(),
+			kms:        testKms,
+			statusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "audit-flushGatedEvents",
+			h:    testHander,
+			e: func() *event.Eventer {
+				b := &testMockBroker{errorOnFlush: true}
+				c := event.EventerConfig{AuditEnabled: true}
+				e, err := event.NewEventer(hclog.Default(), c, event.TestWithBroker(t, b))
+				require.NoError(t, err)
+				return e
+			}(),
+			logger:     hclog.Default(),
+			kms:        testKms,
+			statusCode: http.StatusInternalServerError,
+		},
+		{
+			name:       "success",
+			h:          testHander,
+			e:          testEventer,
+			logger:     hclog.Default(),
+			kms:        testKms,
+			statusCode: http.StatusTeapot,
 		},
 	}
 	for _, tt := range tests {
@@ -240,7 +277,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			require.NoError(err)
 			rr := httptest.NewRecorder()
 			got.ServeHTTP(rr, req)
-			assert.Equal(http.StatusTeapot, rr.Code)
+			assert.Equal(tt.statusCode, rr.Code)
 
 			{ // test that the got observation is what we wanted.
 				require.NotNil(c.ObservationEvents)
@@ -248,6 +285,10 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				b, err := ioutil.ReadFile(c.ObservationEvents.Name())
 				assert.NoError(err)
 
+				if tt.statusCode == http.StatusInternalServerError {
+					assert.Lenf(b, 0, "expected no json for internal errors but got %s", string(b))
+					return
+				}
 				got := &eventJson{}
 				err = json.Unmarshal(b, got)
 				require.NoErrorf(err, "json: %s", string(b))
@@ -304,6 +345,140 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_startGatedEvents(t *testing.T) {
+	// this cannot run in parallel because it relies on envvar
+	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
+	event.TestEnableEventing(t, true)
+	testStartTime := time.Now()
+	tests := []struct {
+		name             string
+		errOnAudit       bool
+		errOnObservation bool
+		startTime        time.Time
+		wantErrMatch     *errors.Template
+		wantErrContains  string
+	}{
+		{
+			name:         "audit-failed",
+			errOnAudit:   true,
+			startTime:    testStartTime,
+			wantErrMatch: errors.T(errors.Internal),
+		},
+		{
+			name:             "observation-failed",
+			errOnObservation: true,
+			wantErrMatch:     errors.T(errors.Internal),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			b := &testMockBroker{
+				errorOnSendAudit:       tt.errOnAudit,
+				errorOnSendObservation: tt.errOnObservation,
+			}
+			config := event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: true,
+			}
+			e, err := event.NewEventer(hclog.Default(), config, event.TestWithBroker(t, b))
+			require.NoError(err)
+			ctx, err := event.NewEventerContext(context.Background(), e)
+			require.NoError(err)
+			err = startGatedEvents(ctx, "GET", "/hello", tt.startTime)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+func Test_flushGatedEvents(t *testing.T) {
+	// this cannot run in parallel because it relies on envvar
+	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
+	event.TestEnableEventing(t, true)
+	testStartTime := time.Now()
+	tests := []struct {
+		name             string
+		errOnAudit       bool
+		errOnObservation bool
+		startTime        time.Time
+		wantErrMatch     *errors.Template
+		wantErrContains  string
+	}{
+		{
+			name:         "audit-failed",
+			errOnAudit:   true,
+			startTime:    testStartTime,
+			wantErrMatch: errors.T(errors.Internal),
+		},
+		{
+			name:             "observation-failed",
+			errOnObservation: true,
+			wantErrMatch:     errors.T(errors.Internal),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			b := &testMockBroker{
+				errorOnSendAudit:       tt.errOnAudit,
+				errorOnSendObservation: tt.errOnObservation,
+			}
+			config := event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: true,
+			}
+			e, err := event.NewEventer(hclog.Default(), config, event.TestWithBroker(t, b))
+			require.NoError(err)
+			ctx, err := event.NewEventerContext(context.Background(), e)
+			require.NoError(err)
+			err = flushGatedEvents(ctx, "GET", "/hello", 200, tt.startTime)
+			if tt.wantErrMatch != nil {
+				require.Error(err)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "wanted %q and got %q", tt.wantErrMatch.Code, err.Error())
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+type testMockBroker struct {
+	errorOnSendAudit       bool
+	errorOnSendObservation bool
+	errorOnFlush           bool
+}
+
+func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+	const op = "common.(testBroker).Send"
+	switch {
+	case b.errorOnFlush && payload.(eventlogger.Gateable).FlushEvent():
+		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
+	case b.errorOnSendAudit && t == eventlogger.EventType(event.AuditType):
+		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send audit event")
+	case b.errorOnSendObservation && t == eventlogger.EventType(event.ObservationType):
+		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send observation event")
+	}
+	return eventlogger.Status{}, nil
+}
+func (b *testMockBroker) Reopen(ctx context.Context) error                                { return nil }
+func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error                 { return nil }
+func (b *testMockBroker) StopTimeAt(t time.Time)                                          {}
+func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error { return nil }
+func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
+	return nil
 }
 
 type eventJson struct {
