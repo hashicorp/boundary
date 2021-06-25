@@ -197,7 +197,7 @@ func flushGatedEvents(ctx context.Context, logger hclog.Logger, method, url stri
 	}
 	stopTime := time.Now()
 	var latency float64
-	if startTime.IsZero() {
+	if !startTime.IsZero() {
 		latency = float64(stopTime.Sub(startTime)) / float64(time.Millisecond)
 	}
 	err := event.WriteObservation(ctx, "handler", event.WithFlush(), event.WithHeader(map[string]interface{}{
