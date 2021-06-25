@@ -59,7 +59,7 @@ type postgresCredentials struct {
 
 func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
 	var creds postgresCredentials
-	if len(c.sessionAuthz.Credentials) > 0 {
+	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
 		for _, cred := range c.sessionAuthz.Credentials {
 			// TODO: Could allow switching on library ID or name
 			switch cred.CredentialLibrary.Type {
