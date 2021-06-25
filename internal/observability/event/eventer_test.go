@@ -279,7 +279,7 @@ func Test_NewEventer(t *testing.T) {
 	t.Parallel()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
 
-	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", testWithAuditSink(), testWithObservationSink())
+	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t))
 
 	tests := []struct {
 		name           string
@@ -403,7 +403,7 @@ func Test_NewEventer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
-			got, err := NewEventer(tt.logger, tt.config, testWithBroker(testBroker))
+			got, err := NewEventer(tt.logger, tt.config, TestWithBroker(t, testBroker))
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)

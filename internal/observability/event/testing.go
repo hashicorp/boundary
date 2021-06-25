@@ -99,6 +99,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
+		c.AuditEvents = tmpFile
 	}
 	if opts.withObservationSink {
 		tmpFile, err := ioutil.TempFile("./", "tmp-observation-"+testName)
@@ -114,6 +115,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			Path:       "./",
 			FileName:   tmpFile.Name(),
 		})
+		c.ObservationEvents = tmpFile
 	}
 	return c
 }
@@ -164,22 +166,25 @@ func testResponse(t *testing.T) *Response {
 	}
 }
 
-// testWithBroker is an unexported and a test option for passing in an optional broker
-func testWithBroker(b broker) Option {
+// TestWithBroker is an unexported and a test option for passing in an optional broker
+func TestWithBroker(t *testing.T, b broker) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withBroker = b
 	}
 }
 
-// testWithObservationSink is an unexported and a test option
-func testWithObservationSink() Option {
+// TestWithObservationSink is an unexported and a test option
+func TestWithObservationSink(t *testing.T) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withObservationSink = true
 	}
 }
 
-// testWithAuditSink is an unexported and a test option
-func testWithAuditSink() Option {
+// TestWithAuditSink is an unexported and a test option
+func TestWithAuditSink(t *testing.T) Option {
+	t.Helper()
 	return func(o *options) {
 		o.withAuditSink = true
 	}
