@@ -151,16 +151,26 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 			method := r.Method
 			url := r.URL.RequestURI()
 			start := time.Now()
-			startGatedEvents(ctx, logger, method, url, start)
+			if err := startGatedEvents(ctx, method, url, start); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				logger.Trace("unable to start gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				return
+			}
 
 			wrapper, err := WrapWithOptionals(&writerWrapper{w, http.StatusOK}, w)
 			if err != nil {
-				logger.Trace("wrap handler with optional interfaces", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				logger.Trace("unable to wrap handler with optional interfaces", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				return
 			}
 			h.ServeHTTP(wrapper, r)
 
 			i, _ := wrapper.(interface{ StatusCode() int })
-			flushGatedEvents(ctx, logger, method, url, i.StatusCode(), start)
+			if err := flushGatedEvents(ctx, method, url, i.StatusCode(), start); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				logger.Trace("unable to flush gated events", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+				return
+			}
 		}
 	}), nil
 }
@@ -168,10 +178,8 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 // startGatedEvents will send "initial" events for all event types which are
 // gated.  This approach is okay since if at event type isn't enabled sending
 // an event for it becomes a no op in the eventlogger.Broker
-func startGatedEvents(ctx context.Context, logger hclog.Logger, method, url string, startTime time.Time) {
-	if logger == nil {
-		logger = hclog.Default()
-	}
+func startGatedEvents(ctx context.Context, method, url string, startTime time.Time) error {
+	const op = "common.startGatedEvents"
 	if startTime.IsZero() {
 		startTime = time.Now()
 	}
@@ -179,22 +187,21 @@ func startGatedEvents(ctx context.Context, logger hclog.Logger, method, url stri
 		"start": startTime,
 	}))
 	if err != nil {
-		logger.Trace("unable to write observation event", "method", method, "url", url, "error", err)
+		return errors.Wrap(err, op, errors.WithMsg("unable to write observation event"))
 	}
 
 	err = event.WriteAudit(ctx, "handler")
 	if err != nil {
-		logger.Trace("unable to write audit event", "method", method, "url", url, "error", err)
+		return errors.Wrap(err, op, errors.WithMsg("unable to write audit event"))
 	}
+	return nil
 }
 
 // flushGatedEvents will send flush events for all event types which are
 // gated.  This approach is okay since if at event type isn't enabled sending
 // an event for it becomes a no op in the eventlogger.Broker
-func flushGatedEvents(ctx context.Context, logger hclog.Logger, method, url string, statusCode int, startTime time.Time) {
-	if logger == nil {
-		logger = hclog.Default()
-	}
+func flushGatedEvents(ctx context.Context, method, url string, statusCode int, startTime time.Time) error {
+	const op = "common.flushGatedEvents"
 	stopTime := time.Now()
 	var latency float64
 	if !startTime.IsZero() {
@@ -206,10 +213,11 @@ func flushGatedEvents(ctx context.Context, logger hclog.Logger, method, url stri
 		"status":     statusCode,
 	}))
 	if err != nil {
-		logger.Trace("unable to write observation event", "method", method, "url", url, "error", err)
+		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush observation event"))
 	}
 	err = event.WriteAudit(ctx, "handler", event.WithFlush())
 	if err != nil {
-		logger.Trace("unable to write audit event", "method", method, "url", url, "error", err)
+		return errors.Wrap(err, op, errors.WithMsg("unable to write and flush audit event"))
 	}
+	return nil
 }
