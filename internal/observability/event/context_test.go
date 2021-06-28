@@ -26,7 +26,6 @@ const apiRequest = "APIRequest"
 
 const (
 	testAuditVersion       = "v0.1"
-	testErrorVersion       = "v0.1"
 	testObservationVersion = "v0.1"
 )
 
@@ -892,4 +891,86 @@ type fakeError struct {
 
 func (f *fakeError) Error() string {
 	return f.Msg
+}
+
+func Test_WriteSysEvent(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+
+	ctx := context.Background()
+	c := event.TestEventerConfig(t, "Test_WriteSysEvent")
+
+	tests := []struct {
+		name         string
+		ctx          context.Context
+		data         map[string]interface{}
+		info         *event.RequestInfo
+		setup        func() error
+		cleanup      func()
+		noOperation  bool
+		sinkFileName string
+		noOutput     bool
+	}{
+		{
+			name:     "no-data",
+			ctx:      ctx,
+			noOutput: true,
+		},
+		{
+			name:        "missing-caller",
+			ctx:         ctx,
+			data:        map[string]interface{}{"data": "test-data"},
+			noOperation: true,
+		},
+		{
+			name:         "syseventer-not-initialized",
+			ctx:          context.Background(),
+			data:         map[string]interface{}{"data": "test-data"},
+			sinkFileName: c.AllEvents.Name(),
+			noOutput:     true,
+		},
+		{
+			name: "use-syseventer",
+			ctx:  context.Background(),
+			data: map[string]interface{}{"data": "test-data"},
+			setup: func() error {
+				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
+			},
+			cleanup:      func() { event.TestResetSystEventer(t) },
+			sinkFileName: c.AllEvents.Name(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tt.setup != nil {
+				require.NoError(tt.setup())
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+			op := tt.name
+			if tt.noOperation {
+				op = ""
+			}
+			event.WriteSysEvent(tt.ctx, event.Op(op), tt.data)
+			if tt.sinkFileName != "" {
+				defer func() { _ = os.WriteFile(tt.sinkFileName, nil, 0o666) }()
+				b, err := ioutil.ReadFile(tt.sinkFileName)
+				require.NoError(err)
+
+				if tt.noOutput {
+					assert.Lenf(b, 0, "should be an empty file: %s", string(b))
+					return
+				}
+
+				gotSysEvent := &eventJson{}
+				err = json.Unmarshal(b, gotSysEvent)
+				require.NoErrorf(err, "json: %s", string(b))
+
+				assert.Equal(tt.data, gotSysEvent.Payload["data"].(map[string]interface{}))
+			}
+		})
+	}
 }

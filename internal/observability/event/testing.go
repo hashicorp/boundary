@@ -27,11 +27,9 @@ func TestResetSystEventer(t *testing.T) {
 }
 
 type TestConfig struct {
-	EventerConfig     EventerConfig
-	AllEvents         *os.File
-	ErrorEvents       *os.File
-	ObservationEvents *os.File
-	AuditEvents       *os.File
+	EventerConfig EventerConfig
+	AllEvents     *os.File
+	ErrorEvents   *os.File
 }
 
 // TestEventerConfig creates a test config and registers a cleanup func for its
@@ -115,6 +113,21 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 			FileName:   tmpFile.Name(),
 		})
 	}
+	if opts.withSysSink {
+		tmpFile, err := ioutil.TempFile("./", "tmp-sysevents-"+testName)
+		require.NoError(err)
+		t.Cleanup(func() {
+			os.Remove(tmpFile.Name())
+		})
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+			Name:       "err-sysevents-sink",
+			SinkType:   FileSink,
+			EventTypes: []Type{SystemType},
+			Format:     JSONSinkFormat,
+			Path:       "./",
+			FileName:   tmpFile.Name(),
+		})
+	}
 	return c
 }
 
@@ -182,6 +195,13 @@ func testWithObservationSink() Option {
 func testWithAuditSink() Option {
 	return func(o *options) {
 		o.withAuditSink = true
+	}
+}
+
+// testWithSysSink is an unexported and a test option
+func testWithSysSink() Option {
+	return func(o *options) {
+		o.withSysSink = true
 	}
 }
 
