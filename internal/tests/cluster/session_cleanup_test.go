@@ -407,7 +407,8 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 		if err != nil {
 			c.logger.Debug("received error during write", "err", err)
 			if errors.Is(err, net.ErrClosed) ||
-				errors.Is(err, io.EOF) {
+				errors.Is(err, io.EOF) ||
+				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
 				return false
 			}
 
@@ -420,7 +421,8 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 		if err != nil {
 			c.logger.Debug("received error during read", "err", err)
 			if errors.Is(err, net.ErrClosed) ||
-				errors.Is(err, io.EOF) {
+				errors.Is(err, io.EOF) ||
+				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
 				return false
 			}
 
