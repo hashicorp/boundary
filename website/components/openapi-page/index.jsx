@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import OperationObject from './partials/operation-object'
-import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 import DocsSidenav from '@hashicorp/react-docs-sidenav'
 import Content from '@hashicorp/react-content'
@@ -32,7 +31,6 @@ function OpenApiPage({
   return (
     <div className={styles.root} data-theme={productSlug}>
       <HashiHead
-        is={Head}
         title={`${pageTitle} | ${productName} by HashiCorp`}
         description={info.description}
         siteName={`${productName} by HashiCorp`}
