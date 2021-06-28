@@ -45,6 +45,21 @@ func TestMakeSessionCloseInfo(t *testing.T) {
 	require.Equal(expected, actual)
 }
 
+func TestMakeSessionCloseInfoPanicIfCloseInfoNil(t *testing.T) {
+	require := require.New(t)
+	require.Panics(func() {
+		new(Worker).makeSessionCloseInfo(nil, nil)
+	})
+}
+
+func TestMakeSessionCloseInfoEmpty(t *testing.T) {
+	require := require.New(t)
+	require.Equal(
+		make(map[string][]*pbs.CloseConnectionResponseData),
+		new(Worker).makeSessionCloseInfo(make(map[string]string), nil),
+	)
+}
+
 func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	cases := []struct {
 		name             string
@@ -183,6 +198,23 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			expectedErr: []error{
 				errors.New(`could not find connection ID "bar" for session ID "two" in local state after closing connections`),
 			},
+		},
+		{
+			name:             "empty",
+			sessionCloseInfo: make(map[string][]*pbs.CloseConnectionResponseData),
+			sessionInfoMap: func() *sync.Map {
+				m := new(sync.Map)
+				m.Store("one", &sessionInfo{
+					id: "one",
+					connInfoMap: map[string]*connInfo{
+						"foo": &connInfo{id: "foo"},
+					},
+				})
+
+				return m
+			},
+			expected:       []string{},
+			expectedClosed: map[string]struct{}{},
 		},
 	}
 

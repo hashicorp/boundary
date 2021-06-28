@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	validateSessionTimeout = 90 * time.Second
+	validateSessionTimeout              = 90 * time.Second
+	errMakeSessionCloseInfoNilCloseInfo = "nil closeInfo supplied to makeSessionCloseInfo, this is a bug, please report it"
 )
 
 type connInfo struct {
@@ -259,6 +260,12 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 // closeInfo is a map of connections mapped to their individual
 // session.
 func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]string) {
+	if closeInfo == nil {
+		// This should not happen, but it's a no-op if it does. Just
+		// return.
+		return
+	}
+
 	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeInfo))
 	response, err := w.closeConnection(ctx, w.makeCloseConnectionRequest(closeInfo))
 	if err != nil {
@@ -310,6 +317,12 @@ func (w *Worker) makeSessionCloseInfo(
 	closeInfo map[string]string,
 	response *pbs.CloseConnectionResponse,
 ) map[string][]*pbs.CloseConnectionResponseData {
+	if closeInfo == nil {
+		// Should never happen, panic if it does. Results will be
+		// undefined.
+		panic(errMakeSessionCloseInfoNilCloseInfo)
+	}
+
 	result := make(map[string][]*pbs.CloseConnectionResponseData)
 	for _, v := range response.GetCloseResponseData() {
 		result[closeInfo[v.GetConnectionId()]] = append(result[closeInfo[v.GetConnectionId()]], v)
