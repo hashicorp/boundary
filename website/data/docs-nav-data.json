@@ -124,6 +124,18 @@
             "path": "concepts/domain-model/auth-methods"
           },
           {
+            "title": "Credentials",
+            "path": "concepts/domain-model/credentials"
+          },
+          {
+            "title": "Credential Libraries",
+            "path": "concepts/domain-model/credential-libraries"
+          },
+          {
+            "title": "Credential Stores",
+            "path": "concepts/domain-model/credential-stores"
+          },
+          {
             "title": "Groups",
             "path": "concepts/domain-model/groups"
           },

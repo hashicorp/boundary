@@ -31,9 +31,6 @@ message CredentialLibrary{
 	// Output only. The Credential Store to which this Credential Library belongs.
 	string credential_store_id = 40 [json_name="credential_store_id"];
 
-	// The library's purpose for this target.
-	string purpose = 50;
-
 	// Output only. The type of the credential library.
 	string type = 60;
 }
@@ -41,10 +38,10 @@ message CredentialLibrary{
 // A credential for a session.
 message SessionCredential {
 	// Output only. The library which generated this credential.
-	CredentialLibrary credential_library = 1;
+	CredentialLibrary credential_library = 10;
 
 	// Output only. The secret of this credential base64 encoded.
-	string secret = 2;
+	string secret = 30;
 }
 
 // Target contains all fields related to a Target resource
@@ -92,11 +89,23 @@ message Target {
 	// Optional boolean expression to filter the workers that are allowed to satisfy this request.
 	google.protobuf.StringValue worker_filter = 140 [json_name="worker_filter", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "worker_filter" that: "WorkerFilter"}];
 
-	// The IDs of the credential libraries associated with this Target.
-	repeated string credential_library_ids = 150 [json_name="credential_library_ids"];
+	// The IDs of the application credential library ids associated with this Target.
+	repeated string application_credential_library_ids = 150 [json_name="application_credential_library_ids"];
 
-	// Output only. The credential libraries associated with this Target.
-	repeated CredentialLibrary credential_libraries = 160 [json_name="credential_libraries"];
+	// TODO: Uncomment when we suport more purposes beyond application
+//	// The IDs of the egress credential libraries associated with this Target.
+//	repeated string egress_credential_library_ids = 160 [json_name="egress_credential_library_ids"];
+//	// The IDs of the ingress credential libraries associated with this Target.
+//	repeated string ingress_credential_library_ids = 170 [json_name="ingress_credential_library_ids"];
+
+	// Output only. The application credential libraries associated with this Target.
+	repeated CredentialLibrary application_credential_libraries = 180 [json_name="application_credential_libraries"];
+
+	// TODO: Uncomment when we suport more purposes beyond application
+//	// Output only. The egress credential libraries associated with this Target.
+//	repeated CredentialLibrary egress_credential_libraries = 190 [json_name="egress_credential_libraries"];
+//	// Output only. The credential libraries associated with this Target.
+//	repeated CredentialLibrary ingress_credential_libraries = 200 [json_name="ingress_credential_libraries"];
 
 	// The attributes that are applicable for the specific Target.
 	google.protobuf.Struct attributes = 200 [(custom_options.v1.generate_sdk_option) = true];
