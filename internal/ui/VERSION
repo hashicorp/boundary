@@ -1,4 +1,4 @@
-40ee317f47100e0be459f9c6aee12e966efd7961 Merge pull request #588 from hashicorp/frameless-desktop-shell-on-windows-os
+6ceddce774cb9995b4522cc36e09cc81207428f1 Merge pull request #625 from hashicorp/chore-callback-url
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
