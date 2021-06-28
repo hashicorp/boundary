@@ -108,6 +108,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			want: InvalidJobRunState,
 		},
 		{
+			name: "JobAlreadyRunning",
+			c:    JobAlreadyRunning,
+			want: JobAlreadyRunning,
+		},
+		{
+			name: "InvalidDynamicCredential",
+			c:    InvalidDynamicCredential,
+			want: InvalidDynamicCredential,
+		},
+		{
 			name: "InternalError",
 			c:    Internal,
 			want: Internal,
@@ -246,6 +256,26 @@ func TestCode_Both_String_Info(t *testing.T) {
 			name: "Unavailable",
 			c:    Unavailable,
 			want: Unavailable,
+		},
+		{
+			name: "VaultTokenNotOrphan",
+			c:    VaultTokenNotOrphan,
+			want: VaultTokenNotOrphan,
+		},
+		{
+			name: "VaultTokenNotPeriodic",
+			c:    VaultTokenNotPeriodic,
+			want: VaultTokenNotPeriodic,
+		},
+		{
+			name: "VaultTokenNotRenewable",
+			c:    VaultTokenNotRenewable,
+			want: VaultTokenNotRenewable,
+		},
+		{
+			name: "VaultCredentialRequest",
+			c:    VaultCredentialRequest,
+			want: VaultCredentialRequest,
 		},
 		{
 			name: "OidcProviderCallbackError",

@@ -88,6 +88,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "job run is already in a final run state",
 		Kind:    Integrity,
 	},
+	JobAlreadyRunning: {
+		Message: "job already running",
+		Kind:    State,
+	},
+	InvalidDynamicCredential: {
+		Message: "dynamic credential for session is in an invalid state",
+		Kind:    Integrity,
+	},
 	PasswordTooShort: {
 		Message: "too short",
 		Kind:    Password,
@@ -190,6 +198,26 @@ var errorCodeInfo = map[Code]Info{
 	},
 	Unavailable: {
 		Message: "external system unavailable",
+		Kind:    External,
+	},
+	VaultTokenNotOrphan: {
+		Message: "vault token is not an orphan token",
+		Kind:    VaultToken,
+	},
+	VaultTokenNotPeriodic: {
+		Message: "vault token is not a periodic token",
+		Kind:    VaultToken,
+	},
+	VaultTokenNotRenewable: {
+		Message: "vault token is not renewable",
+		Kind:    VaultToken,
+	},
+	VaultTokenMissingCapabilities: {
+		Message: "vault token is missing capabilities",
+		Kind:    VaultToken,
+	},
+	VaultCredentialRequest: {
+		Message: "request for a new credential from vault failed",
 		Kind:    External,
 	},
 	OidcProviderCallbackError: {

@@ -899,3 +899,187 @@ returning id;
 		})
 	}
 }
+
+func TestDomain_wt_sentinel(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_sentinel (
+  id bigint generated always as identity primary key,
+  sentinel wt_sentinel
+);
+`
+		insert = `
+insert into test_table_wt_sentinel(sentinel)
+values ($1)
+returning id;
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	tests := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"normal", "\ufffefoo\uffff", false},
+		{"normal non-sentinel", "foo", false},
+		{"empty-with-sentinel", "\ufffe\uffff", false},
+		{"trailing sentinel", "\ufffefoo\ufffe", false},
+		{"only start sentinel", "\ufffe", true},
+		{"only end sentinel", "\uffff", true},
+		{"sentinel with space before word", "\ufffe foo\uffff", false},
+		{"sentinel with space after word", "\ufffefoo \uffff", false},
+		{"start sentinel with empty string", "\ufffe  ", true},
+		{"multiple sentinels with empty string", "\ufffe\ufffe  \uffff\uffff", false},
+		{"multiple sentinels", "\ufffe\ufffefoo\uffff\uffff", false},
+		{"multiple sentinels inverted", "\uffff\ufffffoo\ufffe\ufffe", false},
+		{"sentinel space sentinel space string", "\ufffe \ufffe foo ", false},
+		{"only spaces string", "  ", true},
+		{"empty string", "", true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			t.Logf("insert value: %q", tt.value)
+			_, err := db.Query(insert, tt.value)
+			if tt.wantErr {
+				assert.Error(err)
+				return
+			}
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestDomain_wt_is_sentinel(t *testing.T) {
+	const (
+		query = `
+select wt_is_sentinel($1);
+`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	tests := []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{"normal", "\ufffefoo\uffff", true},
+		{"non-sentinel", "foo", false},
+		{"only start sentinel", "\ufffefoo", false},
+		{"only end sentinel", "foo\uffff", false},
+		{"trailing start sentinel", "\ufffefoo\ufffe", false},
+		{"leading end sentinel", "\ufffffoo\uffff", false},
+		{"sentinel with space before word", "\ufffe foo\uffff", true},
+		{"sentinel with empty string", "\ufffe  \uffff", true},
+		{"multiple start sentinels with empty string", "\ufffe\ufffe  \uffff", true},
+		{"multiple start sentinels", "\ufffe\ufffefoo\uffff", true},
+		{"only spaces", "  ", false},
+		{"empty string", "", false},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			t.Logf("query value: %q", tt.value)
+
+			var got bool
+			rows, err := db.Query(query, tt.value)
+			require.NoError(err)
+			defer rows.Close()
+
+			require.True(rows.Next())
+			require.NoError(rows.Scan(&got))
+			assert.Equal(tt.want, got)
+
+			require.False(rows.Next())
+			require.NoError(rows.Err())
+		})
+	}
+}
+
+func TestDomain_not_null_columns_func(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_not_null_columns (
+  id bigint generated always as identity primary key,
+  one text,
+  two text,
+  three text
+);
+`
+		addTriggers = `
+create trigger
+  test_insert_not_null_columns
+before
+insert on test_not_null_columns
+  for each row execute procedure not_null_columns('one', 'two');
+`
+		dropTriggers = `drop trigger test_insert_not_null_columns on test_not_null_columns`
+	)
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		stmt    string
+		wantErr bool
+	}{
+		{
+			name:    "null one",
+			stmt:    "insert into test_not_null_columns (one, two, three) values (null, 'two', 'three');",
+			wantErr: true,
+		},
+		{
+			name:    "null two",
+			stmt:    "insert into test_not_null_columns (one, two, three) values ('one', null, 'three');",
+			wantErr: true,
+		},
+		{
+			name:    "all null",
+			stmt:    "insert into test_not_null_columns (one, two, three) values (null, null, null);",
+			wantErr: true,
+		},
+		{
+			name:    "null three",
+			stmt:    "insert into test_not_null_columns (one, two, three) values ('one', 'two', null);",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+
+			_, err = db.Exec(addTriggers)
+			require.NoError(err)
+
+			_, err = db.Exec(tt.stmt)
+
+			if !tt.wantErr {
+				assert.NoError(err)
+				return
+			}
+			require.Error(err)
+
+			// Drop trigger and run insert again, it should now insert successfully
+			_, err = db.Exec(dropTriggers)
+			assert.NoError(err)
+
+			_, err = db.Exec(tt.stmt)
+			assert.NoError(err)
+		})
+	}
+}

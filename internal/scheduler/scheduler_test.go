@@ -197,7 +197,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 		{
 			name: "valid",
 			job: testJob{
-				name:        "name",
+				name:        "valid",
 				description: "description",
 			},
 		},
@@ -259,7 +259,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 	t.Run("multiple-schedulers-registering-same-job", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tj := testJob{
-			name:        "name",
+			name:        "multiple-schedulers-registering-same-job",
 			description: "description",
 		}
 		err := sched.RegisterJob(context.Background(), tj)

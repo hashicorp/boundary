@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/eventlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,12 +28,12 @@ func Test_newObservation(t *testing.T) {
 		fromOp          Op
 		opts            []Option
 		want            *observation
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-op",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing operation",
 		},
 		{
@@ -73,10 +72,10 @@ func Test_newObservation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := newObservation(tt.fromOp, tt.opts...)
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(got)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}
@@ -99,19 +98,19 @@ func Test_observationvalidate(t *testing.T) {
 		name            string
 		id              string
 		op              Op
-		wantErrMatch    *errors.Template
+		wantErrIs       error
 		wantErrContains string
 	}{
 		{
 			name:            "missing-id",
 			op:              Op("missing-id"),
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing id",
 		},
 		{
 			name:            "missing-operation",
 			id:              "missing-operation",
-			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing operation",
 		},
 		{
@@ -130,9 +129,9 @@ func Test_observationvalidate(t *testing.T) {
 				},
 			}
 			err := e.validate()
-			if tt.wantErrMatch != nil {
+			if tt.wantErrIs != nil {
 				require.Error(err)
-				assert.True(errors.Match(tt.wantErrMatch, err))
+				assert.ErrorIs(err, tt.wantErrIs)
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}

@@ -926,6 +926,16 @@ func TestDb_SearchWhere(t *testing.T) {
 			wantNameOrder: true,
 		},
 		{
+			name:      "no-where",
+			db:        Db{underlying: db},
+			createCnt: 10,
+			args: args{
+				opt: []Option{WithLimit(10)},
+			},
+			wantCnt: 10,
+			wantErr: false,
+		},
+		{
 			name:      "custom-limit",
 			db:        Db{underlying: db},
 			createCnt: 10,
@@ -947,6 +957,27 @@ func TestDb_SearchWhere(t *testing.T) {
 			},
 			wantCnt: 1,
 			wantErr: false,
+		},
+		{
+			name:      "no args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: fmt.Sprintf("public_id = '%v'", knownUser.PublicId),
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 1,
+			wantErr: false,
+		},
+		{
+			name:      "no where, but with args",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				arg: []interface{}{knownUser.PublicId},
+				opt: []Option{WithLimit(3)},
+			},
+			wantErr: true,
 		},
 		{
 			name:      "not-found",

@@ -1,5 +1,4 @@
 import { VERSION, DESKTOP_VERSION } from 'data/version.js'
-import Head from 'next/head'
 import HashiHead from '@hashicorp/react-head'
 import { productName, productSlug } from 'data/metadata'
 import ProductDownloader from '@hashicorp/react-product-downloader'
@@ -11,7 +10,7 @@ const DESKTOP_BINARY_SLUG = 'boundary-desktop'
 export default function DownloadsPage({ binaryReleases, desktopReleases }) {
   return (
     <div className={styles.root}>
-      <HashiHead is={Head} title={`Downloads | ${productName} by HashiCorp`} />
+      <HashiHead title={`Downloads | ${productName} by HashiCorp`} />
       <ProductDownloader
         releases={binaryReleases}
         packageManagers={[

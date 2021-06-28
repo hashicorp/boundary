@@ -37,6 +37,8 @@ const (
 	TooShort                 Code = 113 // TooShort represents an error that means the provided input is not meeting minimum length requirements
 	AccountAlreadyAssociated Code = 114 // AccountAlreadyAssociated represents an attempt to associate an account failed since it was already associated.
 	InvalidJobRunState       Code = 115 // InvalidJobRunState represents that a JobRun was in an invalid state
+	InvalidDynamicCredential Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
+	JobAlreadyRunning        Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
@@ -91,6 +93,13 @@ const (
 
 	// External system errors are reserved codes 3000-3999
 	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
+
+	// Vault specific errors
+	VaultTokenNotOrphan           Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token
+	VaultTokenNotPeriodic         Code = 3011 // VaultTokenNotPeriodic represents an error for a Vault token that is not a periodic token
+	VaultTokenNotRenewable        Code = 3012 // VaultTokenNotRenewable represents an error for a Vault token that is not renewable
+	VaultTokenMissingCapabilities Code = 3013 // VaultTokenMissingCapabilities represents an error for a Vault token that is missing capabilities
+	VaultCredentialRequest        Code = 3014 // VaultCredentialRequest represents an error returned from Vault when retrieving a credential
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint

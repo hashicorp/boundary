@@ -5,6 +5,7 @@ steps:
 - checkout
 - run:
     name: "Run Acceptance Tests"
+    no_output_timeout: 15m
     command: |
       make test-ci
 - slack/status:

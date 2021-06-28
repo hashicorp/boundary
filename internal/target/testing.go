@@ -35,6 +35,16 @@ func TestTcpTarget(t *testing.T, conn *gorm.DB, scopeId, name string, opt ...Opt
 		err := rw.CreateItems(context.Background(), newHostSets)
 		require.NoError(err)
 	}
+	if len(opts.withCredentialLibraries) > 0 {
+		newCredLibs := make([]interface{}, 0, len(opts.withCredentialLibraries))
+		for _, cl := range opts.withCredentialLibraries {
+			newCl, err := NewCredentialLibrary(target.PublicId, cl)
+			require.NoError(err)
+			newCredLibs = append(newCredLibs, newCl)
+		}
+		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
 	return target
 }
 
@@ -48,4 +58,17 @@ func testId(t *testing.T) string {
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	return id
+}
+
+// TestCredentialLibrary creates a CredentialLibrary for targetId and
+// libraryId.
+func TestCredentialLibrary(t *testing.T, conn *gorm.DB, targetId, libraryId string) *CredentialLibrary {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	lib, err := NewCredentialLibrary(targetId, libraryId)
+	require.NoError(err)
+	err = rw.Create(context.Background(), lib)
+	require.NoError(err)
+	return lib
 }

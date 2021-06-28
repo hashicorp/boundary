@@ -138,9 +138,9 @@ func (c *Client) Create(ctx context.Context, scopeId string, opt ...Option) (*Us
 	return target, nil
 }
 
-func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserReadResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into Read request")
+func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*UserReadResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Read request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -148,7 +148,7 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserR
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users/%s", userId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -179,9 +179,9 @@ func (c *Client) Read(ctx context.Context, userId string, opt ...Option) (*UserR
 	return target, nil
 }
 
-func (c *Client) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*UserUpdateResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into Update request")
+func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...Option) (*UserUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Update request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -193,7 +193,7 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -211,7 +211,7 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", userId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -242,9 +242,9 @@ func (c *Client) Update(ctx context.Context, userId string, version uint32, opt 
 	return target, nil
 }
 
-func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (*UserDeleteResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into Delete request")
+func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*UserDeleteResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into Delete request")
 	}
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
@@ -252,7 +252,7 @@ func (c *Client) Delete(ctx context.Context, userId string, opt ...Option) (*Use
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("users/%s", userId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("users/%s", id), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -325,13 +325,15 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	return target, nil
 }
 
-func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into AddAccounts request")
+func (c *Client) AddAccounts(ctx context.Context, id string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddAccounts request")
 	}
+
 	if len(accountIds) == 0 {
 		return nil, errors.New("empty accountIds passed into AddAccounts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -342,7 +344,7 @@ func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into AddAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -359,9 +361,10 @@ func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:add-accounts", userId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:add-accounts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddAccounts request: %w", err)
 	}
@@ -392,9 +395,9 @@ func (c *Client) AddAccounts(ctx context.Context, userId string, version uint32,
 	return target, nil
 }
 
-func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into SetAccounts request")
+func (c *Client) SetAccounts(ctx context.Context, id string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetAccounts request")
 	}
 
 	if c.client == nil {
@@ -407,7 +410,7 @@ func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32,
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into SetAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -424,9 +427,10 @@ func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32,
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:set-accounts", userId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:set-accounts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetAccounts request: %w", err)
 	}
@@ -457,13 +461,15 @@ func (c *Client) SetAccounts(ctx context.Context, userId string, version uint32,
 	return target, nil
 }
 
-func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
-	if userId == "" {
-		return nil, fmt.Errorf("empty userId value passed into RemoveAccounts request")
+func (c *Client) RemoveAccounts(ctx context.Context, id string, version uint32, accountIds []string, opt ...Option) (*UserUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveAccounts request")
 	}
+
 	if len(accountIds) == 0 {
 		return nil, errors.New("empty accountIds passed into RemoveAccounts request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -474,7 +480,7 @@ func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint
 		if !opts.withAutomaticVersioning {
 			return nil, errors.New("zero version number passed into RemoveAccounts request")
 		}
-		existingTarget, existingErr := c.Read(ctx, userId, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
 		if existingErr != nil {
 			if api.AsServerError(existingErr) != nil {
 				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
@@ -491,9 +497,10 @@ func (c *Client) RemoveAccounts(ctx context.Context, userId string, version uint
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["account_ids"] = accountIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:remove-accounts", userId), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users/%s:remove-accounts", id), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveAccounts request: %w", err)
 	}

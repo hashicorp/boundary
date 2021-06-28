@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/targets"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
@@ -139,8 +140,10 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 }
 
 // PrintApiError prints the given API error, optionally with context
-// information, to the UI in the appropriate format
-func (c *Command) PrintApiError(in *api.Error, contextStr string) {
+// information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
+// used, all other options are ignored.
+func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
+	opts := getOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
 		output := struct {
@@ -204,8 +207,14 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string) {
 						// TODO: Report useful error messages related to "update_mask".
 						continue
 					}
+					var fNameParts []string
+					if opts.withAttributeFieldPrefix != "" && strings.HasPrefix(field.Name, "attributes.") {
+						fNameParts = append(fNameParts, opts.withAttributeFieldPrefix)
+					}
+					fNameParts = append(fNameParts, strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-"))
+					fName := strings.Join(fNameParts, "-")
 					output = append(output,
-						fmt.Sprintf("    Name:              -%s", strings.ReplaceAll(strings.TrimPrefix(field.Name, "attributes."), "_", "-")),
+						fmt.Sprintf("    Name:              -%s", fName),
 						fmt.Sprintf("      Error:           %s", field.Description),
 					)
 				}
@@ -233,18 +242,29 @@ func (c *Command) PrintCliError(err error) {
 }
 
 // PrintJsonItem prints the given item to the UI in JSON format
-func (c *Command) PrintJsonItem(result api.GenericResult) bool {
+func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
 	resp := result.GetResponse()
 	if resp == nil {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
 		return false
 	}
+	if r := resp.HttpResponse(); r != nil {
+		opt = append(opt, WithStatusCode(r.StatusCode))
+	}
+	return c.PrintJson(resp.Body.Bytes(), opt...)
+}
+
+// PrintJson prints the given raw JSON in our common format
+func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
+	opts := getOpts(opt...)
 	output := struct {
-		StatusCode int             `json:"status_code"`
-		Item       json.RawMessage `json:"item,omitempty"`
+		StatusCode         int                          `json:"status_code,omitempty"`
+		DecodedCredentials []*targets.SessionCredential `json:"decoded_credentials,omitempty"`
+		Item               json.RawMessage              `json:"item,omitempty"`
 	}{
-		StatusCode: resp.HttpResponse().StatusCode,
-		Item:       resp.Body.Bytes(),
+		StatusCode:         opts.withStatusCode,
+		DecodedCredentials: opts.withDecodedCredentials,
+		Item:               input,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {
