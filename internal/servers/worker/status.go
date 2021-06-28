@@ -264,6 +264,9 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 	// Note that we won't clean these from the info map until the
 	// next time we run this function
 	if len(closeInfo) > 0 {
+		// Call out to a helper to send the connection close requests to the
+		// controller, and set the close time. This functionality is shared with
+		// post-close functionality in the proxy handler.
 		w.closeConnections(cancelCtx, closeInfo)
 	}
 

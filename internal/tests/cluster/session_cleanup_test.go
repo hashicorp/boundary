@@ -265,6 +265,7 @@ func newTestSession(
 	tcl *targets.Client,
 	targetId string,
 ) *testSession {
+	t.Helper()
 	require := require.New(t)
 	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
 	require.NoError(err)
@@ -315,6 +316,7 @@ func newTestSession(
 //
 // The returned (wrapped) net.Conn should be ready for communication.
 func (s *testSession) connect(ctx context.Context, t *testing.T) net.Conn {
+	t.Helper()
 	require := require.New(t)
 	conn, resp, err := websocket.Dial(
 		ctx,
@@ -357,6 +359,7 @@ func (s *testSession) connect(ctx context.Context, t *testing.T) net.Conn {
 
 // TestNoConnectionsLeft asserts that there are no connections left.
 func (s *testSession) TestNoConnectionsLeft(t *testing.T) {
+	t.Helper()
 	require.Zero(t, s.connectionsLeft)
 }
 
@@ -373,6 +376,7 @@ func (s *testSession) Connect(
 	t *testing.T, // Just to add cleanup
 	logger hclog.Logger,
 ) *testSessionConnection {
+	t.Helper()
 	require := require.New(t)
 	conn := s.connect(ctx, t)
 	require.NotNil(conn)
@@ -395,6 +399,7 @@ func (s *testSession) Connect(
 // max. The passed in conn is expected to copy whatever it is
 // received.
 func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
+	t.Helper()
 	require := require.New(t)
 	for i := uint32(0); i < testSendRecvSendMax; i++ {
 		// Shuttle over the sequence number as base64.
@@ -434,12 +439,14 @@ func (c *testSessionConnection) testSendRecv(t *testing.T) bool {
 // TestSendRecvAll asserts that we were able to send/recv all pings
 // over the test connection.
 func (c *testSessionConnection) TestSendRecvAll(t *testing.T) {
+	t.Helper()
 	require.True(t, c.testSendRecv(t))
 }
 
 // TestSendRecvFail asserts that we were able to send/recv all pings
 // over the test connection.
 func (c *testSessionConnection) TestSendRecvFail(t *testing.T) {
+	t.Helper()
 	require.False(t, c.testSendRecv(t))
 }
 
@@ -499,6 +506,7 @@ func (ts *testTcpServer) run() {
 }
 
 func newTestTcpServer(t *testing.T, logger hclog.Logger) *testTcpServer {
+	t.Helper()
 	require := require.New(t)
 	ts := &testTcpServer{
 		logger: logger,
