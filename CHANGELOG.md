@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.4.0 (2021/06/29)
+
 ### New and Improved
 
 * The worker will now close any existing proxy connections it is handling when
