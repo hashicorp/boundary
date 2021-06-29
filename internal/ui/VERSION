@@ -1,4 +1,4 @@
-6ceddce774cb9995b4522cc36e09cc81207428f1 Merge pull request #625 from hashicorp/chore-callback-url
+bfa3d8fd3a9c110eca2b0972f811d824f55cc1f4 Merge pull request #633 from hashicorp/fix-oidc-buttons
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
