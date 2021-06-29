@@ -11,7 +11,7 @@ const (
 type SinkFormat string // SinkFormat defines the formatting for a sink in a config file stanza (json)
 
 func (f SinkFormat) Validate() error {
-	const op = "event.(SinkFormat).validate"
+	const op = "event.(SinkFormat).Validate"
 	switch f {
 	case JSONSinkFormat:
 		return nil
