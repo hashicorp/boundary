@@ -465,7 +465,7 @@ type testMockBroker struct {
 }
 
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
-	const op = "common.(testBroker).Send"
+	const op = "common.(testMockBroker).Send"
 	switch {
 	case b.errorOnFlush && payload.(eventlogger.Gateable).FlushEvent():
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
