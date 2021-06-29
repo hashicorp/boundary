@@ -11,7 +11,7 @@ type EventerConfig struct {
 	Sinks               []SinkConfig `hcl:"sinks"`                // Sinks are all the configured sinks
 }
 
-// Validate will Validate the config. BTW, a config isn't required to have any
+// Validate will Validate the config. A config isn't required to have any
 // sinks to be valid.
 func (c *EventerConfig) Validate() error {
 	const op = "event.(EventerConfig).Validate"
