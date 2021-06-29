@@ -8,9 +8,38 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Credential Stores: This release introduces Credential Stores, with the first
+  implementation targeting Vault. A credential store can be created that accepts
+  a Vault periodic token (which it will keep refreshed) and connection
+  information allowing it to make requests to Vault.
+* Credential Libraries: This release introduces Credential Libraries, with the
+  first implementation targeting Vault. Credential libraries describe how to
+  make a request to fetch a credential from the credential store. The first
+  credential library is the `generic` type that takes in a user-defined request
+  body to send to Vault and thus can work for any type of Vault secrets engine.
+  When a credential library is used to fetch a credential, if the credential
+  contains a lease, Boundary will keep the credential refreshed, and revoke the
+  credential when the session that requested it is finished.
+* Credential Brokering: Credential libraries can be attached to targets; when a
+  session is authorized against that target, a credential will be fetched from
+  the library that is then relayed to the client. The client can then use this
+  information to make a connection, allowing them to gain the benefit of dynamic
+  credential generation from Vault, but without needing their own Vault
+  login/token (see NOTE below).
+* `boundary connect` Credential Brokering Integration: Additionally, we have
+  started integration into the `boundary connect` helpers, starting in this
+  release with the Postgres helper; if the credential contains a
+  username/password and `boundary connect postgres` is the helper being used,
+  the command will automatically pass the credentials to the `psql` process.
 * The worker will now close any existing proxy connections it is handling when
   it cannot make a status request to the worker. The timeout for this behavior
-  is 15 seconds.
+  is currenly 15 seconds.
+
+NOTE: When using credential brokering, remember that if the user can connect
+directly to the end resource, they can use the brokered username and password
+via that direct connection to skip Boundary. This isn't any different from
+normal Boundary behavior (if a user can directly connect, they can bypass
+Boundary) but it's worth repeating.
 
 ### Bug Fixes
 
