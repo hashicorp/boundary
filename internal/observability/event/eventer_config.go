@@ -14,7 +14,7 @@ type EventerConfig struct {
 // Validate will Validate the config. BTW, a config isn't required to have any
 // sinks to be valid.
 func (c *EventerConfig) Validate() error {
-	const op = "event.(EventerConfig).validate"
+	const op = "event.(EventerConfig).Validate"
 	for i, s := range c.Sinks {
 		if err := s.validate(); err != nil {
 			return fmt.Errorf("%s: sink %d is invalid: %w", op, i, err)
