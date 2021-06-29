@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* The worker will now close any existing proxy connections it is handling when
+  it cannot make a status request to the worker. The timeout for this behavior
+  is 15 seconds.
+
 ### Bug Fixes
 
 * scheduler: removes a Postgres check constraint, on the length of the controller name, 
