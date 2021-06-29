@@ -47,7 +47,7 @@ func TestSerializedWriter_Write(t *testing.T) {
 			wantErrContains: "missing lock",
 		},
 		{
-			name: "Write-error",
+			name: "write-error",
 			s: &serializedWriter{
 				w: &testBadWriter{},
 				l: new(sync.Mutex),
