@@ -6,7 +6,7 @@ replace github.com/hashicorp/boundary/sdk => ../sdk
 
 require (
 	github.com/fatih/structs v1.1.0
-	github.com/hashicorp/boundary/sdk v0.0.4
+	github.com/hashicorp/boundary/sdk v0.0.5
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping v0.6.1
 	github.com/hashicorp/go-retryablehttp v0.6.8
