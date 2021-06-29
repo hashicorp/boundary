@@ -34,10 +34,10 @@ func TestMakeSessionCloseInfo(t *testing.T) {
 		},
 	}
 	expected := map[string][]*pbs.CloseConnectionResponseData{
-		"one": []*pbs.CloseConnectionResponseData{
+		"one": {
 			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 		},
-		"two": []*pbs.CloseConnectionResponseData{
+		"two": {
 			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 		},
 	}
@@ -72,10 +72,10 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		{
 			name: "basic",
 			sessionCloseInfo: map[string][]*pbs.CloseConnectionResponseData{
-				"one": []*pbs.CloseConnectionResponseData{
+				"one": {
 					{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
-				"two": []*pbs.CloseConnectionResponseData{
+				"two": {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
@@ -84,19 +84,19 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 				m.Store("one", &sessionInfo{
 					id: "one",
 					connInfoMap: map[string]*connInfo{
-						"foo": &connInfo{id: "foo"},
+						"foo": {id: "foo"},
 					},
 				})
 				m.Store("two", &sessionInfo{
 					id: "two",
 					connInfoMap: map[string]*connInfo{
-						"bar": &connInfo{id: "bar"},
+						"bar": {id: "bar"},
 					},
 				})
 				m.Store("three", &sessionInfo{
 					id: "three",
 					connInfoMap: map[string]*connInfo{
-						"baz": &connInfo{id: "baz"},
+						"baz": {id: "baz"},
 					},
 				})
 
@@ -104,17 +104,17 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			expected: []string{"foo", "bar"},
 			expectedClosed: map[string]struct{}{
-				"foo": struct{}{},
-				"bar": struct{}{},
+				"foo": {},
+				"bar": {},
 			},
 		},
 		{
 			name: "not closed",
 			sessionCloseInfo: map[string][]*pbs.CloseConnectionResponseData{
-				"one": []*pbs.CloseConnectionResponseData{
+				"one": {
 					{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
-				"two": []*pbs.CloseConnectionResponseData{
+				"two": {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED},
 				},
 			},
@@ -123,13 +123,13 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 				m.Store("one", &sessionInfo{
 					id: "one",
 					connInfoMap: map[string]*connInfo{
-						"foo": &connInfo{id: "foo"},
+						"foo": {id: "foo"},
 					},
 				})
 				m.Store("two", &sessionInfo{
 					id: "two",
 					connInfoMap: map[string]*connInfo{
-						"bar": &connInfo{id: "bar"},
+						"bar": {id: "bar"},
 					},
 				})
 
@@ -137,16 +137,16 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			expected: []string{"foo"},
 			expectedClosed: map[string]struct{}{
-				"foo": struct{}{},
+				"foo": {},
 			},
 		},
 		{
 			name: "missing session",
 			sessionCloseInfo: map[string][]*pbs.CloseConnectionResponseData{
-				"one": []*pbs.CloseConnectionResponseData{
+				"one": {
 					{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
-				"two": []*pbs.CloseConnectionResponseData{
+				"two": {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
@@ -155,7 +155,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 				m.Store("one", &sessionInfo{
 					id: "one",
 					connInfoMap: map[string]*connInfo{
-						"foo": &connInfo{id: "foo"},
+						"foo": {id: "foo"},
 					},
 				})
 
@@ -163,7 +163,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			expected: []string{"foo"},
 			expectedClosed: map[string]struct{}{
-				"foo": struct{}{},
+				"foo": {},
 			},
 			expectedErr: []error{
 				errors.New(`could not find session ID "two" in local state after closing connections`),
@@ -172,10 +172,10 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		{
 			name: "missing connection",
 			sessionCloseInfo: map[string][]*pbs.CloseConnectionResponseData{
-				"one": []*pbs.CloseConnectionResponseData{
+				"one": {
 					{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
-				"two": []*pbs.CloseConnectionResponseData{
+				"two": {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
@@ -184,7 +184,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 				m.Store("one", &sessionInfo{
 					id: "one",
 					connInfoMap: map[string]*connInfo{
-						"foo": &connInfo{id: "foo"},
+						"foo": {id: "foo"},
 					},
 				})
 				m.Store("two", &sessionInfo{id: "two"})
@@ -193,7 +193,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 			},
 			expected: []string{"foo"},
 			expectedClosed: map[string]struct{}{
-				"foo": struct{}{},
+				"foo": {},
 			},
 			expectedErr: []error{
 				errors.New(`could not find connection ID "bar" for session ID "two" in local state after closing connections`),
@@ -207,7 +207,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 				m.Store("one", &sessionInfo{
 					id: "one",
 					connInfoMap: map[string]*connInfo{
-						"foo": &connInfo{id: "foo"},
+						"foo": {id: "foo"},
 					},
 				})
 
