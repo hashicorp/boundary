@@ -604,7 +604,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 				)
 
 				for _, cred := range item.Credentials {
-					if len(cred.Secret) == 0 {
+					if cred.Secret == nil || len(cred.Secret.Raw) == 0 {
 						continue
 					}
 
@@ -629,7 +629,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 						// credential fetching. So we can take the bytes
 						// as-is (after base64-decoding), but we'll format
 						// it nicely.
-						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
+						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret.Raw), `"`))
 						if err != nil {
 							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
 						}
@@ -658,33 +658,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			if len(item.Credentials) > 0 {
-				for _, cred := range item.Credentials {
-					if len(cred.Secret) == 0 {
-						continue
-					}
-
-					switch cred.CredentialLibrary.Type {
-					case "vault":
-						// If it's Vault, the result will be JSON, except in
-						// specific circumstances that aren't used for
-						// credential fetching. So we can take the bytes
-						// as-is (after base64-decoding), but we'll format
-						// it nicely.
-						in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
-						if err != nil {
-							return false, fmt.Errorf("Error decoding secret as base64: %w", err)
-						}
-						// Now that it's decoded, pop it back in the same place
-						// as marshaled JSON
-						cred.Secret = in
-					default:
-						// If it's not Vault, and not another known type,
-						// leave it alone.
-					}
-				}
-			}
-			if ok := c.PrintJsonItem(c.sar, base.WithDecodedCredentials(item.Credentials)); !ok {
+			if ok := c.PrintJsonItem(c.sar); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil

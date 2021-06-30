@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
-	"github.com/hashicorp/boundary/api/targets"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
@@ -258,13 +257,11 @@ func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
 func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
 	opts := getOpts(opt...)
 	output := struct {
-		StatusCode         int                          `json:"status_code,omitempty"`
-		DecodedCredentials []*targets.SessionCredential `json:"decoded_credentials,omitempty"`
-		Item               json.RawMessage              `json:"item,omitempty"`
+		StatusCode int             `json:"status_code,omitempty"`
+		Item       json.RawMessage `json:"item,omitempty"`
 	}{
-		StatusCode:         opts.withStatusCode,
-		DecodedCredentials: opts.withDecodedCredentials,
-		Item:               input,
+		StatusCode: opts.withStatusCode,
+		Item:       input,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {

@@ -35,13 +35,23 @@ message CredentialLibrary{
 	string type = 60;
 }
 
+// The actual secret for a session credential.
+message SessionSecret {
+	// Output only. The base64-encoded value representing the raw bytes from the
+	// credential provider.
+	string raw = 10;
+
+	// Output only. The decoded raw string, if JSON.
+	google.protobuf.Struct decoded = 20;
+}
+
 // A credential for a session.
 message SessionCredential {
 	// Output only. The library which generated this credential.
 	CredentialLibrary credential_library = 10;
 
 	// Output only. The secret of this credential base64 encoded.
-	string secret = 30;
+	SessionSecret secret = 20;
 }
 
 // Target contains all fields related to a Target resource

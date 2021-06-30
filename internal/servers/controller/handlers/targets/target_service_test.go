@@ -1837,21 +1837,22 @@ func TestAuthorizeSession(t *testing.T) {
 		"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
 		"private_key_type": "rsa",
 	}
-	_ = wantSecret
 	got := asRes1.GetItem()
 
 	require.Len(t, got.GetCredentials(), 1)
 
 	gotCred := got.Credentials[0]
-	assert.NotEmpty(t, gotCred.Secret)
-	dSec := decodeJsonSecret(t, gotCred.Secret)
+	require.NotNil(t, gotCred.Secret)
+	assert.NotEmpty(t, gotCred.Secret.Raw)
+	dSec := decodeJsonSecret(t, gotCred.Secret.Raw)
 	require.NoError(t, err)
+	require.Equal(t, dSec, gotCred.Secret.Decoded.AsMap())
 	for k, v := range wantSecret {
 		gotV, ok := dSec[k]
 		require.True(t, ok)
 		assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
 	}
-	gotCred.Secret = ""
+	gotCred.Secret = nil
 
 	got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
 	assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
@@ -2049,7 +2050,6 @@ func decodeJsonSecret(t *testing.T, in string) map[string]interface{} {
 	t.Helper()
 	ret := make(map[string]interface{})
 	dec := json.NewDecoder(base64.NewDecoder(base64.StdEncoding, strings.NewReader(in)))
-	dec.UseNumber()
 	require.NoError(t, dec.Decode(&ret))
 	return ret
 }

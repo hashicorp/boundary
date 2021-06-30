@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -395,34 +394,6 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 		c.sessionAuthz = sar.GetItem().(*targets.SessionAuthorization)
 		authzString = c.sessionAuthz.AuthorizationToken
-	}
-
-	if c.sessionAuthz != nil {
-		for _, cred := range c.sessionAuthz.Credentials {
-			// Since connect commands are helpers and are not meant as a direct CLI
-			// representation of the REST API, we can modify the credentials to be
-			// useful as a helper instead of trying to keep it as a faithful
-			// representation of what the api returns.
-			if len(cred.Secret) == 0 {
-				continue
-			}
-			switch cred.CredentialLibrary.Type {
-			case "vault":
-				// If it's Vault, the result will be JSON, except in specific
-				// circumstances that aren't used for credential fetching. So we
-				// can take the bytes as-is (after base64-decoding), but we'll
-				// format it nicely.
-				in, err := base64.StdEncoding.DecodeString(strings.Trim(string(cred.Secret), `"`))
-				if err != nil {
-					c.PrintCliError(fmt.Errorf("Error decoding secret as base64: %w", err))
-					return base.CommandCliError
-				}
-				// Now that it's decoded, pop it back in the same place as marshaled JSON
-				cred.Secret = in
-			default:
-				// If it's not Vault, and not another known type, leave it alone.
-			}
-		}
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzString)
