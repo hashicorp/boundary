@@ -4283,7 +4283,7 @@
         },
         "decoded": {
           "type": "object",
-          "description": "Output only. The decoded raw string, if JSON.",
+          "description": "Output only. The decoded raw string, if a JSON object.",
           "readOnly": true
         }
       },

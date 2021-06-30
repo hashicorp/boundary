@@ -41,7 +41,7 @@ message SessionSecret {
 	// credential provider.
 	string raw = 10;
 
-	// Output only. The decoded raw string, if JSON.
+	// Output only. The decoded raw string, if a JSON object.
 	google.protobuf.Struct decoded = 20;
 }
 

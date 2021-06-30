@@ -175,7 +175,7 @@ type SessionSecret struct {
 	// Output only. The base64-encoded value representing the raw bytes from the
 	// credential provider.
 	Raw string `protobuf:"bytes,10,opt,name=raw,proto3" json:"raw,omitempty"`
-	// Output only. The decoded raw string, if JSON.
+	// Output only. The decoded raw string, if a JSON object.
 	Decoded *structpb.Struct `protobuf:"bytes,20,opt,name=decoded,proto3" json:"decoded,omitempty"`
 }
 
