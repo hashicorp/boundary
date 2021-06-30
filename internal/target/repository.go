@@ -192,13 +192,17 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 }
 
 // DeleteTarget will delete a target from the repository.
-func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteTarget(ctx context.Context, scopeId, publicId string, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTarget"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+	}
 	t := allocTargetView()
 	t.PublicId = publicId
+	t.ScopeId = scopeId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}

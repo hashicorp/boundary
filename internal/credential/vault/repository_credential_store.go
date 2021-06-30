@@ -664,23 +664,18 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 
 // DeleteCredentialStore deletes publicId from the repository and returns
 // the number of records deleted. All options are ignored.
-func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteCredentialStore(ctx context.Context, scopeId, publicId string, _ ...Option) (int, error) {
 	const op = "vault.(Repository).DeleteCredentialStore"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+	}
 
 	cs := allocCredentialStore()
 	cs.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, cs); err != nil {
-		if errors.IsNotFoundError(err) {
-			return db.NoRowsAffected, nil
-		}
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
-	}
-	if cs.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
-	}
+	cs.ScopeId = scopeId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {

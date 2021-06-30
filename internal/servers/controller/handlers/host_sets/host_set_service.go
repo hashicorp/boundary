@@ -75,7 +75,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
+	authResults := s.authResult(ctx, req.GetHostCatalogId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -134,7 +134,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Read)
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -172,7 +172,7 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
+	authResults := s.authResult(ctx, req.GetItem().GetHostCatalogId(), action.Create)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -213,11 +213,11 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	cat, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Update)
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hs, hosts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), cat.GetPublicId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hs, hosts, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -267,7 +267,7 @@ func (s Service) AddHostSetHosts(ctx context.Context, req *pbs.AddHostSetHostsRe
 	if err := validateAddRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.AddHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.AddHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -305,7 +305,7 @@ func (s Service) SetHostSetHosts(ctx context.Context, req *pbs.SetHostSetHostsRe
 	if err := validateSetRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.SetHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.SetHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -342,7 +342,7 @@ func (s Service) RemoveHostSetHosts(ctx context.Context, req *pbs.RemoveHostSetH
 	if err := validateRemoveRequest(req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.RemoveHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSets)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -415,7 +415,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.HostSet) (*static.HostSet, []*static.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.HostSet) (*static.HostSet, []*static.Host, error) {
 	const op = "host_sets.(Service).updateInRepo"
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -424,7 +424,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if name := item.GetName(); name != nil {
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
-	h, err := static.NewHostSet(catalogId, opts...)
+	h, err := static.NewHostSet(item.GetHostCatalogId(), opts...)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, op, errors.WithMsg("Unable to build host set for update"))
 	}
@@ -533,12 +533,12 @@ func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostId
 	return out, m, nil
 }
 
-func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (*static.HostCatalog, auth.VerifyResults) {
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 
 	var parentId string
@@ -550,11 +550,11 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		set, _, err := repo.LookupSet(ctx, id)
 		if err != nil {
 			res.Error = err
-			return nil, res
+			return res
 		}
 		if set == nil {
 			res.Error = handlers.NotFoundError()
-			return nil, res
+			return res
 		}
 		parentId = set.GetCatalogId()
 		opts = append(opts, auth.WithId(id))
@@ -563,14 +563,14 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	cat, err := repo.LookupCatalog(ctx, parentId)
 	if err != nil {
 		res.Error = err
-		return nil, res
+		return res
 	}
 	if cat == nil {
 		res.Error = handlers.NotFoundError()
-		return nil, res
+		return res
 	}
 	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
-	return cat, auth.Verify(ctx, opts...)
+	return auth.Verify(ctx, opts...)
 }
 
 func toProto(ctx context.Context, in *static.HostSet, hosts []*static.Host, opt ...handlers.Option) (*pb.HostSet, error) {

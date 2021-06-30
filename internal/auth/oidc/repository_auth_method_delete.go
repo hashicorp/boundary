@@ -13,19 +13,17 @@ import (
 // DeleteAuthMethod will delete the auth method from the repository.  It is
 // idempotent so if the auth method was not found, return 0 (no rows affected)
 // and nil.  No options are currently supported.
-func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId string, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAuthMethod"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
-	am, err := r.LookupAuthMethod(ctx, publicId)
-	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing scope id")
 	}
-	if am == nil {
-		// already deleted and this is not an error.
-		return db.NoRowsAffected, nil
-	}
+	am := AllocAuthMethod()
+	am.PublicId = publicId
+	am.ScopeId = scopeId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {

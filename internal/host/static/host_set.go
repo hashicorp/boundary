@@ -1,7 +1,6 @@
 package static
 
 import (
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -17,10 +16,6 @@ type HostSet struct {
 // Name and description are the only valid options. All other options are
 // ignored.
 func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
-	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, "static.NewHostSet", "no catalog id")
-	}
-
 	opts := getOpts(opt...)
 	set := &HostSet{
 		HostSet: &store.HostSet{

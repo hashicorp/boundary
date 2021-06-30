@@ -222,23 +222,18 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 
 // DeleteCatalog deletes id from the repository returning a count of the
 // number of records deleted.
-func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
+func (r *Repository) DeleteCatalog(ctx context.Context, scopeId, id string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteCatalog"
 	if id == "" {
 		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
 	}
+	if scopeId == "" {
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+	}
 
 	c := allocCatalog()
 	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
-		if errors.IsNotFoundError(err) {
-			return db.NoRowsAffected, nil
-		}
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
-	}
-	if c.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
-	}
+	c.ScopeId = scopeId
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))

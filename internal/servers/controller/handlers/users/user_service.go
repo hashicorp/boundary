@@ -270,7 +270,7 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -469,13 +469,13 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	return out, accts, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
 	const op = "users.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteUser(ctx, id)
+	rows, err := repo.DeleteUser(ctx, scopeId, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
