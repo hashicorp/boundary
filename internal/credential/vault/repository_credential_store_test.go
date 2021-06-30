@@ -1530,7 +1530,7 @@ group by store_id, status;
 
 			// delete
 			{
-				deletedCount, err := repo.DeleteCredentialStore(ctx, storeId)
+				deletedCount, err := repo.DeleteCredentialStore(ctx, scopeId, storeId)
 				assert.NoError(err)
 				assert.Equal(1, deletedCount)
 			}
@@ -1614,7 +1614,7 @@ group by store_id, status;
 
 			// calling delete again should not change anything
 			{
-				deleteCount, err := repo.DeleteCredentialStore(ctx, storeId)
+				deleteCount, err := repo.DeleteCredentialStore(ctx, scopeId, storeId)
 				assert.NoError(err)
 				assert.Equal(0, deleteCount)
 			}

@@ -2012,11 +2012,11 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(0, r.numStores)
 
 	// Soft delete both credential stores
-	count, err := repo.DeleteCredentialStore(context.Background(), cs1.PublicId)
+	count, err := repo.DeleteCredentialStore(context.Background(), cs1.ScopeId, cs1.PublicId)
 	require.NoError(err)
 	assert.Equal(1, count)
 
-	count, err = repo.DeleteCredentialStore(context.Background(), cs2.PublicId)
+	count, err = repo.DeleteCredentialStore(context.Background(), cs2.ScopeId, cs2.PublicId)
 	require.NoError(err)
 	assert.Equal(1, count)
 
