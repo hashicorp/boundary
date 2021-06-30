@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -22,18 +23,37 @@ import (
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/dawdle"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/mr-tron/base58"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
 
-const testSendRecvSendMax = 60
+const (
+	testSendRecvSendMax                  = 60
+	defaultGracePeriod                   = time.Second * 30
+	expectConnectionStateOnWorkerTimeout = defaultGracePeriod * 2
+
+	// This is the interval that we check states on in the worker. It
+	// needs to be particularly granular to ensure that we allow for
+	// adequate time to catch any edge cases where the connection state
+	// disappears from the worker before we can update the state.
+	//
+	// As of this writing, the (hardcoded) status request interval on
+	// the worker is 2 seconds, and a session is removed from the state
+	// when it has no connections left on the *next* pass. A one second
+	// interval would only mean two chances to check with a high
+	// possibility of skew; while it seems okay I'm still not 100%
+	// comfortable with this little resolution.
+	expectConnectionStateOnWorkerInterval = time.Millisecond * 100
+)
 
 func TestWorkerSessionCleanup(t *testing.T) {
 	require := require.New(t)
@@ -99,7 +119,7 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := newTestSession(ctx, t, tcl, "ttcp_1234567890")
+	sess := newTestSession(ctx, t, logger, tcl, "ttcp_1234567890")
 	sConn := sess.Connect(ctx, t, logger)
 
 	// Run initial send/receive test, make sure things are working
@@ -114,10 +134,13 @@ func TestWorkerSessionCleanup(t *testing.T) {
 	// Assert we have no connections left (should be default behavior)
 	sess.TestNoConnectionsLeft(t)
 
+	// Assert connection has been removed from the local worker state
+	sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
+
 	// Resume the connection, and reconnect.
 	proxy.Resume()
-	time.Sleep(time.Second * 10)                          // Sleep to wait for worker to report back as healthy
-	sess = newTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	time.Sleep(time.Second * 10)                                  // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 	sConn = sess.Connect(ctx, t, logger)
 	sConn.TestSendRecvAll(t)
 }
@@ -219,7 +242,7 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	require.NotNil(tgt)
 
 	// Authorize and connect
-	sess := newTestSession(ctx, t, tcl, "ttcp_1234567890")
+	sess := newTestSession(ctx, t, logger, tcl, "ttcp_1234567890")
 	sConn := sess.Connect(ctx, t, logger)
 
 	// Run initial send/receive test, make sure things are working
@@ -240,21 +263,29 @@ func TestWorkerSessionCleanupMultiController(t *testing.T) {
 	p1.Pause()
 	sConn.TestSendRecvFail(t)
 
+	// Assert we have no connections left (should be default behavior)
+	sess.TestNoConnectionsLeft(t)
+
+	// Assert connection has been removed from the local worker state
+	sess.ExpectConnectionStateOnWorker(ctx, t, w1, session.StatusClosed)
+
 	// Finally resume both, try again. Should behave as per normal.
 	p1.Resume()
 	p2.Resume()
-	time.Sleep(time.Second * 10)                          // Sleep to wait for worker to report back as healthy
-	sess = newTestSession(ctx, t, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
+	time.Sleep(time.Second * 10)                                  // Sleep to wait for worker to report back as healthy
+	sess = newTestSession(ctx, t, logger, tcl, "ttcp_1234567890") // re-assign, other connection will close in t.Cleanup()
 	sConn = sess.Connect(ctx, t, logger)
 	sConn.TestSendRecvAll(t)
 }
 
 // testSession represents an authorized session.
 type testSession struct {
+	sessionId       string
 	workerAddr      string
 	transport       *http.Transport
 	tofuToken       string
 	connectionsLeft int32
+	logger          hclog.Logger
 }
 
 // newTestSession authorizes a session and creates all of the data
@@ -262,6 +293,7 @@ type testSession struct {
 func newTestSession(
 	ctx context.Context,
 	t *testing.T,
+	logger hclog.Logger,
 	tcl *targets.Client,
 	targetId string,
 ) *testSession {
@@ -271,7 +303,10 @@ func newTestSession(
 	require.NoError(err)
 	require.NotNil(sar)
 
-	s := new(testSession)
+	s := &testSession{
+		sessionId: sar.Item.SessionId,
+		logger:    logger,
+	}
 	authzString := sar.GetItem().(*targets.SessionAuthorization).AuthorizationToken
 	marshaled, err := base58.FastBase58Decoding(authzString)
 	require.NoError(err)
@@ -361,6 +396,88 @@ func (s *testSession) connect(ctx context.Context, t *testing.T) net.Conn {
 func (s *testSession) TestNoConnectionsLeft(t *testing.T) {
 	t.Helper()
 	require.Zero(t, s.connectionsLeft)
+}
+
+// ExpectConnectionStateOnWorker waits until all connections in a
+// session have transitioned to a particular state on the worker.
+func (s *testSession) ExpectConnectionStateOnWorker(
+	ctx context.Context,
+	t *testing.T,
+	tw *worker.TestWorker,
+	expectState session.ConnectionStatus,
+) {
+	t.Helper()
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ctx, cancel := context.WithTimeout(ctx, expectConnectionStateOnWorkerTimeout)
+	defer cancel()
+
+	// This is just for initialization of the actual state set.
+	const sessionStatusUnknown session.ConnectionStatus = "unknown"
+
+	connIds := s.testWorkerConnectionIds(t, tw)
+	// Make a set of states, 1 per connection
+	actualStates := make(map[string]session.ConnectionStatus, len(connIds))
+	for _, id := range connIds {
+		actualStates[id] = sessionStatusUnknown
+	}
+
+	// Make expect set for comparison
+	expectStates := make(map[string]session.ConnectionStatus, len(connIds))
+	for _, id := range connIds {
+		expectStates[id] = expectState
+	}
+
+	for {
+		if ctx.Err() != nil {
+			break
+		}
+
+		for _, conn := range s.testWorkerConnectionInfo(t, tw) {
+			actualStates[conn.Id] = session.ConnectionStatusFromProtoVal(conn.Status)
+		}
+
+		if reflect.DeepEqual(expectStates, actualStates) {
+			break
+		}
+
+		time.Sleep(expectConnectionStateOnWorkerInterval)
+	}
+
+	// "non-fatal" assert here, so that we can surface both timeouts
+	// and invalid state
+	assert.NoError(ctx.Err())
+
+	// Assert
+	require.Equal(expectStates, actualStates)
+	s.logger.Debug("successfully asserted all connection states on worker", "expected_states", expectStates, "actual_states", actualStates)
+}
+
+func (s *testSession) testWorkerConnectionInfo(t *testing.T, tw *worker.TestWorker) map[string]worker.TestConnectionInfo {
+	t.Helper()
+	require := require.New(t)
+	si, ok := tw.LookupSession(s.sessionId)
+	// This is always an error if the session has been removed from the
+	// local state.
+	require.True(ok)
+
+	// Likewise, we require the helper to always be used with
+	// connections.
+	require.Greater(len(si.Connections), 0, "should have at least one connection")
+
+	return si.Connections
+}
+
+func (s *testSession) testWorkerConnectionIds(t *testing.T, tw *worker.TestWorker) []string {
+	t.Helper()
+	conns := s.testWorkerConnectionInfo(t, tw)
+	result := make([]string, 0, len(conns))
+	for _, conn := range conns {
+		result = append(result, conn.Id)
+	}
+
+	return result
 }
 
 // testSessionConnection abstracts a connected session.

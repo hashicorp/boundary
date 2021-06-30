@@ -16,7 +16,7 @@ import (
 // In the future we could make this configurable
 const (
 	statusInterval           = 2 * time.Second
-	statusTimeout            = 10 * time.Second
+	statusTimeout            = 3 * time.Second
 	defaultStatusGracePeriod = 30 * time.Second
 	statusGracePeriodEnvVar  = "BOUNDARY_STATUS_GRACE_PERIOD"
 )

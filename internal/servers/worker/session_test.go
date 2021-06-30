@@ -60,6 +60,36 @@ func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 	)
 }
 
+func TestMakeFakeSessionCloseInfo(t *testing.T) {
+	require := require.New(t)
+	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	expected := map[string][]*pbs.CloseConnectionResponseData{
+		"one": {
+			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
+		},
+		"two": {
+			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
+		},
+	}
+	actual := new(Worker).makeFakeSessionCloseInfo(closeInfo)
+	require.Equal(expected, actual)
+}
+
+func TestMakeFakeSessionCloseInfoPanicIfCloseInfoNil(t *testing.T) {
+	require := require.New(t)
+	require.Panics(func() {
+		new(Worker).makeFakeSessionCloseInfo(nil)
+	})
+}
+
+func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
+	require := require.New(t)
+	require.Equal(
+		make(map[string][]*pbs.CloseConnectionResponseData),
+		new(Worker).makeFakeSessionCloseInfo(make(map[string]string)),
+	)
+}
+
 func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	cases := []struct {
 		name             string
