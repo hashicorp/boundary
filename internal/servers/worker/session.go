@@ -15,10 +15,9 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 )
 
-const (
-	validateSessionTimeout              = 90 * time.Second
-	errMakeSessionCloseInfoNilCloseInfo = "nil closeInfo supplied to makeSessionCloseInfo, this is a bug, please report it"
-)
+const validateSessionTimeout = 90 * time.Second
+
+var errMakeSessionCloseInfoNilCloseInfo = errors.New("nil closeInfo supplied to makeSessionCloseInfo, this is a bug, please report it")
 
 type connInfo struct {
 	id         string
@@ -267,17 +266,41 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 	}
 
 	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeInfo))
-	response, err := w.closeConnection(ctx, w.makeCloseConnectionRequest(closeInfo))
+
+	// How we handle close info depends on whether or not we succeeded with
+	// marking them closed on the controller.
+	var sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
+	var err error
+
+	// TODO: This, along with the status call to the controller, probably needs a
+	// bit of formalization in terms of how we handle timeouts. For now, this
+	// just ensures consistency with the same status call in that it times out
+	// within an adequate period of time.
+	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, statusTimeout)
+	defer closeConnCancel()
+	response, err := w.closeConnection(closeConnCtx, w.makeCloseConnectionRequest(closeInfo))
 	if err != nil {
 		w.logger.Error("error marking connections closed", "error", err)
 		w.logger.Warn(
 			"error contacting controller, connections will be closed only on worker",
 			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
 		)
+
+		// Since we could not reach the controller, we have to make a "fake" response set.
+		sessionCloseInfo, err = w.makeFakeSessionCloseInfo(closeInfo)
+	} else {
+		// Connection succeeded, so we can proceed with making the sessionCloseInfo
+		// off of the response data.
+		sessionCloseInfo, err = w.makeSessionCloseInfo(closeInfo, response)
+	}
+
+	if err != nil {
+		w.logger.Error(err.Error())
+		w.logger.Error("serious error in processing return data from controller, aborting marking connections as closed")
 	}
 
 	// Mark connections as closed
-	closedIds, errs := w.setCloseTimeForResponse(w.makeSessionCloseInfo(closeInfo, response))
+	closedIds, errs := w.setCloseTimeForResponse(sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			w.logger.Error("error marking connection closed in state", "err", err)
@@ -316,11 +339,9 @@ func (w *Worker) makeCloseConnectionRequest(closeInfo map[string]string) *pbs.Cl
 func (w *Worker) makeSessionCloseInfo(
 	closeInfo map[string]string,
 	response *pbs.CloseConnectionResponse,
-) map[string][]*pbs.CloseConnectionResponseData {
+) (map[string][]*pbs.CloseConnectionResponseData, error) {
 	if closeInfo == nil {
-		// Should never happen, panic if it does. Results will be
-		// undefined.
-		panic(errMakeSessionCloseInfoNilCloseInfo)
+		return nil, errMakeSessionCloseInfoNilCloseInfo
 	}
 
 	result := make(map[string][]*pbs.CloseConnectionResponseData)
@@ -328,7 +349,27 @@ func (w *Worker) makeSessionCloseInfo(
 		result[closeInfo[v.GetConnectionId()]] = append(result[closeInfo[v.GetConnectionId()]], v)
 	}
 
-	return result
+	return result, nil
+}
+
+// makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
+// for use when we can't contact the controller.
+func (w *Worker) makeFakeSessionCloseInfo(
+	closeInfo map[string]string,
+) (map[string][]*pbs.CloseConnectionResponseData, error) {
+	if closeInfo == nil {
+		return nil, errMakeSessionCloseInfoNilCloseInfo
+	}
+
+	result := make(map[string][]*pbs.CloseConnectionResponseData)
+	for connectionId, sessionId := range closeInfo {
+		result[sessionId] = append(result[sessionId], &pbs.CloseConnectionResponseData{
+			ConnectionId: connectionId,
+			Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+		})
+	}
+
+	return result, nil
 }
 
 // setCloseTimeForResponse iterates a CloseConnectionResponse and
