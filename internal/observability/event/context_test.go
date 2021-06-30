@@ -932,7 +932,7 @@ func Test_WriteSysEvent(t *testing.T) {
 		{
 			name: "use-syseventer",
 			ctx:  context.Background(),
-			data: map[string]interface{}{"data": "test-data"},
+			data: map[string]interface{}{"data": "test-data", event.ServerName: "test-server", event.ServerAddress: "localhost"},
 			setup: func() error {
 				return event.InitSysEventer(hclog.Default(), c.EventerConfig)
 			},
