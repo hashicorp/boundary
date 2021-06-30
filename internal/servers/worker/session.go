@@ -296,7 +296,8 @@ func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]stri
 
 	if err != nil {
 		w.logger.Error(err.Error())
-		w.logger.Error("serious error in processing return data from controller, aborting marking connections as closed")
+		w.logger.Error("serious error in processing return data from controller, aborting additional session/connection state modification")
+		return
 	}
 
 	// Mark connections as closed
