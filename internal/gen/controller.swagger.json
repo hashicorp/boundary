@@ -4266,12 +4266,28 @@
           "readOnly": true
         },
         "secret": {
-          "type": "string",
+          "$ref": "#/definitions/controller.api.resources.targets.v1.SessionSecret",
           "description": "Output only. The secret of this credential base64 encoded.",
           "readOnly": true
         }
       },
       "description": "A credential for a session."
+    },
+    "controller.api.resources.targets.v1.SessionSecret": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "Output only. The base64-encoded value representing the raw bytes from the\ncredential provider.",
+          "readOnly": true
+        },
+        "decoded": {
+          "type": "object",
+          "description": "Output only. The decoded raw string, if a JSON object.",
+          "readOnly": true
+        }
+      },
+      "description": "The actual secret for a session credential."
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",

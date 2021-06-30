@@ -2,6 +2,7 @@ package connect
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -72,11 +73,15 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 
 func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	prefixStr := strings.Repeat(" ", indent)
-	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret)}
+	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret.Raw)}
 	switch sc.CredentialLibrary.Type {
 	case "vault":
+		in, err := base64.StdEncoding.DecodeString(strings.Trim(string(sc.Secret.Raw), `"`))
+		if err != nil {
+			return origSecret
+		}
 		dst := new(bytes.Buffer)
-		if err := json.Indent(dst, sc.Secret, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+		if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
 			return origSecret
 		}
 		secretStr := strings.Split(dst.String(), "\n")

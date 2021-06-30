@@ -40,6 +40,7 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -834,10 +835,29 @@ HostSetIterationLoop:
 	var creds []*pb.SessionCredential
 	for _, c := range cs {
 		l := c.Library()
+		secret := c.Secret()
 		// TODO: Access the json directly from the vault response instead of re-marshalling it.
-		jSecret, err := json.Marshal(c.Secret())
+		jSecret, err := json.Marshal(secret)
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("marshalling secret to json"))
+		}
+		var sSecret *structpb.Struct
+		switch secret.(type) {
+		case map[string]interface{}:
+			// In this case we actually have to re-decode it. The proto wrappers
+			// choke on json.Number and at the time I'm writing this I don't
+			// have time to write a walk function to dig through with reflect
+			// and find all json.Numbers and replace them. So we eat the
+			// inefficiency. So note that we are specifically _not_ using a
+			// decoder with UseNumber here.
+			var dSecret map[string]interface{}
+			if err := json.Unmarshal(jSecret, &dSecret); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("decoding json for proto marshaling"))
+			}
+			sSecret, err = structpb.NewStruct(dSecret)
+			if err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("creating proto struct for secret"))
+			}
 		}
 		creds = append(creds, &pb.SessionCredential{
 			CredentialLibrary: &pb.CredentialLibrary{
@@ -847,7 +867,10 @@ HostSetIterationLoop:
 				CredentialStoreId: l.GetStoreId(),
 				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
-			Secret: base64.StdEncoding.EncodeToString(jSecret),
+			Secret: &pb.SessionSecret{
+				Raw:     base64.StdEncoding.EncodeToString(jSecret),
+				Decoded: sSecret,
+			},
 		})
 	}
 

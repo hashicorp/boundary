@@ -24,7 +24,7 @@ func TestTestWorkerLookupSession(t *testing.T) {
 		id:     "foo",
 		status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
 		connInfoMap: map[string]*connInfo{
-			"one": &connInfo{
+			"one": {
 				id:        "one",
 				status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
 				closeTime: refTime,
@@ -36,7 +36,7 @@ func TestTestWorkerLookupSession(t *testing.T) {
 		Id:     "foo",
 		Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
 		Connections: map[string]TestConnectionInfo{
-			"one": TestConnectionInfo{
+			"one": {
 				Id:        "one",
 				Status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
 				CloseTime: refTime,

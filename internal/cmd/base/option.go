@@ -1,7 +1,5 @@
 package base
 
-import "github.com/hashicorp/boundary/api/targets"
-
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
@@ -28,7 +26,6 @@ type Options struct {
 	withDialect                    string
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
-	withDecodedCredentials         []*targets.SessionCredential
 }
 
 func getDefaultOptions() Options {
@@ -129,12 +126,5 @@ func WithAttributeFieldPrefix(p string) Option {
 func WithStatusCode(statusCode int) Option {
 	return func(o *Options) {
 		o.withStatusCode = statusCode
-	}
-}
-
-// WithDecodedCredentials allows passing decoded credentials
-func WithDecodedCredentials(creds []*targets.SessionCredential) Option {
-	return func(o *Options) {
-		o.withDecodedCredentials = creds
 	}
 }
