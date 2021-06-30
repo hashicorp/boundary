@@ -33,7 +33,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the command will automatically pass the credentials to the `psql` process.
 * The worker will now close any existing proxy connections it is handling when
   it cannot make a status request to the worker. The timeout for this behavior
-  is currenly 15 seconds.
+  is currently 15 seconds.
 
 NOTE: When using credential brokering, remember that if the user can connect
 directly to the end resource, they can use the brokered username and password
