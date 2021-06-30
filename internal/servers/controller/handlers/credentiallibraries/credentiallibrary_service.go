@@ -254,6 +254,22 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	return &pbs.UpdateCredentialLibraryResponse{Item: item}, nil
 }
 
+// DeleteCredentialLibrary implements the interface pbs.CredentialLibraryServiceServer.
+func (s Service) DeleteCredentialLibrary(ctx context.Context, req *pbs.DeleteCredentialLibraryRequest) (*pbs.DeleteCredentialLibraryResponse, error) {
+	if err := validateDeleteRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	_, err := s.deleteFromRepo(ctx, authResults.Scope.GetId(), req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, storeId string) ([]*vault.CredentialLibrary, error) {
 	const op = "credentiallibraries.(Service).listFromRepo"
 	repo, err := s.repoFn()
@@ -327,6 +343,22 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
+}
+
+func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+	const op = "credentiallibraries.(Service).deleteFromRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteCredentialLibrary(ctx, scopeId, id)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete credential library"))
+	}
+	return rows > 0, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -549,6 +581,10 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest) error {
 		}
 		return badFields
 	}, vault.CredentialLibraryPrefix)
+}
+
+func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {

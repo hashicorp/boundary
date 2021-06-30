@@ -44,11 +44,24 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			wantErrMatch: errors.T(errors.InvalidPublicId),
 		},
 		{
-			name: "not-found",
+			name:         "no-scope-id",
 			authMethod: func() *AuthMethod {
 				am := AllocAuthMethod()
 				var err error
 				am.PublicId, err = newAuthMethodId()
+				require.NoError(t, err)
+				return &am
+			}(),
+			wantErrMatch: errors.T(errors.InvalidPublicId),
+		},
+		{
+			name: "not-found",
+			authMethod: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				am := AllocAuthMethod()
+				var err error
+				am.PublicId, err = newAuthMethodId()
+				am.ScopeId = org.GetPublicId()
 				require.NoError(t, err)
 				return &am
 			}(),
@@ -59,7 +72,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, kmsCache)
 			require.NoError(err)
-			deletedRows, err := repo.DeleteAuthMethod(ctx, tt.authMethod.PublicId)
+			deletedRows, err := repo.DeleteAuthMethod(ctx, tt.authMethod.ScopeId, tt.authMethod.PublicId)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 
