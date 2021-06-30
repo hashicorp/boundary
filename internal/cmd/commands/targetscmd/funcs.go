@@ -324,16 +324,16 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 	case "set-credential-libraries":
 		// TODO: As we add other purposes, add them to this check
-		if len(c.flagApplicationCredentialLibraries) == 0 {
-			c.UI.Error("No credential-libraries supplied via -application-credential-library")
-			return false
-		}
 		switch len(c.flagApplicationCredentialLibraries) {
 		case 0:
+			c.UI.Error("No credential-libraries supplied via -application-credential-library")
+			return false
 		case 1:
 			if c.flagApplicationCredentialLibraries[0] == "null" {
 				*opts = append(*opts, targets.DefaultApplicationCredentialLibraryIds())
+				break
 			}
+			fallthrough
 		default:
 			*opts = append(*opts, targets.WithApplicationCredentialLibraryIds(c.flagApplicationCredentialLibraries))
 		}

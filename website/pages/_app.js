@@ -6,7 +6,6 @@ import useAnchorLinkAnalytics from '@hashicorp/nextjs-scripts/lib/anchor-link-an
 import HashiStackMenu from '@hashicorp/react-hashi-stack-menu'
 import Router from 'next/router'
 import HashiHead from '@hashicorp/react-head'
-import Head from 'next/head'
 import { ErrorBoundary } from '@hashicorp/nextjs-scripts/lib/bugsnag'
 import ProductSubnav from '../components/subnav'
 import Footer from 'components/footer'
@@ -29,7 +28,6 @@ export default function App({ Component, pageProps }) {
   return (
     <ErrorBoundary FallbackComponent={Error}>
       <HashiHead
-        is={Head}
         title={title}
         siteName={title}
         description={description}

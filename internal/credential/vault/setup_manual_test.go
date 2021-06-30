@@ -37,6 +37,7 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 		Config:                 conf,
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
+		DefaultPassword:        "password",
 	})
 	defer c1.Shutdown()
 	ctx := c1.Context()

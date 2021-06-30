@@ -536,7 +536,7 @@ func (c *Command) Run(args []string) (retCode int) {
 			Expiration:      c.expiration,
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
-			Credentials: creds,
+			Credentials:     creds,
 		}
 		switch base.Format(c.UI) {
 		case "table":
