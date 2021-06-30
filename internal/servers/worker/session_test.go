@@ -79,7 +79,7 @@ func TestMakeFakeSessionCloseInfo(t *testing.T) {
 	require.Equal(expected, actual)
 }
 
-func TestMakeFakeSessionCloseInfoPanicIfCloseInfoNil(t *testing.T) {
+func TestMakeFakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 	require := require.New(t)
 	actual, err := new(Worker).makeFakeSessionCloseInfo(nil)
 	require.Nil(actual)
