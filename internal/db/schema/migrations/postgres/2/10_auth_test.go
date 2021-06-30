@@ -84,7 +84,7 @@ func Test_AuthMethodSubtypes(t *testing.T) {
 	assert.Nil(pwParent)
 
 	// test oidc subtype delete
-	_, err = oidcRepo.DeleteAuthMethod(ctx, updatedOidc.PublicId)
+	_, err = oidcRepo.DeleteAuthMethod(ctx, updatedOidc.ScopeId, updatedOidc.PublicId)
 	require.NoError(err)
 	oidcParent, err = findParent(t, rw, updatedOidc.PublicId)
 	assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "expected error code %s and got error: %q", errors.RecordNotFound, err)
