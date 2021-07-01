@@ -4170,10 +4170,6 @@
           "description": "Output only. The Credential Store to which this Credential Library belongs.",
           "readOnly": true
         },
-        "purpose": {
-          "type": "string",
-          "description": "The library's purpose for this target."
-        },
         "type": {
           "type": "string",
           "description": "Output only. The type of the credential library.",
@@ -4270,12 +4266,28 @@
           "readOnly": true
         },
         "secret": {
-          "type": "string",
+          "$ref": "#/definitions/controller.api.resources.targets.v1.SessionSecret",
           "description": "Output only. The secret of this credential base64 encoded.",
           "readOnly": true
         }
       },
       "description": "A credential for a session."
+    },
+    "controller.api.resources.targets.v1.SessionSecret": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "Output only. The base64-encoded value representing the raw bytes from the\ncredential provider.",
+          "readOnly": true
+        },
+        "decoded": {
+          "type": "object",
+          "description": "Output only. The decoded raw string, if a JSON object.",
+          "readOnly": true
+        }
+      },
+      "description": "The actual secret for a session credential."
     },
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
@@ -4352,19 +4364,19 @@
           "type": "string",
           "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
         },
-        "credential_library_ids": {
+        "application_credential_library_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The IDs of the credential libraries associated with this Target."
+          "description": "The IDs of the application credential library ids associated with this Target."
         },
-        "credential_libraries": {
+        "application_credential_libraries": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary"
           },
-          "description": "Output only. The credential libraries associated with this Target.",
+          "description": "Output only. The application credential libraries associated with this Target.",
           "readOnly": true
         },
         "attributes": {
@@ -4606,20 +4618,13 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "credential_library_ids": {
+        "application_credential_library_ids": {
           "type": "array",
           "items": {
             "type": "string"
           }
-        },
-        "credential_libraries": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/controller.api.services.v1.CredentialLibrary"
-          }
         }
-      },
-      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
+      }
     },
     "controller.api.services.v1.AddTargetCredentialLibrariesResponse": {
       "type": "object",
@@ -4994,19 +4999,6 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
-        }
-      }
-    },
-    "controller.api.services.v1.CredentialLibrary": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The id of the credential library."
-        },
-        "purpose": {
-          "type": "string",
-          "description": "The purpose of the credential library for this target. Currently this can\nonly be \"application\" or left empty (which defaults the value to\n\"application\")."
         }
       }
     },
@@ -5457,7 +5449,7 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "credential_library_ids": {
+        "application_credential_library_ids": {
           "type": "array",
           "items": {
             "type": "string"
@@ -5671,20 +5663,14 @@
           "format": "int64",
           "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
-        "credential_library_ids": {
+        "application_credential_library_ids": {
           "type": "array",
           "items": {
             "type": "string"
           }
-        },
-        "credential_libraries": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/controller.api.services.v1.CredentialLibrary"
-          }
         }
       },
-      "description": "The ids from both credential_library_ids and credential_libraries are used.\nWhen using credential_library_ids the default value \"application\" is used\nfor the purpose."
+      "description": "Sets the values for application_credential_library_ids.  If any\ncredential_library_id field that is not set in the request will result in\nthose fields being cleared."
     },
     "controller.api.services.v1.SetTargetCredentialLibrariesResponse": {
       "type": "object",

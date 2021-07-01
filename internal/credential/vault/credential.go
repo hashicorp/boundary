@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
+	"github.com/hashicorp/boundary/internal/db/sanitize"
+	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -30,10 +32,6 @@ const (
 	// ExpiredCredential represents a credential that expired. This is a terminal
 	// status. It does not transition to RevokedCredential.
 	ExpiredCredential CredentialStatus = "expired"
-)
-
-const (
-	externalIdSentinel = "\ufffenone"
 
 	// UnknownCredentialStatus represents a credential that has an unknown
 	// status.
@@ -60,8 +58,9 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 	}
 
 	status := string(ActiveCredential)
+	externalId = sanitize.String(externalId)
 	if externalId == "" {
-		externalId = externalIdSentinel
+		externalId = sentinel.ExternalIdNone
 		status = string(UnknownCredentialStatus)
 	}
 

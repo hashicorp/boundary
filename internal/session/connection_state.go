@@ -19,9 +19,10 @@ const (
 type ConnectionStatus string
 
 const (
-	StatusAuthorized ConnectionStatus = "authorized"
-	StatusConnected  ConnectionStatus = "connected"
-	StatusClosed     ConnectionStatus = "closed"
+	StatusAuthorized  ConnectionStatus = "authorized"
+	StatusConnected   ConnectionStatus = "connected"
+	StatusClosed      ConnectionStatus = "closed"
+	StatusUnspecified ConnectionStatus = "unspecified" // Utility state not valid in the DB
 )
 
 // String representation of the state's status
@@ -40,6 +41,20 @@ func (s ConnectionStatus) ProtoVal() workerpbs.CONNECTIONSTATUS {
 		return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED
 	}
 	return workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_UNSPECIFIED
+}
+
+// ConnectionStatusFromProtoVal is the reverse of
+// ConnectionStatus.ProtoVal.
+func ConnectionStatusFromProtoVal(s workerpbs.CONNECTIONSTATUS) ConnectionStatus {
+	switch s {
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED:
+		return StatusAuthorized
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
+		return StatusConnected
+	case workerpbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED:
+		return StatusClosed
+	}
+	return StatusUnspecified
 }
 
 // ConnectionState of the state of the connection

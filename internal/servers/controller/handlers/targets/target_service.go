@@ -40,6 +40,7 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -461,7 +462,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.addLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetCredentialLibraries(), req.GetVersion())
+	t, ts, cl, err := s.addLibrariesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +500,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.setLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetCredentialLibraries(), req.GetVersion())
+	t, ts, cl, err := s.setLibrariesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +538,7 @@ func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.R
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.removeLibrariesInRepo(ctx, req.GetId(), req.GetCredentialLibraryIds(), req.GetVersion())
+	t, ts, cl, err := s.removeLibrariesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -834,10 +835,29 @@ HostSetIterationLoop:
 	var creds []*pb.SessionCredential
 	for _, c := range cs {
 		l := c.Library()
+		secret := c.Secret()
 		// TODO: Access the json directly from the vault response instead of re-marshalling it.
-		jSecret, err := json.Marshal(c.Secret())
+		jSecret, err := json.Marshal(secret)
 		if err != nil {
 			return nil, errors.Wrap(err, op, errors.WithMsg("marshalling secret to json"))
+		}
+		var sSecret *structpb.Struct
+		switch secret.(type) {
+		case map[string]interface{}:
+			// In this case we actually have to re-decode it. The proto wrappers
+			// choke on json.Number and at the time I'm writing this I don't
+			// have time to write a walk function to dig through with reflect
+			// and find all json.Numbers and replace them. So we eat the
+			// inefficiency. So note that we are specifically _not_ using a
+			// decoder with UseNumber here.
+			var dSecret map[string]interface{}
+			if err := json.Unmarshal(jSecret, &dSecret); err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("decoding json for proto marshaling"))
+			}
+			sSecret, err = structpb.NewStruct(dSecret)
+			if err != nil {
+				return nil, errors.Wrap(err, op, errors.WithMsg("creating proto struct for secret"))
+			}
 		}
 		creds = append(creds, &pb.SessionCredential{
 			CredentialLibrary: &pb.CredentialLibrary{
@@ -847,7 +867,10 @@ HostSetIterationLoop:
 				CredentialStoreId: l.GetStoreId(),
 				Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
 			},
-			Secret: base64.StdEncoding.EncodeToString(jSecret),
+			Secret: &pb.SessionSecret{
+				Raw:     base64.StdEncoding.EncodeToString(jSecret),
+				Decoded: sSecret,
+			},
 		})
 	}
 
@@ -1080,15 +1103,10 @@ func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetI
 	return out, hs, cl, nil
 }
 
-func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, libraries []*pbs.CredentialLibrary, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, lids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
-	}
-	lids := make([]string, 0, len(libraryIds)+len(libraries))
-	lids = append(lids, libraryIds...)
-	for _, l := range libraries {
-		lids = append(lids, l.GetId())
 	}
 	out, hs, cl, err := repo.AddTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(lids, false))
 	if err != nil {
@@ -1101,16 +1119,11 @@ func (s Service) addLibrariesInRepo(ctx context.Context, targetId string, librar
 	return out, hs, cl, nil
 }
 
-func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, libraries []*pbs.CredentialLibrary, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, lids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
 	const op = "targets.(Service).setLibrariesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
-	}
-	lids := make([]string, 0, len(libraryIds)+len(libraries))
-	lids = append(lids, libraryIds...)
-	for _, l := range libraries {
-		lids = append(lids, l.GetId())
 	}
 	_, _, _, err = repo.SetTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(lids, false))
 	if err != nil {
@@ -1128,13 +1141,13 @@ func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, librar
 	return out, hs, cl, nil
 }
 
-func (s Service) removeLibrariesInRepo(ctx context.Context, targetId string, libraryIds []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
+func (s Service) removeLibrariesInRepo(ctx context.Context, targetId string, lids []string, version uint32) (target.Target, []*target.TargetSet, []*target.TargetLibrary, error) {
 	const op = "targets.(Service).removeLibrariesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	_, err = repo.DeleteTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(libraryIds, false))
+	_, err = repo.DeleteTargetCredentialLibraries(ctx, targetId, version, strutil.RemoveDuplicates(lids, false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential libraries from target: %v.", err)
@@ -1203,6 +1216,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 }
 
 func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*target.TargetLibrary, opt ...handlers.Option) (*pb.Target, error) {
+	const op = "target_service.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building target proto")
@@ -1262,18 +1276,24 @@ func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*
 			})
 		}
 	}
-	if outputFields.Has(globals.CredentialLibraryIdsField) {
+	if outputFields.Has(globals.ApplicationCredentialLibraryIdsField) {
 		for _, cl := range l {
-			out.CredentialLibraryIds = append(out.CredentialLibraryIds, cl.GetCredentialLibraryId())
+			out.ApplicationCredentialLibraryIds = append(out.ApplicationCredentialLibraryIds, cl.GetCredentialLibraryId())
 		}
 	}
-	if outputFields.Has(globals.CredentialLibrariesField) {
+	if outputFields.Has(globals.ApplicationCredentialLibrariesField) {
 		for _, cl := range l {
-			out.CredentialLibraries = append(out.CredentialLibraries, &pb.CredentialLibrary{
-				Id:                cl.GetCredentialLibraryId(),
-				CredentialStoreId: cl.StoreId,
-				Purpose:           cl.GetCredentialPurpose(),
-			})
+			switch credential.Purpose(cl.GetCredentialPurpose()) {
+			case credential.ApplicationPurpose:
+				out.ApplicationCredentialLibraries = append(out.ApplicationCredentialLibraries, &pb.CredentialLibrary{
+					Id:                cl.GetCredentialLibraryId(),
+					CredentialStoreId: cl.StoreId,
+				})
+			case credential.IngressPurpose, credential.EgressPurpose:
+				// TODO: When we support other purposes add them to different fields here.
+			default:
+				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
+			}
 		}
 	}
 	if outputFields.Has(globals.AttributesField) {
@@ -1479,22 +1499,12 @@ func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) e
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetCredentialLibraryIds())+len(req.GetCredentialLibraries()) == 0 {
-		badFields[globals.CredentialLibraryIdsField] = "Must be non-empty."
+	if len(req.GetApplicationCredentialLibraryIds()) == 0 {
+		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
 	}
-	for _, id := range req.GetCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(id), vault.CredentialLibraryPrefix) {
-			badFields[globals.CredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", id)
-			break
-		}
-	}
-	for _, cl := range req.GetCredentialLibraries() {
-		if !handlers.ValidId(handlers.Id(cl.GetId()), vault.CredentialLibraryPrefix) {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
-			break
-		}
-		if cl.GetPurpose() != "" && cl.GetPurpose() != string(credential.ApplicationPurpose) {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
+	for _, cl := range req.GetApplicationCredentialLibraryIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
 			break
 		}
 	}
@@ -1512,19 +1522,9 @@ func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) e
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	for _, id := range req.GetCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(id), vault.CredentialLibraryPrefix) {
-			badFields[globals.CredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", id)
-			break
-		}
-	}
-	for _, cl := range req.GetCredentialLibraries() {
-		if !handlers.ValidId(handlers.Id(cl.GetId()), vault.CredentialLibraryPrefix) {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl.GetId())
-			break
-		}
-		if cl.GetPurpose() != "" && cl.GetPurpose() != string(credential.ApplicationPurpose) {
-			badFields[globals.CredentialLibrariesField] = fmt.Sprintf("Unrecognized purpose %q for credential library.", cl.GetPurpose())
+	for _, cl := range req.GetApplicationCredentialLibraryIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
 			break
 		}
 	}
@@ -1542,12 +1542,12 @@ func validateRemoveLibrariesRequest(req *pbs.RemoveTargetCredentialLibrariesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetCredentialLibraryIds()) == 0 {
-		badFields[globals.CredentialLibraryIdsField] = "Must be non-empty."
+	if len(req.GetApplicationCredentialLibraryIds()) == 0 {
+		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
 	}
-	for _, id := range req.GetCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(id), vault.CredentialLibraryPrefix) {
-			badFields[globals.CredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", id)
+	for _, cl := range req.GetApplicationCredentialLibraryIds() {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
 			break
 		}
 	}

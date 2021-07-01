@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"math/rand"
+	"os"
+	"strconv"
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -13,8 +15,47 @@ import (
 
 // In the future we could make this configurable
 const (
-	statusInterval = 2 * time.Second
+	statusInterval           = 2 * time.Second
+	statusTimeout            = 5 * time.Second
+	defaultStatusGracePeriod = 30 * time.Second
+	statusGracePeriodEnvVar  = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
+
+// statusGracePeriod returns the status grace period setting for this
+// worker, in seconds.
+//
+// The grace period is the length of time we allow connections to run
+// on a worker in the event of an error sending status updates. The
+// period is defined the length of time since the last successful
+// update.
+//
+// The setting is derived from one of the following:
+//
+//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
+//   integer value to define the setting.
+//   * If this is missing, the default (30 seconds) is used.
+//
+func (w *Worker) statusGracePeriod() time.Duration {
+	if v := os.Getenv(statusGracePeriodEnvVar); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			w.logger.Error("could not read setting for BOUNDARY_STATUS_GRACE_PERIOD, using default",
+				"err", err,
+				"value", v,
+			)
+			return defaultStatusGracePeriod
+		}
+
+		if n < 1 {
+			w.logger.Error("invalid setting for BOUNDARY_STATUS_GRACE_PERIOD, using default", "value", v)
+			return defaultStatusGracePeriod
+		}
+
+		return time.Second * time.Duration(n)
+	}
+
+	return defaultStatusGracePeriod
+}
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
@@ -52,8 +93,8 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	}()
 }
 
-// LastStatusSuccess is used in tests (it's exported for tests in other
-// packages) to verify the last time we sent status
+// LastStatusSuccess reports the last time we sent a successful
+// status request.
 func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 	return w.lastStatusSuccess.Load().(*LastStatusInformation)
 }
@@ -102,7 +143,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	if w.updateTags.Load() {
 		tags = w.tags.Load().(map[string]*servers.TagValues)
 	}
-	result, err := client.Status(cancelCtx, &pbs.StatusRequest{
+	statusCtx, statusCancel := context.WithTimeout(cancelCtx, statusTimeout)
+	defer statusCancel()
+	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		Worker: &servers.Server{
 			PrivateId:   w.conf.RawConfig.Worker.Name,
@@ -115,6 +158,25 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	})
 	if err != nil {
 		w.logger.Error("error making status request to controller", "error", err)
+		// Check for last successful status. Ignore nil last status, this probably
+		// means that we've never connected to a controller, and as such probably
+		// don't have any sessions to worry about anyway.
+		//
+		// If a length of time has passed since we've been able to communicate, we
+		// want to start terminating all sessions as a "break glass" kind of
+		// scenario, as there will be no way we can really tell if these
+		// connections should continue to exist.
+
+		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
+			w.logger.Warn("status error grace period has expired, canceling all sessions on worker",
+				"last_status_time", lastStatusTime.String(),
+				"grace_period", gracePeriod,
+			)
+
+			// Run a "cleanup" for all sessions that will not be caught by
+			// our standard cleanup routine.
+			w.cleanupConnections(cancelCtx, true)
+		}
 	} else {
 		w.logger.Trace("successfully sent status to controller")
 		w.updateTags.Store(false)
@@ -154,17 +216,28 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		}
 	}
 
-	// Cleanup: Run through current jobs. Cancel connections for any
-	// canceling session or any session that is expired. Clear out
-	// sessions that are canceled or expired with all connections
-	// marked as closed. Close any that aren't marked as such.
+	// Standard cleanup: Run through current jobs. Cancel connections
+	// for any canceling session or any session that is expired.
+	w.cleanupConnections(cancelCtx, false)
+}
+
+// cleanupConnections walks all sessions and shuts down connections.
+// Additionally, sessions without connections are cleaned up from the
+// local worker's state.
+//
+// Use ignoreSessionState to ignore the state checks, this closes all
+// connections, regardless of whether or not the session is still
+// active.
+func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool) {
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
 	w.sessionInfoMap.Range(func(key, value interface{}) bool {
 		si := value.(*sessionInfo)
 		si.Lock()
+		defer si.Unlock()
 		switch {
-		case si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+		case ignoreSessionState,
+			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
 			si.status == pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED,
 			time.Until(si.lookupSessionResponse.Expiration.AsTime()) < 0:
 			var toClose int
@@ -184,16 +257,17 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 				cleanSessionIds = append(cleanSessionIds, si.id)
 			}
 		}
-		si.Unlock()
+
 		return true
 	})
 
 	// Note that we won't clean these from the info map until the
 	// next time we run this function
 	if len(closeInfo) > 0 {
-		if err := w.closeConnections(cancelCtx, closeInfo); err != nil {
-			w.logger.Error("error marking connections closed", "error", err)
-		}
+		// Call out to a helper to send the connection close requests to the
+		// controller, and set the close time. This functionality is shared with
+		// post-close functionality in the proxy handler.
+		w.closeConnections(cancelCtx, closeInfo)
 	}
 
 	// Forget sessions where the session is expired/canceled and all
@@ -201,4 +275,20 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	for _, v := range cleanSessionIds {
 		w.sessionInfoMap.Delete(v)
 	}
+}
+
+func (w *Worker) lastSuccessfulStatusTime() time.Time {
+	lastStatus := w.LastStatusSuccess()
+	if lastStatus == nil {
+		return w.workerStartTime
+	}
+
+	return lastStatus.StatusTime
+}
+
+func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
+	t := w.lastSuccessfulStatusTime()
+	u := w.statusGracePeriod()
+	v := time.Since(t)
+	return v > u, t, u
 }

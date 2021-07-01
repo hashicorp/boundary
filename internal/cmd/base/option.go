@@ -25,6 +25,7 @@ type Options struct {
 	withContainerImage             string
 	withDialect                    string
 	withAttributeFieldPrefix       string
+	withStatusCode                 int
 }
 
 func getDefaultOptions() Options {
@@ -118,5 +119,12 @@ func withDialect(dialect string) Option {
 func WithAttributeFieldPrefix(p string) Option {
 	return func(o *Options) {
 		o.withAttributeFieldPrefix = p
+	}
+}
+
+// WithStatusCode allows passing status codes to functions
+func WithStatusCode(statusCode int) Option {
+	return func(o *Options) {
+		o.withStatusCode = statusCode
 	}
 }

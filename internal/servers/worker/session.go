@@ -15,9 +15,9 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 )
 
-const (
-	validateSessionTimeout = 90 * time.Second
-)
+const validateSessionTimeout = 90 * time.Second
+
+var errMakeSessionCloseInfoNilCloseInfo = errors.New("nil closeInfo supplied to makeSessionCloseInfo, this is a bug, please report it")
 
 type connInfo struct {
 	id         string
@@ -251,49 +251,175 @@ func (w *Worker) closeConnection(ctx context.Context, req *pbs.CloseConnectionRe
 	return resp, nil
 }
 
-func (w *Worker) closeConnections(ctx context.Context, closeMap map[string]string) error {
-	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeMap))
+// closeConnections is a helper worker function that sends connection
+// close requests to the controller, and sets close times within the
+// worker. It is called during the worker status loop and on
+// connection exit on the proxy.
+//
+// closeInfo is a map of connections mapped to their individual
+// session.
+func (w *Worker) closeConnections(ctx context.Context, closeInfo map[string]string) {
+	if closeInfo == nil {
+		// This should not happen, but it's a no-op if it does. Just
+		// return.
+		return
+	}
 
-	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeMap))
-	for connId := range closeMap {
+	w.logger.Trace("marking connections as closed", "session_and_connection_ids", fmt.Sprintf("%#v", closeInfo))
+
+	// How we handle close info depends on whether or not we succeeded with
+	// marking them closed on the controller.
+	var sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
+	var err error
+
+	// TODO: This, along with the status call to the controller, probably needs a
+	// bit of formalization in terms of how we handle timeouts. For now, this
+	// just ensures consistency with the same status call in that it times out
+	// within an adequate period of time.
+	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, statusTimeout)
+	defer closeConnCancel()
+	response, err := w.closeConnection(closeConnCtx, w.makeCloseConnectionRequest(closeInfo))
+	if err != nil {
+		w.logger.Error("error marking connections closed", "error", err)
+		w.logger.Warn(
+			"error contacting controller, connections will be closed only on worker",
+			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
+		)
+
+		// Since we could not reach the controller, we have to make a "fake" response set.
+		sessionCloseInfo, err = w.makeFakeSessionCloseInfo(closeInfo)
+	} else {
+		// Connection succeeded, so we can proceed with making the sessionCloseInfo
+		// off of the response data.
+		sessionCloseInfo, err = w.makeSessionCloseInfo(closeInfo, response)
+	}
+
+	if err != nil {
+		w.logger.Error(err.Error())
+		w.logger.Error("serious error in processing return data from controller, aborting additional session/connection state modification")
+		return
+	}
+
+	// Mark connections as closed
+	closedIds, errs := w.setCloseTimeForResponse(sessionCloseInfo)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			w.logger.Error("error marking connection closed in state", "err", err)
+		}
+	}
+
+	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
+}
+
+// makeCloseConnectionRequest creates a CloseConnectionRequest for
+// use with closing connections.
+//
+// closeInfo is a map, indexed by connection ID, to the individual
+// sessions IDs that those connections belong to. The values are
+// ignored; the parameter is expected as such just for convenience of
+// its caller.
+func (w *Worker) makeCloseConnectionRequest(closeInfo map[string]string) *pbs.CloseConnectionRequest {
+	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeInfo))
+	for connId := range closeInfo {
 		closeData = append(closeData, &pbs.CloseConnectionRequestData{
 			ConnectionId: connId,
 			Reason:       session.UnknownReason.String(),
 		})
 	}
-	closeInfo := &pbs.CloseConnectionRequest{
+
+	return &pbs.CloseConnectionRequest{
 		CloseRequestData: closeData,
 	}
+}
 
-	connStatus, err := w.closeConnection(ctx, closeInfo)
-	if err != nil {
-		return err
+// makeSessionCloseInfo takes the response from CloseConnections and
+// our original closeInfo map and makes a map of slices, indexed by
+// session ID, of all of the connection responses. This allows us to
+// easily lock on session once for all connections in
+// setCloseTimeForResponse.
+func (w *Worker) makeSessionCloseInfo(
+	closeInfo map[string]string,
+	response *pbs.CloseConnectionResponse,
+) (map[string][]*pbs.CloseConnectionResponseData, error) {
+	if closeInfo == nil {
+		return nil, errMakeSessionCloseInfoNilCloseInfo
 	}
-	closedIds := make([]string, 0, len(connStatus.GetCloseResponseData()))
 
-	// Here we build a reverse map from closeMap, that is, session ID to
-	// connection IDs, for more efficient locking
-	revMap := make(map[string][]*pbs.CloseConnectionResponseData)
-	for _, v := range connStatus.GetCloseResponseData() {
-		revMap[closeMap[v.GetConnectionId()]] = append(revMap[closeMap[v.GetConnectionId()]], v)
+	result := make(map[string][]*pbs.CloseConnectionResponseData)
+	for _, v := range response.GetCloseResponseData() {
+		result[closeInfo[v.GetConnectionId()]] = append(result[closeInfo[v.GetConnectionId()]], v)
 	}
-	for k, v := range revMap {
-		siRaw, ok := w.sessionInfoMap.Load(k)
+
+	return result, nil
+}
+
+// makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
+// for use when we can't contact the controller.
+func (w *Worker) makeFakeSessionCloseInfo(
+	closeInfo map[string]string,
+) (map[string][]*pbs.CloseConnectionResponseData, error) {
+	if closeInfo == nil {
+		return nil, errMakeSessionCloseInfoNilCloseInfo
+	}
+
+	result := make(map[string][]*pbs.CloseConnectionResponseData)
+	for connectionId, sessionId := range closeInfo {
+		result[sessionId] = append(result[sessionId], &pbs.CloseConnectionResponseData{
+			ConnectionId: connectionId,
+			Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+		})
+	}
+
+	return result, nil
+}
+
+// setCloseTimeForResponse iterates a CloseConnectionResponse and
+// sets the close time for any connection found to be closed to the
+// current time.
+//
+// sessionCloseInfo can be derived from the closeInfo supplied to
+// makeCloseConnectionRequest through reverseCloseInfo, which creates
+// a session ID to connection ID mapping.
+//
+// A non-zero error count does not necessarily mean the operation
+// failed, as some connections may have been marked as closed. The
+// actual list of connection IDs closed is returned as the first
+// return value.
+func (w *Worker) setCloseTimeForResponse(sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
+	closedIds := make([]string, 0)
+	var errors []error
+	for sessionId, responses := range sessionCloseInfo {
+		siRaw, ok := w.sessionInfoMap.Load(sessionId)
 		if !ok {
-			w.logger.Warn("could not find session ID in info map after closing connections", "session_id", k)
+			errors = append(errors, fmt.Errorf("could not find session ID %q in local state after closing connections", sessionId))
 			continue
 		}
+
 		si := siRaw.(*sessionInfo)
 		si.Lock()
-		for _, connResult := range v {
-			ci := si.connInfoMap[connResult.GetConnectionId()]
-			ci.status = connResult.GetStatus()
+
+		for _, response := range responses {
+			ci, ok := si.connInfoMap[response.GetConnectionId()]
+			if !ok {
+				errors = append(errors,
+					fmt.Errorf(
+						"could not find connection ID %q for session ID %q in local state after closing connections",
+						response.GetConnectionId(),
+						sessionId,
+					),
+				)
+				continue
+			}
+
+			ci.status = response.GetStatus()
 			if ci.status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
 				ci.closeTime = time.Now()
+				closedIds = append(closedIds, ci.id)
 			}
 		}
+
 		si.Unlock()
 	}
-	w.logger.Trace("connections successfully marked closed", "connection_ids", closedIds)
-	return nil
+
+	return closedIds, errors
 }

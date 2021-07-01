@@ -196,6 +196,7 @@ func createTestToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scop
 	ctx := context.Background()
 	kkms := kms.TestKms(t, conn, wrapper)
 	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 
 	inToken, err := newToken(storeId, []byte(token), []byte(accessor), 5*time.Minute)
 	assert.NoError(t, err)

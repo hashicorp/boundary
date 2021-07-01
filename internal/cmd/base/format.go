@@ -241,18 +241,27 @@ func (c *Command) PrintCliError(err error) {
 }
 
 // PrintJsonItem prints the given item to the UI in JSON format
-func (c *Command) PrintJsonItem(result api.GenericResult) bool {
+func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
 	resp := result.GetResponse()
 	if resp == nil {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
 		return false
 	}
+	if r := resp.HttpResponse(); r != nil {
+		opt = append(opt, WithStatusCode(r.StatusCode))
+	}
+	return c.PrintJson(resp.Body.Bytes(), opt...)
+}
+
+// PrintJson prints the given raw JSON in our common format
+func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
+	opts := getOpts(opt...)
 	output := struct {
-		StatusCode int             `json:"status_code"`
+		StatusCode int             `json:"status_code,omitempty"`
 		Item       json.RawMessage `json:"item,omitempty"`
 	}{
-		StatusCode: resp.HttpResponse().StatusCode,
-		Item:       resp.Body.Bytes(),
+		StatusCode: opts.withStatusCode,
+		Item:       input,
 	}
 	b, err := JsonFormatter{}.Format(output)
 	if err != nil {

@@ -328,9 +328,11 @@ func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grant
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddGrants request")
 	}
+
 	if len(grantStrings) == 0 {
 		return nil, errors.New("empty grantStrings passed into AddGrants request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -358,6 +360,7 @@ func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grant
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", id), opts.postMap, apiOpts...)
@@ -395,9 +398,11 @@ func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, p
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddPrincipals request")
 	}
+
 	if len(principalIds) == 0 {
 		return nil, errors.New("empty principalIds passed into AddPrincipals request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -425,6 +430,7 @@ func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, p
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", id), opts.postMap, apiOpts...)
@@ -490,6 +496,7 @@ func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grant
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", id), opts.postMap, apiOpts...)
@@ -555,6 +562,7 @@ func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, p
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", id), opts.postMap, apiOpts...)
@@ -592,9 +600,11 @@ func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, gr
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveGrants request")
 	}
+
 	if len(grantStrings) == 0 {
 		return nil, errors.New("empty grantStrings passed into RemoveGrants request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -622,6 +632,7 @@ func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, gr
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["grant_strings"] = grantStrings
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", id), opts.postMap, apiOpts...)
@@ -659,9 +670,11 @@ func (c *Client) RemovePrincipals(ctx context.Context, id string, version uint32
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemovePrincipals request")
 	}
+
 	if len(principalIds) == 0 {
 		return nil, errors.New("empty principalIds passed into RemovePrincipals request")
 	}
+
 	if c.client == nil {
 		return nil, errors.New("nil client")
 	}
@@ -689,6 +702,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, id string, version uint32
 	}
 
 	opts.postMap["version"] = version
+
 	opts.postMap["principal_ids"] = principalIds
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", id), opts.postMap, apiOpts...)

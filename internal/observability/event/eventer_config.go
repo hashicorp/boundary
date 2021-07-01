@@ -8,8 +8,10 @@ import (
 type EventerConfig struct {
 	AuditDelivery       DeliveryGuarantee // AuditDelivery specifies the delivery guarantees for audit events (enforced or best effort).
 	ObservationDelivery DeliveryGuarantee // ObservationDelivery specifies the delivery guarantees for observation events (enforced or best effort).
+	SysEventsDelivery   DeliveryGuarantee // SysEventsDelivery specifies the delivery guarantees for system events (enforced or best effort).
 	AuditEnabled        bool              // AuditEnabled specifies if audit events should be emitted.
 	ObservationsEnabled bool              // ObservationsEnabled specifies if observation events should be emitted.
+	SysEventsEnabled    bool              // SysEventsEnabled specifies if sysevents should be emitted.
 	Sinks               []SinkConfig      // Sinks are all the configured sinks
 }
 
