@@ -64,8 +64,8 @@ type pipeline struct {
 }
 
 var (
-	sysEventer     *Eventer   // sysEventer is the system-wide Eventer
-	sysEventerLock sync.Mutex // sysEventerLock allows the sysEventer to safely be written concurrently.
+	sysEventer     *Eventer     // sysEventer is the system-wide Eventer
+	sysEventerLock sync.RWMutex // sysEventerLock allows the sysEventer to safely be written concurrently.
 )
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
@@ -112,6 +112,8 @@ func InitSysEventer(log hclog.Logger, opt ...Option) error {
 // SysEventer returns the "system wide" eventer for Boundary and can/will return
 // a nil Eventer
 func SysEventer() *Eventer {
+	sysEventerLock.RLock()
+	defer sysEventerLock.RUnlock()
 	return sysEventer
 }
 
