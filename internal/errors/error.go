@@ -100,6 +100,8 @@ func New(ctx context.Context, c Code, op Op, msg string, opt ...Option) error {
 
 // EDeprecated is the legacy version of E which does not
 // create an event. Please refrain from using this.
+// When all calls are moved from EDeprecated to
+// E, please update ICU-1883
 func EDeprecated(opt ...Option) error {
 	opts := GetOpts(opt...)
 	var code Code
@@ -126,6 +128,8 @@ func EDeprecated(opt ...Option) error {
 
 // NewDeprecated is the legacy version of E which does not
 // create an event. Please refrain from using this.
+// When all calls are moved from NewDeprecated to
+// New, please update ICU-1883
 func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
 	if c != Unknown {
 		opt = append(opt, WithCode(c))
@@ -146,6 +150,9 @@ func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
 //
 // * WithMsg() - allows you to specify an optional error msg, if the default
 // msg for the error Code is not sufficient.
+//
+// Before deprecating EDeprecated - please update
+// this to call E(). ICU-1884
 func Wrap(e error, op Op, opt ...Option) error {
 	if op != "" {
 		opt = append(opt, WithOp(op))
