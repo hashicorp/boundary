@@ -204,6 +204,5 @@ comment on table event_file_sink is
 'event_file_sink is a table where each entry represents a configured event file '
 ' sink';
 
-
 commit;
 
