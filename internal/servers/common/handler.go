@@ -14,9 +14,6 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
-// UnknownStatusCode re-uses CloudFlare's popular extended 520 status code.
-const UnknownStatusCode = 520
-
 // generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
 // the id.
 func generatedTraceId(ctx context.Context) string {
