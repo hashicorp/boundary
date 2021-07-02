@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -173,7 +174,12 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	})
 
 	c := event.TestEventerConfig(t, "Test_WrapWithEventsHandler", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
-	testEventer, err := event.NewEventer(hclog.Default(), c.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -227,7 +233,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			e: func() *event.Eventer {
 				b := &testMockBroker{errorOnSendAudit: true}
 				c := event.EventerConfig{AuditEnabled: true}
-				e, err := event.NewEventer(hclog.Default(), c, event.TestWithBroker(t, b))
+				e, err := event.NewEventer(testLogger, testLock, c, event.TestWithBroker(t, b))
 				require.NoError(t, err)
 				return e
 			}(),
@@ -242,7 +248,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			e: func() *event.Eventer {
 				b := &testMockBroker{errorOnFlush: true}
 				c := event.EventerConfig{AuditEnabled: true}
-				e, err := event.NewEventer(hclog.Default(), c, event.TestWithBroker(t, b))
+				e, err := event.NewEventer(testLogger, testLock, c, event.TestWithBroker(t, b))
 				require.NoError(t, err)
 				return e
 			}(),
@@ -386,7 +392,12 @@ func Test_startGatedEvents(t *testing.T) {
 				AuditEnabled:        true,
 				ObservationsEnabled: true,
 			}
-			e, err := event.NewEventer(hclog.Default(), config, event.TestWithBroker(t, b))
+			testLock := &sync.Mutex{}
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Mutex: testLock,
+				Name:  "test",
+			})
+			e, err := event.NewEventer(testLogger, testLock, config, event.TestWithBroker(t, b))
 			require.NoError(err)
 			ctx, err := event.NewEventerContext(context.Background(), e)
 			require.NoError(err)
@@ -440,7 +451,12 @@ func Test_flushGatedEvents(t *testing.T) {
 				AuditEnabled:        true,
 				ObservationsEnabled: true,
 			}
-			e, err := event.NewEventer(hclog.Default(), config, event.TestWithBroker(t, b))
+			testLock := &sync.Mutex{}
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Mutex: testLock,
+				Name:  "test",
+			})
+			e, err := event.NewEventer(testLogger, testLock, config, event.TestWithBroker(t, b))
 			require.NoError(err)
 			ctx, err := event.NewEventerContext(context.Background(), e)
 			require.NoError(err)

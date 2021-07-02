@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -147,7 +148,12 @@ func Test_RequestInfoFromContext(t *testing.T) {
 
 func Test_NewEventerContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_NewEventerContext")
-	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, testSetup.EventerConfig)
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
@@ -199,7 +205,12 @@ func Test_NewEventerContext(t *testing.T) {
 func Test_EventerFromContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_EventerFromContext")
 
-	testEventer, err := event.NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	testEventer, err := event.NewEventer(testLogger, testLock, testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testEventerCtx, err := event.NewEventerContext(context.Background(), testEventer)
@@ -247,13 +258,15 @@ func Test_WriteObservation(t *testing.T) {
 
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
 
 	c := event.TestEventerConfig(t, "WriteObservation")
 
-	e, err := event.NewEventer(logger, c.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
 	require.NoError(t, err)
 
 	info := &event.RequestInfo{Id: "867-5309"}
@@ -332,7 +345,7 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
+				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -383,7 +396,7 @@ func Test_WriteObservation(t *testing.T) {
 			},
 			observationSinkFileName: c.AllEvents.Name(),
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
+				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
@@ -444,14 +457,15 @@ func Test_WriteObservation(t *testing.T) {
 	}
 	t.Run("not-enabled", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		logger := hclog.New(&hclog.LoggerOptions{
-			Name: "test",
-		})
 
 		c := event.TestEventerConfig(t, "WriteObservation")
 		c.EventerConfig.ObservationsEnabled = false
-
-		e, err := event.NewEventer(logger, c.EventerConfig)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
 		require.NoError(err)
 
 		testCtx, err := event.NewEventerContext(context.Background(), e)
@@ -527,13 +541,13 @@ func Test_WriteAudit(t *testing.T) {
 	// dependency on the sysEventer
 	now := time.Now()
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
-
 	c := event.TestEventerConfig(t, "WriteAudit")
-
-	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
 	require.NoError(t, err)
 
 	info := &event.RequestInfo{Id: "867-5309"}
@@ -640,7 +654,7 @@ func Test_WriteAudit(t *testing.T) {
 				Request: testReq,
 			},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
+				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:           func() { event.TestResetSystEventer(t) },
 			auditSinkFileName: c.AllEvents.Name(),
@@ -738,14 +752,14 @@ func Test_WriteAudit(t *testing.T) {
 	}
 	t.Run("not-enabled", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		logger := hclog.New(&hclog.LoggerOptions{
-			Name: "test",
-		})
-
 		c := event.TestEventerConfig(t, "WriteAudit")
 		c.EventerConfig.AuditEnabled = false
-
-		e, err := event.NewEventer(logger, c.EventerConfig)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, c.EventerConfig)
 		require.NoError(err)
 
 		testCtx, err := event.NewEventerContext(context.Background(), e)
@@ -767,13 +781,13 @@ func Test_WriteError(t *testing.T) {
 	// dependency on the sysEventer
 	now := time.Now()
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name: "test",
-	})
-
 	c := event.TestEventerConfig(t, "WriteAudit")
-
-	e, err := event.NewEventer(logger, c.EventerConfig, event.WithNow(now))
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	e, err := event.NewEventer(testLogger, testLock, c.EventerConfig, event.WithNow(now))
 	require.NoError(t, err)
 
 	info := &event.RequestInfo{Id: "867-5309"}
@@ -825,7 +839,7 @@ func Test_WriteError(t *testing.T) {
 			ctx:  context.Background(),
 			e:    &testError,
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
+				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),
@@ -836,7 +850,7 @@ func Test_WriteError(t *testing.T) {
 			e:    &testError,
 			info: &event.RequestInfo{},
 			setup: func() error {
-				return event.InitSysEventer(hclog.Default(), event.WithEventerConfig(&c.EventerConfig))
+				return event.InitSysEventer(testLogger, testLock, event.WithEventerConfig(&c.EventerConfig))
 			},
 			cleanup:         func() { event.TestResetSystEventer(t) },
 			errSinkFileName: c.ErrorEvents.Name(),

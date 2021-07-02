@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
@@ -16,13 +17,17 @@ func Test_InitSysEventer(t *testing.T) {
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	testConfig := TestEventerConfig(t, "InitSysEventer")
-
-	testEventer, err := NewEventer(hclog.Default(), testConfig.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	testEventer, err := NewEventer(testLogger, testLock, testConfig.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
 		name      string
 		log       hclog.Logger
+		lock      *sync.Mutex
 		opt       []Option
 		want      *Eventer
 		wantErrIs error
@@ -34,23 +39,32 @@ func Test_InitSysEventer(t *testing.T) {
 		{
 			name:      "missing-hclog",
 			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			lock:      testLock,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:      "missing-lock",
+			opt:       []Option{WithEventerConfig(&testConfig.EventerConfig)},
+			log:       testLogger,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name: "success-with-config",
 			opt:  []Option{WithEventerConfig(&testConfig.EventerConfig)},
-			log:  hclog.Default(),
+			log:  testLogger,
+			lock: testLock,
 			want: &Eventer{
-				logger: hclog.Default(),
+				logger: testLogger,
 				conf:   testConfig.EventerConfig,
 			},
 		},
 		{
 			name: "success-with-default-config",
 			opt:  []Option{WithEventerConfig(&EventerConfig{})},
-			log:  hclog.Default(),
+			log:  testLogger,
+			lock: testLock,
 			want: &Eventer{
-				logger: hclog.Default(),
+				logger: testLogger,
 				conf: EventerConfig{
 					Sinks: []SinkConfig{
 						{
@@ -66,7 +80,8 @@ func Test_InitSysEventer(t *testing.T) {
 		{
 			name: "success-with-eventer",
 			opt:  []Option{WithEventer(testEventer)},
-			log:  hclog.Default(),
+			log:  testLogger,
+			lock: testLock,
 			want: testEventer,
 		},
 	}
@@ -75,8 +90,7 @@ func Test_InitSysEventer(t *testing.T) {
 			defer TestResetSystEventer(t)
 
 			assert, require := assert.New(t), require.New(t)
-
-			err := InitSysEventer(tt.log, tt.opt...)
+			err := InitSysEventer(tt.log, tt.lock, tt.opt...)
 			got := SysEventer()
 			if tt.wantErrIs != nil {
 				require.Nil(got)
@@ -100,7 +114,11 @@ func TestEventer_writeObservation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "TestEventer_writeObservation")
-	eventer, err := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testHeader := map[string]interface{}{"name": "header"}
@@ -149,14 +167,16 @@ func TestEventer_writeObservation(t *testing.T) {
 	t.Run("e2e", func(t *testing.T) {
 		require := require.New(t)
 
-		logger := hclog.New(&hclog.LoggerOptions{
-			Name: "test",
-		})
 		c := EventerConfig{
 			ObservationsEnabled: true,
 		}
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
 		// with no defined config, it will default to a stderr sink
-		e, err := NewEventer(logger, c)
+		e, err := NewEventer(testLogger, testLock, c)
 		require.NoError(err)
 
 		m := map[string]interface{}{
@@ -174,7 +194,12 @@ func TestEventer_writeAudit(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
-	eventer, err := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	eventer, err := NewEventer(testLogger, testLock, testSetup.EventerConfig)
 	require.NoError(t, err)
 
 	testAudit, err := newAudit(
@@ -229,7 +254,12 @@ func TestEventer_writeError(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
-	eventer, er := NewEventer(hclog.Default(), testSetup.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	eventer, er := NewEventer(testLogger, testLock, testSetup.EventerConfig)
 	require.NoError(t, er)
 
 	testError, er := newError("TestEventer_writeError", fmt.Errorf("%s: no msg: test", ErrIo))
@@ -281,11 +311,18 @@ func Test_NewEventer(t *testing.T) {
 
 	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t))
 
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+
 	tests := []struct {
 		name           string
 		config         EventerConfig
 		opts           []Option
 		logger         hclog.Logger
+		lock           *sync.Mutex
 		want           *Eventer
 		wantRegistered []string
 		wantPipelines  []string
@@ -295,14 +332,22 @@ func Test_NewEventer(t *testing.T) {
 		{
 			name:      "missing-logger",
 			config:    testSetup.EventerConfig,
+			lock:      testLock,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:      "missing-lock",
+			config:    testSetup.EventerConfig,
+			logger:    testLogger,
 			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:   "success-with-default-config",
 			config: EventerConfig{},
-			logger: hclog.Default(),
+			logger: testLogger,
+			lock:   testLock,
 			want: &Eventer{
-				logger: hclog.Default(),
+				logger: testLogger,
 				conf: EventerConfig{
 					Sinks: []SinkConfig{
 						{
@@ -332,9 +377,10 @@ func Test_NewEventer(t *testing.T) {
 		{
 			name:   "testSetup",
 			config: testSetup.EventerConfig,
-			logger: hclog.Default(),
+			logger: testLogger,
+			lock:   testLock,
 			want: &Eventer{
-				logger: hclog.Default(),
+				logger: testLogger,
 				conf:   testSetup.EventerConfig,
 			},
 			wantRegistered: []string{
@@ -363,9 +409,10 @@ func Test_NewEventer(t *testing.T) {
 		{
 			name:   "testSetup-with-all-opts",
 			config: testSetupWithOpts.EventerConfig,
-			logger: hclog.Default(),
+			logger: testLogger,
+			lock:   testLock,
 			want: &Eventer{
-				logger: hclog.Default(),
+				logger: testLogger,
 				conf:   testSetupWithOpts.EventerConfig,
 			},
 			wantRegistered: []string{
@@ -403,7 +450,7 @@ func Test_NewEventer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testBroker := &testMockBroker{}
-			got, err := NewEventer(tt.logger, tt.config, TestWithBroker(t, testBroker))
+			got, err := NewEventer(tt.logger, tt.lock, tt.config, TestWithBroker(t, testBroker))
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				require.Nil(got)
@@ -488,7 +535,13 @@ func TestEventer_Reopen(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
-		e, err := NewEventer(hclog.Default(), EventerConfig{})
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+
+		e, err := NewEventer(testLogger, testLock, EventerConfig{})
 		require.NoError(err)
 
 		e.broker = nil
@@ -504,8 +557,13 @@ func TestEventer_FlushNodes(t *testing.T) {
 	t.Parallel()
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
 
-		e, err := NewEventer(hclog.Default(), EventerConfig{})
+		e, err := NewEventer(testLogger, testLock, EventerConfig{})
 		require.NoError(err)
 
 		node := &testFlushNode{}

@@ -156,13 +156,13 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		}
 	}
 
-	e, err := event.NewEventer(logger, *opts.withEventerConfig, event.WithSerializationLock(serializationLock))
+	e, err := event.NewEventer(logger, serializationLock, *opts.withEventerConfig)
 	if err != nil {
 		return berrors.Wrap(err, op, berrors.WithMsg("unable to create eventer"))
 	}
 	b.Eventer = e
 
-	if err := event.InitSysEventer(logger, event.WithEventer(e)); err != nil {
+	if err := event.InitSysEventer(logger, serializationLock, event.WithEventer(e)); err != nil {
 		return berrors.Wrap(err, op, berrors.WithMsg("unable to initialize system eventer"))
 	}
 

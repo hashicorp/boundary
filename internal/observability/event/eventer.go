@@ -76,10 +76,13 @@ var (
 // process should only have one Eventer.  In practice this means the process
 // Server (Controller or Worker) and the SysEventer both need a pointer to a
 // single Eventer.
-func InitSysEventer(log hclog.Logger, opt ...Option) error {
+func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, opt ...Option) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
 		return fmt.Errorf("%s: missing hclog: %w", op, ErrInvalidParameter)
+	}
+	if serializationLock == nil {
+		return fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
 	}
 
 	// the order of operations is important here.  we want to determine if
@@ -95,7 +98,7 @@ func InitSysEventer(log hclog.Logger, opt ...Option) error {
 
 	case opts.withEventerConfig != nil:
 		var err error
-		if e, err = NewEventer(log, *opts.withEventerConfig); err != nil {
+		if e, err = NewEventer(log, serializationLock, *opts.withEventerConfig); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -119,10 +122,13 @@ func SysEventer() *Eventer {
 
 // NewEventer creates a new Eventer using the config.  Supports options:
 // WithNow, WithSerializationLock, WithBroker
-func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, error) {
+func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
 		return nil, fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
+	}
+	if serializationLock == nil {
+		return nil, fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
 	}
 
 	// if there are no sinks in config, then we'll default to just one stderr
@@ -168,15 +174,11 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		return nil, fmt.Errorf("%s: failed to register json node: %w", op, err)
 	}
 
-	if opts.withSerializationLock == nil {
-		opts.withSerializationLock = new(sync.Mutex)
-	}
-
 	// serializedStderr will be shared among all StderrSinks so their output is not
 	// interwoven
 	serializedStderr := serializedWriter{
 		w: os.Stderr,
-		l: opts.withSerializationLock,
+		l: serializationLock,
 	}
 
 	// we need to keep track of all the Sink filenames to ensure they aren't

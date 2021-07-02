@@ -162,7 +162,7 @@ func TestServer_AddEventerToContext(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	testEventer, err := event.NewEventer(testLogger, event.EventerConfig{})
+	testEventer, err := event.NewEventer(testLogger, testLock, event.EventerConfig{})
 	require.NoError(t, err)
 	tests := []struct {
 		name            string

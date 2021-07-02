@@ -1,7 +1,6 @@
 package event
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -99,14 +98,6 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithEventerConfig(&c))
 		testOpts := getDefaultOptions()
 		testOpts.withEventerConfig = &c
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithSerializationLock", func(t *testing.T) {
-		assert := assert.New(t)
-		l := new(sync.Mutex)
-		opts := getOpts(WithSerializationLock(l))
-		testOpts := getDefaultOptions()
-		testOpts.withSerializationLock = l
 		assert.Equal(opts, testOpts)
 	})
 }
