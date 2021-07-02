@@ -31,6 +31,7 @@ type Options struct {
 	withEventerConfig              *event.EventerConfig
 	withEventFlags                 *EventFlags
 	withAttributeFieldPrefix       string
+	withStatusCode                 int
 }
 
 func getDefaultOptions() Options {
@@ -138,5 +139,12 @@ func WithEventFlags(flags *EventFlags) Option {
 func WithAttributeFieldPrefix(p string) Option {
 	return func(o *Options) {
 		o.withAttributeFieldPrefix = p
+	}
+}
+
+// WithStatusCode allows passing status codes to functions
+func WithStatusCode(statusCode int) Option {
+	return func(o *Options) {
+		o.withStatusCode = statusCode
 	}
 }

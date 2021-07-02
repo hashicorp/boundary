@@ -104,12 +104,14 @@ func TestServer_SetupEventing(t *testing.T) {
 			lock:   testLock,
 			opt: []Option{WithEventerConfig(&event.EventerConfig{
 				ObservationsEnabled: false,
+				SysEventsEnabled:    false,
 				AuditEnabled:        true,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
+				c.SysEventsEnabled = false
 				return *c
 			}(),
 		},

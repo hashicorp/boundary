@@ -132,6 +132,21 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 		})
 		c.ObservationEvents = tmpFile
 	}
+	if opts.withSysSink {
+		tmpFile, err := ioutil.TempFile("./", "tmp-sysevents-"+testName)
+		require.NoError(err)
+		t.Cleanup(func() {
+			os.Remove(tmpFile.Name())
+		})
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, SinkConfig{
+			Name:       "err-sysevents-sink",
+			SinkType:   FileSink,
+			EventTypes: []Type{SystemType},
+			Format:     JSONSinkFormat,
+			Path:       "./",
+			FileName:   tmpFile.Name(),
+		})
+	}
 	return c
 }
 
@@ -202,6 +217,14 @@ func TestWithAuditSink(t *testing.T) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withAuditSink = true
+	}
+}
+
+// testWithSysSink is an unexported and a test option
+func testWithSysSink(t *testing.T) Option {
+	t.Helper()
+	return func(o *options) {
+		o.withSysSink = true
 	}
 }
 

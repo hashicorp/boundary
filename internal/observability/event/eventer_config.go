@@ -8,6 +8,7 @@ import (
 type EventerConfig struct {
 	AuditEnabled        bool         `hcl:"audit_enabled"`        // AuditEnabled specifies if audit events should be emitted.
 	ObservationsEnabled bool         `hcl:"observations_enabled"` // ObservationsEnabled specifies if observation events should be emitted.
+	SysEventsEnabled    bool         `hcl:"sysevents_enabled"`    // SysEventsEnabled specifies if sysevents should be emitted.
 	Sinks               []SinkConfig `hcl:"sinks"`                // Sinks are all the configured sinks
 }
 

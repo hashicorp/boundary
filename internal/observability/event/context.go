@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -245,4 +246,49 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 		}
 	}
 	return retOpts, nil
+}
+
+// WriteSysEvent will write a sysevent using the eventer from
+// event.SysEventer() if no eventer can be found an hclog.Logger will be created
+// and used. This function should never be used when sending events while
+// handling API requests.
+func WriteSysEvent(ctx context.Context, caller Op, data map[string]interface{}) {
+	const op = "event.WriteError"
+	if data == nil {
+		return
+	}
+	if caller == "" {
+		pc, _, _, ok := runtime.Caller(1)
+		details := runtime.FuncForPC(pc)
+		if ok && details != nil {
+			caller = Op(details.Name())
+		} else {
+			caller = "unknown operation"
+		}
+	}
+
+	eventer := SysEventer()
+	if eventer == nil {
+		logger := hclog.New(nil)
+		logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, data))
+		return
+	}
+
+	id, err := newId(string(SystemType))
+	if err != nil {
+		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
+		eventer.logger.Error(fmt.Sprintf("%s: unable to generate id while writing sysevent: (%s) %+v", op, caller, data))
+	}
+
+	e := &sysEvent{
+		Id:      Id(id),
+		Version: sysVersion,
+		Op:      caller,
+		Data:    data,
+	}
+	if err := eventer.writeSysEvent(ctx, e); err != nil {
+		eventer.logger.Error(fmt.Sprintf("%s: %v", op, err))
+		eventer.logger.Error(fmt.Sprintf("%s: unable to write sysevent: (%s) %+v", op, caller, e))
+		return
+	}
 }

@@ -22,6 +22,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type sliceSubtypeInfo struct {
+	SliceType string
+	VarName   string
+}
+
 type structureInfo struct {
 	pkg    string
 	name   string
@@ -57,12 +62,13 @@ type structInfo struct {
 	parentTypeName string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
-	// role principals and group members
-	sliceSubtypes map[string]string
+	// role principals and group members. If sliceSubtypeInfo is blank for a
+	// key, the function is created but no required parameter is produced.
+	sliceSubtypes map[string]sliceSubtypeInfo
 
-	// outputOnly indicates that we shouldn't create options for setting members
-	// for mapping src field struct
-	outputOnly bool
+	// skipOptions indicates that we shouldn't create options for setting
+	// members for mapping src field struct
+	skipOptions bool
 
 	// versionEnabled indicates that we should build a Version handler in
 	// update. Some structs are embedded in others and shouldn't have version
@@ -71,6 +77,14 @@ type structInfo struct {
 
 	// This is used for building the api path.
 	pluralResourceName string
+
+	// packageOverride can be used when sourcing a package from a different
+	// place as the target, e.g. for sourcing services structs
+	packageOverride string
+
+	// nameOverride can be used to override the name coming from the proto,
+	// useful to avoid collisions
+	nameOverride string
 
 	// typeOnCreate indicates that create will be creating a concrete
 	// implementation of an abstract type and thus a type field is necessary
@@ -99,30 +113,30 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
-		inProto:    &api.Error{},
-		outFile:    "error.gen.go",
-		outputOnly: true,
+		inProto:     &api.Error{},
+		outFile:     "error.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.ErrorDetails{},
-		outFile:    "error_details.gen.go",
-		outputOnly: true,
+		inProto:     &api.ErrorDetails{},
+		outFile:     "error_details.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.WrappedError{},
-		outFile:    "wrapped_error.gen.go",
-		outputOnly: true,
+		inProto:     &api.WrappedError{},
+		outFile:     "wrapped_error.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &api.FieldError{},
-		outFile:    "field_error.gen.go",
-		outputOnly: true,
+		inProto:     &api.FieldError{},
+		outFile:     "field_error.gen.go",
+		skipOptions: true,
 	},
 	// Scope related resources
 	{
-		inProto:    &scopes.ScopeInfo{},
-		outFile:    "scopes/scope_info.gen.go",
-		outputOnly: true,
+		inProto:     &scopes.ScopeInfo{},
+		outFile:     "scopes/scope_info.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &scopes.Scope{},
@@ -156,9 +170,9 @@ var inputStructs = []*structInfo{
 	},
 	// User related resources
 	{
-		inProto:    &users.Account{},
-		outFile:    "users/account.gen.go",
-		outputOnly: true,
+		inProto:     &users.Account{},
+		outFile:     "users/account.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &users.User{},
@@ -171,8 +185,11 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]string{
-			"Accounts": "accountIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Accounts": {
+				SliceType: "[]string",
+				VarName:   "accountIds",
+			},
 		},
 		pluralResourceName:  "users",
 		versionEnabled:      true,
@@ -181,9 +198,9 @@ var inputStructs = []*structInfo{
 	},
 	// Group related resources
 	{
-		inProto:    &groups.Member{},
-		outFile:    "groups/member.gen.go",
-		outputOnly: true,
+		inProto:     &groups.Member{},
+		outFile:     "groups/member.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &groups.Group{},
@@ -196,8 +213,11 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]string{
-			"Members": "memberIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Members": {
+				SliceType: "[]string",
+				VarName:   "memberIds",
+			},
 		},
 		pluralResourceName:  "groups",
 		versionEnabled:      true,
@@ -206,19 +226,19 @@ var inputStructs = []*structInfo{
 	},
 	// Role related resources
 	{
-		inProto:    &roles.Grant{},
-		outFile:    "roles/grant.gen.go",
-		outputOnly: true,
+		inProto:     &roles.Grant{},
+		outFile:     "roles/grant.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &roles.Principal{},
-		outFile:    "roles/principal.gen.go",
-		outputOnly: true,
+		inProto:     &roles.Principal{},
+		outFile:     "roles/principal.gen.go",
+		skipOptions: true,
 	},
 	{
-		inProto:    &roles.GrantJson{},
-		outFile:    "roles/grant_json.gen.go",
-		outputOnly: true,
+		inProto:     &roles.GrantJson{},
+		outFile:     "roles/grant_json.gen.go",
+		skipOptions: true,
 	},
 	{
 		inProto: &roles.Role{},
@@ -231,9 +251,15 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]string{
-			"Principals": "principalIds",
-			"Grants":     "grantStrings",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Principals": {
+				SliceType: "[]string",
+				VarName:   "principalIds",
+			},
+			"Grants": {
+				SliceType: "[]string",
+				VarName:   "grantStrings",
+			},
 		},
 		pluralResourceName:  "roles",
 		versionEnabled:      true,
@@ -403,6 +429,67 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
+	// Credentials
+	{
+		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName: "VaultCredentialStore",
+	},
+	{
+		inProto: &credentialstores.CredentialStore{},
+		outFile: "credentialstores/credential_store.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
+		typeOnCreate:        true,
+		versionEnabled:      true,
+		createResponseTypes: true,
+		recursiveListing:    true,
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Address",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Token",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &credentiallibraries.CredentialLibrary{},
+		outFile: "credentiallibraries/credential_library.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credential-libraries",
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
+	},
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},
@@ -455,8 +542,11 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName: "host-sets",
 		parentTypeName:     "host-catalog",
-		sliceSubtypes: map[string]string{
-			"Hosts": "hostIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"Hosts": {
+				SliceType: "[]string",
+				VarName:   "hostIds",
+			},
 		},
 		versionEnabled:      true,
 		createResponseTypes: true,
@@ -468,6 +558,16 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &targets.CredentialLibrary{},
 		outFile: "targets/credential_library.gen.go",
+	},
+	{
+		inProto: &targets.SessionSecret{},
+		outFile: "targets/session_secret.gen.go",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "Raw",
+				FieldType: "json.RawMessage",
+			},
+		},
 	},
 	{
 		inProto: &targets.SessionCredential{},
@@ -500,9 +600,12 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName: "targets",
-		sliceSubtypes: map[string]string{
-			"HostSets":            "hostSetIds",
-			"CredentialLibraries": "credentialLibraryIds",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"HostSets": {
+				SliceType: "[]string",
+				VarName:   "hostSetIds",
+			},
+			"CredentialLibraries": {},
 		},
 		extraOptions: []fieldInfo{
 			{
@@ -522,6 +625,11 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
+			},
+			{
+				Name:      "ApplicationCredentialLibraryIds",
+				ProtoName: "application_credential_library_ids",
+				FieldType: "[]string",
 			},
 		},
 		versionEnabled:      true,

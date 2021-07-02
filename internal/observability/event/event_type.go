@@ -12,12 +12,13 @@ const (
 	ObservationType Type = "observation" // ObservationType represents observation events
 	AuditType       Type = "audit"       // AuditType represents audit events
 	ErrorType       Type = "error"       // ErrorType represents error events
+	SystemType      Type = "system"      // SysType represents system events
 )
 
 func (et Type) validate() error {
 	const op = "event.(Type).validate"
 	switch et {
-	case EveryType, ObservationType, AuditType, ErrorType:
+	case EveryType, ObservationType, AuditType, ErrorType, SystemType:
 		return nil
 	default:
 		return fmt.Errorf("%s: '%s' is not a valid event type: %w", op, et, ErrInvalidParameter)

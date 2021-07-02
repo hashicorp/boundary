@@ -24,6 +24,7 @@ const (
 	auditPipeline       = "audit-pipeline"       // auditPipeline is a pipeline for audit events
 	observationPipeline = "observation-pipeline" // observationPipeline is a pipeline for observation events
 	errPipeline         = "err-pipeline"         // errPipeline is a pipeline for error events
+	sysPipeline         = "sys-pipeline"         // sysPipeline is a pipeline for system events
 )
 
 // flushable defines an interface that all eventlogger Nodes must implement if
@@ -141,7 +142,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	var auditPipelines, observationPipelines, errPipelines []pipeline
+	var auditPipelines, observationPipelines, errPipelines, sysPipelines []pipeline
 
 	opts := getOpts(opt...)
 	var b broker
@@ -221,19 +222,22 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register sink node %s: %w", op, sinkId, err)
 		}
-		var addToAudit, addToObservation, addToErr bool
+		var addToAudit, addToObservation, addToErr, addToSys bool
 		for _, t := range s.EventTypes {
 			switch t {
 			case EveryType:
 				addToAudit = true
 				addToObservation = true
 				addToErr = true
+				addToSys = true
 			case ErrorType:
 				addToErr = true
 			case AuditType:
 				addToAudit = true
 			case ObservationType:
 				addToObservation = true
+			case SystemType:
+				addToSys = true
 			}
 		}
 		if addToAudit {
@@ -260,12 +264,22 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 				sinkConfig: s,
 			})
 		}
+		if addToSys {
+			sysPipelines = append(sysPipelines, pipeline{
+				eventType: SystemType,
+				fmtId:     jsonfmtId,
+				sinkId:    sinkId,
+			})
+		}
 	}
 	if c.AuditEnabled && len(auditPipelines) == 0 {
 		return nil, fmt.Errorf("%s: audit events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 	if c.ObservationsEnabled && len(observationPipelines) == 0 {
 		return nil, fmt.Errorf("%s: observation events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
+	}
+	if c.SysEventsEnabled && len(sysPipelines) == 0 {
+		return nil, fmt.Errorf("%s: system events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 
 	for _, p := range auditPipelines {
@@ -335,6 +349,22 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		}
 		errNodeIds = append(errNodeIds, p.sinkId)
 	}
+	sysNodeIds := make([]eventlogger.NodeID, 0, len(sysPipelines))
+	for _, p := range sysPipelines {
+		pipeId, err := newId(sysPipeline)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		err = e.broker.RegisterPipeline(eventlogger.Pipeline{
+			EventType:  eventlogger.EventType(p.eventType),
+			PipelineID: eventlogger.PipelineID(pipeId),
+			NodeIDs:    []eventlogger.NodeID{p.fmtId, p.sinkId},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to register sys pipeline: %w", op, err)
+		}
+		sysNodeIds = append(sysNodeIds, p.sinkId)
+	}
 
 	// always enforce delivery of errors
 	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
@@ -353,6 +383,7 @@ func DefaultEventerConfig() *EventerConfig {
 	return &EventerConfig{
 		AuditEnabled:        false,
 		ObservationsEnabled: true,
+		SysEventsEnabled:    true,
 		Sinks:               []SinkConfig{DefaultSink()},
 	}
 }
@@ -403,6 +434,22 @@ func (e *Eventer) writeError(ctx context.Context, event *err) error {
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an error event", "error:", err.Error())
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+// writeSysEvent writes/sends an sysEvent event
+func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent) error {
+	const op = "event.(Eventer).writeSysEvent"
+	if event == nil {
+		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
+	}
+	err := e.retrySend(ctx, stdRetryCount, expBackoff{}, func() (eventlogger.Status, error) {
+		return e.broker.Send(ctx, eventlogger.EventType(SystemType), event)
+	})
+	if err != nil {
+		e.logger.Error("encountered an error sending an sys event", "error:", err.Error())
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

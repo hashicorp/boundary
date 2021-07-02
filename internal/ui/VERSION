@@ -1,4 +1,4 @@
-40ee317f47100e0be459f9c6aee12e966efd7961 Merge pull request #588 from hashicorp/frameless-desktop-shell-on-windows-os
+bfa3d8fd3a9c110eca2b0972f811d824f55cc1f4 Merge pull request #633 from hashicorp/fix-oidc-buttons
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
