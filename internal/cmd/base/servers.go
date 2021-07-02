@@ -54,8 +54,8 @@ type Server struct {
 	CombineLogs bool
 	LogLevel    hclog.Level
 
-	SerializationLock *sync.Mutex
-	Eventer           *event.Eventer
+	StderrLock *sync.Mutex
+	Eventer    *event.Eventer
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
@@ -113,7 +113,7 @@ func NewServer(cmd *Command) *Server {
 		SecureRandomReader: rand.Reader,
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
-		SerializationLock:  new(sync.Mutex),
+		StderrLock:         new(sync.Mutex),
 	}
 }
 
@@ -200,7 +200,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		// Note that if logFormat is either unspecified or standard, then
 		// the resulting logger's format will be standard.
 		JSONFormat: logFormat == logging.JSONFormat,
-		Mutex:      b.SerializationLock,
+		Mutex:      b.StderrLock,
 	})
 
 	// create GRPC logger

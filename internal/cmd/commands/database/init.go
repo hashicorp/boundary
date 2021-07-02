@@ -185,7 +185,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.SerializationLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

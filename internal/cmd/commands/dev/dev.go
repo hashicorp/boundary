@@ -420,7 +420,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.SetupEventing(c.Logger, c.SerializationLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger, c.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

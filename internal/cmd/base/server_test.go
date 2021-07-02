@@ -22,7 +22,7 @@ func Test_NewServer(t *testing.T) {
 		assert.NotNil(s.SecureRandomReader)
 		assert.NotNil(s.ReloadFuncsLock)
 		assert.NotNil(s.ReloadFuncs)
-		assert.NotNil(s.SerializationLock)
+		assert.NotNil(s.StderrLock)
 	})
 }
 
