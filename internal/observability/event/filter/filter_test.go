@@ -24,7 +24,7 @@ func Test_NewFilterNode(t *testing.T) {
 		{
 			name: "bad-allow-filter",
 			opt: []Option{
-				WithAllow("foo=;22"),
+				WithAllow("foo=;22", "foo==bar"),
 			},
 			wantErr:         true,
 			wantErrContains: "invalid allow filter 'foo=;22'",
@@ -32,19 +32,35 @@ func Test_NewFilterNode(t *testing.T) {
 		{
 			name: "bad-deny-filter",
 			opt: []Option{
-				WithDeny("foo=;22"),
+				WithDeny("foo=;22", "foo==bar"),
 			},
 			wantErr:         true,
 			wantErrContains: "invalid deny filter 'foo=;22'",
 		},
 		{
+			name: "empty-allow-filter",
+			opt: []Option{
+				WithAllow(""),
+			},
+			wantErr:         true,
+			wantErrContains: "missing filter",
+		},
+		{
+			name: "empty-deny-filter",
+			opt: []Option{
+				WithDeny(""),
+			},
+			wantErr:         true,
+			wantErrContains: "missing filter",
+		},
+		{
 			name: "valid-filters",
 			opt: []Option{
-				WithAllow("alice==friend"),
-				WithDeny("eve==acquaintance"),
+				WithAllow("alice==friend", "bob==friend"),
+				WithDeny("eve==acquaintance", "fido!=dog"),
 			},
-			wantAllow: []string{"alice==friend"},
-			wantDeny:  []string{"eve==acquaintance"},
+			wantAllow: []string{"alice==friend", "bob==friend"},
+			wantDeny:  []string{"eve==acquaintance", "fido!=dog"},
 		},
 	}
 
