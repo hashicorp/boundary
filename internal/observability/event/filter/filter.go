@@ -33,17 +33,17 @@ func NewNode(opt ...Option) (*Node, error) {
 		for i := range opts.withAllow {
 			f, err := newFilter(opts.withAllow[i])
 			if err != nil {
-				return nil, fmt.Errorf("%s: invalid allow filter %s: %w", op, opts.withAllow[i], err)
+				return nil, fmt.Errorf("%s: invalid allow filter '%s': %w", op, opts.withAllow[i], err)
 			}
 			n.allow = append(n.allow, f)
 		}
 	}
 	if len(opts.withDeny) > 0 {
-		n.allow = make([]*filter, 0, len((opts.withDeny)))
+		n.deny = make([]*filter, 0, len((opts.withDeny)))
 		for i := range opts.withDeny {
 			f, err := newFilter(opts.withDeny[i])
 			if err != nil {
-				return nil, fmt.Errorf("%s: invalid deny filter %s: %w", op, opts.withDeny[i], err)
+				return nil, fmt.Errorf("%s: invalid deny filter '%s': %w", op, opts.withDeny[i], err)
 			}
 			n.deny = append(n.deny, f)
 		}
@@ -91,6 +91,7 @@ func (_ *Node) Type() eventlogger.NodeType {
 }
 
 type filter struct {
+	raw  string
 	eval *bexpr.Evaluator
 }
 
@@ -104,7 +105,7 @@ func newFilter(f string) (*filter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	return &filter{eval: e}, nil
+	return &filter{eval: e, raw: f}, nil
 }
 
 // Match returns if the provided interface matches the filter. If the filter
