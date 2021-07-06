@@ -443,8 +443,8 @@ func (c *Command) Run(args []string) int {
 	if c.Config.Worker != nil {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
-			if err := c.controller.Shutdown(false); err != nil {
-				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+			if err := c.worker.Shutdown(false); err != nil {
+				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
 			}
 			return base.CommandCliError
 		}
