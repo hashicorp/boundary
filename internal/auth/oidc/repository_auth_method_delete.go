@@ -19,7 +19,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing scope id")
+		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
 	}
 	am := AllocAuthMethod()
 	am.PublicId = publicId

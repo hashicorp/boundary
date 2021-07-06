@@ -228,6 +228,7 @@ func TestRepository_ListTargets(t *testing.T) {
 	repo.defaultLimit = testLimit
 
 	type args struct {
+		scopeIds []string
 		opt []Option
 	}
 	tests := []struct {
@@ -245,7 +246,8 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     5,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithTargetType(TcpTargetType), WithScopeIds([]string{proj.PublicId})},
+				scopeIds: []string{proj.PublicId},
+				opt: []Option{WithTargetType(TcpTargetType)},
 			},
 			wantCnt: 5,
 			wantErr: false,
@@ -255,7 +257,8 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(-1), WithScopeIds([]string{proj.PublicId})},
+				scopeIds: []string{proj.PublicId},
+				opt: []Option{WithLimit(-1)},
 			},
 			wantCnt: testLimit + 1,
 			wantErr: false,
@@ -265,7 +268,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeIds([]string{proj.PublicId})},
+				scopeIds: []string{proj.PublicId},
 			},
 			wantCnt: testLimit,
 			wantErr: false,
@@ -275,7 +278,8 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     testLimit + 1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithLimit(3), WithScopeIds([]string{proj.PublicId})},
+				scopeIds: []string{proj.PublicId},
+				opt: []Option{WithLimit(3)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -285,7 +289,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			createCnt:     1,
 			createScopeId: proj.PublicId,
 			args: args{
-				opt: []Option{WithScopeIds([]string{"bad-id"})},
+				scopeIds: []string{"bad-id"},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -305,7 +309,7 @@ func TestRepository_ListTargets(t *testing.T) {
 				}
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListTargets(context.Background(), tt.args.opt...)
+			got, err := repo.ListTargets(context.Background(), tt.args.scopeIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -339,7 +343,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListTargets(context.Background(), WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	got, err := repo.ListTargets(context.Background(), []string{"global", proj1.GetPublicId(), proj2.GetPublicId()})
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
@@ -357,6 +361,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 
 	type args struct {
 		target Target
+		scopeId string
 		opt    []Option
 	}
 	tests := []struct {
@@ -370,6 +375,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "valid",
 			args: args{
 				target: TestTcpTarget(t, conn, proj.PublicId, "valid"),
+				scopeId: proj.PublicId,
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -381,6 +387,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 					target := allocTcpTarget()
 					return &target
 				}(),
+				scopeId: proj.PublicId,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -396,6 +403,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 					target.PublicId = id
 					return &target
 				}(),
+				scopeId: proj.PublicId,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -405,7 +413,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteTarget(context.Background(), tt.args.target.GetPublicId(), tt.args.opt...)
+			deletedRows, err := repo.DeleteTarget(context.Background(), tt.args.scopeId, tt.args.target.GetPublicId(), tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)

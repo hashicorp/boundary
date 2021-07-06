@@ -33,9 +33,8 @@ func TestAccount_New(t *testing.T) {
 			args: args{
 				authMethodId: "",
 			},
-			want: &Account{
-				Account: &store.Account{},
-			},
+			want:    nil,
+			wantErr: true,
 		},
 		{
 			name: "valid-no-options",

@@ -851,7 +851,7 @@ func TestAddAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetScopeId(), usr.GetPublicId())
 				require.NoError(t, err)
 			}()
 			tc.setup(usr)
@@ -997,7 +997,7 @@ func TestSetAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetScopeId(), usr.GetPublicId())
 				require.NoError(t, err)
 			}()
 
@@ -1159,7 +1159,7 @@ func TestRemoveAccount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			usr := iam.TestUser(t, iamRepo, o.GetPublicId())
 			defer func() {
-				_, err := iamRepo.DeleteUser(context.Background(), usr.GetPublicId())
+				_, err := iamRepo.DeleteUser(context.Background(), usr.GetScopeId(), usr.GetPublicId())
 				require.NoError(t, err)
 			}()
 			tc.setup(usr)

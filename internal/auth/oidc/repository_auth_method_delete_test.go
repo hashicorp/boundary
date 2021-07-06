@@ -66,6 +66,19 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				return &am
 			}(),
 		},
+		{
+			name: "no-scope-id",
+			authMethod: func() *AuthMethod {
+				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+				require.NoError(t, err)
+				am := TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp", "alices-dogs-name",
+					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]))
+				am.ScopeId = ""
+				return am
+			}(),
+			wantErrMatch: errors.T(errors.InvalidParameter),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

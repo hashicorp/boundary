@@ -138,31 +138,32 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	return subtype, hostSets, credLibs, nil
 }
 
-// ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithTargetType options.
-func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
+// ListTargets in targets in a scope.  Supports the WithLimit, WithTargetType options.
+func (r *Repository) ListTargets(ctx context.Context, scopeIds []string, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
-	opts := getOpts(opt...)
-	if len(opts.withScopeIds) == 0 && opts.withUserId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "must specify either scope id or user id")
+	if len(scopeIds) == 0 {
+		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
 	}
-	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
+	opts := getOpts(opt...)
 	var where []string
 	var args []interface{}
-	if len(opts.withScopeIds) != 0 {
-		where, args = append(where, "scope_id in (?)"), append(args, opts.withScopeIds)
-	}
+	where, args = append(where, "scope_id in (?)"), append(args, scopeIds)
 	if opts.withTargetType != nil {
 		where, args = append(where, "type = ?"), append(args, opts.withTargetType.String())
 	}
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
 
 	var foundTargets []*targetView
-	err := r.list(ctx, &foundTargets, strings.Join(where, " and "), args, opt...)
+	err := r.reader.SearchWhere(ctx, &foundTargets, strings.Join(where, " and "), args, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 
 	targets := make([]Target, 0, len(foundTargets))
-
 	for _, t := range foundTargets {
 		subtype, err := t.targetSubtype()
 		if err != nil {
@@ -171,24 +172,6 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 		targets = append(targets, subtype)
 	}
 	return targets, nil
-}
-
-// list will return a listing of resources and honor the WithLimit option or the
-// repo defaultLimit
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
-	const op = "target.(Repository).list"
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	var dbOpts []db.Option
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(err, op)
-	}
-	return nil
 }
 
 // DeleteTarget will delete a target from the repository.

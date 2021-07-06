@@ -1037,7 +1037,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithScopeIds(scopeIds))
+	ul, err := repo.ListTargets(ctx, scopeIds)
 	if err != nil {
 		return nil, err
 	}
