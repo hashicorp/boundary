@@ -24,10 +24,10 @@ func TestHostSet_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *HostSet
-		wantErr bool
+		name          string
+		args          args
+		want          *HostSet
+		wantCreateErr bool
 	}{
 		{
 			name: "blank-catalogId",
@@ -35,6 +35,7 @@ func TestHostSet_New(t *testing.T) {
 				catalogId: "",
 			},
 			want: &HostSet{HostSet: &store.HostSet{}},
+			wantCreateErr: true,
 		},
 		{
 			name: "valid-no-options",
@@ -84,23 +85,22 @@ func TestHostSet_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewHostSet(tt.args.catalogId, tt.args.opts...)
-			if tt.wantErr {
-				assert.Error(err)
-				assert.Nil(got)
-			} else {
+			assert.NoError(err)
+			if assert.NotNil(got) {
+				assert.Emptyf(got.PublicId, "PublicId set")
+				assert.Equal(tt.want, got)
+
+				id, err := newHostSetId()
 				assert.NoError(err)
-				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicId set")
-					assert.Equal(tt.want, got)
 
-					id, err := newHostSetId()
-					assert.NoError(err)
+				tt.want.PublicId = id
+				got.PublicId = id
 
-					tt.want.PublicId = id
-					got.PublicId = id
-
-					w := db.New(conn)
-					err2 := w.Create(context.Background(), got)
+				w := db.New(conn)
+				err2 := w.Create(context.Background(), got)
+				if tt.wantCreateErr {
+					assert.Error(err2)
+				} else {
 					assert.NoError(err2)
 				}
 			}
