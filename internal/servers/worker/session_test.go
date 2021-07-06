@@ -41,22 +41,58 @@ func TestMakeSessionCloseInfo(t *testing.T) {
 			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 		},
 	}
-	actual := new(Worker).makeSessionCloseInfo(closeInfo, response)
+	actual, err := new(Worker).makeSessionCloseInfo(closeInfo, response)
+	require.NoError(err)
 	require.Equal(expected, actual)
 }
 
-func TestMakeSessionCloseInfoPanicIfCloseInfoNil(t *testing.T) {
+func TestMakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 	require := require.New(t)
-	require.Panics(func() {
-		new(Worker).makeSessionCloseInfo(nil, nil)
-	})
+	actual, err := new(Worker).makeSessionCloseInfo(nil, nil)
+	require.Nil(actual)
+	require.ErrorIs(err, errMakeSessionCloseInfoNilCloseInfo)
 }
 
 func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
+	actual, err := new(Worker).makeSessionCloseInfo(make(map[string]string), nil)
+	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
-		new(Worker).makeSessionCloseInfo(make(map[string]string), nil),
+		actual,
+	)
+}
+
+func TestMakeFakeSessionCloseInfo(t *testing.T) {
+	require := require.New(t)
+	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	expected := map[string][]*pbs.CloseConnectionResponseData{
+		"one": {
+			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
+		},
+		"two": {
+			{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
+		},
+	}
+	actual, err := new(Worker).makeFakeSessionCloseInfo(closeInfo)
+	require.NoError(err)
+	require.Equal(expected, actual)
+}
+
+func TestMakeFakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
+	require := require.New(t)
+	actual, err := new(Worker).makeFakeSessionCloseInfo(nil)
+	require.Nil(actual)
+	require.ErrorIs(err, errMakeSessionCloseInfoNilCloseInfo)
+}
+
+func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
+	require := require.New(t)
+	actual, err := new(Worker).makeFakeSessionCloseInfo(make(map[string]string))
+	require.NoError(err)
+	require.Equal(
+		make(map[string][]*pbs.CloseConnectionResponseData),
+		actual,
 	)
 }
 

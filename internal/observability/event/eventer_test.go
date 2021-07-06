@@ -264,7 +264,7 @@ func Test_NewEventer(t *testing.T) {
 	t.Parallel()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
 
-	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", testWithAuditSink(), testWithObservationSink())
+	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", testWithAuditSink(), testWithObservationSink(), testWithSysSink())
 
 	tests := []struct {
 		name           string
@@ -317,6 +317,7 @@ func Test_NewEventer(t *testing.T) {
 				"audit",       // stdout
 				"observation", // stdout
 				"error",       // stdout
+				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
 				"error": 1,
@@ -348,6 +349,8 @@ func Test_NewEventer(t *testing.T) {
 				"error",       // every-type-file-sync
 				"error",       // stdout
 				"error",       // error-file-sink
+				"system",      // stderr
+				"system",      // stderr
 			},
 			wantThresholds: map[eventlogger.EventType]int{
 				"audit":       2,
@@ -376,6 +379,7 @@ func Test_NewEventer(t *testing.T) {
 				"tmp-observation",   // observations-file-sink
 				"gated-audit",       // audit-file-sink
 				"tmp-audit",         // audit-file-sink
+				"tmp-sysevents",     // sys-file-sink
 			},
 			wantPipelines: []string{
 				"audit",       // every-type-file-sync
@@ -387,6 +391,9 @@ func Test_NewEventer(t *testing.T) {
 				"error",       // error-file-sink
 				"audit",       // audit-file-sink
 				"observation", // observation-file-sink
+				"system",      // stderr
+				"system",      // every-type-file-sync
+				"system",      // sys-file-sink
 			},
 			wantThresholds: map[eventlogger.EventType]int{
 				"audit":       3,

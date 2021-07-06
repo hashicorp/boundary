@@ -1,13 +1,13 @@
 package connect
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/mitchellh/mapstructure"
 	"github.com/posener/complete"
 )
 
@@ -53,20 +53,23 @@ func (p *postgresFlags) defaultExec() string {
 }
 
 type postgresCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
 }
 
 func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
 	var creds postgresCredentials
 	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
 		for _, cred := range c.sessionAuthz.Credentials {
+			if cred.Secret == nil || cred.Secret.Decoded == nil {
+				continue
+			}
 			// TODO: Could allow switching on library ID or name
 			switch cred.CredentialLibrary.Type {
 			case "vault":
 				// Attempt unmarshaling into creds
-				if err := json.Unmarshal(cred.Secret, &creds); err != nil {
-					return nil, nil, fmt.Errorf("Error unmarshaling Vault secret: %w", err)
+				if err := mapstructure.Decode(cred.Secret.Decoded, &creds); err != nil {
+					return nil, nil, fmt.Errorf("Error interpreting Vault secret: %w", err)
 				}
 			}
 

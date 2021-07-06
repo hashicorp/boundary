@@ -31,6 +31,7 @@ type options struct {
 	withBroker          broker // test only option
 	withAuditSink       bool   // test only option
 	withObservationSink bool   // test only option
+	withSysSink         bool   // test only option
 }
 
 func getDefaultOptions() options {
