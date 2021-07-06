@@ -34,8 +34,7 @@ func TestHostSet_New(t *testing.T) {
 			args: args{
 				catalogId: "",
 			},
-			want:    nil,
-			wantErr: true,
+			want: &HostSet{HostSet: &store.HostSet{}},
 		},
 		{
 			name: "valid-no-options",

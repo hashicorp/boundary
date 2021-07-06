@@ -44,17 +44,6 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			wantErrMatch: errors.T(errors.InvalidPublicId),
 		},
 		{
-			name:         "no-scope-id",
-			authMethod: func() *AuthMethod {
-				am := AllocAuthMethod()
-				var err error
-				am.PublicId, err = newAuthMethodId()
-				require.NoError(t, err)
-				return &am
-			}(),
-			wantErrMatch: errors.T(errors.InvalidPublicId),
-		},
-		{
 			name: "not-found",
 			authMethod: func() *AuthMethod {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
