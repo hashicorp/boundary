@@ -64,6 +64,8 @@ listener "tcp" {
 `
 
 const shutdownReloadWorkerConfig = `
+disable_mlock = true
+
 worker {
 	name = "dev-worker"
 	description = "A default worker created in dev mode"
