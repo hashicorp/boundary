@@ -83,8 +83,7 @@ listener "tcp" {
 }
 `
 
-func TestServer_ShutdownReloadWorker(t *testing.T) {
-	t.Parallel()
+func TestServer_ShutdownWorker(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  t.Name(),
 		Level: hclog.Trace,
