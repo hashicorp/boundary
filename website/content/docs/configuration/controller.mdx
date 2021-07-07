@@ -29,7 +29,10 @@ controller {
 
 - `database` - Configuration block with two valid parameters for connecting to Postgres:
 
-  - `url` - Configures the URL for connecting to Postgres
+  - `url` - Configures the URL for connecting to Postgres. If your Postgres server has TLS disabled,
+    Boundary will not be able to connect by default. To run Boundary without a TLS connection 
+    to Postgres (not recommended for production usage), add the `sslmode=disable` parameter to 
+    your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
   - `max_open_connections` - Can be used to control the maximum number of
@@ -130,7 +133,7 @@ controller {
   # supply the url, or "env://" to name an environment variable
   # that contains the URL.
   database {
-	  url = "postgresql://boundary:boundarydemo@${aws_db_instance.boundary.endpoint}/boundary"
+	  url = "postgresql://boundary:boundarydemo@postgres.yourdomain.com:5432/boundary"
   }
 }
 
