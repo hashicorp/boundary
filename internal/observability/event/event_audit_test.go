@@ -29,7 +29,7 @@ func Test_newAudit(t *testing.T) {
 			fromOp: "valid-no-opts",
 			want: &audit{
 				Version: auditVersion,
-				Type:    string(apiRequest),
+				Type:    string(ApiRequest),
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func Test_newAudit(t *testing.T) {
 			want: &audit{
 				Id:          "all-opts",
 				Version:     auditVersion,
-				Type:        string(apiRequest),
+				Type:        string(ApiRequest),
 				Timestamp:   testNow,
 				RequestInfo: TestRequestInfo(t),
 				Auth:        testAuth(t),
@@ -181,7 +181,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					Payload: &audit{
 						Id:      "test-id",
 						Version: "invalid-version",
-						Type:    string(apiRequest),
+						Type:    string(ApiRequest),
 					},
 				},
 			},
@@ -195,14 +195,14 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					Payload: &audit{
 						Id:      "invalid-id",
 						Version: auditVersion,
-						Type:    string(apiRequest),
+						Type:    string(ApiRequest),
 					},
 				},
 				{
 					Payload: &audit{
 						Id:      "bad-id",
 						Version: auditVersion,
-						Type:    string(apiRequest),
+						Type:    string(ApiRequest),
 					},
 				},
 			},
@@ -216,7 +216,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					Payload: &audit{
 						Id:          "valid",
 						Version:     auditVersion,
-						Type:        string(apiRequest),
+						Type:        string(ApiRequest),
 						Timestamp:   testNow,
 						Auth:        testAuth(t),
 						RequestInfo: TestRequestInfo(t),
@@ -226,7 +226,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					Payload: &audit{
 						Id:        "valid",
 						Version:   auditVersion,
-						Type:      string(apiRequest),
+						Type:      string(ApiRequest),
 						Timestamp: testNow,
 						Request:   testRequest(t),
 					},
@@ -235,7 +235,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 					Payload: &audit{
 						Id:        "valid",
 						Version:   auditVersion,
-						Type:      string(apiRequest),
+						Type:      string(ApiRequest),
 						Timestamp: testNow,
 						Response:  testResponse(t),
 					},
@@ -244,7 +244,7 @@ func TestAudit_ComposeFrom(t *testing.T) {
 			want: audit{
 				Id:          "valid",
 				Version:     auditVersion,
-				Type:        string(apiRequest),
+				Type:        string(ApiRequest),
 				Timestamp:   testNow,
 				Auth:        testAuth(t),
 				Request:     testRequest(t),

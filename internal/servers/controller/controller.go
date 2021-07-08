@@ -195,6 +195,11 @@ func (c *Controller) Shutdown(serversOnly bool) error {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
 	c.started.Store(false)
+	if c.conf.Eventer != nil {
+		if err := c.conf.Eventer.FlushNodes(context.Background()); err != nil {
+			return fmt.Errorf("error flushing controller eventer nodes: %w", err)
+		}
+	}
 	return nil
 }
 

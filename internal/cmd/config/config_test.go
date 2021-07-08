@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +22,7 @@ func TestDevController(t *testing.T) {
 	truePointer := new(bool)
 	*truePointer = true
 	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
@@ -152,6 +155,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*configutil.Listener{
@@ -329,5 +333,94 @@ func TestParsingName(t *testing.T) {
 			assert.Equal(t, tt.expectedController, out.Controller.Name)
 			assert.Equal(t, tt.expectedWorker, out.Worker.Name)
 		})
+	}
+}
+
+func TestController_EventingConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		config            string
+		wantEventerConfig *event.EventerConfig
+		wantErrMatch      *errors.Template
+	}{
+		{
+			name:              "default",
+			wantEventerConfig: event.DefaultEventerConfig(),
+		},
+		{
+			name: "audit-enabled",
+			config: `
+			events {
+				audit_enabled = true
+			}
+			`,
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled:        true,
+				ObservationsEnabled: false,
+				Sinks: []event.SinkConfig{
+					event.DefaultSink(),
+				},
+			},
+		},
+		{
+			name: "observations-enabled",
+			config: `
+			events {
+				observations_enabled = true
+			}
+			`,
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled:        false,
+				ObservationsEnabled: true,
+				Sinks: []event.SinkConfig{
+					event.DefaultSink(),
+				},
+			},
+		},
+		{
+			name: "sinks-configured",
+			config: `
+			events {
+				audit_enabled = false
+				observations_enabled = true
+				sinks = [
+					{
+						name = "configured-sink"
+						file_name = "file-name"
+						event_types = [ "audit", "observation" ] 
+					}
+				]
+			}
+			`,
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled:        false,
+				ObservationsEnabled: true,
+				Sinks: []event.SinkConfig{
+					{
+						Name:       "configured-sink",
+						FileName:   "file-name",
+						EventTypes: []event.Type{"audit", "observation"},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			c, err := Parse(tt.config)
+			if tt.wantErrMatch != nil {
+				require.NoError(err)
+				assert.Empty(c)
+				assert.Truef(errors.Match(tt.wantErrMatch, err), "want %q and got %q", tt.wantErrMatch.Code, err.Error())
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(c)
+			assert.Equal(tt.wantEventerConfig, c.Eventing)
+		})
+
 	}
 }

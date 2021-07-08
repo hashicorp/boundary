@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/credentiallibraries"
@@ -29,7 +30,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"google.golang.org/grpc/codes"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -64,8 +64,12 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
+	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.logger, c.kms)
+	if err != nil {
+		return nil, err
+	}
 
-	return printablePathCheckHandler, nil
+	return eventsHandler, nil
 }
 
 func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {
@@ -193,16 +197,6 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 
 	return mux, nil
-}
-
-// generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
-// the id.
-func generatedTraceId() string {
-	t, err := base62.Random(20)
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("gtraceid_%s", t)
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
