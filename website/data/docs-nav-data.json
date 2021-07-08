@@ -1,32 +1,18 @@
 [
   {
-    "title": "Getting Started",
+    "title": "What is Boundary?",
     "routes": [
       {
         "title": "Overview",
-        "path": "getting-started"
+        "path": "whatis"
       },
       {
-        "title": "Installing",
-        "hidden": true,
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "getting-started/installing"
-          },
-          {
-            "title": "Production",
-            "path": "getting-started/installing/production"
-          }
-        ]
+        "title": "Use Cases",
+        "path": "whatis/use-cases"
       },
       {
-        "title": "Run and Login",
-        "path": "getting-started/run-and-login"
-      },
-      {
-        "title": "Connect to Target",
-        "path": "getting-started/connect-to-target"
+        "title": "Vault and Boundary Integration",
+        "path": "whatis/vault-boundary-integrate"
       }
     ]
   },
@@ -36,6 +22,14 @@
       {
         "title": "Overview",
         "path": "installing"
+      },
+      {
+        "title": "Run and Login",
+        "path": "installing/run-and-login"
+      },
+      {
+        "title": "Connect to Target",
+        "path": "installing/connect-to-target"
       },
       {
         "title": "Non-Dev Environments",
