@@ -4,7 +4,7 @@ package schema
 
 func init() {
 	migrationStates["postgres"] = migrationState{
-		binarySchemaVersion: 10007,
+		binarySchemaVersion: 11001,
 		upMigrations: map[int][]byte{
 			1: []byte(`
 create domain wt_public_id as text
@@ -6075,6 +6075,31 @@ comment on domain wt_sentinel is
     'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
 
 drop function wt_to_sentinel; -- wt_to_sentinel is not needed, dropping and not re-creating
+`),
+			11001: []byte(`
+create table server_type_enm (
+  name text primary key
+    constraint only_predefined_server_types_allowed
+      check (
+        name in (
+          'controller',
+          'worker'
+        )
+      )
+);
+comment on table server_type_enm is
+  'server_type_enm is an enumeration table for server types.'
+  'It contains rows for representing servers as either a controller or worker.';
+
+insert into server_type_enm (name) values
+  ('controller'),
+  ('worker');
+
+alter table server
+    add constraint server_type_enm_fkey
+      foreign key (type) references server_type_enm(name)
+        on update cascade
+        on delete restrict;
 `),
 			2001: []byte(`
 -- log_migration entries represent logs generated during migrations
