@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* config: Fix error when populating all `kms` purposes in separate blocks (as
+  well as the error message)
+  ([issue](https://github.com/hashicorp/boundary/issues/1305),
+  [PR](https://github.com/hashicorp/boundary/pull/1384))
+
 ## 0.4.0 (2021/06/29)
 
 ### New and Improved
@@ -43,11 +50,11 @@ Boundary) but it's worth repeating.
 
 ### Bug Fixes
 
-* scheduler: removes a Postgres check constraint, on the length of the controller name, 
+* scheduler: removes a Postgres check constraint, on the length of the controller name,
   causing an error when the scheduler attempts to run jobs
   ([issue](https://github.com/hashicorp/boundary/issues/1309),
   [PR](https://github.com/hashicorp/boundary/pull/1310)).
-* Docker: update entrypoint script to handle more Boundary subcommands for 
+* Docker: update entrypoint script to handle more Boundary subcommands for
   better UX
 
 ## 0.3.0 (2021/06/08)
