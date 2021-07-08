@@ -33,7 +33,7 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/shared-secure-libs v0.0.6
+	github.com/hashicorp/shared-secure-libs v0.0.7
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.2.0
 	github.com/iancoleman/strcase v0.1.3
