@@ -4,19 +4,28 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/docker"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )
 
 const (
+	insertServerQuery         = "insert into server (private_id, type, address) values ($1, $2, $3)"
+	selectServerQuery         = "select * from server where private_id = $1"
 	expectEnumConstraintErr   = `pq: new row for relation "server_type_enm" violates check constraint "only_predefined_server_types_allowed"`
-	expectServerConstraintErr = `db.DoTx: servers.UpsertServer:Upsert: db.Exec: insert or update on table "server" violates foreign key constraint "server_type_enm_fkey": integrity violation: error #1003`
+	expectServerConstraintErr = `pq: insert or update on table "server" violates foreign key constraint "server_type_enm_fkey"`
 )
+
+type testServer struct {
+	PrivateId   string
+	Type        string
+	Description sql.NullString
+	Address     string
+	CreateTime  time.Time
+	UpdateTime  time.Time
+}
 
 // this is a sequential test which relies on:
 // 1) initializing the db using a migration up to the "priorMigration"
@@ -56,42 +65,9 @@ func Test_ServerEnumChanges(t *testing.T) {
 	require.Equal(priorMigration, state.DatabaseSchemaVersion)
 	require.False(state.Dirty)
 
-	// okay, now we can seed the database with test data
-	conn, err := gorm.Open(dialect, u)
-	require.NoError(err)
-	rootWrapper := db.TestWrapper(t)
-	repo := servers.TestRepo(t, conn, rootWrapper)
-
 	// Seed the data
-	origController := &servers.Server{
-		PrivateId: "test-controller",
-		Type:      "controller",
-		Address:   "127.0.0.1",
-	}
-	_, _, err = repo.UpsertServer(ctx, origController)
-	require.NoError(err)
-
-	origWorker := &servers.Server{
-		PrivateId: "test-worker",
-		Type:      "worker",
-		Address:   "127.0.0.1",
-		Tags: map[string]*servers.TagValues{
-			"tag": {
-				Values: []string{"value1", "value2"},
-			},
-		},
-	}
-	_, _, err = repo.UpsertServer(ctx, origWorker, servers.WithUpdateTags(true))
-	require.NoError(err)
-
-	// Read the servers back
-	expectedControllers, err := repo.ListServers(ctx, servers.ServerTypeController)
-	require.NoError(err)
-	require.Len(expectedControllers, 1)
-
-	expectedWorkers, err := repo.ListServers(ctx, servers.ServerTypeWorker)
-	require.NoError(err)
-	require.Len(expectedWorkers, 1)
+	expectedController := insertServer(ctx, t, d, "test-controller", "controller", "127.0.0.1")
+	expectedWorker := insertServer(ctx, t, d, "test-worker", "worker", "127.0.0.1")
 
 	// now we're ready for the migration we want to test.
 	oState = schema.TestCloneMigrationStates(t)
@@ -110,29 +86,14 @@ func Test_ServerEnumChanges(t *testing.T) {
 	t.Log("current migration version: ", state.DatabaseSchemaVersion)
 
 	// Assert servers
-	actualControllers, err := repo.ListServers(ctx, servers.ServerTypeController)
-	require.NoError(err)
-	require.Len(actualControllers, 1)
-	require.Equal(expectedControllers, actualControllers)
-
-	actualWorkers, err := repo.ListServers(ctx, servers.ServerTypeWorker)
-	require.NoError(err)
-	require.Len(actualWorkers, 1)
-	require.Equal(expectedWorkers, actualWorkers)
+	actualController := selectServer(ctx, t, d, "test-controller")
+	actualWorker := selectServer(ctx, t, d, "test-worker")
+	require.Equal(expectedController, actualController)
+	require.Equal(expectedWorker, actualWorker)
 
 	// Assert the state of the newly created enum table
 	rows, err := d.QueryContext(ctx, "select * from server_type_enm")
 	require.NoError(err)
-
-	// Column types
-	colTypes, err := rows.ColumnTypes()
-	require.NoError(err)
-	require.Len(colTypes, 1)
-	require.Equal("TEXT", colTypes[0].DatabaseTypeName())
-	require.Equal("name", colTypes[0].Name())
-	if nullable, ok := colTypes[0].Nullable(); ok {
-		require.Equal(false, nullable)
-	}
 
 	// Inserted rows
 	var actualEnm []string
@@ -149,43 +110,47 @@ func Test_ServerEnumChanges(t *testing.T) {
 	require.Nil(result)
 
 	// Try adding a broken server type
-	badServer := &servers.Server{
-		PrivateId: "test-bad",
-		Type:      "bad",
-		Address:   "127.0.0.1",
-	}
-	_, rowsUpdated, err := repo.UpsertServer(ctx, badServer)
+	result, err = d.ExecContext(ctx, insertServerQuery, []interface{}{"test-bad", "bad", "127.0.0.1"}...)
 	require.EqualError(err, expectServerConstraintErr)
-	require.Zero(rowsUpdated)
+	require.Nil(result)
 
 	// Add another controller and worker
-	newController := &servers.Server{
-		PrivateId: "test-controller-new",
-		Type:      "controller",
-		Address:   "127.0.0.1",
-	}
-	_, _, err = repo.UpsertServer(ctx, newController)
-	require.NoError(err)
-
-	newWorker := &servers.Server{
-		PrivateId: "test-worker-new",
-		Type:      "worker",
-		Address:   "127.0.0.1",
-		Tags: map[string]*servers.TagValues{
-			"tag": {
-				Values: []string{"value1", "value2"},
-			},
-		},
-	}
-	_, _, err = repo.UpsertServer(ctx, newWorker, servers.WithUpdateTags(true))
-	require.NoError(err)
+	insertServer(ctx, t, d, "test-controller-new", "controller", "127.0.0.1")
+	insertServer(ctx, t, d, "test-worker-new", "worker", "127.0.0.1")
 
 	// Assert length
-	expectedControllers, err = repo.ListServers(ctx, servers.ServerTypeController)
-	require.NoError(err)
-	require.Len(expectedControllers, 2)
+	var actualLen int
+	row := d.QueryRowContext(ctx, "select count(*) from server")
+	require.NoError(row.Scan(&actualLen))
+	require.Equal(4, actualLen)
+}
 
-	expectedWorkers, err = repo.ListServers(ctx, servers.ServerTypeWorker)
+func insertServer(ctx context.Context, t *testing.T, d *sql.DB, privateId, serverType, address string) *testServer {
+	t.Helper()
+	require := require.New(t)
+	execResult, err := d.ExecContext(ctx, insertServerQuery, privateId, serverType, address)
 	require.NoError(err)
-	require.Len(expectedWorkers, 2)
+	rowsAffected, err := execResult.RowsAffected()
+	require.NoError(err)
+	require.Equal(int64(1), rowsAffected)
+
+	return selectServer(ctx, t, d, privateId)
+}
+
+func selectServer(ctx context.Context, t *testing.T, d *sql.DB, privateId string) *testServer {
+	t.Helper()
+	require := require.New(t)
+
+	serverResult := new(testServer)
+	row := d.QueryRowContext(ctx, selectServerQuery, privateId)
+	require.NoError(row.Scan(
+		&serverResult.PrivateId,
+		&serverResult.Type,
+		&serverResult.Description,
+		&serverResult.Address,
+		&serverResult.CreateTime,
+		&serverResult.UpdateTime,
+	))
+
+	return serverResult
 }
