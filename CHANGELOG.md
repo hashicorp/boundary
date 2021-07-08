@@ -47,6 +47,8 @@ Boundary) but it's worth repeating.
   causing an error when the scheduler attempts to run jobs
   ([issue](https://github.com/hashicorp/boundary/issues/1309),
   [PR](https://github.com/hashicorp/boundary/pull/1310)).
+* Docker: update entrypoint script to handle more Boundary subcommands for 
+  better UX
 
 ## 0.3.0 (2021/06/08)
 
