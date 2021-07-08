@@ -11,7 +11,7 @@ create table server_type_enm (
       )
 );
 comment on table server_type_enm is
-  'server_type_enm is an enumeration table for server types.'
+  'server_type_enm is an enumeration table for server types. '
   'It contains rows for representing servers as either a controller or worker.';
 
 insert into server_type_enm (name) values
