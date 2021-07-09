@@ -76,7 +76,7 @@ func NewState(session_id string, state Status, _ ...Option) (*State, error) {
 	}
 
 	if err := s.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -125,7 +125,7 @@ func (s *State) Clone() interface{} {
 func (s *State) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(State).VetForWrite"
 	if err := s.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

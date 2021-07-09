@@ -68,7 +68,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		} else {
 			scopePublicId, err = newScopeId(scopeType)
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, errors.WrapDeprecated(err, op)
 			}
 		}
 		sc := s.Clone().(*Scope)
@@ -76,7 +76,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		scopeRaw = sc
 		scopeMetadata, err = r.stdMetadata(ctx, sc)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		scopeMetadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 	}
@@ -103,11 +103,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	default:
 		adminRole, err = NewRole(scopePublicId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error instantiating new admin role"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error instantiating new admin role"))
 		}
 		adminRolePublicId, err = newRoleId()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error generating public id for new admin role"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error generating public id for new admin role"))
 		}
 		adminRole.PublicId = adminRolePublicId
 		adminRole.Name = "Administration"
@@ -129,11 +129,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	if !opts.withSkipDefaultRoleCreation {
 		defaultRole, err = NewRole(scopePublicId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error instantiating new default role"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error instantiating new default role"))
 		}
 		defaultRolePublicId, err = newRoleId()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error generating public id for new default role"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error generating public id for new default role"))
 		}
 		defaultRole.PublicId = defaultRolePublicId
 		switch s.Type {
@@ -169,7 +169,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				scopeRaw,
 				db.WithOplog(parentOplogWrapper, scopeMetadata),
 			); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating scope"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("error creating scope"))
 			}
 
 			s := scopeRaw.(*Scope)
@@ -177,12 +177,12 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			// Create the scope's keys
 			_, err = kms.CreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating scope keys"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("error creating scope keys"))
 			}
 
 			kmsRepo, err := kms.NewRepository(dbr, w)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("error creating new kms repo"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("error creating new kms repo"))
 			}
 			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, kms.WithRepository(kmsRepo))
 			if err != nil {
@@ -198,7 +198,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					adminRoleRaw,
 					db.WithOplog(childOplogWrapper, adminRoleMetadata),
 				); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("error creating role"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("error creating role"))
 				}
 
 				adminRole = adminRoleRaw.(*Role)
@@ -206,14 +206,14 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				msgs := make([]*oplog.Message, 0, 3)
 				roleTicket, err := w.GetTicket(adminRole)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 				}
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
 				rowsUpdated, err := w.Update(ctx, adminRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&adminRole.Version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
@@ -223,21 +223,21 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;type=*;actions=*")
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, 1)
 				if err := w.CreateItems(ctx, []interface{}{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 
 				rolePrincipal, err := NewUserRole(adminRolePublicId, userId)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role user"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role user"))
 				}
 				roleUserOplogMsgs := make([]*oplog.Message, 0, 1)
 				if err := w.CreateItems(ctx, []interface{}{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleUserOplogMsgs...)
 
@@ -248,7 +248,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"resource-public-id": []string{adminRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 
@@ -261,7 +261,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					defaultRoleRaw,
 					db.WithOplog(childOplogWrapper, defaultRoleMetadata),
 				); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("error creating role"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("error creating role"))
 				}
 
 				defaultRole = defaultRoleRaw.(*Role)
@@ -269,14 +269,14 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				msgs := make([]*oplog.Message, 0, 6)
 				roleTicket, err := w.GetTicket(defaultRole)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 				}
 
 				// We need to update the role version as that's the aggregate
 				var roleOplogMsg oplog.Message
 				rowsUpdated, err := w.Update(ctx, defaultRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&defaultRole.Version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update role version for adding grant"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update role version for adding grant"))
 				}
 				if rowsUpdated != 1 {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role but %d rows updated", rowsUpdated))
@@ -291,39 +291,39 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					case scope.Project.String():
 						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 					default:
 						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
 						if err != nil {
-							return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+							return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 					}
 
 					roleGrantOplogMsgs := make([]*oplog.Message, 0, 3)
 					if err := w.CreateItems(ctx, grants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+						return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants"))
 					}
 					msgs = append(msgs, roleGrantOplogMsgs...)
 				}
@@ -337,13 +337,13 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role user"))
+						return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role user"))
 					}
 					principals = append(principals, rolePrincipal)
 
 					roleUserOplogMsgs := make([]*oplog.Message, 0, 2)
 					if err := w.CreateItems(ctx, principals, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+						return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants"))
 					}
 					msgs = append(msgs, roleUserOplogMsgs...)
 				}
@@ -355,7 +355,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"resource-public-id": []string{defaultRole.PublicId},
 				}
 				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 				}
 			}
 
@@ -367,7 +367,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		if errors.IsUniqueError(err) {
 			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("scope %s/%s already exists", scopePublicId, s.Name))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", scopePublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for %s", scopePublicId)))
 	}
 	return scopeRaw.(*Scope), nil
 }
@@ -408,7 +408,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("%s name %s already exists", scope.PublicId, scope.Name))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for public id %s", scope.PublicId)))
 	}
 	return resource.(*Scope), rowsUpdated, nil
 }
@@ -426,7 +426,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, _ ...
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return &scope, nil
 }
@@ -447,7 +447,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, _ ...
 		if errors.Is(err, ErrMetadataScopeNotFound) {
 			return 0, nil
 		}
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
@@ -461,7 +461,7 @@ func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt
 	var items []*Scope
 	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return items, nil
 }
@@ -491,7 +491,7 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	}
 	err := r.list(ctx, &scopes, where, args, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op+":ListQuery")
+		return nil, errors.WrapDeprecated(err, op+":ListQuery")
 	}
 	return scopes, nil
 }

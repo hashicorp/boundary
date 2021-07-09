@@ -66,11 +66,11 @@ type Postgres struct {
 func New(ctx context.Context, instance *sql.DB) (*Postgres, error) {
 	const op = "postgres.New"
 	if err := instance.PingContext(ctx); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	conn, err := instance.Conn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	px := &Postgres{
@@ -87,11 +87,11 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 	const query = "select pg_try_advisory_lock_shared($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
-		return errors.Wrap(r.Err(), op)
+		return errors.WrapDeprecated(r.Err(), op)
 	}
 	var gotLock bool
 	if err := r.Scan(&gotLock); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	if !gotLock {
 		return errors.NewDeprecated(errors.MigrationLock, op, "Lock failed")
@@ -106,11 +106,11 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 	const query = "select pg_try_advisory_lock($1)"
 	r := p.conn.QueryRowContext(ctx, query, schemaAccessLockId)
 	if r.Err() != nil {
-		return errors.Wrap(r.Err(), op)
+		return errors.WrapDeprecated(r.Err(), op)
 	}
 	var gotLock bool
 	if err := r.Scan(&gotLock); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	if !gotLock {
 		return errors.NewDeprecated(errors.MigrationLock, op, "Lock failed")
@@ -124,7 +124,7 @@ func (p *Postgres) Lock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Lock"
 	const query = "select pg_advisory_lock($1)"
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -135,7 +135,7 @@ func (p *Postgres) Unlock(ctx context.Context) error {
 	const op = "postgres.(Postgres).Unlock"
 	const query = `select pg_advisory_unlock($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -146,7 +146,7 @@ func (p *Postgres) UnlockShared(ctx context.Context) error {
 	const op = "postgres.(Postgres).UnlockShared"
 	query := `select pg_advisory_unlock_shared($1)`
 	if _, err := p.conn.ExecContext(ctx, query, schemaAccessLockId); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func (p *Postgres) Rollback() error {
 		return errors.NewDeprecated(errors.MigrationIntegrity, op, "no pending transaction")
 	}
 	if err := p.tx.Rollback(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (p *Postgres) CommitRun() error {
 		if errRollback := p.tx.Rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 	const op = "postgres.(Postgres).Run"
 	migr, err := ioutil.ReadAll(migration)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	// Run migration
 	query := string(migr)
@@ -225,7 +225,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 	// set the version first, so logs will be associated with this new version.
 	// if there's an error, it will get rollback
 	if err := p.setVersion(ctx, version, false); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	if _, err := extr.ExecContext(ctx, query); err != nil {
@@ -249,9 +249,9 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int) er
 				message = fmt.Sprintf("%s, %s", message, pgErr.Detail)
 			}
 			message = fmt.Sprintf("%s, on line %v: %s", message, line, migr)
-			return errors.Wrap(err, op, errors.WithMsg(message))
+			return errors.WrapDeprecated(err, op, errors.WithMsg(message))
 		}
-		return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("migration failed: %s", migr)))
+		return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("migration failed: %s", migr)))
 	}
 
 	return nil
@@ -314,7 +314,7 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 		if errRollback := rollback(); errRollback != nil {
 			err = multierror.Append(err, errRollback)
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	// Also re-write the schema Version for nil dirty versions to prevent
@@ -327,13 +327,13 @@ func (p *Postgres) setVersion(ctx context.Context, version int, dirty bool) erro
 			if errRollback := rollback(); errRollback != nil {
 				err = multierror.Append(err, errRollback)
 			}
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 	}
 
 	if p.tx == nil {
 		if err := tx.Commit(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 	}
 	return nil
@@ -351,7 +351,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 	tableQuery := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_name in ('schema_migrations', '` + defaultMigrationsTable + `')`
 	tableResult, err := p.conn.QueryContext(ctx, tableQuery)
 	if err != nil {
-		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+		return nilVersion, previouslyRan, dirty, errors.WrapDeprecated(err, op)
 	}
 	defer tableResult.Close()
 	if !tableResult.Next() {
@@ -361,7 +361,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 
 	tableName := defaultMigrationsTable
 	if err := tableResult.Scan(&tableName); err != nil {
-		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+		return nilVersion, previouslyRan, dirty, errors.WrapDeprecated(err, op)
 	}
 	previouslyRan = true
 	if tableResult.Next() {
@@ -371,7 +371,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName)
 	results, err := p.conn.QueryContext(ctx, query)
 	if err != nil {
-		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+		return nilVersion, previouslyRan, dirty, errors.WrapDeprecated(err, op)
 	}
 	defer results.Close()
 	if !results.Next() {
@@ -379,7 +379,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 		return nilVersion, previouslyRan, dirty, nil
 	}
 	if err := results.Scan(&version, &dirty); err != nil {
-		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
+		return nilVersion, previouslyRan, dirty, errors.WrapDeprecated(err, op)
 	}
 	if results.Next() {
 		return nilVersion, previouslyRan, dirty, errors.NewDeprecated(errors.MigrationIntegrity, op, "to many versions in version table")
@@ -393,12 +393,12 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	query := `select table_name from information_schema.tables where table_schema=(select current_schema()) and table_type='BASE TABLE'`
 	tables, err := p.conn.QueryContext(ctx, query)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	defer func() {
 		if errClose := tables.Close(); errClose != nil {
 			err = multierror.Append(err, errClose)
-			err = errors.Wrap(err, op)
+			err = errors.WrapDeprecated(err, op)
 		}
 	}()
 
@@ -407,14 +407,14 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 	for tables.Next() {
 		var tableName string
 		if err := tables.Scan(&tableName); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 		if len(tableName) > 0 {
 			tableNames = append(tableNames, tableName)
 		}
 	}
 	if err := tables.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	if len(tableNames) > 0 {
@@ -422,7 +422,7 @@ func (p *Postgres) drop(ctx context.Context) (err error) {
 		for _, t := range tableNames {
 			query = `drop table if exists ` + pq.QuoteIdentifier(t) + ` cascade`
 			if _, err := p.conn.ExecContext(ctx, query); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 		}
 	}
@@ -450,7 +450,7 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 		if wpErr := rollback(); wpErr != nil {
 			err = multierror.Append(err, wpErr)
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	if exists {
 		return nil
@@ -461,7 +461,7 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 		if wpErr := rollback(); wpErr != nil {
 			err = multierror.Append(err, wpErr)
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	createStmt := `create table if not exists ` + pq.QuoteIdentifier(defaultMigrationsTable) + ` (version bigint primary key, dirty boolean not null)`
@@ -469,7 +469,7 @@ func (p *Postgres) EnsureVersionTable(ctx context.Context) (err error) {
 		if wpErr := rollback(); wpErr != nil {
 			err = multierror.Append(err, wpErr)
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	return nil

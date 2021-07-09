@@ -86,7 +86,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 
 	if err := validateFieldMask(fieldMaskPaths); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
@@ -113,7 +113,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	origAm, err := r.lookupAuthMethod(ctx, am.PublicId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	if origAm == nil {
 		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("auth method %s", am.PublicId))
@@ -137,39 +137,39 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	// an incomplete and unusable auth method.
 	if origAm.OperationalState != string(InactiveState) {
 		if err := applyUpdate(am, origAm, fieldMaskPaths).isComplete(); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("update would result in an incomplete auth method"))
+			return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("update would result in an incomplete auth method"))
 		}
 	}
 
 	if !opts.withForce {
 		if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(applyUpdate(am, origAm, fieldMaskPaths))); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op)
+			return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 		}
 	}
 
 	addAlgs, deleteAlgs, err := valueObjectChanges(origAm.PublicId, SigningAlgVO, am.SigningAlgs, origAm.SigningAlgs, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	addCerts, deleteCerts, err := valueObjectChanges(origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	addAuds, deleteAuds, err := valueObjectChanges(origAm.PublicId, AudClaimVO, am.AudClaims, origAm.AudClaims, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	addScopes, deleteScopes, err := valueObjectChanges(origAm.PublicId, ClaimsScopesVO, am.ClaimsScopes, origAm.ClaimsScopes, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	addMaps, deleteMaps, err := valueObjectChanges(origAm.PublicId, AccountClaimMapsVO, am.AccountClaimMaps, origAm.AccountClaimMaps, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	// we don't allow updates for "sub" claim maps, because we have no way to
 	// determine if the updated "from" claim in the map might create collisions
@@ -232,15 +232,15 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 	if err := am.encrypt(ctx, databaseWrapper); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, origAm.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	// we always set this to the current value of opts.withForce
@@ -256,7 +256,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			msgs := make([]*oplog.Message, 0, 7) // AuthMethod, Algs*2, Certs*2, Audiences*2
 			ticket, err := w.GetTicket(am)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			var authMethodOplogMsg oplog.Message
 			switch {
@@ -267,7 +267,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				updatedAm.Version = uint32(version) + 1
 				rowsUpdated, err = w.Update(ctx, updatedAm, []string{VersionField, DisableDiscoveredConfigValidationField}, nil, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update auth method version"))
 				}
 				if rowsUpdated != 1 {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
@@ -277,7 +277,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				updatedAm = am.Clone()
 				rowsUpdated, err = w.Update(ctx, updatedAm, filteredDbMask, filteredNullFields, db.NewOplogMsg(&authMethodOplogMsg), db.WithVersion(&version))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update auth method"))
 				}
 				if rowsUpdated != 1 {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
@@ -289,7 +289,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteAlgOplogMsgs := make([]*oplog.Message, 0, len(deleteAlgs))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteAlgs, db.NewOplogMsgs(&deleteAlgOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete signing algorithms"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete signing algorithms"))
 				}
 				if rowsDeleted != len(deleteAlgs) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("signing algorithms deleted %d did not match request for %d", rowsDeleted, len(deleteAlgs)))
@@ -299,7 +299,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if len(addAlgs) > 0 {
 				addAlgsOplogMsgs := make([]*oplog.Message, 0, len(addAlgs))
 				if err := w.CreateItems(ctx, addAlgs, db.NewOplogMsgs(&addAlgsOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add signing algorithms"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add signing algorithms"))
 				}
 				msgs = append(msgs, addAlgsOplogMsgs...)
 			}
@@ -308,7 +308,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteCertOplogMsgs := make([]*oplog.Message, 0, len(deleteCerts))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteCerts, db.NewOplogMsgs(&deleteCertOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete certificates"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete certificates"))
 				}
 				if rowsDeleted != len(deleteCerts) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("certificates deleted %d did not match request for %d", rowsDeleted, len(deleteCerts)))
@@ -318,7 +318,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if len(addCerts) > 0 {
 				addCertsOplogMsgs := make([]*oplog.Message, 0, len(addCerts))
 				if err := w.CreateItems(ctx, addCerts, db.NewOplogMsgs(&addCertsOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add certificates"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add certificates"))
 				}
 				msgs = append(msgs, addCertsOplogMsgs...)
 			}
@@ -327,7 +327,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteAudsOplogMsgs := make([]*oplog.Message, 0, len(deleteAuds))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteAuds, db.NewOplogMsgs(&deleteAudsOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete audiences URLs"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete audiences URLs"))
 				}
 				if rowsDeleted != len(deleteAuds) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("audiences deleted %d did not match request for %d", rowsDeleted, len(deleteAuds)))
@@ -337,7 +337,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if len(addAuds) > 0 {
 				addAudsOplogMsgs := make([]*oplog.Message, 0, len(addAuds))
 				if err := w.CreateItems(ctx, addAuds, db.NewOplogMsgs(&addAudsOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add audiences URLs"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add audiences URLs"))
 				}
 				msgs = append(msgs, addAudsOplogMsgs...)
 			}
@@ -346,7 +346,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteScopesOplogMsgs := make([]*oplog.Message, 0, len(deleteScopes))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteScopes, db.NewOplogMsgs(&deleteScopesOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete claims scopes"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete claims scopes"))
 				}
 				if rowsDeleted != len(deleteScopes) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("claims scopes deleted %d did not match request for %d", rowsDeleted, len(deleteScopes)))
@@ -356,7 +356,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if len(addScopes) > 0 {
 				addScopesOplogMsgs := make([]*oplog.Message, 0, len(addScopes))
 				if err := w.CreateItems(ctx, addScopes, db.NewOplogMsgs(&addScopesOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add claims scopes"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add claims scopes"))
 				}
 				msgs = append(msgs, addScopesOplogMsgs...)
 			}
@@ -365,7 +365,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				deleteMapsOplogMsgs := make([]*oplog.Message, 0, len(deleteMaps))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteMaps, db.NewOplogMsgs(&deleteMapsOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete account claim maps"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete account claim maps"))
 				}
 				if rowsDeleted != len(deleteMaps) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("account claim maps deleted %d did not match request for %d", rowsDeleted, len(deleteMaps)))
@@ -375,14 +375,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			if len(addMaps) > 0 {
 				addMapsOplogMsgs := make([]*oplog.Message, 0, len(addMaps))
 				if err := w.CreateItems(ctx, addMaps, db.NewOplogMsgs(&addMapsOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add account claim maps"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add account claim maps"))
 				}
 				msgs = append(msgs, addMapsOplogMsgs...)
 			}
 
 			metadata := updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
@@ -394,7 +394,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			}
 			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if updatedAm == nil {
 				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
@@ -403,7 +403,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		},
 	)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 
 	providerCache().delete(ctx, updatedAm.PublicId)
@@ -468,7 +468,7 @@ var supportedFactories = map[voName]factoryFunc{
 		}
 		to, err := ConvertToAccountToClaim(m.To)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		return NewAccountClaimMap(publicId, m.From, to)
 	},
@@ -522,7 +522,7 @@ func valueObjectChanges(
 		for _, v := range oldVOs {
 			deleteObj, err := factory(publicId, v)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, op)
+				return nil, nil, errors.WrapDeprecated(err, op)
 			}
 			deletes = append(deletes, deleteObj)
 			delete(foundVOs, v)
@@ -537,7 +537,7 @@ func valueObjectChanges(
 			}
 			obj, err := factory(publicId, v)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, op)
+				return nil, nil, errors.WrapDeprecated(err, op)
 			}
 			adds = append(adds, obj)
 			delete(foundVOs, v)
@@ -547,7 +547,7 @@ func valueObjectChanges(
 		for v := range foundVOs {
 			obj, err := factory(publicId, v)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, op)
+				return nil, nil, errors.WrapDeprecated(err, op)
 			}
 			deletes = append(deletes, obj)
 			delete(foundVOs, v)
@@ -667,7 +667,7 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		var err error
 		am, err = r.lookupAuthMethod(ctx, opts.withPublicId)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("unable to lookup auth method %s", opts.withPublicId))
@@ -684,12 +684,12 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	info, err := provider.DiscoveryInfo(ctx)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	var result *multierror.Error

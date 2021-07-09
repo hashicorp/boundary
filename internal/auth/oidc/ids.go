@@ -17,7 +17,7 @@ func newAuthMethodId() (string, error) {
 	const op = "oidc.newAuthMethodId"
 	id, err := db.NewPublicId(AuthMethodPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -35,7 +35,7 @@ func newAccountId(authMethodId, issuer, sub string) (string, error) {
 	}
 	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
@@ -44,7 +44,7 @@ func newManagedGroupId() (string, error) {
 	const op = "oidc.newManagedGroupId"
 	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }

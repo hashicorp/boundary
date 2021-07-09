@@ -20,7 +20,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 	}
 	am, err := r.LookupAuthMethod(ctx, publicId)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	if am == nil {
 		// already deleted and this is not an error.
@@ -29,7 +29,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
 	var rowsDeleted int
@@ -50,7 +50,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to delete %s", publicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to delete %s", publicId)))
 	}
 	return rowsDeleted, nil
 }

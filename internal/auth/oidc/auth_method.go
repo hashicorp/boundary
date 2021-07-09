@@ -98,7 +98,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 		a.Certificates = make([]string, 0, len(opts.withCertificates))
 		pem, err := EncodeCertificates(opts.withCertificates...)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		a.Certificates = append(a.Certificates, pem...)
 
@@ -117,7 +117,7 @@ func NewAuthMethod(scopeId string, clientId string, clientSecret ClientSecret, o
 	}
 	if a.OperationalState != string(InactiveState) {
 		if err := a.isComplete(); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("new auth method being created with incomplete data but non-inactive state"))
 		}
 	}
 
@@ -210,11 +210,11 @@ func (a *AuthMethod) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	a.KeyId = cipher.KeyID()
 	if err := a.hmacClientSecret(ctx, cipher); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -226,7 +226,7 @@ func (a *AuthMethod) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing cipher")
 	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, a.AuthMethod, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -239,7 +239,7 @@ func (a *AuthMethod) hmacClientSecret(ctx context.Context, cipher wrapping.Wrapp
 	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(a.PublicId), nil)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
@@ -257,7 +257,7 @@ func (am *AuthMethod) isComplete() error {
 	const op = "oidc.(AuthMethod).isComplete"
 	var result *multierror.Error
 	if err := am.validate(op); err != nil {
-		result = multierror.Append(result, errors.Wrap(err, op))
+		result = multierror.Append(result, errors.WrapDeprecated(err, op))
 	}
 	if am.Issuer == "" {
 		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op, "missing issuer"))
@@ -295,19 +295,19 @@ func (am *AuthMethod) convertValueObjects() (*convertedValues, error) {
 	var err error
 	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []interface{}
 	if addAlgs, err = am.convertSigningAlgs(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if addAuds, err = am.convertAudClaims(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if addCerts, err = am.convertCertificates(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if addScopes, err = am.convertClaimsScopes(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if addAccountClaimMaps, err = am.convertAccountClaimMaps(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &convertedValues{
 		Algs:             addAlgs,
@@ -330,7 +330,7 @@ func (am *AuthMethod) convertSigningAlgs() ([]interface{}, error) {
 	for _, a := range am.SigningAlgs {
 		obj, err := NewSigningAlg(am.PublicId, Alg(a))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}
@@ -349,7 +349,7 @@ func (am *AuthMethod) convertAudClaims() ([]interface{}, error) {
 	for _, a := range am.AudClaims {
 		obj, err := NewAudClaim(am.PublicId, a)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}
@@ -368,7 +368,7 @@ func (am *AuthMethod) convertCertificates() ([]interface{}, error) {
 	for _, cert := range am.Certificates {
 		obj, err := NewCertificate(am.PublicId, cert)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}
@@ -387,7 +387,7 @@ func (am *AuthMethod) convertClaimsScopes() ([]interface{}, error) {
 	for _, cs := range am.ClaimsScopes {
 		obj, err := NewClaimsScope(am.PublicId, cs)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}
@@ -410,16 +410,16 @@ func (am *AuthMethod) convertAccountClaimMaps() ([]interface{}, error) {
 	)
 	acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	for _, m := range acms {
 		toClaim, err := ConvertToAccountToClaim(m.To)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		obj, err := NewAccountClaimMap(am.PublicId, m.From, toClaim)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		newInterfaces = append(newInterfaces, obj)
 	}

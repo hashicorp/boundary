@@ -36,7 +36,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 	}
 	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return authMethods, nil
 }
@@ -47,7 +47,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	var err error
 	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	switch {
 	case len(ams) == 0:
@@ -114,7 +114,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	var aggAuthMethods []*authMethodAgg
 	err := r.reader.SearchWhere(ctx, &aggAuthMethods, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	if len(aggAuthMethods) == 0 { // we're done if nothing is found.
@@ -125,10 +125,10 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	for _, agg := range aggAuthMethods {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, agg.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(agg.KeyId))
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := structwrapping.UnwrapStruct(ctx, databaseWrapper, agg, nil); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+			return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 		}
 		am := AllocAuthMethod()
 		am.PublicId = agg.PublicId

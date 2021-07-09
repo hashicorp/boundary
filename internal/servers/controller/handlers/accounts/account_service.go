@@ -460,7 +460,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	}
 	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a, createOpts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
@@ -488,7 +488,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	if attrs.GetIssuer() != "" {
 		u, err := url.Parse(attrs.GetIssuer())
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(u))
 	}
@@ -503,7 +503,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 
 	out, err := repo.CreateAccount(ctx, am.GetScopeId(), a)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create account"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create account"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
@@ -521,7 +521,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	case auth.PasswordSubtype:
 		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
@@ -530,7 +530,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	case auth.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create account but no error returned from repository.")
@@ -556,7 +556,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 	}
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
@@ -565,7 +565,7 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id str
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"attributes.login_name": "Length too short."})
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
@@ -595,11 +595,11 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateAccount(ctx, scopeId, u, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update account"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update account"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist or incorrect version provided.", id)
@@ -614,7 +614,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	case auth.PasswordSubtype:
 		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if a == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
@@ -623,7 +623,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	case auth.OidcSubtype:
 		a, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if a == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update account but no error returned from repository.")
@@ -655,7 +655,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 	return rows > 0, nil
 }
@@ -668,11 +668,11 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	case auth.PasswordSubtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		for _, a := range pwl {
 			outUl = append(outUl, a)
@@ -680,11 +680,11 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	case auth.OidcSubtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		for _, a := range oidcl {
 			outUl = append(outUl, a)
@@ -697,7 +697,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 	const op = "account.(Service).changePasswordInRepo"
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	out, err := repo.ChangePassword(ctx, scopeId, id, currentPassword, newPassword, version)
 	if err != nil {
@@ -711,7 +711,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, v
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"new_password": "New password equal to current password."})
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "Failed to change password.")
@@ -724,7 +724,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	out, err := repo.SetPassword(ctx, scopeId, id, pw, version)
 	if err != nil {
@@ -735,7 +735,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, vers
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
 				map[string]string{"password": "Password is too short."})
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return out, nil
 }

@@ -48,7 +48,7 @@ func (w *GormWriter) Create(i interface{}) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if err := w.Tx.Create(i).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -71,10 +71,10 @@ func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []stri
 	// setToNullPaths do not intersect.
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to build update fields"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to build update fields"))
 	}
 	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func (w *GormWriter) Delete(i interface{}) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if err := w.Tx.Delete(i).Error; err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 	}
 	err := w.Tx.Exec(sql).Error
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -145,7 +145,7 @@ func (w *GormWriter) dropTableIfExists(tableName string) error {
 	}
 	err := w.Tx.DropTableIfExists(tableName).Error
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

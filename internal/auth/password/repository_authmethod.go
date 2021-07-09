@@ -48,7 +48,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	} else {
 		id, err := newAuthMethodId()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		m.PublicId = id
 	}
@@ -58,19 +58,19 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, errors.NewDeprecated(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 	if err := c.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	var err error
 	c.PrivateId, err = newArgon2ConfigurationId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newAuthMethod *AuthMethod
@@ -79,11 +79,11 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		func(_ db.Reader, w db.Writer) error {
 			newArgon2Conf = c.clone()
 			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create argon conf"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create argon conf"))
 			}
 			newAuthMethod = m.Clone()
 			if err := w.Create(ctx, newAuthMethod, db.WithOplog(oplogWrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create auth method"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create auth method"))
 			}
 			return nil
 		},
@@ -93,7 +93,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		if errors.IsUniqueError(err) {
 			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("in scope: %s: name %s already exists", m.ScopeId, m.Name))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(m.ScopeId))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(m.ScopeId))
 	}
 	return newAuthMethod, nil
 }
@@ -117,7 +117,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 	}
 	authMethods, err := r.getAuthMethods(ctx, "", scopeIds, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return authMethods, nil
 }
@@ -134,7 +134,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
@@ -148,7 +148,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 			dAc := am.Clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -158,7 +158,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(publicId))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(publicId))
 	}
 
 	return rowsDeleted, nil
@@ -214,7 +214,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
@@ -238,7 +238,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				dbOpts...,
 			)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
@@ -253,7 +253,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 			}
 			upAuthMethod, err = txRepo.lookupAuthMethod(ctx, upAuthMethod.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if upAuthMethod == nil {
 				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
@@ -265,7 +265,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		if errors.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(authMethod.PublicId))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(authMethod.PublicId))
 	}
 	return upAuthMethod, rowsUpdated, nil
 }
@@ -276,7 +276,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 	var err error
 	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	switch {
 	case len(ams) == 0:
@@ -335,7 +335,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	var views []*authMethodView
 	err := r.reader.SearchWhere(ctx, &views, strings.Join(where, " and "), args, dbArgs...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	if len(views) == 0 { // we're done if nothing is found.

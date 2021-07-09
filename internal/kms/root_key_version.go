@@ -97,7 +97,7 @@ func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKey directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.RootKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.RootKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

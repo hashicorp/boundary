@@ -28,7 +28,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 	}
 	id, err := newRoleId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	c := role.Clone().(*Role)
 	c.PublicId = id
@@ -37,7 +37,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 		if errors.IsUniqueError(err) {
 			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
 	}
 	return resource.(*Role), nil
 }
@@ -94,19 +94,19 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			c := role.Clone().(*Role)
 			resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			pr, err = repo.ListPrincipalRoles(ctx, role.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			rg, err = repo.ListRoleGrants(ctx, role.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -115,7 +115,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
+		return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
 	return resource.(*Role), pr, rg, rowsUpdated, nil
 }
@@ -137,19 +137,19 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...O
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupByPublicId(ctx, &role); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			pr, err = repo.ListPrincipalRoles(ctx, withPublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			rg, err = repo.ListRoleGrants(ctx, withPublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -158,7 +158,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...O
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil, nil
 		}
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
 	return &role, pr, rg, nil
 }
@@ -172,11 +172,11 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, _ ...O
 	role := allocRole()
 	role.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	rowsDeleted, err := r.delete(ctx, &role)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
@@ -190,7 +190,7 @@ func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt .
 	var roles []*Role
 	err := r.list(ctx, &roles, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return roles, nil
 }

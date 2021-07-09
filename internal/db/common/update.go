@@ -33,7 +33,7 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 
 	inter, maskPaths, nullPaths, err := Intersection(fieldMaskPaths, setToNullPaths)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if len(inter) != 0 {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "fieldMashPaths and setToNullPaths cannot intersect")

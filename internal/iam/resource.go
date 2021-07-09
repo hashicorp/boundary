@@ -61,7 +61,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
 		if err := reader.LookupById(ctx, resource); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		// if it's still not set after getting it from the db...
 		if resource.GetScopeId() == "" {
@@ -70,7 +70,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 	}
 	var p Scope
 	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &p, nil
 }
@@ -89,7 +89,7 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 			if errors.IsNotFoundError(err) {
 				return errors.NewDeprecated(errors.RecordNotFound, op, "scope is not found")
 			}
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 		validScopeType := false
 		for _, t := range resource.validScopeTypes() {

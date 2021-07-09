@@ -87,7 +87,7 @@ func NewConnectionState(connectionId string, state ConnectionStatus, _ ...Option
 		Status:       state,
 	}
 	if err := s.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -136,7 +136,7 @@ func (s *ConnectionState) Clone() interface{} {
 func (s *ConnectionState) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(ConnectionState).VetForWrite"
 	if err := s.validate(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

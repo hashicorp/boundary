@@ -44,21 +44,21 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	} else {
 		id, err := newTcpTargetId()
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, op)
+			return nil, nil, nil, errors.WrapDeprecated(err, op)
 		}
 		t.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newHostSets := make([]interface{}, 0, len(opts.withHostSets))
 	for _, hsId := range opts.withHostSets {
 		hostSet, err := NewTargetHostSet(t.PublicId, hsId)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target host set"))
+			return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
 		newHostSets = append(newHostSets, hostSet)
 	}
@@ -67,7 +67,7 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 	for _, clId := range opts.withCredentialLibraries {
 		credLib, err := NewCredentialLibrary(t.PublicId, clId)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory target credential library"))
+			return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory target credential library"))
 		}
 		newCredLibs = append(newCredLibs, credLib)
 	}
@@ -83,44 +83,44 @@ func (r *Repository) CreateTcpTarget(ctx context.Context, target *TcpTarget, opt
 		func(read db.Reader, w db.Writer) error {
 			targetTicket, err := w.GetTicket(t)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			msgs := make([]*oplog.Message, 0, 2)
 			var targetOplogMsg oplog.Message
 			returnedTarget = t.Clone()
 			if err := w.Create(ctx, returnedTarget, db.NewOplogMsg(&targetOplogMsg)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to create target"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create target"))
 			}
 			msgs = append(msgs, &targetOplogMsg)
 			if len(newHostSets) > 0 {
 				hostSetOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
 				if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSetOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add host sets"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add host sets"))
 				}
 				if returnedHostSet, err = fetchSets(ctx, read, t.PublicId); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to read host sets"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to read host sets"))
 				}
 				msgs = append(msgs, hostSetOplogMsgs...)
 			}
 			if len(newCredLibs) > 0 {
 				credLibOplogMsgs := make([]*oplog.Message, 0, len(newCredLibs))
 				if err := w.CreateItems(ctx, newCredLibs, db.NewOplogMsgs(&credLibOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add credential libraries"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add credential libraries"))
 				}
 				if returnedCredLibs, err = fetchLibraries(ctx, read, t.PublicId); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to read host sets"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to read host sets"))
 				}
 				msgs = append(msgs, credLibOplogMsgs...)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.PublicId)))
 	}
 	return returnedTarget.(*TcpTarget), returnedHostSet, returnedCredLibs, nil
 }
@@ -183,7 +183,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 			t := target.Clone().(*TcpTarget)
 			returnedTarget, targetSets, credLibs, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -192,7 +192,7 @@ func (r *Repository) UpdateTcpTarget(ctx context.Context, target *TcpTarget, ver
 		if errors.IsUniqueError(err) {
 			return nil, nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.Name, target.ScopeId))
 		}
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
+		return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.PublicId)))
 	}
 	return returnedTarget.(Target), targetSets, credLibs, rowsUpdated, nil
 }

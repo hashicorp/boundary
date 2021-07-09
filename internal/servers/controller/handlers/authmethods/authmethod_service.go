@@ -496,11 +496,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 
 	oidcRepo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == auth.AnonymousUserId))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	for _, item := range ol {
 		outUl = append(outUl, item)
@@ -508,11 +508,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 
 	repo, err := s.pwRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	pl, err := repo.ListAuthMethods(ctx, scopeIds)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	for _, item := range pl {
 		outUl = append(outUl, item)
@@ -527,7 +527,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	case auth.PasswordSubtype:
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -536,7 +536,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	case auth.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
@@ -556,7 +556,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	case auth.PasswordSubtype:
 		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, false, errors.Wrap(err, op)
+			return nil, false, errors.WrapDeprecated(err, op)
 		}
 		if pam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
@@ -566,7 +566,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	case auth.OidcSubtype:
 		oam, dr, err := s.updateOidcInRepo(ctx, scopeId, req)
 		if err != nil {
-			return nil, false, errors.Wrap(err, op)
+			return nil, false, errors.WrapDeprecated(err, op)
 		}
 		if oam == nil {
 			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
@@ -586,14 +586,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	case auth.PasswordSubtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
-			return false, errors.Wrap(err, op)
+			return false, errors.WrapDeprecated(err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, scopeId, id)
 
 	case auth.OidcSubtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
-			return false, errors.Wrap(err, op)
+			return false, errors.WrapDeprecated(err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
 	}
@@ -602,7 +602,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(dErr) {
 			return false, nil
 		}
-		return false, errors.Wrap(dErr, op, errors.WithMsg("unable to delete auth method"))
+		return false, errors.WrapDeprecated(dErr, op, errors.WithMsg("unable to delete auth method"))
 	}
 
 	return rows > 0, nil
@@ -620,7 +620,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 
 		attrs := &pbs.OidcChangeStateAttributes{}
 		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to parse attributes"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse attributes"))
 		}
 
 		var opts []oidc.Option

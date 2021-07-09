@@ -58,7 +58,7 @@ func (c *providers) get(ctx context.Context, currentFromDb *AuthMethod) (*oidc.P
 	const op = "oidc.(providers).getProvider"
 	storedProvider, err := convertToProvider(ctx, currentFromDb)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	c.mu.RLock()
 	p, ok := c.cache[currentFromDb.PublicId]
@@ -66,11 +66,11 @@ func (c *providers) get(ctx context.Context, currentFromDb *AuthMethod) (*oidc.P
 	if ok {
 		cachedHash, err := p.ConfigHash()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to hash provider from cache"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to hash provider from cache"))
 		}
 		storedHash, err := storedProvider.ConfigHash()
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to hash provider from database"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to hash provider from database"))
 		}
 		switch cachedHash == storedHash {
 		case true:
@@ -103,7 +103,7 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method")
 	}
 	if err := am.isComplete(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	algs := make([]oidc.Alg, 0, len(am.SigningAlgs))
 	for _, a := range am.SigningAlgs {

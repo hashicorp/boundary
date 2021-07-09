@@ -59,7 +59,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	if a.Issuer == "" {
 		am, err := r.LookupAuthMethod(ctx, a.AuthMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get auth method"))
 		}
 		if am.GetIssuer() == "" {
 			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no issuer on auth method")
@@ -79,14 +79,14 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	} else {
 		id, err := newAccountId(a.AuthMethodId, a.Issuer, a.Subject)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		a.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
 	}
 
 	var newAccount *Account
@@ -94,7 +94,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.Clone()
 			if err := w.Create(ctx, newAccount, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId))); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -106,7 +106,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 				"in auth method %s: name %q already exists or subject %q already exists for issuer %q in scope %s",
 				a.AuthMethodId, a.Name, a.Subject, a.Issuer, scopeId))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(a.AuthMethodId))
 	}
 	return newAccount, nil
 }
@@ -124,7 +124,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return a, nil
 }
@@ -144,7 +144,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	var accts []*Account
 	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return accts, nil
 }
@@ -164,7 +164,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -177,7 +177,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 			dAc := ac.Clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -187,7 +187,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(withPublicId))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(withPublicId))
 	}
 
 	return rowsDeleted, nil
@@ -245,7 +245,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg(("unable to get oplog wrapper")))
 	}
 
@@ -261,7 +261,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
@@ -275,7 +275,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(a.PublicId))
 	}
 
 	return returnedAccount, rowsUpdated, nil

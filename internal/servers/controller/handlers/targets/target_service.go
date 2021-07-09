@@ -824,11 +824,11 @@ HostSetIterationLoop:
 	if len(reqs) > 0 {
 		credRepo, err := s.vaultCredRepoFn()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 	}
 
@@ -839,7 +839,7 @@ HostSetIterationLoop:
 		// TODO: Access the json directly from the vault response instead of re-marshalling it.
 		jSecret, err := json.Marshal(secret)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("marshalling secret to json"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("marshalling secret to json"))
 		}
 		var sSecret *structpb.Struct
 		switch secret.(type) {
@@ -852,11 +852,11 @@ HostSetIterationLoop:
 			// decoder with UseNumber here.
 			var dSecret map[string]interface{}
 			if err := json.Unmarshal(jSecret, &dSecret); err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("decoding json for proto marshaling"))
+				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("decoding json for proto marshaling"))
 			}
 			sSecret, err = structpb.NewStruct(dSecret)
 			if err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("creating proto struct for secret"))
+				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("creating proto struct for secret"))
 			}
 		}
 		creds = append(creds, &pb.SessionCredential{
@@ -959,7 +959,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	}
 	out, hs, cl, err := repo.CreateTcpTarget(ctx, u)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create target"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create target"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
@@ -1008,7 +1008,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, hs, cl, rowsUpdated, err := repo.UpdateTcpTarget(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to update target"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update target"))
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
@@ -1027,7 +1027,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete target"))
+		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete target"))
 	}
 	return rows > 0, nil
 }
@@ -1074,7 +1074,7 @@ func (s Service) setSetsInRepo(ctx context.Context, targetId string, hostSetIds 
 
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting host sets"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after setting host sets"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sets for it.")
@@ -1095,7 +1095,7 @@ func (s Service) removeSetsInRepo(ctx context.Context, targetId string, hostSetI
 	}
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing host sets"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after removing host sets"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sets from it.")
@@ -1133,7 +1133,7 @@ func (s Service) setLibrariesInRepo(ctx context.Context, targetId string, lids [
 
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after setting credential libraries"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after setting credential libraries"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting credential libraries for it.")
@@ -1154,7 +1154,7 @@ func (s Service) removeLibrariesInRepo(ctx context.Context, targetId string, lid
 	}
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up target after removing credential libraries"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up target after removing credential libraries"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing credential libraries from it.")

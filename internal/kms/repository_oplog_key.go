@@ -22,13 +22,13 @@ func (r *Repository) CreateOplogKey(ctx context.Context, rkvWrapper wrapping.Wra
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			if returnedDk, returnedDv, err = createOplogKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	return returnedDk.(*OplogKey), returnedDv.(*OplogKeyVersion), nil
 }
@@ -55,37 +55,37 @@ func createOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 	rv.PrivateId = rootKeyVersionId
 	err := r.LookupById(ctx, &rv)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
 	}
 
 	opk := AllocOplogKey()
 	opv := AllocOplogKeyVersion()
 	id, err := newOplogKeyId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	opk.PrivateId = id
 	opk.RootKeyId = rv.RootKeyId
 
 	id, err = newOplogKeyVersionId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	opv.PrivateId = id
 	opv.OplogKeyId = opk.PrivateId
 	opv.RootKeyVersionId = rootKeyVersionId
 	opv.Key = key
 	if err := opv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 
 	// no oplog entries for keys
 	if err := w.Create(ctx, &opk); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key create"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("key create"))
 	}
 	// no oplog entries for key versions
 	if err := w.Create(ctx, &opv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions create"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("key versions create"))
 	}
 
 	return &opk, &opv, nil
@@ -101,7 +101,7 @@ func (r *Repository) LookupOplogKey(ctx context.Context, privateId string, _ ...
 	k := AllocOplogKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return &k, nil
 }
@@ -117,7 +117,7 @@ func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, _ ...
 	k := AllocOplogKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -130,7 +130,7 @@ func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, _ ...
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -139,7 +139,7 @@ func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, _ ...
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -150,7 +150,7 @@ func (r *Repository) ListOplogKeys(ctx context.Context, opt ...Option) ([]Dek, e
 	var keys []*OplogKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	deks := make([]Dek, 0, len(keys))
 	for _, key := range keys {

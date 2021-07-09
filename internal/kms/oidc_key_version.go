@@ -105,7 +105,7 @@ func (k *OidcKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OidcKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.OidcKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -116,7 +116,7 @@ func (k *OidcKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.OidcKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.OidcKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

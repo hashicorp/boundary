@@ -39,7 +39,7 @@ func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) 
 	// checking time and we just care that it parses correctly.
 	perm, err := perms.Parse("o_abcd1234", grant)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
@@ -79,11 +79,11 @@ func (g *RoleGrant) VetForWrite(_ context.Context, _ db.Reader, _ db.OpType, _ .
 	// anyways because it should still be part of the vetting process.
 	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
 	}
 	canonical := perm.CanonicalString()
 	if g.CanonicalGrant != "" && g.CanonicalGrant != canonical {
-		return errors.Wrap(err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("existing canonical grant and derived one do not match"))
 	}
 	g.CanonicalGrant = canonical
 

@@ -195,13 +195,13 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		default:
 			iamRepo, err := v.iamRepoFn()
 			if err != nil {
-				ret.Error = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+				ret.Error = errors.WrapDeprecated(err, op, errors.WithMsg("failed to get iam repo"))
 				return
 			}
 
 			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
 			if err != nil {
-				ret.Error = errors.Wrap(err, op)
+				ret.Error = errors.WrapDeprecated(err, op)
 				return
 			}
 			if scp == nil {
@@ -427,7 +427,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		}
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
-			retErr = errors.Wrap(err, op)
+			retErr = errors.WrapDeprecated(err, op)
 			return
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
@@ -450,7 +450,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
-		retErr = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+		retErr = errors.WrapDeprecated(err, op, errors.WithMsg("failed to get iam repo"))
 		return
 	}
 
@@ -469,7 +469,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	default:
 		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
 		if err != nil {
-			retErr = errors.Wrap(err, op)
+			retErr = errors.WrapDeprecated(err, op)
 			return
 		}
 		if scp == nil {
@@ -500,7 +500,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// u_anon and u_auth)
 	grantTuples, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
-		retErr = errors.Wrap(err, op)
+		retErr = errors.WrapDeprecated(err, op)
 		return
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
@@ -515,7 +515,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			perms.WithAccountId(accountId),
 			perms.WithSkipFinalValidation(true))
 		if err != nil {
-			retErr = errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
+			retErr = errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
 			return
 		}
 		parsedGrants = append(parsedGrants, parsed)

@@ -240,7 +240,7 @@ func Test_WrapError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := errors.Wrap(tt.err, tt.op, tt.opt...)
+			err := errors.WrapDeprecated(tt.err, tt.op, tt.opt...)
 			require.Error(err)
 			assert.Equal(tt.want, err)
 		})

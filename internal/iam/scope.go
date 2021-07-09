@@ -46,7 +46,7 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org.PublicId = orgPublicId
 	p, err := newScope(&org, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return p, nil
 }
@@ -136,7 +136,7 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 			parentScope := AllocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to verify project's org scope"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to verify project's org scope"))
 			}
 			if parentScope.Type != scope.Org.String() {
 				return errors.NewDeprecated(errors.InvalidParameter, op, "project parent scope is not an org")
@@ -167,7 +167,7 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	}
 	if s.Type == "" && s.ParentId == "" {
 		if err := r.LookupByPublicId(ctx, s); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 	}
 	// HANDLE_GLOBAL
@@ -185,11 +185,11 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
 			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup parent public id from public id"))
+				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup parent public id from public id"))
 			}
 		default:
 			if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
-				return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup parent from public id"))
+				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup parent from public id"))
 			}
 		}
 		return &p, nil

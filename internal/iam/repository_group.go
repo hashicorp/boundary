@@ -30,7 +30,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option)
 	}
 	id, err := newGroupId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	g := group.Clone().(*Group)
 	g.PublicId = id
@@ -39,7 +39,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option)
 		if errors.IsUniqueError(err) {
 			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", g.PublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for group %s", g.PublicId)))
 	}
 	return resource.(*Group), nil
 }
@@ -92,15 +92,15 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			g := group.Clone().(*Group)
 			resource, rowsUpdated, err = r.update(ctx, g, version, dbMask, nullFields)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, group.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -109,7 +109,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		if errors.IsUniqueError(err) {
 			return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("group %s already exists in scope %s", group.Name, group.ScopeId))
 		}
-		return nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
+		return nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for group %s", group.PublicId)))
 	}
 	return resource.(*Group), members, rowsUpdated, nil
 }
@@ -130,15 +130,15 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupByPublicId(ctx, &g); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			members, err = repo.ListGroupMembers(ctx, withPublicId)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -147,7 +147,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	return &g, members, nil
 }
@@ -161,11 +161,11 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, _ ...
 	g := allocGroup()
 	g.PublicId = withPublicId
 	if err := r.reader.LookupByPublicId(ctx, &g); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	rowsDeleted, err := r.delete(ctx, &g)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("for group %s", withPublicId)))
 	}
 	return rowsDeleted, nil
 }
@@ -179,7 +179,7 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt 
 	var grps []*Group
 	err := r.list(ctx, &grps, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return grps, nil
 }
@@ -192,7 +192,7 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 	}
 	members := []*GroupMember{}
 	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return members, nil
 }
@@ -216,21 +216,21 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	newGroupMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		gm, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory group member"))
 		}
 		newGroupMembers = append(newGroupMembers, gm)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentMembers []*GroupMember
@@ -242,7 +242,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			msgs := make([]*oplog.Message, 0, 2)
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -250,7 +250,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
@@ -258,7 +258,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			msgs = append(msgs, &groupOplogMsg)
 			memberOplogMsgs := make([]*oplog.Message, 0, len(newGroupMembers))
 			if err := w.CreateItems(ctx, newGroupMembers, db.NewOplogMsgs(&memberOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to add users"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add users"))
 			}
 			msgs = append(msgs, memberOplogMsgs...)
 			metadata := oplog.Metadata{
@@ -268,7 +268,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 				"resource-public-id": []string{groupId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := Repository{
@@ -280,13 +280,13 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return currentMembers, nil
 }
@@ -309,21 +309,21 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	deleteMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		member, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
-			return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member"))
+			return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory group member"))
 		}
 		deleteMembers = append(deleteMembers, member)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var totalRowsDeleted int
@@ -335,7 +335,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			msgs := make([]*oplog.Message, 0, 2)
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -343,7 +343,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update group version"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update group version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
@@ -352,7 +352,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
 			rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete group members"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete group members"))
 			}
 			if rowsDeleted != len(deleteMembers) {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
@@ -366,13 +366,13 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				"resource-public-id": []string{groupId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return totalRowsDeleted, nil
 }
@@ -392,12 +392,12 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var currentMembers []*GroupMember
@@ -417,13 +417,13 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			addMembers, deleteMembers, err := groupMemberChanges(ctx, reader, groupId, userIds)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			// handle no change to existing group members
 			if len(addMembers) == 0 && len(deleteMembers) == 0 {
 				currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to retrieve current group members after sets"))
 				}
 				return nil
 			}
@@ -440,7 +440,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			// we need to write oplog entries for deletes and adds
 			groupTicket, err := w.GetTicket(&group)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedGroup := allocGroup()
 			updatedGroup.PublicId = groupId
@@ -448,7 +448,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			var groupOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update group verison"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update group verison"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated group and %d rows updated", rowsUpdated))
@@ -457,7 +457,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 				userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete group member"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete group member"))
 				}
 				if rowsDeleted != len(deleteMembers) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers)))
@@ -469,7 +469,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			if len(addMembers) > 0 {
 				userOplogMsgs := make([]*oplog.Message, 0, len(addMembers))
 				if err := w.CreateItems(ctx, addMembers, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add users"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add users"))
 				}
 				totalRowsAffected += len(addMembers)
 				msgs = append(msgs, userOplogMsgs...)
@@ -479,16 +479,16 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			// we're done with all the membership writes, so let's write the
 			// group's update oplog message
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current group members after set"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to retrieve current group members after set"))
 			}
 			return nil
 		})
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return currentMembers, totalRowsAffected, nil
 }
@@ -514,7 +514,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	}
 	rows, err := reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 
@@ -526,7 +526,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	for rows.Next() {
 		var chg change
 		if err := reader.ScanRows(rows, &chg); err != nil {
-			return nil, nil, errors.Wrap(err, op)
+			return nil, nil, errors.WrapDeprecated(err, op)
 		}
 		changes = append(changes, &chg)
 	}
@@ -540,13 +540,13 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 		case "add":
 			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member for add"))
+				return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory group member for add"))
 			}
 			addMembers = append(addMembers, gm)
 		case "delete":
 			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory group member for delete"))
+				return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory group member for delete"))
 			}
 			deleteMembers = append(deleteMembers, gm)
 		default:

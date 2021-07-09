@@ -229,11 +229,11 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*authtoken.AuthTok
 	const op = "authtokens.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	at, err := repo.LookupAuthToken(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if at == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("AuthToken %q not found", id))
@@ -245,14 +245,14 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "authtokens.(Service).deleteFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 	rows, err := repo.DeleteAuthToken(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete user"))
+		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
 }

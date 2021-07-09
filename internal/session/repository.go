@@ -69,7 +69,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 		dbOpts = append(dbOpts, db.WithOrder("create_time"))
 	}
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -123,10 +123,10 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionsWithState []
 				if len(workingSession.CtTofuToken) > 0 {
 					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ScopeId, kms.KeyPurposeDatabase)
 					if err != nil {
-						return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+						return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 					}
 					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, errors.Wrap(err, op, errors.WithMsg("cannot decrypt session value"))
+						return nil, errors.WrapDeprecated(err, op, errors.WithMsg("cannot decrypt session value"))
 					}
 				} else {
 					workingSession.CtTofuToken = nil

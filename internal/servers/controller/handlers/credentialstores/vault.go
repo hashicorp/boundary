@@ -16,7 +16,7 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 	const op = "credentialstores.extractClientCertAndPk"
 	pks, err := decodePemBlocks(pk)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("failed to parse client certificate private key"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed to parse client certificate private key"))
 	}
 	var pkPem *pem.Block
 	switch len(pks) {
@@ -29,7 +29,7 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 
 	bs, err := decodePemBlocks(cert)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("failed to parse client certificate into pem blocks"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed to parse client certificate into pem blocks"))
 	}
 	pkIdx := -1
 	for i, b := range bs {

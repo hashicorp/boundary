@@ -113,14 +113,14 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 				lookupErr = read.LookupWhere(ctx, &target, strings.Join(where, " and "), whereArgs...)
 			}
 			if lookupErr != nil {
-				return errors.Wrap(lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicIdOrName)))
+				return errors.WrapDeprecated(lookupErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicIdOrName)))
 			}
 			var err error
 			if hostSets, err = fetchSets(ctx, read, target.PublicId); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if credLibs, err = fetchLibraries(ctx, read, target.PublicId); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -129,11 +129,11 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil, nil
 		}
-		return nil, nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.WrapDeprecated(err, op)
 	}
 	subtype, err := target.targetSubtype()
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.WrapDeprecated(err, op)
 	}
 	return subtype, hostSets, credLibs, nil
 }
@@ -158,7 +158,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	var foundTargets []*targetView
 	err := r.list(ctx, &foundTargets, strings.Join(where, " and "), args, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	targets := make([]Target, 0, len(foundTargets))
@@ -166,7 +166,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	for _, t := range foundTargets {
 		subtype, err := t.targetSubtype()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		targets = append(targets, subtype)
 	}
@@ -186,7 +186,7 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	}
 	dbOpts = append(dbOpts, db.WithLimit(limit))
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -200,7 +200,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 	t := allocTargetView()
 	t.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	var metadata oplog.Metadata
 	var deleteTarget interface{}
@@ -216,7 +216,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -233,7 +233,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
@@ -243,7 +243,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return rowsDeleted, nil
 }
@@ -270,13 +270,13 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 		t := allocTargetView()
 		t.PublicId = target.GetPublicId()
 		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
+			return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
 		}
 		scopeId = t.ScopeId
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	metadata := target.oplog(oplog.OpType_OP_TYPE_UPDATE)
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
@@ -299,7 +299,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 				dbOpts...,
 			)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
@@ -307,17 +307,17 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 			}
 
 			if hostSets, err = fetchSets(ctx, reader, target.GetPublicId()); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 
 			if credLibs, err = fetchLibraries(ctx, reader, target.GetPublicId()); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, nil, nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return returnedTarget.(Target), hostSets, credLibs, rowsUpdated, nil
 }

@@ -112,7 +112,7 @@ func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 			CtToken: pl.CtToken,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
+			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
 		}
 		pl.Token = ptkv.Token
 	}
@@ -126,7 +126,7 @@ func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 			CtKey: pl.CtClientKey,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
+			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
 		}
 		pl.ClientKey = pckv.Key
 	}
@@ -151,7 +151,7 @@ func (pl *privateLibrary) client() (*client, error) {
 
 	client, err := newClient(clientConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }
@@ -166,7 +166,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 
 	mapper, err := newMapper(requests)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	libIds := mapper.libIds()
@@ -181,7 +181,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("query failed"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("query failed"))
 	}
 	defer rows.Close()
 
@@ -189,7 +189,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	for rows.Next() {
 		var lib privateLibrary
 		if err := r.reader.ScanRows(rows, &lib); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("scan row failed"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("scan row failed"))
 		}
 		purps := mapper.get(lib.GetPublicId())
 		if len(purps) == 0 {
@@ -205,11 +205,11 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	for _, pl := range libs {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ScopeId, kms.KeyPurposeDatabase)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
 
 		if err := pl.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 	}
 

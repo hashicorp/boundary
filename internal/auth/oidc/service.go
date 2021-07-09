@@ -85,12 +85,12 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	v, ok := m.(validator)
 	if ok {
 		if err := v.Validate(); err != nil {
-			return "", errors.Wrap(err, op)
+			return "", errors.WrapDeprecated(err, op)
 		}
 	}
 	marshaled, err := proto.Marshal(m)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to marshal message"), errors.WithCode(errors.Encode))
 	}
 	blobInfo, err := wrapper.Encrypt(ctx, marshaled, []byte(fmt.Sprintf("%s%s", am.PublicId, am.ScopeId)))
 	if err != nil {
@@ -98,7 +98,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 	}
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to marshal blob"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to marshal blob"), errors.WithCode(errors.Encode))
 	}
 	wrapped := &request.Wrapper{
 		AuthMethodId: am.PublicId,
@@ -107,7 +107,7 @@ func encryptMessage(ctx context.Context, wrapper wrapping.Wrapper, am *AuthMetho
 		Ct:           marshaledBlob,
 	}
 	if err := wrapped.Validate(); err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	marshaledEncryptedSt, err := proto.Marshal(wrapped)
 	if err != nil {
@@ -178,7 +178,7 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	// get a specific oidcWrapper using the WithKeyId(...) option
 	oidcWrapper, err := k.GetWrapper(ctx, scopeId, kms.KeyPurposeOidc, kms.WithKeyId(opts.withKeyId))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oidc wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oidc wrapper"))
 	}
 
 	// What derived key are we looking for?
@@ -191,7 +191,7 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	// okay, I guess we need to derive a new key for this combo of oidcWrapper and authMethod
 	reader, err := kms.NewDerivedReader(oidcWrapper, 32, []byte(authMethodId), []byte(scopeId))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	privKey, _, err := ed25519.GenerateKey(reader)
 	if err != nil {
@@ -201,10 +201,10 @@ func requestWrappingWrapper(ctx context.Context, k *kms.Kms, scopeId, authMethod
 	if _, err := wrapper.SetConfig(map[string]string{
 		"key_id": keyId,
 	}); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead wrapper in auth method %s", authMethodId)))
 	}
 	if err := wrapper.SetAESGCMKeyBytes(privKey); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead wrapper in auth method %s", authMethodId)))
 	}
 	// store the derived key in our cache
 	k.GetDerivedPurposeCache().Store(keyId, wrapper)

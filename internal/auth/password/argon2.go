@@ -143,7 +143,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 
 	id, err := newArgon2CredentialId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	c := &Argon2Credential{
@@ -157,7 +157,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 
 	salt := make([]byte, conf.SaltLength)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Io))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
 	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
@@ -187,7 +187,7 @@ func (c *Argon2Credential) SetTableName(n string) {
 func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	c.KeyId = cipher.KeyID()
 	return nil
@@ -196,7 +196,7 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

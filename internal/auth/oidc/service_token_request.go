@@ -39,7 +39,7 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 
 	reqTkWrapper, err := UnwrapMessage(ctx, tokenRequestId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if reqTkWrapper.ScopeId == "" {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "request token id wrapper missing scope id")
@@ -55,11 +55,11 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 	// so we need the derived wrapper that was used to encrypt it.
 	requestWrapper, err := requestWrappingWrapper(ctx, kms, reqTkWrapper.ScopeId, reqTkWrapper.AuthMethodId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	reqTkBytes, err := decryptMessage(ctx, requestWrapper, reqTkWrapper)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	var reqTk request.Token
 	if err := proto.Unmarshal(reqTkBytes, &reqTk); err != nil {
@@ -77,7 +77,7 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 
 	tokenRepo, err := atRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	authTk, err := tokenRepo.IssueAuthToken(ctx, reqTk.RequestId)
 	if err != nil {
@@ -86,7 +86,7 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 			// error, but nothing is returned.
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if authTk.Token == "" {
 		return nil, errors.NewDeprecated(errors.Internal, op, "issued token is missing")

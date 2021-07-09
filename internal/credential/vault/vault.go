@@ -58,14 +58,14 @@ func newClient(c *clientConfig) (*client, error) {
 		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
 		tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
 		if err := rootcerts.ConfigureTLS(tlsConfig, rootConfig); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 	}
 
 	if c.isClientTLS() {
 		clientCert, err := tls.X509KeyPair(c.ClientCert, c.ClientKey)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
 		tlsConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
@@ -75,7 +75,7 @@ func newClient(c *clientConfig) (*client, error) {
 
 	vClient, err := vault.NewClient(vc)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	vClient.SetToken(string(c.Token))
 
@@ -94,7 +94,7 @@ func (c *client) ping() error {
 	h, err := c.cl.Sys().Health()
 	switch {
 	case err != nil:
-		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
 		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
 	case !h.Initialized || h.Sealed:
@@ -112,7 +112,7 @@ func (c *client) renewToken() (*vault.Secret, error) {
 	const op = "vault.(client).renewToken"
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
@@ -124,7 +124,7 @@ func (c *client) revokeToken() error {
 	const op = "vault.(client).revokeToken"
 	// The `token` parameter is kept for backwards compatibility but is ignored, so use ""
 	if err := c.cl.Auth().Token().RevokeSelf(""); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 	const op = "vault.(client).renewLease"
 	t, err := c.cl.Sys().Renew(leaseId, int(leaseDuration.Round(time.Second).Seconds()))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
@@ -148,7 +148,7 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 func (c *client) revokeLease(leaseId string) error {
 	const op = "vault.(client).revokeLease"
 	if err := c.cl.Sys().Revoke(leaseId); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
 }
@@ -161,7 +161,7 @@ func (c *client) lookupToken() (*vault.Secret, error) {
 	const op = "vault.(client).lookupToken"
 	t, err := c.cl.Auth().Token().LookupSelf()
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
@@ -178,7 +178,7 @@ func (c *client) get(path string) (*vault.Secret, error) {
 	const op = "vault.(client).get"
 	s, err := c.cl.Logical().Read(path)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }
@@ -193,7 +193,7 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 	}
 	s, err := c.cl.Logical().WriteBytes(path, data)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }

@@ -66,7 +66,7 @@ func (cs *AccountClaimMap) validate(caller errors.Op) error {
 		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing from claim")
 	}
 	if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
-		return errors.Wrap(err, caller)
+		return errors.WrapDeprecated(err, caller)
 	}
 	return nil
 }

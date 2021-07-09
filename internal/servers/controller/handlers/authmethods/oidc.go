@@ -212,11 +212,11 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	am, err := repo.LookupAuthMethod(ctx, req.GetAuthMethodId())
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if am == nil {
 		return nil, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("Auth method %s not found.", req.GetAuthMethodId()))
@@ -231,7 +231,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		pbErr := handlers.ToApiError(err)
 		out, err := handlers.JSONMarshaler().Marshal(pbErr)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to marshal the error for callback"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to marshal the error for callback"))
 		}
 		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
@@ -239,7 +239,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 			FinalRedirectUrl: errRedirect,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("failed creating error redirect response"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed creating error redirect response"))
 		}
 		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: respAttrs}, nil
 	}
@@ -252,7 +252,7 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
-		err := errors.Wrap(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription()), op, errors.WithCode(errors.OidcProviderCallbackError))
+		err := errors.WrapDeprecated(fmt.Errorf("Error: %q, Details: %q", attrs.GetError(), attrs.GetErrorDescription()), op, errors.WithCode(errors.OidcProviderCallbackError))
 		return errResponse(err)
 	}
 	finalRedirectUrl, err = oidc.Callback(
@@ -301,14 +301,14 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	if err != nil {
 		switch {
 		case errors.Match(errors.T(errors.Forbidden), err):
-			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("Forbidden."))
 		case errors.Match(errors.T(errors.AuthAttemptExpired), err):
-			return nil, errors.Wrap(err, op, errors.WithMsg("Forbidden."))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("Forbidden."))
 		default:
 			if s.oidcLogger != nil {
 				s.oidcLogger.Error("error generating parameters for token request", "op", op, "error", err)
 			}
-			return nil, errors.Wrap(err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("Error generating parameters for token request. See the controller's log for more information."))
 		}
 	}
 	if token == nil {
@@ -430,14 +430,14 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
 		issuer, err := url.Parse(iss)
 		if err != nil {
-			return nil, false, false, errors.Wrap(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
-			return nil, false, false, errors.Wrap(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
@@ -478,7 +478,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 		for _, v := range attrs.GetAccountClaimMaps() {
 			acm, err := oidc.ParseAccountClaimMaps(v)
 			if err != nil {
-				return nil, false, false, errors.Wrap(err, op)
+				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
 			if len(acm) > 1 {
 				return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
@@ -488,7 +488,7 @@ func toStorageOidcAuthMethod(scopeId string, in *pb.AuthMethod) (out *oidc.AuthM
 			}
 			to, err := oidc.ConvertToAccountToClaim(m.To)
 			if err != nil {
-				return nil, false, false, errors.Wrap(err, op)
+				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
 			claimsMap[m.From] = to
 		}

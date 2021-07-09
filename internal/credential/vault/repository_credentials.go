@@ -26,7 +26,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 
 	libs, err := r.getPrivateLibraries(ctx, requests)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	// TODO(mgaffney)(ICU-1329) 05/2021: if any error occurs, mark all credentials
@@ -40,12 +40,12 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		// if there is no way to save it in the database.
 		credId, err := newCredentialId()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 
 		client, err := lib.client()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 
 		var secret *vault.Secret
@@ -61,7 +61,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		if err != nil {
 			// TODO(mgaffney) 05/2021: detect if the error is because of an
 			// expired or invalid token
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 
 		leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
@@ -70,7 +70,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		}
 		cred, err := newCredential(lib.GetPublicId(), sessionId, secret.LeaseID, lib.TokenHmac, leaseDuration)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		cred.PublicId = credId
 		cred.IsRenewable = secret.Renewable
@@ -82,7 +82,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				rowsInserted, err := w.Exec(ctx, insertQuery, insertQueryValues)
 				switch {
 				case err != nil:
-					return errors.Wrap(err, op)
+					return errors.WrapDeprecated(err, op)
 				case rowsInserted > 1:
 					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
 				}
@@ -90,7 +90,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				rowsUpdated, err := w.Exec(ctx, updateQuery, updateQueryValues)
 				switch {
 				case err != nil:
-					return errors.Wrap(err, op)
+					return errors.WrapDeprecated(err, op)
 				case rowsUpdated == 0:
 					return errors.NewDeprecated(errors.InvalidDynamicCredential, op, "no matching dynamic credential for session found")
 				case rowsUpdated > 1:
@@ -99,7 +99,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				return nil
 			},
 		); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 
 		creds = append(creds, &actualCredential{
@@ -131,7 +131,7 @@ func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			if _, err := w.Exec(ctx, revokeCredentialsQuery, []interface{}{sessionId}); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},

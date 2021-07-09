@@ -15,17 +15,17 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option
 
 	d, err := sql.Open(dialect, url)
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 
 	sMan, err := NewManager(ctx, dialect, d, opt...)
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 
 	st, err := sMan.CurrentState(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 	if st.Dirty {
 		return false, errors.NewDeprecated(errors.MigrationIntegrity, op, "db marked dirty")
@@ -36,7 +36,7 @@ func MigrateStore(ctx context.Context, dialect string, url string, opt ...Option
 	}
 
 	if err := sMan.RollForward(ctx); err != nil {
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 
 	return true, nil

@@ -58,7 +58,7 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 		}
 		i, _, _, err := common.Intersection(fMasks, nullPaths)
 		if err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 		if len(i) != 0 {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("field masks and null paths intersect with: %s", i))
@@ -121,7 +121,7 @@ func (q *Queue) Remove() (proto.Message, OpType, []string, []string, error) {
 	}
 	any, err := q.Catalog.Get(msg.TypeName)
 	if err != nil {
-		return nil, 0, nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error getting the TypeName: %s", msg.TypeName)))
+		return nil, 0, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("error getting the TypeName: %s", msg.TypeName)))
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {

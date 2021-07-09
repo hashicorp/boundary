@@ -40,11 +40,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	}
 	r, err := oidcRepoFn()
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	if am == nil {
 		return nil, "", errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("auth method %s not found", authMethodId))
@@ -56,7 +56,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	// get the provider from the cache (if possible)
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	callbackRedirect := fmt.Sprintf(CallbackEndpoint, am.GetApiUrl())
 
@@ -72,7 +72,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
 	tokenRequestId, err := authtoken.NewAuthTokenId()
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	nonce, err := oidc.NewID()
 	if err != nil {
@@ -93,11 +93,11 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 
 	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, authMethodId)
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	encodedEncryptedSt, err := encryptMessage(ctx, requestWrapper, am, st)
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	oidcOpts := []oidc.Option{
 		oidc.WithState(string(encodedEncryptedSt)),
@@ -141,7 +141,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	}
 	encodedEncryptedTk, err := encryptMessage(ctx, requestWrapper, am, t)
 	if err != nil {
-		return nil, "", errors.Wrap(err, op)
+		return nil, "", errors.WrapDeprecated(err, op)
 	}
 	return authUrl, encodedEncryptedTk, nil
 }

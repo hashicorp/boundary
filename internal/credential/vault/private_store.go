@@ -24,16 +24,16 @@ func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option)
 	var stores []*privateStore
 	where, values := "token_status = ?", []interface{}{"revoke"}
 	if err := r.reader.SearchWhere(ctx, &stores, where, values, db.WithLimit(limit)); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	for _, store := range stores {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeDatabase)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 		}
 		if err := store.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 	}
 	return stores, nil
@@ -49,16 +49,16 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, ps.ScopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get database wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	if err := ps.decrypt(ctx, databaseWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	return ps, nil
@@ -159,7 +159,7 @@ func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) er
 			CtToken: ps.CtToken,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
+			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
 		}
 		ps.Token = ptkv.Token
 	}
@@ -173,7 +173,7 @@ func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) er
 			CtKey: ps.CtClientKey,
 		}
 		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.Wrap(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
+			return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
 		}
 		ps.ClientKey = pckv.Key
 	}
@@ -198,7 +198,7 @@ func (ps *privateStore) client() (*client, error) {
 
 	client, err := newClient(clientConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }

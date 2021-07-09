@@ -101,7 +101,7 @@ func (k *SessionKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.SessionKeyVersion directly
 	if err := structwrapping.WrapStruct(ctx, cipher, k.SessionKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func (k *SessionKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper
 	// structwrapping doesn't support embedding, so we'll pass in the
 	// store.SessionKeyVersion directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k.SessionKeyVersion, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

@@ -49,7 +49,7 @@ func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

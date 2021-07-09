@@ -44,13 +44,13 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 
 	id, err := newManagedGroupId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	mg.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"), errors.WithCode(errors.Encrypt))
 	}
 
 	var newManagedGroup *ManagedGroup
@@ -58,7 +58,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 		func(_ db.Reader, w db.Writer) error {
 			newManagedGroup = mg.Clone()
 			if err := w.Create(ctx, newManagedGroup, db.WithOplog(oplogWrapper, mg.oplog(oplog.OpType_OP_TYPE_CREATE, scopeId))); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -70,7 +70,7 @@ func (r *Repository) CreateManagedGroup(ctx context.Context, scopeId string, mg 
 				"in auth method %s: name %q already exists",
 				mg.AuthMethodId, mg.Name))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(mg.AuthMethodId))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(mg.AuthMethodId))
 	}
 	return newManagedGroup, nil
 }
@@ -88,7 +88,7 @@ func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", withPublicId)))
 	}
 	return a, nil
 }
@@ -108,7 +108,7 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 	var mgs []*ManagedGroup
 	err := r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return mgs, nil
 }
@@ -129,7 +129,7 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -142,7 +142,7 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 			dMg := mg.Clone()
 			rowsDeleted, err = w.Delete(ctx, dMg, db.WithOplog(oplogWrapper, metadata))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -152,7 +152,7 @@ func (r *Repository) DeleteManagedGroup(ctx context.Context, scopeId, withPublic
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(withPublicId))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(withPublicId))
 	}
 
 	return rowsDeleted, nil
@@ -212,7 +212,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg(("unable to get oplog wrapper")))
 	}
 
@@ -230,7 +230,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 			var err error
 			rowsUpdated, err = w.Update(ctx, returnedManagedGroup, dbMask, nullFields, db.WithOplog(oplogWrapper, metadata), db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
@@ -244,7 +244,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", mg.Name, mg.PublicId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(mg.PublicId))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(mg.PublicId))
 	}
 
 	return returnedManagedGroup, rowsUpdated, nil

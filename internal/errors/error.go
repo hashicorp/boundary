@@ -98,6 +98,30 @@ func New(ctx context.Context, c Code, op Op, msg string, opt ...Option) error {
 	return E(ctx, opt...)
 }
 
+// Wrap creates a new Err from the provided err and op,
+// preserving the code from the originating error.
+// It supports the options of:
+//
+// * WithMsg() - allows you to specify an optional error msg, if the default
+// msg for the error Code is not sufficient.
+func Wrap(ctx context.Context, e error, op Op, opt ...Option) error {
+	if op != "" {
+		opt = append(opt, WithOp(op))
+	}
+	if e != nil {
+		// TODO: once db package has been refactored to only return domain errors,
+		// this convert can be removed
+		err := Convert(e)
+		if err != nil {
+			// wrap the converted error
+			e = err
+		}
+		opt = append(opt, WithWrap(e))
+	}
+
+	return E(ctx, opt...)
+}
+
 // EDeprecated is the legacy version of E which does not
 // create an event. Please refrain from using this.
 // When all calls are moved from EDeprecated to
@@ -126,7 +150,7 @@ func EDeprecated(opt ...Option) error {
 	}
 }
 
-// NewDeprecated is the legacy version of E which does not
+// NewDeprecated is the legacy version of New which does not
 // create an event. Please refrain from using this.
 // When all calls are moved from NewDeprecated to
 // New, please update ICU-1883
@@ -144,16 +168,11 @@ func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
 	return EDeprecated(opt...)
 }
 
-// Wrap creates a new Err from the provided err and op,
-// preserving the code from the originating error.
-// It supports the options of:
-//
-// * WithMsg() - allows you to specify an optional error msg, if the default
-// msg for the error Code is not sufficient.
-//
-// Before deprecating EDeprecated - please update
-// this to call E(). ICU-1884
-func Wrap(e error, op Op, opt ...Option) error {
+// WrapDeprecated is the legacy version of New which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from WrapDeprecated to
+// New, please update ICU-1884
+func WrapDeprecated(e error, op Op, opt ...Option) error {
 	if op != "" {
 		opt = append(opt, WithOp(op))
 	}

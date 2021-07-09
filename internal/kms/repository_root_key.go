@@ -21,13 +21,13 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		func(_ db.Reader, w db.Writer) error {
 			var err error
 			if returnedRk, returnedKv, err = createRootKeyTx(ctx, w, keyWrapper, scopeId, key); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", scopeId)))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", scopeId)))
 	}
 	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), nil
 }
@@ -50,29 +50,29 @@ func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 	kv := AllocRootKeyVersion()
 	id, err := newRootKeyId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	rk.PrivateId = id
 	rk.ScopeId = scopeId
 
 	id, err = newRootKeyVersionId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyId = rk.PrivateId
 	kv.Key = key
 	if err := kv.Encrypt(ctx, keyWrapper); err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 
 	// no oplog entries for root keys
 	if err := w.Create(ctx, &rk); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("root keys"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("root keys"))
 	}
 	// no oplog entries for root key versions
 	if err := w.Create(ctx, &kv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("key versions"))
 	}
 
 	return &rk, &kv, nil
@@ -91,7 +91,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return &k, nil
 }
@@ -107,7 +107,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...O
 	k := AllocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -120,7 +120,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...O
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -129,7 +129,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...O
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -140,7 +140,7 @@ func (r *Repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*RootKe
 	var keys []*RootKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return keys, nil
 }

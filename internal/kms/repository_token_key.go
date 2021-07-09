@@ -22,13 +22,13 @@ func (r *Repository) CreateTokenKey(ctx context.Context, rkvWrapper wrapping.Wra
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			if returnedDk, returnedDv, err = createTokenKeyTx(ctx, reader, w, rkvWrapper, key); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	return returnedDk.(*TokenKey), returnedDv.(*TokenKeyVersion), nil
 }
@@ -55,37 +55,37 @@ func createTokenKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 	rv.PrivateId = rootKeyVersionId
 	err := r.LookupById(ctx, &rv)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to lookup root key version %s", rootKeyVersionId)))
 	}
 
 	tk := AllocTokenKey()
 	tv := AllocTokenKeyVersion()
 	id, err := newTokenKeyId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	tk.PrivateId = id
 	tk.RootKeyId = rv.RootKeyId
 
 	id, err = newTokenKeyVersionId()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	tv.PrivateId = id
 	tv.TokenKeyId = tk.PrivateId
 	tv.RootKeyVersionId = rootKeyVersionId
 	tv.Key = key
 	if err := tv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 
 	// no token entries for keys
 	if err := w.Create(ctx, &tk); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("keys create"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("keys create"))
 	}
 	// no token entries for key versions
 	if err := w.Create(ctx, &tv); err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("key versions create"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("key versions create"))
 	}
 
 	return &tk, &tv, nil
@@ -101,7 +101,7 @@ func (r *Repository) LookupTokenKey(ctx context.Context, privateId string, _ ...
 	k := AllocTokenKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return &k, nil
 }
@@ -117,7 +117,7 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, _ ...
 	k := AllocTokenKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -130,7 +130,7 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, _ ...
 			// no token entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -139,7 +139,7 @@ func (r *Repository) DeleteTokenKey(ctx context.Context, privateId string, _ ...
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -150,7 +150,7 @@ func (r *Repository) ListTokenKeys(ctx context.Context, opt ...Option) ([]Dek, e
 	var keys []*TokenKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	deks := make([]Dek, 0, len(keys))
 	for _, key := range keys {

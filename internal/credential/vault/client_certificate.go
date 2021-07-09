@@ -80,11 +80,11 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 		errors.NewDeprecated(errors.InvalidParameter, op, "no certificate key defined")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	c.KeyId = cipher.KeyID()
 	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
-		errors.Wrap(err, op)
+		errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 func (c *ClientCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -104,7 +104,7 @@ func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapp
 	}
 	reader, err := kms.NewDerivedReader(cipher, 32, []byte(c.StoreId), nil)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	key, _, err := ed25519.GenerateKey(reader)
 	if err != nil {

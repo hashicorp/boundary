@@ -58,14 +58,14 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	} else {
 		id, err := newHostId()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		h.PublicId = id
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newHost *Host
@@ -74,7 +74,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 			newHost = h.clone()
 			err := w.Create(ctx, newHost, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -82,7 +82,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)))
 		}
 		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
 			return nil, errors.NewDeprecated(
@@ -92,7 +92,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 				errors.WithWrap(err),
 			)
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", h.CatalogId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s", h.CatalogId)))
 	}
 	return newHost, nil
 }
@@ -156,7 +156,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsUpdated int
@@ -169,7 +169,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_UPDATE)),
 				db.WithVersion(&version))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
@@ -180,7 +180,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", h.PublicId, h.Name)))
+			return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", h.PublicId, h.Name)))
 		}
 		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
 			return nil, db.NoRowsAffected, errors.NewDeprecated(
@@ -190,7 +190,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				errors.WithWrap(err),
 			)
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s", h.PublicId)))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in %s", h.PublicId)))
 	}
 
 	return returnedHost, rowsUpdated, nil
@@ -209,7 +209,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return h, nil
 }
@@ -230,7 +230,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 	var hosts []*Host
 	err := r.reader.SearchWhere(ctx, &hosts, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return hosts, nil
 }
@@ -248,7 +248,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -258,7 +258,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 			dh := h.clone()
 			rowsDeleted, err = w.Delete(ctx, dh, db.WithOplog(oplogWrapper, h.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -268,7 +268,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", publicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", publicId)))
 	}
 
 	return rowsDeleted, nil

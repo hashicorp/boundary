@@ -149,7 +149,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encode))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encode))
 	}
 	return b, nil
 }
@@ -161,7 +161,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	const op = "perms.(Grant).unmarshalJSON"
 	raw := make(map[string]interface{}, 4)
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decode))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decode))
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
@@ -303,12 +303,12 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	switch {
 	case grantString[0] == '{':
 		if err := grant.unmarshalJSON([]byte(grantString)); err != nil {
-			return Grant{}, errors.Wrap(err, op, errors.WithMsg("unable to parse JSON grant string"))
+			return Grant{}, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse JSON grant string"))
 		}
 
 	default:
 		if err := grant.unmarshalText(grantString); err != nil {
-			return Grant{}, errors.Wrap(err, op, errors.WithMsg("unable to parse grant string"))
+			return Grant{}, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse grant string"))
 		}
 	}
 
@@ -334,11 +334,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	}
 
 	if err := grant.validateType(); err != nil {
-		return Grant{}, errors.Wrap(err, op)
+		return Grant{}, errors.WrapDeprecated(err, op)
 	}
 
 	if err := grant.parseAndValidateActions(); err != nil {
-		return Grant{}, errors.Wrap(err, op)
+		return Grant{}, errors.WrapDeprecated(err, op)
 	}
 
 	if !opts.withSkipFinalValidation {

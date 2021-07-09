@@ -210,7 +210,7 @@ func (rw *Db) Exec(_ context.Context, sql string, values []interface{}, _ ...Opt
 	}
 	gormDb := rw.underlying.Exec(sql, values...)
 	if gormDb.Error != nil {
-		return NoRowsAffected, errors.Wrap(gormDb.Error, op)
+		return NoRowsAffected, errors.WrapDeprecated(gormDb.Error, op)
 	}
 	return int(gormDb.RowsAffected), nil
 }
@@ -226,7 +226,7 @@ func (rw *Db) Query(_ context.Context, sql string, values []interface{}, _ ...Op
 	}
 	gormDb := rw.underlying.Raw(sql, values...)
 	if gormDb.Error != nil {
-		return nil, errors.Wrap(gormDb.Error, op)
+		return nil, errors.WrapDeprecated(gormDb.Error, op)
 	}
 	return gormDb.Rows()
 }
@@ -252,7 +252,7 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 		return nil
 	}
 	if err := rw.LookupById(ctx, i, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -278,7 +278,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	// these fields should be nil, since they are not writeable and we want the
@@ -288,7 +288,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 		}
 	}
@@ -297,26 +297,26 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	if err := rw.underlying.Create(i).Error; err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("create failed"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("create failed"))
 	}
 	if withOplog {
 		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 	}
 	if opts.newOplogMsg != nil {
 		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("returning oplog failed"))
 		}
 		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -357,27 +357,27 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	if opts.withOplog {
 		_, err := validateOplogArgs(createItems[0], opts)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 		}
 		ticket, err = rw.GetTicket(createItems[0])
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	for _, item := range createItems {
 		if err := rw.Create(ctx, item); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("unable to add oplog"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add oplog"))
 		}
 	}
 	if opts.newOplogMsgs != nil {
 		msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, createItems)
 		if err != nil {
-			return errors.Wrap(err, op, errors.WithMsg("returning oplog msgs failed"))
+			return errors.WrapDeprecated(err, op, errors.WithMsg("returning oplog msgs failed"))
 		}
 		*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 	}
@@ -429,7 +429,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
 	if err != nil {
-		return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("getting update fields failed"))
+		return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("getting update fields failed"))
 	}
 	if len(updateFields) == 0 {
 		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
@@ -452,13 +452,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-				return NoRowsAffected, errors.Wrap(err, op)
+				return NoRowsAffected, errors.WrapDeprecated(err, op)
 			}
 		}
 	}
@@ -467,7 +467,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	var underlying *gorm.DB
@@ -495,7 +495,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		if underlying.Error == gorm.ErrRecordNotFound {
 			return NoRowsAffected, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
-		return NoRowsAffected, errors.Wrap(underlying.Error, op)
+		return NoRowsAffected, errors.WrapDeprecated(underlying.Error, op)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
 	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {
@@ -513,13 +513,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 		if withOplog {
 			if err := rw.addOplog(ctx, UpdateOp, oplogOpts, ticket, i); err != nil {
-				return rowsUpdated, errors.Wrap(err, op, errors.WithMsg("add oplog failed"))
+				return rowsUpdated, errors.WrapDeprecated(err, op, errors.WithMsg("add oplog failed"))
 			}
 		}
 		if opts.newOplogMsg != nil {
 			msg, err := rw.newOplogMessage(ctx, UpdateOp, i, WithFieldMaskPaths(oplogFieldMasks), WithNullPaths(oplogNullPaths))
 			if err != nil {
-				return rowsUpdated, errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
+				return rowsUpdated, errors.WrapDeprecated(err, op, errors.WithMsg("returning oplog failed"))
 			}
 			*opts.newOplogMsg = *msg
 		}
@@ -528,7 +528,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	// from the db
 	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return NoRowsAffected, errors.Wrap(err, op)
+		return NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return rowsUpdated, nil
 }
@@ -562,7 +562,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog {
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 		}
 	}
 	var ticket *store.Ticket
@@ -570,7 +570,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 		var err error
 		ticket, err = rw.GetTicket(i)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	db := rw.underlying
@@ -579,19 +579,19 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	}
 	db = db.Delete(i)
 	if db.Error != nil {
-		return NoRowsAffected, errors.Wrap(db.Error, op)
+		return NoRowsAffected, errors.WrapDeprecated(db.Error, op)
 	}
 	rowsDeleted := int(db.RowsAffected)
 	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
 		if withOplog {
 			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("add oplog failed"))
+				return rowsDeleted, errors.WrapDeprecated(err, op, errors.WithMsg("add oplog failed"))
 			}
 		}
 		if opts.newOplogMsg != nil {
 			msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
 			if err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("returning oplog failed"))
+				return rowsDeleted, errors.WrapDeprecated(err, op, errors.WithMsg("returning oplog failed"))
 			}
 			*opts.newOplogMsg = *msg
 		}
@@ -633,11 +633,11 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	if opts.withOplog {
 		_, err := validateOplogArgs(deleteItems[0], opts)
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 		}
 		ticket, err = rw.GetTicket(deleteItems[0])
 		if err != nil {
-			return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+			return NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 		}
 	}
 	rowsDeleted := 0
@@ -647,20 +647,20 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		// relationship between Create and CreateItems).
 		underlying := rw.underlying.Delete(item)
 		if underlying.Error != nil {
-			return rowsDeleted, errors.Wrap(underlying.Error, op)
+			return rowsDeleted, errors.WrapDeprecated(underlying.Error, op)
 		}
 		rowsDeleted += int(underlying.RowsAffected)
 	}
 	if rowsDeleted > 0 && (opts.withOplog || opts.newOplogMsgs != nil) {
 		if opts.withOplog {
 			if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("unable to add oplog"))
+				return rowsDeleted, errors.WrapDeprecated(err, op, errors.WithMsg("unable to add oplog"))
 			}
 		}
 		if opts.newOplogMsgs != nil {
 			msgs, err := rw.oplogMsgsForItems(ctx, DeleteOp, opts, deleteItems)
 			if err != nil {
-				return rowsDeleted, errors.Wrap(err, op, errors.WithMsg("returning oplog msgs failed"))
+				return rowsDeleted, errors.WrapDeprecated(err, op, errors.WithMsg("returning oplog msgs failed"))
 			}
 			*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 		}
@@ -691,11 +691,11 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)))
 	}
 	ticket, err := ticketer.GetTicket(aggregateName)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get ticket", aggregateName)))
 	}
 	return ticket, nil
 }
@@ -734,7 +734,7 @@ func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options
 		}
 		msg, err := rw.newOplogMessage(ctx, opType, item, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		oplogMsgs = append(oplogMsgs, msg)
 	}
@@ -762,16 +762,16 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 
 	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	replayable, err := validateOplogArgs(items[0], opts)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("oplog validation failed"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("oplog validation failed"))
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get Ticketer"))
 	}
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
@@ -780,7 +780,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to create oplog entry"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create oplog entry"))
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
@@ -788,7 +788,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		ticket,
 		oplogMsgs...,
 	); err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog entry"))
 	}
 	return nil
 }
@@ -798,14 +798,14 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	oplogArgs := opts.oplogOpts
 	replayable, err := validateOplogArgs(i, opts)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	if ticket == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket")
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get Ticketer"))
 	}
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
@@ -814,11 +814,11 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	msg, err := rw.newOplogMessage(ctx, opType, i, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	err = entry.WriteEntryWith(
 		ctx,
@@ -827,7 +827,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		msg,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog entry"))
 	}
 	return nil
 }
@@ -854,7 +854,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get Ticketer"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get Ticketer"))
 	}
 
 	entry, err := oplog.NewEntry(
@@ -864,7 +864,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 		ticketer,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to create oplog entry"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create oplog entry"))
 	}
 	err = entry.WriteEntryWith(
 		ctx,
@@ -873,7 +873,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 		msgs...,
 	)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to write oplog entry"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog entry"))
 	}
 	return nil
 }
@@ -925,7 +925,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		rw := &Db{newTx}
 		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
-				return info, errors.Wrap(err, op)
+				return info, errors.WrapDeprecated(err, op)
 			}
 			if errors.Match(errors.T(errors.TicketAlreadyRedeemed), err) {
 				d := backOff.Duration(attempts)
@@ -934,14 +934,14 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 				time.Sleep(d)
 				continue
 			}
-			return info, errors.Wrap(err, op)
+			return info, errors.WrapDeprecated(err, op)
 		}
 
 		if err := newTx.Commit().Error; err != nil {
 			if err := newTx.Rollback().Error; err != nil {
-				return info, errors.Wrap(err, op)
+				return info, errors.WrapDeprecated(err, op)
 			}
-			return info, errors.Wrap(err, op)
+			return info, errors.WrapDeprecated(err, op)
 		}
 		return info, nil // it all worked!!!
 	}
@@ -959,13 +959,13 @@ func (rw *Db) LookupById(_ context.Context, resourceWithIder interface{}, _ ...O
 	}
 	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -1008,7 +1008,7 @@ func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string,
 		if err == gorm.ErrRecordNotFound {
 			return errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -1052,7 +1052,7 @@ func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string
 	err = db.Find(resources).Error
 	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

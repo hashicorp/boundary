@@ -141,7 +141,7 @@ func New(c ComposedOf, _ ...Option) (*Session, error) {
 		DynamicCredentials: c.DynamicCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -234,7 +234,7 @@ func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, 
 	switch opType {
 	case db.CreateOp:
 		if err := s.validateNewSession(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 		if len(s.Certificate) == 0 {
 			return errors.NewDeprecated(errors.InvalidParameter, op, "missing certificate")
@@ -271,7 +271,7 @@ func (s *Session) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, 
 			return errors.NewDeprecated(errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 		}
 	}
@@ -361,7 +361,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 	}
 	pubKey, privKey, err := DeriveED25519Key(wrapper, userId, jobId)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	template := &x509.Certificate{
 		ExtKeyUsage: []x509.ExtKeyUsage{
@@ -379,7 +379,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithCode(errors.GenCert))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.GenCert))
 	}
 	return privKey, certBytes, nil
 }
@@ -387,7 +387,7 @@ func newCert(wrapper wrapping.Wrapper, userId, jobId string, exp time.Time) (ed2
 func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	s.KeyId = cipher.KeyID()
 	return nil
@@ -396,7 +396,7 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

@@ -64,7 +64,7 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 		EndpointTcpPort:    endpointTcpPort,
 	}
 	if err := c.validateNewConnection(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &c, nil
 }
@@ -118,7 +118,7 @@ func (c *Connection) VetForWrite(_ context.Context, _ db.Reader, opType db.OpTyp
 	switch opType {
 	case db.CreateOp:
 		if err := c.validateNewConnection(); err != nil {
-			return errors.Wrap(err, op)
+			return errors.WrapDeprecated(err, op)
 		}
 	case db.UpdateOp:
 		switch {
@@ -132,7 +132,7 @@ func (c *Connection) VetForWrite(_ context.Context, _ db.Reader, opType db.OpTyp
 			return errors.NewDeprecated(errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
 			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 		}
 	}

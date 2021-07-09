@@ -32,18 +32,18 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	for _, grant := range grants {
 		roleGrant, err := NewRoleGrant(roleId, grant)
 		if err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 		}
 		newRoleGrants = append(newRoleGrants, roleGrant)
 	}
 
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	_, err = r.writer.DoTx(
@@ -54,7 +54,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			msgs := make([]*oplog.Message, 0, 2)
 			roleTicket, err := w.GetTicket(&role)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 
 			// We need to update the role version as that's the aggregate
@@ -64,7 +64,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
@@ -72,7 +72,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			msgs = append(msgs, &roleOplogMsg)
 			roleGrantOplogMsgs := make([]*oplog.Message, 0, len(newRoleGrants))
 			if err := w.CreateItems(ctx, newRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to add grants"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants"))
 			}
 			msgs = append(msgs, roleGrantOplogMsgs...)
 
@@ -83,14 +83,14 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	roleGrants := make([]*RoleGrant, 0, len(newRoleGrants))
 	for _, grant := range newRoleGrants {
@@ -119,11 +119,11 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope to create metadata", roleId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope to create metadata", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var totalRowsDeleted int
@@ -135,7 +135,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			msgs := make([]*oplog.Message, 0, 2)
 			roleTicket, err := w.GetTicket(&role)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
@@ -143,7 +143,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
@@ -153,7 +153,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			// Find existing grants
 			roleGrants := []*RoleGrant{}
 			if err := reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to search for grants"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to search for grants"))
 			}
 			found := map[string]bool{}
 			for _, rg := range roleGrants {
@@ -167,7 +167,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				// Use a fake scope, just want to get out a canonical string
 				perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("parsing grant string"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
 				}
 				// We don't have what they want to delete, so ignore it
 				if !found[perm.CanonicalString()] {
@@ -176,7 +176,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 				roleGrant, err := NewRoleGrant(roleId, grant)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
 				deleteRoleGrants = append(deleteRoleGrants, roleGrant)
 			}
@@ -188,7 +188,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			roleGrantOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrants))
 			rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to delete role grant"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete role grant"))
 			}
 			if rowsDeleted != len(deleteRoleGrants) {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
@@ -203,14 +203,14 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return totalRowsDeleted, nil
 }
@@ -244,7 +244,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	// Find existing grants
 	roleGrants := []*RoleGrant{}
 	if err := r.reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to search for grants"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to search for grants"))
 	}
 	found := map[string]*RoleGrant{}
 	for _, rg := range roleGrants {
@@ -259,7 +259,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		// Use a fake scope, just want to get out a canonical string
 		perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("error parsing grant string"))
+			return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("error parsing grant string"))
 		}
 		canonicalString := perm.CanonicalString()
 
@@ -275,7 +275,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		// Not found, so add
 		rg, err = NewRoleGrant(roleId, grant)
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to create in memory role grant"))
+			return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create in memory role grant"))
 		}
 		addRoleGrants = append(addRoleGrants, rg)
 		currentRoleGrants = append(currentRoleGrants, rg)
@@ -293,11 +293,11 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var totalRowsDeleted int
@@ -309,7 +309,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			msgs := make([]*oplog.Message, 0, 2)
 			roleTicket, err := w.GetTicket(&role)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
@@ -317,7 +317,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
@@ -328,7 +328,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			if len(addRoleGrants) > 0 {
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, len(addRoleGrants))
 				if err := w.CreateItems(ctx, addRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to add grants during set"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to add grants during set"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 			}
@@ -338,7 +338,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrants))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs))
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to delete role grant"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete role grant"))
 				}
 				if rowsDeleted != len(deleteRoleGrants) {
 					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("role grants deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants)))
@@ -354,19 +354,19 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to write oplog"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write oplog"))
 			}
 
 			currentRoleGrants, err = r.ListRoleGrants(ctx, roleId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to retrieve current role grants after set"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to retrieve current role grants after set"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op)
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return currentRoleGrants, totalRowsDeleted, nil
 }
@@ -380,7 +380,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	}
 	var roleGrants []*RoleGrant
 	if err := r.list(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to lookup role grants"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup role grants"))
 	}
 	return roleGrants, nil
 }
@@ -478,13 +478,13 @@ select role_id as role_id, role_scope as scope_id, role_grant as grant from fina
 	var grants []perms.GrantTuple
 	rows, err := r.reader.Query(ctx, query, []interface{}{userId})
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var g perms.GrantTuple
 		if err := r.reader.ScanRows(rows, &g); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		grants = append(grants, g)
 	}

@@ -26,11 +26,11 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := read.LookupById(ctx, &connection); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", connectionId)))
+				return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", connectionId)))
 			}
 			var err error
 			if states, err = fetchConnectionStates(ctx, read, connectionId, db.WithOrder("start_time desc")); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -39,7 +39,7 @@ func (r *Repository) LookupConnection(ctx context.Context, connectionId string, 
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil
 		}
-		return nil, nil, errors.Wrap(err, op)
+		return nil, nil, errors.WrapDeprecated(err, op)
 	}
 	return &connection, states, nil
 }
@@ -54,7 +54,7 @@ func (r *Repository) ListConnectionsBySessionId(ctx context.Context, sessionId s
 	var connections []*Connection
 	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return connections, nil
 }
@@ -68,7 +68,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 	connection := AllocConnection()
 	connection.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, &connection); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 
 	var rowsDeleted int
@@ -84,7 +84,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 				deleteConnection,
 			)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
@@ -94,7 +94,7 @@ func (r *Repository) DeleteConnection(ctx context.Context, publicId string, _ ..
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return rowsDeleted, nil
 }
@@ -137,13 +137,13 @@ func (r *Repository) CloseDeadConnectionsOnWorkerReport(ctx context.Context, ser
 			var err error
 			rowsAffected, err = w.Exec(ctx, fmt.Sprintf(connectionsToCloseCte, publicIdStr), args)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op)
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op)
 	}
 	return rowsAffected, nil
 }
@@ -152,7 +152,7 @@ func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string
 	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState
 	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []interface{}{connectionId}, opt...); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if len(states) == 0 {
 		return nil, nil

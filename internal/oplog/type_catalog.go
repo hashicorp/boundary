@@ -29,7 +29,7 @@ func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
 			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "error type is {}")
 		}
 		if err := reg.Set(t.Interface, t.Name); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error setting the type"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error setting the type"))
 		}
 	}
 	return &reg, nil

@@ -397,7 +397,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	}
 	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create scope"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create scope"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create scope but no error returned from repository.")
@@ -457,7 +457,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 	}
 	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update project"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update project"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist or incorrect version provided.", scopeId)
@@ -473,7 +473,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	}
 	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete scope"))
+		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete scope"))
 	}
 	return rows > 0, nil
 }

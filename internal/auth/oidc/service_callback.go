@@ -82,18 +82,18 @@ func Callback(
 
 	r, err := oidcRepoFn()
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	// state is a proto request.Wrapper msg, which contains a cipher text field, so
 	// we need the derived wrapper that was used to encrypt it.
 	requestWrapper, err := requestWrappingWrapper(ctx, r.kms, am.ScopeId, am.GetPublicId())
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	stateWrapper, err := UnwrapMessage(ctx, state)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	// it appears the authentication request was started with one auth method
@@ -104,7 +104,7 @@ func Callback(
 
 	stateBytes, err := decryptMessage(ctx, requestWrapper, stateWrapper)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	var reqState request.State
 	if err := proto.Unmarshal(stateBytes, &reqState); err != nil {
@@ -115,7 +115,7 @@ func Callback(
 	// about comparing the cache with the auth method from the db.
 	provider, err := providerCache().get(ctx, am)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	// if auth method is inactive, we don't allow inflight requests to finish if the
@@ -184,13 +184,13 @@ func Callback(
 
 	acct, err := r.upsertAccount(ctx, am, idTkClaims, userInfoClaims)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	// Get the set of all managed groups so we can filter
 	mgs, err := r.ListManagedGroups(ctx, am.GetPublicId())
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	if len(mgs) > 0 {
 		matchedMgs := make([]*ManagedGroup, 0, len(mgs))
@@ -204,11 +204,11 @@ func Callback(
 			if err != nil {
 				// We check all filters on ingress so this should never happen,
 				// but we validate anyways
-				return "", errors.Wrap(err, op)
+				return "", errors.WrapDeprecated(err, op)
 			}
 			match, err := eval.Evaluate(evalData)
 			if err != nil && !errors.Is(err, pointerstructure.ErrNotFound) {
-				return "", errors.Wrap(err, op)
+				return "", errors.WrapDeprecated(err, op)
 			}
 			if match {
 				matchedMgs = append(matchedMgs, mg)
@@ -217,7 +217,7 @@ func Callback(
 		// We always pass it in, even if none match, because in that case we
 		// need to remove any mappings that exist
 		if _, _, err := r.SetManagedGroupMemberships(ctx, am, acct, matchedMgs); err != nil {
-			return "", errors.Wrap(err, op)
+			return "", errors.WrapDeprecated(err, op)
 		}
 	}
 
@@ -226,17 +226,17 @@ func Callback(
 	// autovivify users for the scope.
 	iamRepo, err := iamRepoFn()
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	scope, err := iamRepo.LookupScope(ctx, am.ScopeId)
 	if err != nil {
-		return "", errors.Wrap(err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
 	}
 
 	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 
 	// Now we need to check filters and assign managed groups by filter.
@@ -246,13 +246,13 @@ func Callback(
 	// that initialed the authentication attempt.
 	tokenRepo, err := atRepoFn()
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
 		if errors.Match(errors.T(errors.NotUnique), err) {
 			return "", errors.NewDeprecated(errors.Forbidden, op, "not a unique request", errors.WithWrap(err))
 		}
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil

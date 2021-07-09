@@ -37,12 +37,12 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	if len(am.AccountClaimMaps) > 0 {
 		acms, err := ParseAccountClaimMaps(am.AccountClaimMaps...)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		for _, m := range acms {
 			toClaim, err := ConvertToAccountToClaim(m.To)
 			if err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, errors.WrapDeprecated(err, op)
 			}
 			switch toClaim {
 			case ToSubClaim:
@@ -68,7 +68,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	}
 	pubId, err := newAccountId(am.GetPublicId(), iss, sub)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	columns := []string{"public_id", "auth_method_id", "issuer", "subject"}
@@ -116,7 +116,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	}
 	acctForOplog, err := NewAccount(am.PublicId, sub, WithIssuer(issAsUrl))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create new acct for oplog"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}
 
 	if foundName != nil {
@@ -134,7 +134,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	updatedAcct := AllocAccount()
@@ -146,7 +146,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			var err error
 			rows, err := w.Query(ctx, query, values)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to insert/update auth oidc account"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to insert/update auth oidc account"))
 			}
 			defer rows.Close()
 			result := struct {
@@ -158,19 +158,19 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 				rowCnt += 1
 				err = r.reader.ScanRows(rows, &result)
 				if err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for account"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for account"))
 				}
 			}
 			if rowCnt > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
 			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", am.PublicId, iss, sub); err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
+				return errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
 			}
 			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
 			if result.Version == 1 && updatedAcct.PublicId == pubId {
 				if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_CREATE, am.ScopeId, updatedAcct, nil, nil); err != nil {
-					return errors.Wrap(err, op, errors.WithMsg("unable to write create oplog for account"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write create oplog for account"))
 				}
 			} else {
 				if len(fieldMasks) > 0 || len(nullMasks) > 0 {
@@ -183,7 +183,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 						acctForOplog.FullName = foundName.(string)
 					}
 					if err := upsertOplog(ctx, w, oplogWrapper, oplog.OpType_OP_TYPE_UPDATE, am.ScopeId, acctForOplog, fieldMasks, nullMasks); err != nil {
-						return errors.Wrap(err, op, errors.WithMsg("unable to write update oplog for account"))
+						return errors.WrapDeprecated(err, op, errors.WithMsg("unable to write update oplog for account"))
 					}
 				}
 			}
@@ -191,7 +191,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return updatedAcct, nil
 }
@@ -220,7 +220,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 	}
 	ticket, err := w.GetTicket(acct)
 	if err != nil {
-		return errors.Wrap(err, op, errors.WithMsg("unable to get ticket"))
+		return errors.WrapDeprecated(err, op, errors.WithMsg("unable to get ticket"))
 	}
 	metadata := acct.oplog(operation, scopeId)
 	acctAsReplayable, ok := interface{}(acct).(oplog.ReplayableMessage)
@@ -239,7 +239,7 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 		SetToNullPaths: nullMasks,
 	}
 	if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, []*oplog.Message{&msg}); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

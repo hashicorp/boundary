@@ -77,7 +77,7 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 		[]interface{}{serverType},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(err, "servers.listServersWithReader")
+		return nil, errors.WrapDeprecated(err, "servers.listServersWithReader")
 	}
 	return servers, nil
 }
@@ -105,7 +105,7 @@ func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string,
 		[]interface{}{serverIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
+		return nil, errors.WrapDeprecated(err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
 	}
 	return serverTags, nil
 }
@@ -137,7 +137,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 					server.Address,
 				})
 			if err != nil {
-				return errors.Wrap(err, op+":Upsert")
+				return errors.WrapDeprecated(err, op+":Upsert")
 			}
 
 			// If it's a worker, fetch the current controllers to feed to them
@@ -145,7 +145,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 				// Fetch current controllers to feed to the workers
 				controllers, err = r.listServersWithReader(ctx, read, ServerTypeController)
 				if err != nil {
-					return errors.Wrap(err, op+":ListServer")
+					return errors.WrapDeprecated(err, op+":ListServer")
 				}
 			}
 
@@ -156,7 +156,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			if opts.withUpdateTags {
 				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
 				if err != nil {
-					return errors.Wrap(err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
+					return errors.WrapDeprecated(err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
@@ -178,7 +178,7 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(err, op+":CreateTags", errors.WithMsg(server.PrivateId))
+						return errors.WrapDeprecated(err, op+":CreateTags", errors.WithMsg(server.PrivateId))
 					}
 				}
 			}
@@ -205,7 +205,7 @@ func (r *Repository) AddRecoveryNonce(ctx context.Context, nonce string, opt ...
 	}
 	rn := &RecoveryNonce{Nonce: nonce}
 	if err := r.writer.Create(ctx, rn); err != nil {
-		return errors.Wrap(err, op+":Insertion")
+		return errors.WrapDeprecated(err, op+":Insertion")
 	}
 	return nil
 }
@@ -217,7 +217,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 
 	rows, err := r.writer.Delete(ctx, &RecoveryNonce{}, db.WithWhere(deleteWhereCreateTimeSql, endTime))
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, "servers.CleanupNonces")
+		return db.NoRowsAffected, errors.WrapDeprecated(err, "servers.CleanupNonces")
 	}
 	return rows, nil
 }
@@ -226,7 +226,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 func (r *Repository) ListNonces(ctx context.Context, opt ...Option) ([]*RecoveryNonce, error) {
 	var nonces []*RecoveryNonce
 	if err := r.reader.SearchWhere(ctx, &nonces, "", nil, db.WithLimit(-1)); err != nil {
-		return nil, errors.Wrap(err, "servers.ListNonces")
+		return nil, errors.WrapDeprecated(err, "servers.ListNonces")
 	}
 	return nonces, nil
 }

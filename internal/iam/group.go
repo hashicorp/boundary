@@ -69,7 +69,7 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }

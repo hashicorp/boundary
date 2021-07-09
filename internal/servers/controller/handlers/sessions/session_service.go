@@ -306,7 +306,7 @@ func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*
 	}
 	out, err := repo.CancelSession(ctx, id, version)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update session"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update session"))
 	}
 	return out, nil
 }

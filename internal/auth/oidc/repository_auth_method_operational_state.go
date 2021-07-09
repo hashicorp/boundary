@@ -17,7 +17,7 @@ func (r *Repository) MakeInactive(ctx context.Context, authMethodId string, vers
 	const op = "oidc.(Repository).MakeInactive"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, InactiveState, version)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return updated, nil
 }
@@ -32,7 +32,7 @@ func (r *Repository) MakePrivate(ctx context.Context, authMethodId string, versi
 	const op = "oidc.(Repository).MakePrivate"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePrivateState, version, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return updated, nil
 }
@@ -47,7 +47,7 @@ func (r *Repository) MakePublic(ctx context.Context, authMethodId string, versio
 	const op = "oidc.(Repository).MakePublic"
 	updated, err := r.transitionAuthMethodTo(ctx, authMethodId, ActivePublicState, version, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return updated, nil
 }
@@ -62,7 +62,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 	}
 	am, err := r.lookupAuthMethod(ctx, authMethodId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if am == nil {
 		return nil, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("%s auth method not found", authMethodId))
@@ -76,17 +76,17 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			updatedAm := am.Clone()
 			updatedAm.OperationalState = string(desiredState)
 			if err := r.ValidateDiscoveryInfo(ctx, WithAuthMethod(updatedAm)); err != nil {
-				return nil, errors.Wrap(err, op)
+				return nil, errors.WrapDeprecated(err, op)
 			}
 		}
 		if err := am.isComplete(); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("unable to transition from %s to %s", InactiveState, desiredState)))
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var updatedAm *AuthMethod
@@ -102,7 +102,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			rowsUpdated, err := w.Update(ctx, updatedAm, dbMask, nil, db.WithOplog(oplogWrapper, updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			switch {
 			case err != nil:
-				return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to update auth method"))
 			case err == nil && rowsUpdated > 1:
 				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 			case err == nil && rowsUpdated == 0:
@@ -122,7 +122,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 			}
 			updatedAm, err = txRepo.lookupAuthMethod(ctx, updatedAm.PublicId)
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
+				return errors.WrapDeprecated(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if updatedAm == nil {
 				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
@@ -131,7 +131,7 @@ func (r *Repository) transitionAuthMethodTo(ctx context.Context, authMethodId st
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return updatedAm, nil
 }

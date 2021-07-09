@@ -548,7 +548,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	out, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
@@ -585,7 +585,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, version, dbMask)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op)
+		return nil, nil, nil, errors.WrapDeprecated(err, op)
 	}
 	if rowsUpdated == 0 {
 		return nil, nil, nil, handlers.NotFoundErrorf("Role %q doesn't exist or incorrect version provided.", id)
@@ -604,7 +604,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op, errors.WithMsg("unable to delete role"))
+		return false, errors.WrapDeprecated(err, op, errors.WithMsg("unable to delete role"))
 	}
 	return rows > 0, nil
 }
@@ -634,7 +634,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding principals"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up role after adding principals"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding principals to it.")
@@ -655,7 +655,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting principals"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up role after setting principals"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting principals for it.")
@@ -676,7 +676,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after removing principals"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up role after removing principals"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing principals from it.")
@@ -697,7 +697,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after adding grants"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up role after adding grants"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding grants to it.")
@@ -722,7 +722,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("unable to look up role after setting grants"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to look up role after setting grants"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting grants on it.")
@@ -743,7 +743,7 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, op, errors.WithMsg("uable to look up role after removing grant"))
+		return nil, nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("uable to look up role after removing grant"))
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing grants from it.")

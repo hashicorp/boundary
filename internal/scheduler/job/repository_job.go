@@ -38,7 +38,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				int(opts.withNextRunIn.Round(time.Second).Seconds()),
 			})
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			defer rows.Close()
 
@@ -51,7 +51,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows for job"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows for job"))
 				}
 			}
 			if rowCnt == 0 {
@@ -63,9 +63,9 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("name %s already exists", name)))
 		}
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return j, nil
 }
@@ -86,7 +86,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 		func(r db.Reader, w db.Writer) error {
 			rows, err := w.Query(ctx, setNextScheduledRunIfSoonerQuery, []interface{}{int(nextRunInAtLeast.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
-				return errors.Wrap(err, op, errors.WithMsg(
+				return errors.WrapDeprecated(err, op, errors.WithMsg(
 					fmt.Sprintf("failed to set next scheduled run time for job %v", name)))
 			}
 			defer rows.Close()
@@ -100,7 +100,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 				err = r.ScanRows(rows, j)
 				if err != nil {
 					_ = rows.Close()
-					return errors.Wrap(err, op, errors.WithMsg("unable to scan rows"))
+					return errors.WrapDeprecated(err, op, errors.WithMsg("unable to scan rows"))
 				}
 			}
 			if rowCnt == 0 {
@@ -111,7 +111,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return j, nil
 }
@@ -131,7 +131,7 @@ func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %v", name)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %v", name)))
 	}
 	return j, nil
 }
@@ -156,7 +156,7 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 	var jobs []*Job
 	err := r.reader.SearchWhere(ctx, &jobs, strings.Join(where, " and "), args, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return jobs, nil
 }
@@ -178,7 +178,7 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 		func(_ db.Reader, w db.Writer) (err error) {
 			rowsDeleted, err = w.Delete(ctx, j, db.WithWhere("name = ?", []interface{}{name}))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -187,7 +187,7 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %v", name)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %v", name)))
 	}
 
 	return rowsDeleted, nil

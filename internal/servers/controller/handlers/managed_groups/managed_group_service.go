@@ -331,7 +331,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 
 	out, err := repo.CreateManagedGroup(ctx, am.GetScopeId(), mg)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to create managed group"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create managed group"))
 	}
 	if out == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
@@ -349,7 +349,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 	case auth.OidcSubtype:
 		am, err := s.createOidcInRepo(ctx, am, item)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
@@ -390,11 +390,11 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	out, rowsUpdated, err := repo.UpdateManagedGroup(ctx, scopeId, mg, version, dbMask)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to update managed group"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to update managed group"))
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Managed Group %q doesn't exist or incorrect version provided.", id)
@@ -409,7 +409,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string,
 	case auth.OidcSubtype:
 		mg, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		if mg == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update managed group but no error returned from repository.")
@@ -435,7 +435,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if errors.IsNotFoundError(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, op)
+		return false, errors.WrapDeprecated(err, op)
 	}
 	return rows > 0, nil
 }
@@ -448,11 +448,11 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	case auth.OidcSubtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		oidcl, err := oidcRepo.ListManagedGroups(ctx, authMethodId)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		for _, a := range oidcl {
 			outUl = append(outUl, a)

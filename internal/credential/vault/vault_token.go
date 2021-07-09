@@ -120,7 +120,7 @@ func (t *Token) SetTableName(n string) {
 func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(Token).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, t.Token, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	t.KeyId = cipher.KeyID()
 	return nil
@@ -129,7 +129,7 @@ func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 func (t *Token) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(Token).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, t.Token, nil); err != nil {
-		return errors.Wrap(err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

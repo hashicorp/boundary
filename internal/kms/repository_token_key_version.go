@@ -33,14 +33,14 @@ func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 	kv := AllocTokenKeyVersion()
 	id, err := newTokenKeyVersionId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	kv.PrivateId = id
 	kv.RootKeyVersionId = rootKeyVersionId
 	kv.Key = key
 	kv.TokenKeyId = tokenKeyId
 	if err := kv.Encrypt(ctx, rkvWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	var returnedKey interface{}
@@ -52,13 +52,13 @@ func (r *Repository) CreateTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 			returnedKey = kv.Clone()
 			// no token entries for root key version
 			if err := w.Create(ctx, returnedKey); err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s token key id", kv.TokenKeyId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s token key id", kv.TokenKeyId)))
 	}
 	return returnedKey.(*TokenKeyVersion), nil
 }
@@ -76,10 +76,10 @@ func (r *Repository) LookupTokenKeyVersion(ctx context.Context, keyWrapper wrapp
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	if err := k.Decrypt(ctx, keyWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &k, nil
 }
@@ -95,7 +95,7 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 	k := AllocTokenKeyVersion()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 
 	var rowsDeleted int
@@ -108,7 +108,7 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 			// no token entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsDeleted > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
@@ -117,7 +117,7 @@ func (r *Repository) DeleteTokenKeyVersion(ctx context.Context, privateId string
 		},
 	)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", privateId)))
 	}
 	return rowsDeleted, nil
 }
@@ -135,13 +135,13 @@ func (r *Repository) LatestTokenKeyVersion(ctx context.Context, rkvWrapper wrapp
 	}
 	var foundKeys []*TokenKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "token_key_id = ?", []interface{}{tokenKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", tokenKeyId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for %s", tokenKeyId)))
 	}
 	if len(foundKeys) == 0 {
 		return nil, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 	}
 	if err := foundKeys[0].Decrypt(ctx, rkvWrapper); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return foundKeys[0], nil
 }
@@ -158,11 +158,11 @@ func (r *Repository) ListTokenKeyVersions(ctx context.Context, rkvWrapper wrappi
 	var versions []*TokenKeyVersion
 	err := r.list(ctx, &versions, "token_key_id = ?", []interface{}{tokenKeyId}, opt...)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	for i, k := range versions {
 		if err := k.Decrypt(ctx, rkvWrapper); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("error decrypting key num %d", i)))
 		}
 	}
 	dekVersions := make([]DekVersion, 0, len(versions))

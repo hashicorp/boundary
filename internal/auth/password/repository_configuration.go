@@ -26,7 +26,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 	}
 	cc, err := r.currentConfig(ctx, authMethodId)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return cc.argon2(), nil
 }
@@ -50,14 +50,14 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if err := c.validate(); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
 		out, err := r.setArgon2Conf(ctx, scopeId, v)
 		if err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		return out, nil
 	default:
@@ -71,7 +71,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 
 	id, err := newArgon2ConfigurationId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	c.PrivateId = id
 
@@ -83,7 +83,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	newArgon2Conf := &Argon2Configuration{Argon2Configuration: &store.Argon2Configuration{}}
@@ -93,18 +93,18 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 			where, args := c.whereDup()
 			if err := rr.LookupWhere(ctx, newArgon2Conf, where, args...); err != nil {
 				if !errors.IsNotFoundError(err) {
-					return errors.Wrap(err, op)
+					return errors.WrapDeprecated(err, op)
 				}
 				newArgon2Conf = c.clone()
 				if err := w.Create(ctx, newArgon2Conf, db.WithOplog(oplogWrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
-					return errors.Wrap(err, op)
+					return errors.WrapDeprecated(err, op)
 				}
 			}
 
 			a.PasswordConfId = newArgon2Conf.PrivateId
 			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(oplogWrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			if rowsUpdated > 1 {
 				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
@@ -113,7 +113,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return newArgon2Conf, nil
 }
@@ -134,7 +134,7 @@ func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*c
 	const op = "password.(Repository).currentConfig"
 	var cc currentConfig
 	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &cc, nil
 }
@@ -145,13 +145,13 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 
 	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{accountId})
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var conf currentConfig
 		if err := r.reader.ScanRows(rows, &conf); err != nil {
-			return nil, errors.Wrap(err, op)
+			return nil, errors.WrapDeprecated(err, op)
 		}
 		confs = append(confs, conf)
 	}

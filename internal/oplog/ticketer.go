@@ -56,7 +56,7 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 		if gorm.IsRecordNotFoundError(err) {
 			return nil, errors.NewDeprecated(errors.TicketNotFound, op, "ticket not found")
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg("error retrieving ticket from storage"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error retrieving ticket from storage"))
 	}
 	return &ticket, nil
 }
@@ -69,7 +69,7 @@ func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
 	}
 	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
-		return errors.Wrap(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
+		return errors.WrapDeprecated(tx.Error, op, errors.WithMsg("error trying to redeem ticket"))
 	}
 	if tx.RowsAffected != 1 {
 		return errors.NewDeprecated(errors.TicketAlreadyRedeemed, op, "ticket already redeemed")

@@ -50,13 +50,13 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 
 	id, err := newCredentialLibraryId()
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	l.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var newCredentialLibrary *CredentialLibrary
@@ -65,7 +65,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 			newCredentialLibrary = l.clone()
 			err := w.Create(ctx, newCredentialLibrary, db.WithOplog(oplogWrapper, l.oplog(oplog.OpType_OP_TYPE_CREATE)))
 			if err != nil {
-				return errors.Wrap(err, op)
+				return errors.WrapDeprecated(err, op)
 			}
 			return nil
 		},
@@ -73,9 +73,9 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s: name %s already exists", l.StoreId, l.Name)))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s: name %s already exists", l.StoreId, l.Name)))
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s", l.StoreId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("in credential store: %s", l.StoreId)))
 	}
 	return newCredentialLibrary, nil
 }
@@ -149,7 +149,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithCode(errors.Encrypt),
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
 	}
 
@@ -174,7 +174,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", l.Name, l.PublicId))
 		}
-		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(l.PublicId))
+		return nil, db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(l.PublicId))
 	}
 
 	return returnedCredentialLibrary, rowsUpdated, nil
@@ -193,7 +193,7 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
 	return l, nil
 }
@@ -214,7 +214,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsDeleted int
@@ -231,7 +231,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", l.PublicId)))
+		return db.NoRowsAffected, errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("delete failed for %s", l.PublicId)))
 	}
 
 	return rowsDeleted, nil
@@ -253,7 +253,7 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 	var libs []*CredentialLibrary
 	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return libs, nil
 }
