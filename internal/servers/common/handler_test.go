@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -483,7 +484,7 @@ type testMockBroker struct {
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
 	const op = "common.(testMockBroker).Send"
 	switch {
-	case b.errorOnFlush && payload.(eventlogger.Gateable).FlushEvent():
+	case b.errorOnFlush && payload.(gated.Gateable).FlushEvent():
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
 	case b.errorOnSendAudit && t == eventlogger.EventType(event.AuditType):
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send audit event")
