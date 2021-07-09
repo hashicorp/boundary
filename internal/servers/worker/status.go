@@ -72,19 +72,22 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
 	defer cancel()
 	for {
-		if err := ctx.Err(); err != nil {
-			w.logger.Error("error waiting for next status report to controller", "err", err)
-			break
+		select {
+		case <-time.After(time.Second):
+			// pass
+
+		case <-ctx.Done():
+			w.logger.Error("error waiting for next status report to controller", "err", ctx.Err())
+			return ctx.Err()
 		}
 
 		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
 			break
 		}
-
-		time.Sleep(time.Second)
 	}
 
-	return ctx.Err()
+	w.logger.Debug("next worker status update sent successfully")
+	return nil
 }
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
