@@ -60,7 +60,6 @@ To authenticate to Boundary using the recovery KMS workflow:
 <Tabs>
 <Tab heading="CLI">
 
-
 To use the recovery workflow on the CLI, you must pass the `-recovery-config <path_to_kms_recovery_config>` flag or set the environment
 variable for `BOUNDARY_RECOVERY_CONFIG` for every command ran. Authentication takes place for every command
 ran when using the recovery workflow, there is no `boundary authenticate` step:
@@ -82,7 +81,6 @@ $ boundary users create <truncated> -recovery-config /tmp/recovery.hcl
 </Tab>
 <Tab heading="Terraform">
 
-
 To configure your provider to use the recovery KMS workflow, provide the KMS block as the value for
 `recovery_kms_hcl`:
 
@@ -102,7 +100,6 @@ EOT
 
 </Tab>
 </Tabs>
-
 
 ## Initialize the Database
 
@@ -140,7 +137,6 @@ for each scope. We're going to specify a role for managing these scopes by selec
 <Tabs>
 <Tab heading="CLI">
 
-
 ```bash
 $ boundary scopes create -name 'org' -scope-id 'global' \
   -recovery-config /tmp/recovery.hcl \
@@ -157,7 +153,6 @@ $ boundary scopes create -name 'project' -scope-id <org_scope_id_from_last_step>
 
 </Tab>
 <Tab heading="Terraform">
-
 
 ```hcl
 resource "boundary_scope" "org" {
@@ -181,14 +176,12 @@ resource "boundary_scope" "project" {
 </Tab>
 </Tabs>
 
-
 ### Create an Auth Method
 
 Create an auth method in the organization scope.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 $ boundary auth-methods create password \
@@ -200,7 +193,6 @@ $ boundary auth-methods create password \
 
 </Tab>
 <Tab heading="Terraform">
-
 
 ```hcl
 resource "boundary_auth_method" "password" {
@@ -214,14 +206,12 @@ resource "boundary_auth_method" "password" {
 </Tab>
 </Tabs>
 
-
 ### Create a Login Account
 
 Create a login account for the auth method.
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 $ boundary accounts create password \
@@ -233,7 +223,6 @@ $ boundary accounts create password \
 
 </Tab>
 <Tab heading="Terraform">
-
 
 ```hcl
 resource "boundary_account" "myuser" {
@@ -249,7 +238,6 @@ resource "boundary_account" "myuser" {
 </Tab>
 </Tabs>
 
-
 ### Create a User
 
 Create a user and associate the user with the login account created in the previous step.
@@ -257,7 +245,6 @@ This user will also be the principal in the role we create in the following step
 
 <Tabs>
 <Tab heading="CLI">
-
 
 ```bash
 $ boundary users create -scope-id <org_scope_id> \
@@ -274,7 +261,6 @@ $ boundary users add-accounts \
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_user" "myuser" {
   name        = "myuser"
@@ -286,7 +272,6 @@ resource "boundary_user" "myuser" {
 
 </Tab>
 </Tabs>
-
 
 ### Create Roles to Manage Scopes
 
@@ -305,7 +290,6 @@ The following example creates 4 roles:
 
 <Tabs>
 <Tab heading="CLI">
-
 
 Assumes recovery key export from above steps is still set:
 
@@ -329,7 +313,6 @@ $ boundary roles add-principals -id <global_anon_listing_id> \
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_role" "global_anon_listing" {
   scope_id = "global"
@@ -345,12 +328,10 @@ resource "boundary_role" "global_anon_listing" {
 </Tab>
 </Tabs>
 
-
 #### Anonymous listing role for org scope
 
 <Tabs>
 <Tab heading="CLI">
-
 
 Assumes recovery key export from above steps is still set:
 
@@ -373,7 +354,6 @@ $ boundary roles add-principals -id <org_anon_listing_id> \
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_role" "org_anon_listing" {
   scope_id = boundary_scope.org.id
@@ -389,12 +369,10 @@ resource "boundary_role" "org_anon_listing" {
 </Tab>
 </Tabs>
 
-
 #### Org admin role for myuser
 
 <Tabs>
 <Tab heading="CLI">
-
 
 Assumes recovery key export from above steps is still set:
 
@@ -416,7 +394,6 @@ $ boundary roles add-principals -id <org_admin_id> \
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_role" "org_admin" {
   scope_id       = "global"
@@ -431,12 +408,10 @@ resource "boundary_role" "org_admin" {
 </Tab>
 </Tabs>
 
-
 #### Project admin for myuser
 
 <Tabs>
 <Tab heading="CLI">
-
 
 Assumes recovery key export from above steps is still set:
 
@@ -458,7 +433,6 @@ $ boundary roles add-principals -id <project_admin_id> \
 </Tab>
 <Tab heading="Terraform">
 
-
 ```hcl
 resource "boundary_role" "project_admin" {
   scope_id       = boundary_scope.org.id
@@ -472,7 +446,6 @@ resource "boundary_role" "project_admin" {
 
 </Tab>
 </Tabs>
-
 
 ### Login as Your New User
 

@@ -32,20 +32,33 @@
         "path": "installing/connect-to-target"
       },
       {
+        "title": "Verify Installation",
+        "path": "installing/verify-install"
+      }
+    ]
+  },
+  {
+    "title": "Other Installation Environments",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "other-installs"
+      },
+      {
         "title": "Non-Dev Environments",
-        "path": "installing/no-gen-resources"
+        "path": "other-installs/no-gen-resources"
       },
       {
         "title": "Systemd Install",
-        "path": "installing/systemd"
+        "path": "other-installs/systemd"
       },
       {
         "title": "Postgres Install",
-        "path": "installing/postgres"
+        "path": "other-installs/postgres"
       },
       {
         "title": "High Availability Install",
-        "path": "installing/high-availability"
+        "path": "other-installs/high-availability"
       }
     ]
   },
