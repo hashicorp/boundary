@@ -32,3 +32,12 @@ Database initialization requires elevated privileges.
 When initializing the database with the `boundary database init` command,
 the boundary database user
 requires the `superuser` role plus `all privileges` on the boundary database.
+
+## Required Postgres Modules
+
+Boundary has a dependency on the Postgres
+[pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html) module
+which is one of the standard modules supplied with Postgres.
+Please see the
+[Additional Supplied Modules](https://www.postgresql.org/docs/11/contrib.html)
+page in the Postgres documentation for more information.

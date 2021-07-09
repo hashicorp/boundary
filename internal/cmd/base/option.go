@@ -1,10 +1,14 @@
 package base
 
+import "github.com/hashicorp/boundary/internal/observability/event"
+
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(&opts)
+		if o != nil {
+			o(&opts)
+		}
 	}
 	return opts
 }
@@ -24,6 +28,8 @@ type Options struct {
 	withSkipTargetCreation         bool
 	withContainerImage             string
 	withDialect                    string
+	withEventerConfig              *event.EventerConfig
+	withEventFlags                 *EventFlags
 	withAttributeFieldPrefix       string
 	withStatusCode                 int
 }
@@ -111,6 +117,20 @@ func WithContainerImage(name string) Option {
 func withDialect(dialect string) Option {
 	return func(o *Options) {
 		o.withDialect = dialect
+	}
+}
+
+// WithEventer allows an optional eventer config
+func WithEventerConfig(config *event.EventerConfig) Option {
+	return func(o *Options) {
+		o.withEventerConfig = config
+	}
+}
+
+// WithEventer allows an optional event configuration flags
+func WithEventFlags(flags *EventFlags) Option {
+	return func(o *Options) {
+		o.withEventFlags = flags
 	}
 }
 

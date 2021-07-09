@@ -448,7 +448,12 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if tc.b.Logger == nil {
 		tc.b.Logger = hclog.New(&hclog.LoggerOptions{
 			Level: hclog.Trace,
+			Mutex: tc.b.StderrLock,
 		})
+	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+		t.Fatal(err)
 	}
 
 	if opts.Config.Controller == nil {

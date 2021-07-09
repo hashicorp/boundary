@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
@@ -99,6 +100,9 @@ type Config struct {
 	DevControllerKey     string `hcl:"-"`
 	DevWorkerAuthKey     string `hcl:"-"`
 	DevRecoveryKey       string `hcl:"-"`
+
+	// Eventing configuration for the controller
+	Eventing *event.EventerConfig `hcl:"events"`
 }
 
 type Controller struct {
@@ -356,6 +360,14 @@ func Parse(d string) (*Config, error) {
 					listener.CorsAllowedOrigins = strutil.AppendIfMissing(listener.CorsAllowedOrigins, desktopCorsOrigin)
 				}
 			}
+		}
+	}
+
+	if result.Eventing == nil {
+		result.Eventing = event.DefaultEventerConfig()
+	} else {
+		if result.Eventing.Sinks == nil {
+			result.Eventing.Sinks = []event.SinkConfig{event.DefaultSink()}
 		}
 	}
 

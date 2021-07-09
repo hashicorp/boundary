@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
@@ -19,7 +20,11 @@ func TestEventer_retrySend(t *testing.T) {
 
 	testConfig := TestEventerConfig(t, "TestEventer_retrySend")
 
-	eventer, err := NewEventer(hclog.Default(), testConfig.EventerConfig)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+	})
+	eventer, err := NewEventer(testLogger, testLock, testConfig.EventerConfig)
 	require.NoError(t, err)
 
 	testError := fmt.Errorf("%s: missing operation: %w", "missing operation", ErrInvalidParameter)
