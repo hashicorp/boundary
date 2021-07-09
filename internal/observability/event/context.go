@@ -3,8 +3,11 @@ package event
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
+	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -70,6 +73,11 @@ func RequestInfoFromContext(ctx context.Context) (*RequestInfo, bool) {
 // WithHeader, WithDetails, WithId, WithFlush and WithRequestInfo. All other
 // options are ignored.
 func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
+	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
+	// generally available.
+	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
+		return nil
+	}
 	const op = "event.WriteObservation"
 	if ctx == nil {
 		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)
@@ -111,6 +119,11 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 // The options WithId and WithRequestInfo are supported and all other options
 // are ignored.
 func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
+	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
+	// generally available.
+	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
+		return
+	}
 	const op = "event.WriteError"
 	// EventerFromContext will handle a nil ctx appropriately. If e or caller is
 	// missing, newError(...) will handle them appropriately.
@@ -153,6 +166,11 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 // WithRequest, WithResponse, WithAuth, WithId, WithFlush and WithRequestInfo.
 // All other options are ignored.
 func WriteAudit(ctx context.Context, caller Op, opt ...Option) error {
+	// TODO (jimlambrt) 6/2021: remove this feature flag envvar when events are
+	// generally available.
+	if !strings.EqualFold(os.Getenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS), "true") {
+		return nil
+	}
 	const op = "event.WriteAudit"
 	if ctx == nil {
 		return fmt.Errorf("%s: missing context: %w", op, ErrInvalidParameter)

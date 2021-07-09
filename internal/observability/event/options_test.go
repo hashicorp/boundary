@@ -84,4 +84,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withAuth = auth
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithEventer", func(t *testing.T) {
+		assert := assert.New(t)
+		eventer := Eventer{}
+		opts := getOpts(WithEventer(&eventer))
+		testOpts := getDefaultOptions()
+		testOpts.withEventer = &eventer
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEventerConfig", func(t *testing.T) {
+		assert := assert.New(t)
+		c := EventerConfig{}
+		opts := getOpts(WithEventerConfig(&c))
+		testOpts := getDefaultOptions()
+		testOpts.withEventerConfig = &c
+		assert.Equal(opts, testOpts)
+	})
 }
