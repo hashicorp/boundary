@@ -1,10 +1,12 @@
 package event
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
@@ -98,6 +100,31 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithEventerConfig(&c))
 		testOpts := getDefaultOptions()
 		testOpts.withEventerConfig = &c
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithAllow", func(t *testing.T) {
+		assert := assert.New(t)
+		allow := []string{"foo == bar", "bar == foo"}
+		opts := getOpts(WithAllow(allow...))
+		testOpts := getDefaultOptions()
+		testOpts.withAllow = allow
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDeny", func(t *testing.T) {
+		assert := assert.New(t)
+		deny := []string{"foo == bar", "bar == foo"}
+		opts := getOpts(WithDeny(deny...))
+		testOpts := getDefaultOptions()
+		testOpts.withDeny = deny
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithSchema", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		schema, err := url.Parse("https://alice.com")
+		require.NoError(err)
+		opts := getOpts(WithSchema(schema))
+		testOpts := getDefaultOptions()
+		testOpts.withSchema = schema
 		assert.Equal(opts, testOpts)
 	})
 }
