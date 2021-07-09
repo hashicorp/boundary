@@ -63,27 +63,31 @@
     ]
   },
   {
-    "title": "API/Clients",
+    "title": "Access Methods",
     "routes": [
       {
         "title": "Overview",
-        "path": "api-clients"
+        "path": "access-methods"
       },
       {
         "title": "API",
-        "path": "api-clients/api"
+        "path": "access-methods/api"
       },
       {
         "title": "CLI",
-        "path": "api-clients/cli"
+        "path": "access-methods/cli"
       },
       {
         "title": "Go SDK",
-        "path": "api-clients/go-sdk"
+        "path": "access-methods/go-sdk"
+      },
+      {
+        "title": "User Interface",
+        "path": "access-methods/ux"
       },
       {
         "title": "Desktop",
-        "path": "api-clients/desktop"
+        "path": "access-methods/desktop"
       }
     ]
   },
