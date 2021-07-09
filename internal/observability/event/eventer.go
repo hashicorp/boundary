@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/filters/gated"
+	"github.com/hashicorp/eventlogger/sinks/writer"
+
 	"github.com/hashicorp/go-hclog"
 )
 
@@ -148,7 +151,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 		var sinkNode eventlogger.Node
 		switch s.SinkType {
 		case StdoutSink:
-			sinkNode = &eventlogger.WriterSink{
+			sinkNode = &writer.Sink{
 				Format: string(s.Format),
 				Writer: os.Stdout,
 			}
@@ -235,7 +238,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 
 	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
-		gatedFilterNode := eventlogger.GatedFilter{}
+		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-audit")
 		if err != nil {
@@ -262,7 +265,7 @@ func NewEventer(log hclog.Logger, c EventerConfig, opt ...Option) (*Eventer, err
 	}
 	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
-		gatedFilterNode := eventlogger.GatedFilter{}
+		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
 		gateId, err := newId("gated-observation")
 		if err != nil {
@@ -367,7 +370,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 		if event.Detail != nil {
 			event.Detail[OpField] = string(event.Op)
 		}
-		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.SimpleGatedPayload)
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.Payload)
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an observation event", "error:", err.Error())
