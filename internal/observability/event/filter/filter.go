@@ -1,12 +1,14 @@
-package filter
+package node
 
 import (
-	"context"
 	"fmt"
+	"net/url"
 	"reflect"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
+
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -16,18 +18,35 @@ import (
 // Node represents an eventlogger.Node which filters events based on allow and
 // deny bexpr filters
 type Node struct {
+	*cloudevents.FormatterFilter
 	allow []*filter
 	deny  []*filter
 }
 
-// NewNode creates a new filter node using the optional allow and deny filters
+// New creates a new filter node using the optional allow and deny filters
 // provided.
-func NewNode(opt ...Option) (*Node, error) {
+func New(source *url.URL, format cloudevents.Format, opt ...Option) (*Node, error) {
 	const op = "filter.NewNode"
+	if source == nil {
+		return nil, fmt.Errorf("%s: missing source: %w", op, event.ErrInvalidParameter)
+	}
+	switch format {
+	case cloudevents.FormatJSON, cloudevents.FormatText:
+	default:
+		return nil, fmt.Errorf("%s: invalid format '%s': %w", op, format, event.ErrInvalidParameter)
+	}
 	opts := getOpts(opt...)
+	n := Node{
+		FormatterFilter: &cloudevents.FormatterFilter{
+			Source: source,
+			Schema: opts.withSchema,
+			Format: format,
+		},
+	}
+
 	// intentionally not checking of allow and/or deny optional filters were
 	// supplied since having a filter node with no filters is okay.
-	n := Node{}
+
 	if len(opts.withAllow) > 0 {
 		n.allow = make([]*filter, 0, len((opts.withAllow)))
 		for i := range opts.withAllow {
@@ -48,47 +67,31 @@ func NewNode(opt ...Option) (*Node, error) {
 			n.deny = append(n.deny, f)
 		}
 	}
+	n.Predicate = func(ce interface{}) (bool, error) {
+		if len(n.allow) == 0 && len(n.deny) == 0 {
+			return true, nil
+		}
+		for _, f := range n.deny {
+			if f.Match(ce) {
+				return false, nil
+			}
+		}
+		switch {
+		case len(n.allow) > 0:
+			for _, f := range n.allow {
+				if f.Match(ce) {
+					return true, nil
+				}
+			}
+			return false, nil
+		default:
+			return true, nil
+		}
+	}
 	return &n, nil
 }
 
 var _ eventlogger.Node = &Node{}
-
-// Process will filter the event based on the node's allow and deny filters.
-// Deny filters are applied first and if any match the event is excluded (nil,
-// nil is returned).  The allow filters are applied after the denies and if any
-// match the event is included (event, nil is returned).   Both allow and deny
-// filters are optional.
-func (n *Node) Process(ctx context.Context, e *eventlogger.Event) (*eventlogger.Event, error) {
-	if len(n.allow) == 0 && len(n.deny) == 0 {
-		return e, nil
-	}
-	for _, f := range n.deny {
-		if f.Match(e) {
-			return nil, nil
-		}
-	}
-	switch {
-	case len(n.allow) > 0:
-		for _, f := range n.allow {
-			if f.Match(e) {
-				return e, nil
-			}
-		}
-		return nil, nil
-	default:
-		return e, nil
-	}
-}
-
-// Reopen is a no op for Filters.
-func (_ *Node) Reopen() error {
-	return nil
-}
-
-// Type describes the type of the node as a Filter.
-func (_ *Node) Type() eventlogger.NodeType {
-	return eventlogger.NodeTypeFilter
-}
 
 type filter struct {
 	raw  string

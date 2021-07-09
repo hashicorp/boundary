@@ -1,4 +1,6 @@
-package filter
+package node
+
+import "net/url"
 
 // getOpts - iterate the inbound Options and return a struct.
 func getOpts(opt ...Option) options {
@@ -16,12 +18,20 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withAllow []string
-	withDeny  []string
+	withAllow  []string
+	withDeny   []string
+	withSchema *url.URL
 }
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+// WithSchema is an optional schema for the cloudevents
+func WithSchema(url *url.URL) Option {
+	return func(o *options) {
+		o.withSchema = url
+	}
 }
 
 // WithAllow is an optional set of allow filters
