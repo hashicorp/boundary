@@ -67,18 +67,23 @@ func New(source *url.URL, format cloudevents.Format, opt ...Option) (*Node, erro
 			n.deny = append(n.deny, f)
 		}
 	}
-	n.Predicate = func(ce interface{}) (bool, error) {
-		if len(n.allow) == 0 && len(n.deny) == 0 {
+	n.Predicate = newPredicate(n.allow, n.deny)
+	return &n, nil
+}
+
+func newPredicate(allow, deny []*filter) func(ce interface{}) (bool, error) {
+	return func(ce interface{}) (bool, error) {
+		if len(allow) == 0 && len(deny) == 0 {
 			return true, nil
 		}
-		for _, f := range n.deny {
+		for _, f := range deny {
 			if f.Match(ce) {
 				return false, nil
 			}
 		}
 		switch {
-		case len(n.allow) > 0:
-			for _, f := range n.allow {
+		case len(allow) > 0:
+			for _, f := range allow {
 				if f.Match(ce) {
 					return true, nil
 				}
@@ -88,7 +93,6 @@ func New(source *url.URL, format cloudevents.Format, opt ...Option) (*Node, erro
 			return true, nil
 		}
 	}
-	return &n, nil
 }
 
 var _ eventlogger.Node = &Node{}
