@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/shared-secure-libs/logging"
 )
 
 func ProcessLogLevelAndFormat(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) (hclog.Level, logging.LogFormat, error) {
