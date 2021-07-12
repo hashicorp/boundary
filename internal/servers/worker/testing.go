@@ -12,7 +12,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/shared-secure-libs/base62"
 )
 
 // TestWorker wraps a base.Server and Worker to provide a

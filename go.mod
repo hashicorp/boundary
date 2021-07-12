@@ -34,6 +34,8 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.7
+	github.com/hashicorp/shared-secure-libs/base62 v0.1.0
+	github.com/hashicorp/shared-secure-libs/mlock v0.1.0
 	github.com/hashicorp/shared-secure-libs/parseutil v0.1.0
 	github.com/hashicorp/shared-secure-libs/strutil v0.1.0
 	github.com/hashicorp/vault/api v1.1.0
@@ -63,7 +65,7 @@ require (
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.8.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
 	golang.org/x/tools v0.1.3
 	google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6
