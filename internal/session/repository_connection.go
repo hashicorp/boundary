@@ -182,6 +182,7 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
+			defer rows.Close()
 
 			for rows.Next() {
 				var (
@@ -257,10 +258,10 @@ func (r *Repository) ShouldCloseConnectionsOnWorker(ctx context.Context, foundCo
 		fmt.Sprintf(shouldCloseConnectionsCte, connsStr, sessionsStr),
 		args,
 	)
-
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
+	defer rows.Close()
 
 	result := make(map[string][]string)
 	for rows.Next() {
