@@ -23,16 +23,14 @@ import (
 // closed on the worker.
 type sessionCleanupJob struct {
 	logger        hclog.Logger
-	serversRepoFn common.ServersRepoFactory
 	sessionRepoFn common.SessionRepoFactory
 
 	// The amount of time to give disconnected workers before marking
 	// their connections as closed.
 	gracePeriod int
 
-	// Whether or not the operation has completed. This is used to dictate the
-	// result to the Status call for this job as the call is atomic.
-	completed bool
+	// The total number of connections closed in the last run.
+	totalClosed int
 }
 
 // newSessionCleanupJob instantiates the session cleanup job.
@@ -78,14 +76,9 @@ func (j *sessionCleanupJob) NextRunIn() (time.Duration, error) { return time.Sec
 
 // Status returns the status of the running job.
 func (j *sessionCleanupJob) Status() scheduler.JobStatus {
-	var completedI int
-	if j.completed {
-		completedI = 1
-	}
-
 	return scheduler.JobStatus{
-		Completed: completedI,
-		Total:     1,
+		Completed: j.totalClosed,
+		Total:     j.totalClosed,
 	}
 }
 
@@ -96,7 +89,7 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 		"starting job",
 		"op", op,
 	)
-	j.completed = false
+	j.totalClosed = 0
 
 	// Load repos.
 	sessionRepo, err := j.sessionRepoFn()
@@ -126,13 +119,15 @@ func (j *sessionCleanupJob) Run(ctx context.Context) error {
 				"grace_period_seconds", j.gracePeriod,
 				"number_connections_closed", result.NumberConnectionsClosed,
 			)
+
+			j.totalClosed += result.NumberConnectionsClosed
 		}
 	}
 
-	j.completed = true
 	j.logger.Debug(
 		"job finished",
 		"op", op,
+		"total_connections_closed", j.totalClosed,
 	)
 	return nil
 }
