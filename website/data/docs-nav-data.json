@@ -24,6 +24,11 @@
         "path": "installing"
       },
       {
+        "title": "Dev verus Non-Dev Environments",
+        "path": "installing/dev-non-dev"
+      },
+
+      {
         "title": "Run and Login",
         "path": "installing/run-and-login"
       },
@@ -44,10 +49,7 @@
         "title": "Overview",
         "path": "other-installs"
       },
-      {
-        "title": "Non-Dev Environments",
-        "path": "other-installs/no-gen-resources"
-      },
+
       {
         "title": "Systemd Install",
         "path": "other-installs/systemd"
@@ -120,71 +122,11 @@
         ]
       },
       {
-        "title": "Domain Model",
+        "title": "Resources Definition",
         "routes": [
           {
             "title": "Overview",
-            "path": "concepts/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "concepts/domain-model/accounts"
-          },
-          {
-            "title": "Auth Methods",
-            "path": "concepts/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "concepts/domain-model/credentials"
-          },
-          {
-            "title": "Credential Libraries",
-            "path": "concepts/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential Stores",
-            "path": "concepts/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "concepts/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "concepts/domain-model/hosts"
-          },
-          {
-            "title": "Host Catalogs",
-            "path": "concepts/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host Sets",
-            "path": "concepts/domain-model/host-sets"
-          },
-          {
-            "title": "Managed Groups",
-            "path": "concepts/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "concepts/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "concepts/domain-model/sessions"
-          },
-          {
-            "title": "Targets",
-            "path": "concepts/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "concepts/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "concepts/domain-model/users"
+            "path": "concepts/resource-definition"
           }
         ]
       },
@@ -211,23 +153,7 @@
       }
     ]
   },
-  {
-    "title": "Developing Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "developing"
-      },
-      {
-        "title": "Building",
-        "path": "developing/building"
-      },
-      {
-        "title": "Developing the UI",
-        "path": "developing/ui"
-      }
-    ]
-  },
+
   {
     "divider": true
   },
@@ -343,10 +269,7 @@
   {
     "divider": true
   },
-  {
-    "title": "Roadmap",
-    "path": "roadmap"
-  },
+
   {
     "title": "Releases",
     "routes": [

@@ -1,0 +1,206 @@
+---
+layout: docs
+page_title: Resource Definition
+description: |-
+  Definition of all Boundary resources.
+---
+
+# Overview
+
+Boundary has a rich domain model
+consisting of resources that represent
+[IAM][] principals,
+infrastructure,
+and the means to tie them together.
+This section contains information about the various resources within the domain
+and how they relate to each other.
+
+![](/img/boundary-domain-model-overview.jpg)
+
+## Resources
+
+A resource is any element in Boundary
+to which principals may be granted permissions.
+All resources have an ID which is unique within Boundary.
+
+### Summary of Resources
+
+- **Account** :
+  An account is a resource
+  that represents a unique set of credentials
+  issued from a configured authentication method
+  which can be used to establish the identity of a user.
+  A user can have zero or more accounts
+  but an account can only belong to a single user.
+  An account can only be associated with a user
+  in the same scope as the account's auth method.
+
+- **Credential** :
+  A credential is a data structure containing one or more secrets
+  that binds an identity to a set of permissions or capabilities
+  on a host for a session.
+
+- **Credential Libraries** :
+  A credential library is a resource
+  that provides credentials
+  of the same type and same access level
+  from a single credential store.
+
+- **Credential Store** :
+  A credential store is a resource
+  that can retrieve, store, and potentially generate credentials
+  of differing types and differing access levels.
+  It may also contain credential libraries.
+  It belongs to a project and supports the
+  [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege)
+  by providing mechanisms to limit the credentials it can access
+  to the minimum necessary for the project it is in.
+  A credential store can also contain credential libraries.
+
+- **Authentication Method** :
+  An authentication method is a resource
+  that provides a mechanism
+  for users to authenticate to Boundary.
+  An auth method contains accounts which link an
+  individual user to a set of credentials and managed groups which groups
+  accounts that satisfy criteria and can be used as principals in roles.
+  Auth methods can be defined at either a Global or Organization
+  scope.
+
+- **Group** :
+  A group is a resource
+  that represents a collection of users
+  which can be treated equally
+  for the purposes of access control.
+  A group is a principal
+  which allows it to be assigned to roles.
+  Any role assigned to a group is indirectly assigned to the users in the group.
+  This assignment is a transitive property.
+  A user in a group receives all permissions of the roles assigned to the group.
+  Groups can be defined at the Global, Organization, or Project scope.
+
+- **Host** :
+  A host is a resource
+  that represents a computing element with a network address
+  reachable from Boundary.
+  A host belongs to a host catalog.
+  Hosts can only be associated with host sets
+  from the same host catalog as the host.
+
+- **Host Catalog** :
+  A host catalog is a resource
+  that contains hosts and host sets.
+  A host catalog can only be defined within a project.
+
+- **Host Set** :
+  A host set is a resource
+  that represents a collection of hosts
+  which are considered equivalent
+  for the purposes of access control.
+  A host set can only include hosts
+  from the same host catalog as the host set.
+  A target can reference host sets from host catalogs
+  which belong to the same project as the target.
+
+- **Managed Group** :
+  A managed group is a resource that represents a collection of accounts. The
+  collection is formed by evaluating account information defined by the auth
+  method's identity provider against the managed group's configuration; members
+  cannot be managed manually. An account can be associated with zero or more
+  managed groups within the same auth method. The managed group can be used as
+  a principal within roles to assign grants..
+
+- **Role** :
+  A role is a resource
+  that contains a collection of permissions
+  which are granted to any principal assigned to the role.
+  Users, groups, and managed groups are principals
+  which allows either to be assigned to a role.
+  A role can be defined within any scope.
+  A role can be assigned to principals from any scope.
+
+- **Session** :
+  A session is
+  a set of related connections
+  between a user and a host.
+  A session may include a set of credentials
+  which define the permissions granted to the user on the host for the duration
+  of the session.
+
+  A user initiates a session
+  by requesting access to a target.
+  If a user has the proper permissions,
+  a session is created
+  and the expiration time and connection limit
+  are set based on the target's attributes.
+  If the target is associated with credential libraries,
+  credentials are retrieved and returned from each
+  credential library.
+  A snapshot of the data
+  relevant to authorizing the session
+  is also captured and stored in the Boundary data warehouse
+  when the session is created.
+
+  Sessions are created in the project of the corresponding target.
+  Deleting a project will terminate all of the active sessions in the project
+  but will not effect any session data in the data warehouse.
+  Historical data in the data warehouse is never deleted.
+
+- **Scope** :
+  A scope is a permission boundary modeled as a container.
+  There are three types of scopes in Boundary:
+  A single global scope which is the outermost container;
+  organizations(orgs) which are contained by the global scope;
+  and projects which are contained by orgs.
+  Each scope is itself a resource.
+
+  - Global: The global scope is the outermost scope.
+    There is always a single global scope
+    and it cannot be deleted.
+    The global scope can directly contain:
+    users, groups, auth methods, and organizations.
+
+  - Organizations: An org is a scope directly contained by the global scope.
+    There can be multiple orgs within the global scope.
+    An org can directly contain:
+    users, groups, auth methods, roles, and projects.
+
+  - Projects: A project is a scope directly contained by an org scope.
+    There can be multiple projects within an org.
+    A project can directly contain:
+    roles, targets, host catalogs, and credential stores.
+
+- **Target** :
+  A target is a resource
+  that represents a networked service
+  with an associated set of permissions
+  a user can connect to
+  and interact with
+  through Boundary
+  by way of a session.
+  A target can only be defined within a project.
+  A target can contain references to host sets from host catalogs
+  which belong to the same project as the target.
+  A target can contain references to credential libraries
+  from credential stores which belong to the same project as the target.
+  A user can establish a session with a host
+  in any host set referenced by the target
+  if the user has been assigned a role
+  with the `authorize-session` permission
+  for the target.
+
+- **User** :
+  A user is a resource
+  that represents an individual person or entity
+  for the purposes of access control.
+
+## Next Steps
+
+When getting started with Boundary,
+the first resource to look at should probably be Scopes.
+Every other resources is either contained within a scope,
+or contained within another resource
+that is itself contained within a scope.
+That page can help you understand the structure of resources within Boundary.
+
+[iam]: https://en.wikipedia.org/wiki/Identity_management
