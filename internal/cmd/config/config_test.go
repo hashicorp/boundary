@@ -421,6 +421,5 @@ func TestController_EventingConfig(t *testing.T) {
 			assert.NotEmpty(c)
 			assert.Equal(tt.wantEventerConfig, c.Eventing)
 		})
-
 	}
 }
