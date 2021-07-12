@@ -257,7 +257,7 @@ with
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
       -- 2-3 seconds
-      start_time < now() - interval '10 seconds'
+      start_time < wt_sub_seconds_from_now(10)
   ),
   connections_to_close as (
     select public_id
@@ -297,7 +297,7 @@ with
   dead_servers as (
     select private_id, update_time
     from server
-    where update_time < now() - interval '1 second' * $1
+    where update_time < wt_sub_seconds_from_now($1)
   ),
   -- Find connections that are not closed so we can reference those IDs
   unclosed_connections as (
@@ -313,7 +313,7 @@ with
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
       -- 2-3 seconds
-      start_time < now() - interval '10 seconds'
+      start_time < wt_sub_seconds_from_now(10)
   ),
   connections_to_close as (
     select public_id
