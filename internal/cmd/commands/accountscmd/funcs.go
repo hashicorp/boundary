@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/hashicorp/vault/sdk/helper/password"
 )
 

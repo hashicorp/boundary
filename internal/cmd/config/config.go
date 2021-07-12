@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/hashicorp/shared-secure-libs/parseutil"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/mitchellh/mapstructure"
 )
 

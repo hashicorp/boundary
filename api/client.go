@@ -19,12 +19,12 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/boundary/sdk/parseutil"
 	"github.com/hashicorp/boundary/sdk/recovery"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
+	"github.com/hashicorp/shared-secure-libs/parseutil"
 	"golang.org/x/time/rate"
 )
 
