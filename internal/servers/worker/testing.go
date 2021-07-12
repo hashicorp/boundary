@@ -211,10 +211,6 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		opts.Config.Worker.Name = opts.Name
 	}
 
-	if opts.StatusGracePeriodDuration > 0 {
-		tw.b.StatusGracePeriodDuration = opts.StatusGracePeriodDuration
-	}
-
 	if len(opts.InitialControllers) > 0 {
 		opts.Config.Worker.Controllers = opts.InitialControllers
 	}

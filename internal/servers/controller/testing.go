@@ -416,9 +416,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller.Name = opts.Name
 	}
 
-	if opts.StatusGracePeriodDuration > 0 {
-		tc.b.StatusGracePeriodDuration = opts.StatusGracePeriodDuration
-	}
 	if opts.DefaultPasswordAuthMethodId != "" {
 		tc.b.DevPasswordAuthMethodId = opts.DefaultPasswordAuthMethodId
 	} else {
