@@ -644,17 +644,31 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 // period, this function returns an error.
 func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	tc.Logger().Debug("waiting for next status report from worker", "worker", workerId)
+
+	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
+		tc.Logger().Error("error waiting for next status report from worker", "worker", workerId, "err", err)
+		return err
+	}
+
+	tc.Logger().Debug("waiting for next status report from worker received successfully", "worker", workerId)
+	return nil
+}
+
+func (tc *TestController) waitForNextWorkerStatusUpdate(workerId string) error {
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
 	defer cancel()
-	var err error
 	for {
-		if err = ctx.Err(); err != nil {
-			break
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-time.After(time.Second):
+			// pass
 		}
 
 		var waitStatusCurrent time.Time
-
+		var err error
 		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
@@ -682,18 +696,12 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 		})
 
 		if err != nil {
-			break
+			return err
 		}
 
 		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
 			break
 		}
-
-		time.Sleep(time.Second)
-	}
-	if err != nil {
-		tc.Logger().Error("error waiting for next status report from worker", "worker", workerId, "err", err)
-		return err
 	}
 
 	return nil
