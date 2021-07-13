@@ -18,7 +18,6 @@ func (b *testBadWriter) Write(p []byte) (int, error) {
 }
 
 func TestSerializedWriter_Write(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		s               *serializedWriter
@@ -74,5 +73,4 @@ func TestSerializedWriter_Write(t *testing.T) {
 			assert.NotEmpty(n)
 		})
 	}
-
 }

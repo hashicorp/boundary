@@ -353,7 +353,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func Test_startGatedEvents(t *testing.T) {

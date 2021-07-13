@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/sdk/parseutil"
+	"github.com/hashicorp/shared-secure-libs/parseutil"
 	vault "github.com/hashicorp/vault/api"
 )
 

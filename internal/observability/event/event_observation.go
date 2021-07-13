@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 )
 
 // observationVersion defines the version of observation events

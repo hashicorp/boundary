@@ -25,18 +25,16 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/version"
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
+	"github.com/hashicorp/shared-secure-libs/logging"
+	"github.com/hashicorp/shared-secure-libs/mlock"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
@@ -465,10 +463,8 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
 			kms.Purpose = origPurpose
 			if wrapperConfigError != nil {
-				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
-					return fmt.Errorf(
-						"Error parsing KMS configuration: %s", wrapperConfigError)
-				}
+				return fmt.Errorf(
+					"Error parsing KMS configuration: %s", wrapperConfigError)
 			}
 			if wrapper == nil {
 				return fmt.Errorf(

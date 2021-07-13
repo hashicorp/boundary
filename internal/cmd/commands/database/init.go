@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/shared-secure-libs/mlock"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

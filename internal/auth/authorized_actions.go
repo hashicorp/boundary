@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/credential"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
 )

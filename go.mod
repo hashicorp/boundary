@@ -22,11 +22,10 @@ require (
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20200930125617-6218396928df
-	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/eventlogger v0.0.0-20210523164657-c216620e1746
 	github.com/hashicorp/go-bexpr v0.1.8
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-hclog v0.16.1
+	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-kms-wrapping v0.6.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
@@ -34,8 +33,14 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.7
+	github.com/hashicorp/shared-secure-libs/base62 v0.1.0
+	github.com/hashicorp/shared-secure-libs/logging v0.1.0
+	github.com/hashicorp/shared-secure-libs/mlock v0.1.0
+	github.com/hashicorp/shared-secure-libs/parseutil v0.1.0
+	github.com/hashicorp/shared-secure-libs/password v0.1.0
+	github.com/hashicorp/shared-secure-libs/strutil v0.1.0
 	github.com/hashicorp/vault/api v1.1.0
-	github.com/hashicorp/vault/sdk v0.2.0
+	github.com/hashicorp/vault/sdk v0.2.0 // indirect
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
@@ -60,8 +65,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/zalando/go-keyring v0.1.1
 	go.uber.org/atomic v1.8.0
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
 	golang.org/x/tools v0.1.3
 	google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6
