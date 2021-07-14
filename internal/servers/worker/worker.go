@@ -28,8 +28,8 @@ type Worker struct {
 	started     *ua.Bool
 
 	controllerStatusConn *atomic.Value
-	workerStartTime      time.Time
 	lastStatusSuccess    *atomic.Value
+	workerStartTime      time.Time
 
 	controllerResolver *atomic.Value
 

@@ -176,6 +176,10 @@ type TestWorkerOpts struct {
 
 	// The logger to use, or one will be created
 	Logger hclog.Logger
+
+	// The amount of time to wait before marking connections as closed when a
+	// connection cannot be made back to the controller
+	StatusGracePeriodDuration time.Duration
 }
 
 func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
@@ -218,6 +222,9 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 			Level: hclog.Trace,
 		})
 	}
+
+	// Initialize status grace period
+	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
 	if opts.Config.Worker == nil {
 		opts.Config.Worker = new(config.Worker)
@@ -278,10 +285,11 @@ func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:      tw.w.conf.WorkerAuthKms,
-		Name:               opts.Name,
-		InitialControllers: tw.ControllerAddrs(),
-		Logger:             tw.w.conf.Logger,
+		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
+		Name:                      opts.Name,
+		InitialControllers:        tw.ControllerAddrs(),
+		Logger:                    tw.w.conf.Logger,
+		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
