@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/shared-secure-libs/logging"
 )
 
 func ProcessLogLevelAndFormat(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) (hclog.Level, logging.LogFormat, error) {

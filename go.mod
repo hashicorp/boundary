@@ -34,7 +34,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/shared-secure-libs v0.0.7
 	github.com/hashicorp/shared-secure-libs/base62 v0.1.0
-	github.com/hashicorp/shared-secure-libs/logging v0.1.0
 	github.com/hashicorp/shared-secure-libs/mlock v0.1.0
 	github.com/hashicorp/shared-secure-libs/parseutil v0.1.0
 	github.com/hashicorp/shared-secure-libs/password v0.1.0

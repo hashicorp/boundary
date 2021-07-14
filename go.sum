@@ -524,8 +524,6 @@ github.com/hashicorp/shared-secure-libs v0.0.7 h1:vdoIg+ahLPlwTELM7eA4OWws54Hf0e
 github.com/hashicorp/shared-secure-libs v0.0.7/go.mod h1:PH51kNtHA6kYV5Z8E3TOJM634iyp7IIxAMfLh0Dp35o=
 github.com/hashicorp/shared-secure-libs/base62 v0.1.0 h1:MZpHgL9yms0DVhYJ+cVpQ5tp8IbyoVufyMvCi6stJnU=
 github.com/hashicorp/shared-secure-libs/base62 v0.1.0/go.mod h1:yQ1EUBxJZ654Ivhjmr1pq2wt6YCoeTCuZgX2Ysc4IMg=
-github.com/hashicorp/shared-secure-libs/logging v0.1.0 h1:a2FchfFIKU+jo0xWIjBGSA8n80af16CbvQAAcOlMejU=
-github.com/hashicorp/shared-secure-libs/logging v0.1.0/go.mod h1:ogsWOAtBzEu0YYDWKgdahFkmjnu8cKzQ+ejg5Ibm8L8=
 github.com/hashicorp/shared-secure-libs/mlock v0.1.0 h1:7xw1ZVNW41PGRiRysdA8SBaRN2bNE+Bf+Uce/+JWsu4=
 github.com/hashicorp/shared-secure-libs/mlock v0.1.0/go.mod h1:lOpv9YZPgTDtfSdhetd25YVO3uxRrD8KD0erct1PdP0=
 github.com/hashicorp/shared-secure-libs/parseutil v0.1.0 h1:R5IyN4zkqbxkPLhR7WSvF7Jhoc7AtlvlVK8QZKs8N9c=

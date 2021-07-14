@@ -21,6 +21,7 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -33,7 +34,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
-	"github.com/hashicorp/shared-secure-libs/logging"
 	"github.com/hashicorp/shared-secure-libs/mlock"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
 	"github.com/hashicorp/shared-secure-libs/strutil"
