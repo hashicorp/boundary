@@ -55,10 +55,6 @@ type Command struct {
 	reloadedCh   chan struct{}  // for tests
 	startedCh    chan struct{}  // for tests
 	presetConfig *atomic.String // for tests
-	// for tests -- Prometheus seems to use a global collector so if package
-	// tests are run it errors out even if they're not run in parallel 🙄 cause
-	// Go runs the tests within the same overall process
-	skipMetrics bool
 }
 
 func (c *Command) Synopsis() string {
@@ -161,13 +157,6 @@ func (c *Command) Run(args []string) int {
 	c.SetStatusGracePeriodDuration(0)
 
 	base.StartMemProfiler(c.Logger)
-
-	if !c.skipMetrics {
-		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-	}
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())

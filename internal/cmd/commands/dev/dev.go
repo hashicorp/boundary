@@ -431,11 +431,6 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Logger)
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}

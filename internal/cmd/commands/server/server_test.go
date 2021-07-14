@@ -22,11 +22,10 @@ func testServerCommand(t *testing.T, controllerKey string) *Command {
 	require := require.New(t)
 	t.Helper()
 	cmd := &Command{
-		Server:      base.NewServer(base.NewCommand(cli.NewMockUi())),
-		SighupCh:    base.MakeSighupCh(),
-		startedCh:   make(chan struct{}),
-		reloadedCh:  make(chan struct{}, 5),
-		skipMetrics: true,
+		Server:     base.NewServer(base.NewCommand(cli.NewMockUi())),
+		SighupCh:   base.MakeSighupCh(),
+		startedCh:  make(chan struct{}),
+		reloadedCh: make(chan struct{}, 5),
 	}
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))

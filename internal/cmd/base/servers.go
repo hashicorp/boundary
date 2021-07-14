@@ -296,24 +296,6 @@ func (b *Server) RemovePidFile(pidPath string) error {
 	return os.Remove(pidPath)
 }
 
-func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error {
-	// TODO: Figure out a user-agent we want to use for the last param
-	// TODO: Do we want different names for different components?
-	var err error
-	b.InmemSink, _, b.PrometheusEnabled, err = configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
-		Config:      telemetry,
-		Ui:          ui,
-		ServiceName: "boundary",
-		DisplayName: "Boundary",
-		UserAgent:   "boundary",
-	})
-	if err != nil {
-		return fmt.Errorf("Error initializing telemetry: %w", err)
-	}
-
-	return nil
-}
-
 func (b *Server) PrintInfo(ui cli.Ui) {
 	verInfo := version.Get()
 	if verInfo.Version != "" {
