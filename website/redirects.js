@@ -103,6 +103,11 @@ module.exports = [
     destination: '/docs/common-workflows/manage-sessions',
     permanent: false,
   },
+  {
+    source: '/help/admin-ui/credential-stores',
+    destination: '/docs/concepts/domain-model/credential-stores',
+    permanent: false,
+  },
 
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource
