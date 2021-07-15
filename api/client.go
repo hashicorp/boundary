@@ -24,7 +24,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/hashicorp/shared-secure-libs/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"golang.org/x/time/rate"
 )
 
