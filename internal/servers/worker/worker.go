@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/shared-secure-libs/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"

@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/mlock"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
