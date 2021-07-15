@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/strutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 func GetWrapperFromPath(path, purpose string) (wrapping.Wrapper, error) {
