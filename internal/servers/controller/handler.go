@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/strutil"
 	"google.golang.org/grpc/codes"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"

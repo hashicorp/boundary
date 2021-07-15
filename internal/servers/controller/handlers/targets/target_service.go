@@ -35,7 +35,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-bexpr"
-	"github.com/hashicorp/shared-secure-libs/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/pointerstructure"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"

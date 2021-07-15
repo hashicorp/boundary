@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/shared-secure-libs/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 // observationVersion defines the version of observation events

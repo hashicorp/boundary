@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/shared-secure-libs/password"
-	"github.com/hashicorp/shared-secure-libs/strutil"
 )
 
 func init() {

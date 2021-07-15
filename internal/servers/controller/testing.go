@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/shared-secure-libs/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/jinzhu/gorm"
 )
 

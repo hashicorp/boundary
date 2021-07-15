@@ -19,8 +19,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
