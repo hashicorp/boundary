@@ -2,7 +2,7 @@
 package db_test
 
 import (
-	"github.com/hashicorp/shared-secure-libs/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/protobuf/proto"
 )
 

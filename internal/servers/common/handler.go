@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/shared-secure-libs/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
 // generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating

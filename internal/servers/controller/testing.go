@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/shared-secure-libs/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/shared-secure-libs/strutil"
 	"github.com/jinzhu/gorm"
 )

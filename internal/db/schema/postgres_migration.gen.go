@@ -12,7 +12,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_private_id as text
 not null
@@ -20,14 +20,14 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_private_id is
-'Random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
 comment on domain wt_scope_id is
-'"global" or random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+'"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_user_id as text
 not null
@@ -35,7 +35,7 @@ check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
-'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_role_id as text
 not null
@@ -43,7 +43,7 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
-'Random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
@@ -7342,7 +7342,7 @@ create domain wt_plugin_id as text
                     length(trim(value)) > 10 or value = 'pi_system'
             );
     comment on domain wt_plugin_id is
-        '"pi_system", or random ID generated with github.com/hashicorp/shared-secure-libs/base62';
+        '"pi_system", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
     create table plugin (
         public_id wt_plugin_id primary key

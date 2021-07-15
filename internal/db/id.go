@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/shared-secure-libs/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"golang.org/x/crypto/blake2b"
 )
 

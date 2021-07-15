@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/shared-secure-libs/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/shared-secure-libs/mlock"
 	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
