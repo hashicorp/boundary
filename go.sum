@@ -506,6 +506,8 @@ github.com/hashicorp/go-secure-stdlib/mlock v0.1.1 h1:cCRo8gK7oq6A2L6LICkUZ+/a5r
 github.com/hashicorp/go-secure-stdlib/mlock v0.1.1/go.mod h1:zq93CJChV6L9QTfGKtfBxKqD7BqqXx5O04A/ns2p5+I=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1 h1:78ki3QBevHwYrVxnyVeaEz+7WtifHhauYF23es/0KlI=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1/go.mod h1:QmrqtbKuxxSWTN3ETMPuB+VtEiBJ/A9XhoYGv8E1uD8=
+github.com/hashicorp/go-secure-stdlib/password v0.1.1 h1:6JzmBqXprakgFEHwBgdchsjaA9x3GyjdI568bXKxa60=
+github.com/hashicorp/go-secure-stdlib/password v0.1.1/go.mod h1:9hH302QllNwu1o2TGYtSk8I8kTAN0ca1EHpwhm5Mmzo=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 h1:SMGUnbpAcat8rIKHkBPjfv81yC46a8eCNZ2hsR2l1EI=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1/go.mod h1:Ch/bf00Qnx77MZd49JRgHYqHQjtEmTgGU2faufpVZb0=
 github.com/hashicorp/go-secure-stdlib/strutil v0.1.1 h1:nd0HIW15E6FG1MsnArYaHfuw9C2zgzM8LxkG5Ty/788=
@@ -539,8 +541,6 @@ github.com/hashicorp/shared-secure-libs v0.0.7 h1:vdoIg+ahLPlwTELM7eA4OWws54Hf0e
 github.com/hashicorp/shared-secure-libs v0.0.7/go.mod h1:PH51kNtHA6kYV5Z8E3TOJM634iyp7IIxAMfLh0Dp35o=
 github.com/hashicorp/shared-secure-libs/parseutil v0.1.0 h1:R5IyN4zkqbxkPLhR7WSvF7Jhoc7AtlvlVK8QZKs8N9c=
 github.com/hashicorp/shared-secure-libs/parseutil v0.1.0/go.mod h1:VeS21zHAo7PicmcAptMd/ZdckVlHtdI4xA0GOOpssVI=
-github.com/hashicorp/shared-secure-libs/password v0.1.0 h1:Q8SHs8TKPsBwgyoPz72TeND0DCXe6bxnj2T5lYN3Fvs=
-github.com/hashicorp/shared-secure-libs/password v0.1.0/go.mod h1:sJoCP2kkdw8CXwlftfj7NRkbXYvEapn3ZiL4LZfDVbI=
 github.com/hashicorp/shared-secure-libs/strutil v0.1.0 h1:mzQjO/tqNZAmdcZ5gecvzs7z/tAKy2Ry1SO6j7IxjQU=
 github.com/hashicorp/shared-secure-libs/strutil v0.1.0/go.mod h1:YsAf1vJYtE4AhRdGD+X/96cFK7j8oosgnYLilKGzSTw=
 github.com/hashicorp/vault/api v1.0.5-0.20200514164214-89b1987e38c2/go.mod h1:P8A7gn1a6j/7qQ4zOaWI6FC/Q9jQWEBRTOwZH33tC9o=
