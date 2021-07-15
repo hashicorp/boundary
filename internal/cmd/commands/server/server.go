@@ -23,7 +23,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -360,8 +360,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		var err error
-		c.DatabaseUrl, err = configutil.ParsePath(c.Config.Controller.Database.Url)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		c.DatabaseUrl, err = parseutil.ParsePath(c.Config.Controller.Database.Url)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}

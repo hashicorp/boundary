@@ -8,7 +8,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +26,7 @@ func TestDevController(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:               "tcp",
 					Purpose:            []string{"api"},
@@ -158,7 +159,7 @@ func TestDevWorker(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:    "tcp",
 					Purpose: []string{"proxy"},

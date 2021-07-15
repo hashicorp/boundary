@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -181,8 +181,8 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	migrationUrl, err := configutil.ParsePath(migrationUrlToParse)
-	if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+	migrationUrl, err := parseutil.ParsePath(migrationUrlToParse)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		c.UI.Error(fmt.Errorf("Error parsing migration url: %w", err).Error())
 		return base.CommandUserError
 	}

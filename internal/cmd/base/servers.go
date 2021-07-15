@@ -32,11 +32,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/gatedwriter"
-	"github.com/hashicorp/shared-secure-libs/reloadutil"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
@@ -610,8 +611,8 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 		}
 	} else {
 		var err error
-		conf.Controller.PublicClusterAddr, err = configutil.ParsePath(conf.Controller.PublicClusterAddr)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		conf.Controller.PublicClusterAddr, err = parseutil.ParsePath(conf.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public cluster addr: %w", err)
 		}
 	}
@@ -647,8 +648,8 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	} else {
 		var err error
-		conf.Worker.PublicAddr, err = configutil.ParsePath(conf.Worker.PublicAddr)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		conf.Worker.PublicAddr, err = parseutil.ParsePath(conf.Worker.PublicAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public addr: %w", err)
 		}
 	}

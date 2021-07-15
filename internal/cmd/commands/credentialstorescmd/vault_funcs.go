@@ -3,7 +3,7 @@ package credentialstorescmd
 import (
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 func init() {
@@ -131,7 +131,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreCaCert())
 	default:
-		cer, _ := configutil.ParsePath(c.flagCaCert)
+		cer, _ := parseutil.ParsePath(c.flagCaCert)
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreCaCert(cer))
 	}
 	switch c.flagClientCert {
@@ -139,7 +139,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificate())
 	default:
-		cer, _ := configutil.ParsePath(c.flagClientCert)
+		cer, _ := parseutil.ParsePath(c.flagClientCert)
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificate(cer))
 	}
 	switch c.flagClientCertKey {
@@ -147,7 +147,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreClientCertificateKey())
 	default:
-		cer, _ := configutil.ParsePath(c.flagClientCert)
+		cer, _ := parseutil.ParsePath(c.flagClientCert)
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificateKey(cer))
 	}
 	if c.flagTlsSkipVerify {

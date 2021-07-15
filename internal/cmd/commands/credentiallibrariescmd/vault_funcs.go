@@ -3,7 +3,7 @@ package credentiallibrariescmd
 import (
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 func init() {
@@ -81,7 +81,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	case "null":
 		*opts = append(*opts, credentiallibraries.DefaultVaultCredentialLibraryHttpRequestBody())
 	default:
-		rb, _ := configutil.ParsePath(c.flagHttpRequestBody)
+		rb, _ := parseutil.ParsePath(c.flagHttpRequestBody)
 		*opts = append(*opts, credentiallibraries.WithVaultCredentialLibraryHttpRequestBody(rb))
 	}
 

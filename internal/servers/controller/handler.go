@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/targets"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/shared-secure-libs/configutil"
 	"google.golang.org/grpc/codes"
 
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -43,7 +43,7 @@ import (
 )
 
 type HandlerProperties struct {
-	ListenerConfig *configutil.Listener
+	ListenerConfig *listenerutil.ListenerConfig
 	CancelCtx      context.Context
 }
 

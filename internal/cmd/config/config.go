@@ -13,10 +13,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -254,8 +254,8 @@ func Parse(d string) (*Config, error) {
 
 	// Perform controller configuration overrides for auth token settings
 	if result.Controller != nil {
-		result.Controller.Name, err = configutil.ParsePath(result.Controller.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Controller.Name, err = parseutil.ParsePath(result.Controller.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing controller name: %w", err)
 		}
 		if result.Controller.Name != strings.ToLower(result.Controller.Name) {
@@ -283,8 +283,8 @@ func Parse(d string) (*Config, error) {
 
 	// Parse worker tags
 	if result.Worker != nil {
-		result.Worker.Name, err = configutil.ParsePath(result.Worker.Name)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		result.Worker.Name, err = parseutil.ParsePath(result.Worker.Name)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker name: %w", err)
 		}
 		if result.Worker.Name != strings.ToLower(result.Worker.Name) {

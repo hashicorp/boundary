@@ -31,18 +31,23 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.1
+	github.com/hashicorp/go-secure-stdlib/configutil v0.1.1
+	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
+	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
+	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
+	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/shared-secure-libs v0.0.7
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jefferai/keyring v1.1.7-0.20210105022822-8749b3d9ce79
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jinzhu/now v1.1.1 // indirect
+	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.10.2
