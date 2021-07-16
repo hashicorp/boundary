@@ -452,7 +452,6 @@ func TestRepository_CompleteRun(t *testing.T) {
 		name        string
 		orig        *Run
 		nextRunIn   time.Duration
-		opts        []Option
 		args        args
 		wantErr     bool
 		wantErrCode errors.Code
@@ -617,7 +616,6 @@ func TestRepository_FailRun(t *testing.T) {
 	tests := []struct {
 		name        string
 		orig        *Run
-		opts        []Option
 		args        args
 		wantErr     bool
 		wantErrCode errors.Code
