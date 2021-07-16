@@ -334,9 +334,9 @@ with
       returning public_id, server_id
   )
   select
-    dead_servers.private_id,
-    dead_servers.update_time,
-    count(closed_connections.public_id)
+    dead_servers.private_id as server_id,
+    dead_servers.update_time as last_update_time,
+    count(closed_connections.public_id) as number_connections_closed
   from dead_servers
     left join closed_connections
       on dead_servers.private_id = closed_connections.server_id
