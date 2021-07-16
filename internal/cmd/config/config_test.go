@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -64,12 +63,6 @@ func TestDevController(t *testing.T) {
 						"key_id":    "global_recovery",
 					},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Controller: &Controller{
@@ -164,12 +157,6 @@ func TestDevWorker(t *testing.T) {
 					Type:    "tcp",
 					Purpose: []string{"proxy"},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Worker: &Worker{
