@@ -206,7 +206,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 					// the request.
 					for _, conn := range sessInfo.GetConnections() {
 						connId := conn.GetConnectionId()
-						connInfo, ok := si.connInfoMap[conn.GetConnectionId()]
+						connInfo, ok := si.connInfoMap[connId]
 						if !ok {
 							w.logger.Warn("connection change requested but could not find local information for it", "connection_id", connId)
 							continue
