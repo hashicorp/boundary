@@ -14,9 +14,10 @@ import (
 
 func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
 	for _, name := range []string{"ok", "timeout"} {
 		t.Run(name, func(t *testing.T) {
+			require := require.New(t)
+
 			// As-needed initialization of a mock worker
 			w := &Worker{
 				logger:            hclog.New(nil),
@@ -24,7 +25,7 @@ func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 				baseContext:       context.Background(),
 				conf: &Config{
 					Server: &base.Server{
-						StatusGracePeriodDuration: time.Second * 1,
+						StatusGracePeriodDuration: time.Second * 2,
 					},
 				},
 			}
