@@ -250,7 +250,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, true)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logClose(si.id, connId)
+				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 
 			// closeTime is marked by closeConnections iff the
@@ -268,7 +268,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := w.cancelConnections(si.connInfoMap, false)
 			for _, connId := range closedIds {
 				closeInfo[connId] = si.id
-				w.logClose(si.id, connId)
+				w.logger.Info("terminated connection due to cancellation or expiration", "session_id", si.id, "connection_id", connId)
 			}
 		}
 
@@ -312,10 +312,6 @@ func (w *Worker) cancelConnections(connInfoMap map[string]*connInfo, ignoreConne
 	}
 
 	return closedIds
-}
-
-func (w *Worker) logClose(sessionId, connId string) {
-	w.logger.Info("terminated connection due to cancellation or expiration", "session_id", sessionId, "connection_id", connId)
 }
 
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
