@@ -49,7 +49,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	run, err = repo.CompleteRun(context.Background(), run.PrivateId, time.Hour)
+	run, err = repo.CompleteRun(context.Background(), run.PrivateId, time.Hour, 0, 0)
 	require.NoError(err)
 	assert.Equal(Completed.string(), run.Status)
 
@@ -80,7 +80,7 @@ func TestJobWorkflow(t *testing.T) {
 	require.NoError(err)
 	assert.Nil(newRuns)
 
-	newRun, err = repo.FailRun(context.Background(), newRun.PrivateId)
+	newRun, err = repo.FailRun(context.Background(), newRun.PrivateId, 0, 0)
 	require.NoError(err)
 	assert.Equal(Failed.string(), newRun.Status)
 
