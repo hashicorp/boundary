@@ -125,6 +125,10 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
+			// TODO (lcr 07/2021) this can potentially overwrite completed and total values
+			// persisted by the scheduler's monitor jobs loop.
+			// Add an on update sql trigger to protect the job_run table, once progress
+			// values are used in the critical path.
 			rows, err := r.Query(ctx, completeRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
@@ -201,6 +205,10 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
+			// TODO (lcr 07/2021) this can potentially overwrite completed and total values
+			// persisted by the scheduler's monitor jobs loop.
+			// Add an on update sql trigger to protect the job_run table, once progress
+			// values are used in the critical path.
 			rows, err := r.Query(ctx, failRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
