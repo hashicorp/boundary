@@ -105,7 +105,8 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 }
 
 // CompleteRun updates the Run repository entry for the provided runId.
-// It sets the status to 'completed' and updates the run's EndTime to the current database time.
+// It sets the status to 'completed', updates the run's EndTime to the current database
+// time, and sets the completed and total counts.
 // CompleteRun also updates the Job repository entry that is associated with this run,
 // setting the job's NextScheduledRun to the current database time incremented by the nextRunIn
 // parameter.
@@ -114,7 +115,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 // or interrupted), any future calls to CompleteRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, _ ...Option) (*Run, error) {
+func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn time.Duration, completed, total int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).CompleteRun"
 	if runId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
@@ -124,7 +125,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, completeRunQuery, []interface{}{runId})
+			rows, err := r.Query(ctx, completeRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -183,13 +184,14 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 }
 
 // FailRun updates the Run repository entry for the provided runId.
-// It sets the status to 'failed' and updates the run's EndTime to the current database time.
+// It sets the status to 'failed' and updates the run's EndTime to the current database
+// time, and sets the completed and total counts.
 //
 // Once a run has been persisted with a final run status (completed, failed
 // or interrupted), any future calls to FailRun will return an error with Code
 // errors.InvalidJobRunState.
 // All options are ignored.
-func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*Run, error) {
+func (r *Repository) FailRun(ctx context.Context, runId string, completed, total int, _ ...Option) (*Run, error) {
 	const op = "job.(Repository).FailRun"
 	if runId == "" {
 		return nil, errors.New(errors.InvalidParameter, op, "missing run id")
@@ -199,7 +201,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, _ ...Option) (*R
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, failRunQuery, []interface{}{runId})
+			rows, err := r.Query(ctx, failRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
