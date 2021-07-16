@@ -26,7 +26,7 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 	var runs []*Run
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, runJobsQuery, []interface{}{serverId, opts.withRunJobsLimit})
+			rows, err := w.Query(ctx, runJobsQuery, []interface{}{serverId, opts.withRunJobsLimit})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -65,7 +65,7 @@ func (r *Repository) UpdateProgress(ctx context.Context, runId string, completed
 	run.PrivateId = runId
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, updateProgressQuery, []interface{}{completed, total, runId})
+			rows, err := w.Query(ctx, updateProgressQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -129,7 +129,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 			// persisted by the scheduler's monitor jobs loop.
 			// Add an on update sql trigger to protect the job_run table, once progress
 			// values are used in the critical path.
-			rows, err := r.Query(ctx, completeRunQuery, []interface{}{completed, total, runId})
+			rows, err := w.Query(ctx, completeRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -158,7 +158,7 @@ func (r *Repository) CompleteRun(ctx context.Context, runId string, nextRunIn ti
 				return errors.New(errors.InvalidJobRunState, op, fmt.Sprintf("job run was in a final run state: %v", run.Status))
 			}
 
-			rows1, err := r.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
+			rows1, err := w.Query(ctx, setNextScheduledRunQuery, []interface{}{int(nextRunIn.Round(time.Second).Seconds()), run.JobPluginId, run.JobName})
 			if err != nil {
 				return errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to set next scheduled run time for job: %s", run.JobName)))
 			}
@@ -209,7 +209,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 			// persisted by the scheduler's monitor jobs loop.
 			// Add an on update sql trigger to protect the job_run table, once progress
 			// values are used in the critical path.
-			rows, err := r.Query(ctx, failRunQuery, []interface{}{completed, total, runId})
+			rows, err := w.Query(ctx, failRunQuery, []interface{}{completed, total, runId})
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
@@ -273,7 +273,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 	var runs []*Run
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, query, args)
+			rows, err := w.Query(ctx, query, args)
 			if err != nil {
 				return errors.Wrap(err, op)
 			}
