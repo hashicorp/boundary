@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
-//  This modified NewId has been done to stop a circular
+// NewId is a bit of a modified NewId has been done to stop a circular
 // dependency with the errors package that is caused by importing
 // boundary/internal/db
 func NewId(prefix string) (string, error) {
