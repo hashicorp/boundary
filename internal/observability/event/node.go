@@ -25,7 +25,7 @@ type Node struct {
 // NewCloudEventsNode creates a new filter node using the optional allow and deny filters
 // provided. Support for WithAllow and WithDeny options.
 func NewCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Option) (*Node, error) {
-	const op = "filter.NewNode"
+	const op = "event.NewCloudEventsNode"
 	if source == nil {
 		return nil, fmt.Errorf("%s: missing source: %w", op, ErrInvalidParameter)
 	}
@@ -103,7 +103,7 @@ type filter struct {
 
 // newFilter returns a Filter which can be matched against.
 func newFilter(f string) (*filter, error) {
-	const op = "filter.NewFilter"
+	const op = "event.newFilter"
 	if f == "" {
 		return nil, fmt.Errorf("%s: missing filter: %w", op, ErrInvalidParameter)
 	}
