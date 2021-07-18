@@ -312,7 +312,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Data.(map[string]interface{})["id"].(string),
+					Id:     got.Data.(map[string]interface{})["header"].(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
 					"status":     http.StatusTeapot,
@@ -342,7 +342,8 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Data.(map[string]interface{})["id"].(string),
+					// Id:     got.Data.(map[string]interface{})["id"].(string),
+					Id: got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
 					"id":              got.Data.(map[string]interface{})["id"].(string),
