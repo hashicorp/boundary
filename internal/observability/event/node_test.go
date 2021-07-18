@@ -160,8 +160,8 @@ func TestNode_Process(t *testing.T) {
 		n               *Node
 		e               *eventlogger.Event
 		format          cloudevents.Format
-		predicate       func(ce interface{}) (bool, error)
-		wantCloudEvent  *cloudevents.CloudEvent
+		predicate       func(ctx context.Context, ce interface{}) (bool, error)
+		wantCloudEvent  *cloudevents.Event
 		wantText        string
 		wantIsError     error
 		wantErrContains string
@@ -175,7 +175,7 @@ func TestNode_Process(t *testing.T) {
 				Payload:   "test-string",
 			},
 			format: cloudevents.FormatJSON,
-			wantCloudEvent: &cloudevents.CloudEvent{
+			wantCloudEvent: &cloudevents.Event{
 				Source:          testUrl.String(),
 				DataSchema:      testUrl.String(),
 				SpecVersion:     cloudevents.SpecVersion,
@@ -206,7 +206,7 @@ func TestNode_Process(t *testing.T) {
 			},
 			format:    cloudevents.FormatJSON,
 			predicate: newPredicate(nil, []*filter{f}),
-			wantCloudEvent: &cloudevents.CloudEvent{
+			wantCloudEvent: &cloudevents.Event{
 				Source:          testUrl.String(),
 				DataSchema:      testUrl.String(),
 				SpecVersion:     cloudevents.SpecVersion,
@@ -226,7 +226,7 @@ func TestNode_Process(t *testing.T) {
 			},
 			format:    cloudevents.FormatJSON,
 			predicate: newPredicate([]*filter{f}, nil),
-			wantCloudEvent: &cloudevents.CloudEvent{
+			wantCloudEvent: &cloudevents.Event{
 				Source:          testUrl.String(),
 				DataSchema:      testUrl.String(),
 				SpecVersion:     cloudevents.SpecVersion,
@@ -257,7 +257,7 @@ func TestNode_Process(t *testing.T) {
 			},
 			format:    cloudevents.FormatJSON,
 			predicate: newPredicate(nil, nil),
-			wantCloudEvent: &cloudevents.CloudEvent{
+			wantCloudEvent: &cloudevents.Event{
 				Source:          testUrl.String(),
 				DataSchema:      testUrl.String(),
 				SpecVersion:     cloudevents.SpecVersion,
@@ -276,7 +276,7 @@ func TestNode_Process(t *testing.T) {
 				Payload:   "test-string",
 			},
 			format: cloudevents.FormatText,
-			wantCloudEvent: &cloudevents.CloudEvent{
+			wantCloudEvent: &cloudevents.Event{
 				Source:          testUrl.String(),
 				DataSchema:      testUrl.String(),
 				SpecVersion:     cloudevents.SpecVersion,
@@ -322,7 +322,7 @@ func TestNode_Process(t *testing.T) {
 			}
 			gotFormatted, ok := gotEvent.Format(string(tt.format))
 			require.True(ok)
-			var gotCloudEvent cloudevents.CloudEvent
+			var gotCloudEvent cloudevents.Event
 			require.NoError(json.Unmarshal(gotFormatted, &gotCloudEvent))
 			if tt.wantCloudEvent.ID == "" {
 				tt.wantCloudEvent.ID = gotCloudEvent.ID

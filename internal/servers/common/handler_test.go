@@ -300,7 +300,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 					assert.Lenf(b, 0, "expected no json for internal errors but got %s", string(b))
 					return
 				}
-				got := &cloudevents.CloudEvent{}
+				got := &cloudevents.Event{}
 				err = json.Unmarshal(b, got)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -330,7 +330,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				b, err := ioutil.ReadFile(c.AuditEvents.Name())
 				assert.NoError(err)
 
-				got := &cloudevents.CloudEvent{}
+				got := &cloudevents.Event{}
 				err = json.Unmarshal(b, got)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -509,7 +509,7 @@ type eventJson struct {
 	Payload   map[string]interface{} `json:"payload"`
 }
 
-func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.CloudEvent, hdr, details map[string]interface{}) []byte {
+func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	const (
 		testAuditVersion       = "v0.1"
@@ -544,7 +544,7 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 			payload[k] = v
 		}
 	}
-	j := cloudevents.CloudEvent{
+	j := cloudevents.Event{
 		ID:              got.ID,
 		Time:            got.Time,
 		Source:          got.Source,

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -69,8 +70,8 @@ func NewCloudEventsNode(source *url.URL, format cloudevents.Format, opt ...Optio
 	return &n, nil
 }
 
-func newPredicate(allow, deny []*filter) func(ce interface{}) (bool, error) {
-	return func(ce interface{}) (bool, error) {
+func newPredicate(allow, deny []*filter) func(ctx context.Context, ce interface{}) (bool, error) {
+	return func(ctx context.Context, ce interface{}) (bool, error) {
 		if len(allow) == 0 && len(deny) == 0 {
 			return true, nil
 		}

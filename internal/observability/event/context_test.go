@@ -454,7 +454,7 @@ func Test_WriteObservation(t *testing.T) {
 				b, err := ioutil.ReadFile(tt.observationSinkFileName)
 				assert.NoError(err)
 
-				gotObservation := &cloudevents.CloudEvent{}
+				gotObservation := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotObservation)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -586,14 +586,14 @@ func Test_DefaultEventerConfig(t *testing.T) {
 	})
 }
 
-func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.CloudEvent, hdr, details map[string]interface{}) []byte {
+func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
 	t.Helper()
 	require := require.New(t)
 
 	reqInfo, _ := event.RequestInfoFromContext(ctx)
 	// require.Truef(ok, "missing reqInfo in ctx")
 
-	j := cloudevents.CloudEvent{
+	j := cloudevents.Event{
 		ID:              got.ID,
 		Time:            got.Time,
 		Source:          got.Source,
@@ -814,13 +814,13 @@ func Test_WriteAudit(t *testing.T) {
 
 				b, err := ioutil.ReadFile(tt.auditSinkFileName)
 				require.NoError(err)
-				gotAudit := &cloudevents.CloudEvent{}
+				gotAudit := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotAudit)
 				require.NoErrorf(err, "json: %s", string(b))
 
 				actualJson, err := json.Marshal(gotAudit)
 				require.NoError(err)
-				wantEvent := cloudevents.CloudEvent{
+				wantEvent := cloudevents.Event{
 					ID:              gotAudit.ID,
 					Source:          gotAudit.Source,
 					SpecVersion:     gotAudit.SpecVersion,
@@ -992,7 +992,7 @@ func Test_WriteError(t *testing.T) {
 					return
 				}
 
-				gotError := &cloudevents.CloudEvent{}
+				gotError := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
 
@@ -1095,7 +1095,7 @@ func Test_WriteSysEvent(t *testing.T) {
 					return
 				}
 
-				gotSysEvent := &cloudevents.CloudEvent{}
+				gotSysEvent := &cloudevents.Event{}
 				err = json.Unmarshal(b, gotSysEvent)
 				require.NoErrorf(err, "json: %s", string(b))
 
