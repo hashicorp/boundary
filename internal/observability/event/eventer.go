@@ -3,12 +3,14 @@ package event
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/eventlogger/sinks/writer"
 
 	"github.com/hashicorp/go-hclog"
@@ -80,13 +82,16 @@ var (
 // process should only have one Eventer.  In practice this means the process
 // Server (Controller or Worker) and the SysEventer both need a pointer to a
 // single Eventer.
-func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, opt ...Option) error {
+func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, opt ...Option) error {
 	const op = "event.InitSysEventer"
 	if log == nil {
 		return fmt.Errorf("%s: missing hclog: %w", op, ErrInvalidParameter)
 	}
 	if serializationLock == nil {
 		return fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
+	}
+	if serverName == "" {
+		return fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
 
 	// the order of operations is important here.  we want to determine if
@@ -102,7 +107,7 @@ func InitSysEventer(log hclog.Logger, serializationLock *sync.Mutex, opt ...Opti
 
 	case opts.withEventerConfig != nil:
 		var err error
-		if e, err = NewEventer(log, serializationLock, *opts.withEventerConfig); err != nil {
+		if e, err = NewEventer(log, serializationLock, serverName, *opts.withEventerConfig); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -126,13 +131,16 @@ func SysEventer() *Eventer {
 
 // NewEventer creates a new Eventer using the config.  Supports options:
 // WithNow, WithSerializationLock, WithBroker
-func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig, opt ...Option) (*Eventer, error) {
+func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
 		return nil, fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
 	}
 	if serializationLock == nil {
 		return nil, fmt.Errorf("%s: missing serialization lock: %w", op, ErrInvalidParameter)
+	}
+	if serverName == "" {
+		return nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
 
 	// if there are no sinks in config, then we'll default to just one stderr
@@ -166,18 +174,6 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		e.broker.StopTimeAt(opts.withNow)
 	}
 
-	// Create JSONFormatter node
-	id, err := newId("json")
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	jsonfmtId := eventlogger.NodeID(id)
-	fmtNode := &eventlogger.JSONFormatter{}
-	err = e.broker.RegisterNode(jsonfmtId, fmtNode)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to register json node: %w", op, err)
-	}
-
 	// serializedStderr will be shared among all StderrSinks so their output is not
 	// interwoven
 	serializedStderr := serializedWriter{
@@ -190,6 +186,15 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	allSinkFilenames := map[string]bool{}
 
 	for _, s := range c.Sinks {
+		fmtId, fmtNode, err := newFmtFilterNode(serverName, s)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		err = e.broker.RegisterNode(eventlogger.NodeID(fmtId), fmtNode)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to register fmt/filter node: %w", op, err)
+		}
+
 		var sinkId eventlogger.NodeID
 		var sinkNode eventlogger.Node
 		switch s.SinkType {
@@ -198,7 +203,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 				Format: string(s.Format),
 				Writer: &serializedStderr,
 			}
-			id, err = newId("stderr")
+			id, err := NewId("stderr")
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -215,7 +220,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 				MaxDuration: s.RotateDuration,
 				MaxFiles:    s.RotateMaxFiles,
 			}
-			id, err = newId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
+			id, err := NewId(fmt.Sprintf("file_%s_%s_", s.Path, s.FileName))
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
@@ -246,7 +251,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToAudit {
 			auditPipelines = append(auditPipelines, pipeline{
 				eventType:  AuditType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -254,7 +259,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToObservation {
 			observationPipelines = append(observationPipelines, pipeline{
 				eventType:  ObservationType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -262,7 +267,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToErr {
 			errPipelines = append(errPipelines, pipeline{
 				eventType:  ErrorType,
-				fmtId:      jsonfmtId,
+				fmtId:      fmtId,
 				sinkId:     sinkId,
 				sinkConfig: s,
 			})
@@ -270,7 +275,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 		if addToSys {
 			sysPipelines = append(sysPipelines, pipeline{
 				eventType: SystemType,
-				fmtId:     jsonfmtId,
+				fmtId:     fmtId,
 				sinkId:    sinkId,
 			})
 		}
@@ -288,7 +293,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	for _, p := range auditPipelines {
 		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
-		gateId, err := newId("gated-audit")
+		gateId, err := NewId("gated-audit")
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -297,7 +302,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
-		pipeId, err := newId(auditPipeline)
+		pipeId, err := NewId(auditPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -314,7 +319,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	for _, p := range observationPipelines {
 		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
-		gateId, err := newId("gated-observation")
+		gateId, err := NewId("gated-observation")
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -323,7 +328,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 			return nil, fmt.Errorf("%s: unable to register audit gated filter: %w", op, err)
 		}
 
-		pipeId, err := newId(observationPipeline)
+		pipeId, err := NewId(observationPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -338,7 +343,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
-		pipeId, err := newId(errPipeline)
+		pipeId, err := NewId(errPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -354,7 +359,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	}
 	sysNodeIds := make([]eventlogger.NodeID, 0, len(sysPipelines))
 	for _, p := range sysPipelines {
-		pipeId, err := newId(sysPipeline)
+		pipeId, err := NewId(sysPipeline)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -370,7 +375,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	}
 
 	// always enforce delivery of errors
-	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
+	err := e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to set success threshold for error events: %w", op, err)
 	}
@@ -380,6 +385,36 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, c EventerConfig
 	e.observationPipelines = append(e.observationPipelines, observationPipelines...)
 
 	return e, nil
+}
+
+func newFmtFilterNode(serverName string, c SinkConfig) (eventlogger.NodeID, eventlogger.Node, error) {
+	const op = "newFmtFilterNode"
+	if serverName == "" {
+		return "", nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
+	}
+	id, err := NewId("cloudevents")
+	if err != nil {
+		return "", nil, fmt.Errorf("%s: unable to generate id: %w", op, err)
+	}
+	var sourceUrl *url.URL
+	switch {
+	case c.EventSourceUrl != "":
+		sourceUrl, err = url.Parse(c.EventSourceUrl)
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, c.EventSourceUrl, err)
+		}
+	default:
+		s := fmt.Sprintf("https://hashicorp.com/boundary/%s", serverName)
+		sourceUrl, err = url.Parse(s)
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: invalid event source URL (%s): %w", op, s, err)
+		}
+	}
+	fmtNode, err := NewCloudEventsNode(sourceUrl, cloudevents.Format(c.Format), WithAllow(c.AllowFilters...), WithDeny(c.DenyFilters...))
+	if err != nil {
+		return "", nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return eventlogger.NodeID(id), fmtNode, nil
 }
 
 func DefaultEventerConfig() *EventerConfig {
