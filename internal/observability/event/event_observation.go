@@ -25,7 +25,7 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
-		opts.withId, err = newId(string(ObservationType))
+		opts.withId, err = NewId(string(ObservationType))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}

@@ -6,10 +6,10 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 )
 
-//  This modified newId has been done to stop a circular
+//  This modified NewId has been done to stop a circular
 // dependency with the errors package that is caused by importing
 // boundary/internal/db
-func newId(prefix string) (string, error) {
+func NewId(prefix string) (string, error) {
 	const op = "event.newId"
 	if prefix == "" {
 		return "", fmt.Errorf("%s: missing prefix: %w", op, ErrInvalidParameter)
