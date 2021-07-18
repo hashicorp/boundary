@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
-	"github.com/hashicorp/boundary/sdk/strutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 
 	"github.com/iancoleman/strcase"
 )

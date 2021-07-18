@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestDevController(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:               "tcp",
 					Purpose:            []string{"api"},
@@ -63,12 +63,6 @@ func TestDevController(t *testing.T) {
 						"key_id":    "global_recovery",
 					},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Controller: &Controller{
@@ -158,17 +152,11 @@ func TestDevWorker(t *testing.T) {
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
-			Listeners: []*configutil.Listener{
+			Listeners: []*listenerutil.ListenerConfig{
 				{
 					Type:    "tcp",
 					Purpose: []string{"proxy"},
 				},
-			},
-			Telemetry: &configutil.Telemetry{
-				DisableHostname:         true,
-				PrometheusRetentionTime: 24 * time.Hour,
-				UsageGaugePeriod:        10 * time.Minute,
-				MaximumGaugeCardinality: 500,
 			},
 		},
 		Worker: &Worker{
@@ -421,6 +409,5 @@ func TestController_EventingConfig(t *testing.T) {
 			assert.NotEmpty(c)
 			assert.Equal(tt.wantEventerConfig, c.Eventing)
 		})
-
 	}
 }

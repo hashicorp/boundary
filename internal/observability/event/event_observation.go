@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/eventlogger/filters/gated"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 

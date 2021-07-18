@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
 )
@@ -37,7 +37,7 @@ type Controller struct {
 
 	workerAuthCache *cache.Cache
 
-	// Used for testing
+	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
 	// Repo factory methods
@@ -115,7 +115,9 @@ func New(conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger)
+	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
+	// currently caps the scheduler at running 10 jobs per interval.
+	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, c.logger, scheduler.WithRunJobsLimit(10))
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
@@ -180,7 +182,29 @@ func (c *Controller) Start() error {
 
 func (c *Controller) registerJobs() error {
 	rw := db.New(c.conf.Database)
-	return vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.logger)
+	if err := vault.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.logger); err != nil {
+		return err
+	}
+
+	if err := c.registerSessionCleanupJob(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// registerSessionCleanupJob is a helper method to abstract
+// registering the session cleanup job specifically.
+func (c *Controller) registerSessionCleanupJob() error {
+	sessionCleanupJob, err := newSessionCleanupJob(c.logger, c.SessionRepoFn, int(c.conf.StatusGracePeriodDuration.Seconds()))
+	if err != nil {
+		return fmt.Errorf("error creating session cleanup job: %w", err)
+	}
+	if err = c.scheduler.RegisterJob(c.baseContext, sessionCleanupJob); err != nil {
+		return fmt.Errorf("error registering session cleanup job: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Controller) Shutdown(serversOnly bool) error {

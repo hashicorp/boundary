@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"testing"
@@ -337,4 +338,103 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	run, err := repo.LookupRun(context.Background(), runId)
 	require.NoError(err)
 	assert.Equal(string(job.Interrupted), run.Status)
+}
+
+func TestSchedulerFinalStatusUpdate(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestRepo(t, conn, wrapper)
+
+	sched := TestScheduler(t, conn, wrapper, WithRunJobsLimit(10), WithRunJobsInterval(time.Second))
+
+	jobReady := make(chan struct{})
+	jobErr := make(chan error)
+	fn := func(_ context.Context) error {
+		jobReady <- struct{}{}
+		return <-jobErr
+	}
+
+	jobStatus := make(chan JobStatus)
+	status := func() JobStatus {
+		return <-jobStatus
+	}
+	tj := testJob{name: "name", description: "desc", fn: fn, statusFn: status, nextRunIn: time.Hour}
+	err := sched.RegisterJob(context.Background(), tj)
+	require.NoError(err)
+
+	baseCtx, baseCnl := context.WithCancel(context.Background())
+	// call unexported start in order to bypass monitor loop
+	go sched.start(baseCtx)
+
+	// Wait for scheduler to run job
+	<-jobReady
+
+	require.Equal(mapLen(sched.runningJobs), 1)
+	runJob, ok := sched.runningJobs.Load(tj.name)
+	require.True(ok)
+	runId := runJob.(*runningJob).runId
+
+	// Complete job with error so FailRun is called
+	jobErr <- errors.New("scary error")
+
+	// Report status
+	jobStatus <- JobStatus{Total: 10, Completed: 10}
+
+	repo, err := job.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+
+	run := waitForRunStatus(t, repo, runId, string(job.Failed))
+	assert.Equal(uint32(10), run.TotalCount)
+	assert.Equal(uint32(10), run.CompletedCount)
+
+	// Wait for scheduler to run job again
+	<-jobReady
+
+	require.Equal(mapLen(sched.runningJobs), 1)
+	runJob, ok = sched.runningJobs.Load(tj.name)
+	require.True(ok)
+	runId = runJob.(*runningJob).runId
+
+	// Complete job without error so CompleteRun is called
+	jobErr <- nil
+
+	// Report status
+	jobStatus <- JobStatus{Total: 20, Completed: 20}
+
+	repo, err = job.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+
+	run = waitForRunStatus(t, repo, runId, string(job.Completed))
+	assert.Equal(uint32(20), run.TotalCount)
+	assert.Equal(uint32(20), run.CompletedCount)
+
+	baseCnl()
+}
+
+func waitForRunStatus(t *testing.T, repo *job.Repository, runId, status string) *job.Run {
+	t.Helper()
+	var run *job.Run
+
+	// Fail test if waiting for run status change takes longer than 5 seconds
+	timeout := time.NewTimer(5 * time.Second)
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatal(fmt.Errorf("timed out waiting for job run %v to reach status: %v", runId, status))
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		var err error
+		run, err = repo.LookupRun(context.Background(), runId)
+		require.NoError(t, err)
+		if run.Status == status {
+			break
+		}
+	}
+
+	return run
 }

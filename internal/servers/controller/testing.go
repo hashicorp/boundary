@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -20,10 +21,10 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/jinzhu/gorm"
 )
 
@@ -371,6 +372,10 @@ type TestControllerOpts struct {
 	// A cluster address for overriding the advertised controller listener
 	// (overrides address provided in config, if any)
 	PublicClusterAddr string
+
+	// The amount of time to wait before marking connections as closed when a
+	// worker has not reported in
+	StatusGracePeriodDuration time.Duration
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -466,6 +471,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
+
+	// Initialize status grace period
+	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
 	if opts.Config.Controller == nil {
 		opts.Config.Controller = new(config.Controller)
@@ -626,6 +634,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		DisableKmsKeyCreation:       true,
 		DisableAuthMethodCreation:   true,
 		PublicClusterAddr:           opts.PublicClusterAddr,
+		StatusGracePeriodDuration:   opts.StatusGracePeriodDuration,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
@@ -639,4 +648,72 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		nextOpts.Logger.Info("controller name generated", "name", nextOpts.Name)
 	}
 	return NewTestController(t, nextOpts)
+}
+
+// WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
+// come in. If it does not come in within the default status grace
+// period, this function returns an error.
+func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
+	tc.Logger().Debug("waiting for next status report from worker", "worker", workerId)
+
+	if err := tc.waitForNextWorkerStatusUpdate(workerId); err != nil {
+		tc.Logger().Error("error waiting for next status report from worker", "worker", workerId, "err", err)
+		return err
+	}
+
+	tc.Logger().Debug("waiting for next status report from worker received successfully", "worker", workerId)
+	return nil
+}
+
+func (tc *TestController) waitForNextWorkerStatusUpdate(workerId string) error {
+	waitStatusStart := time.Now()
+	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-time.After(time.Second):
+			// pass
+		}
+
+		var waitStatusCurrent time.Time
+		var err error
+		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
+			if k == nil || v == nil {
+				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
+				return false
+			}
+
+			workerStatusUpdateId, ok := k.(string)
+			if !ok {
+				err = fmt.Errorf("unexpected type %T for key: key=%#v value=%#v", k, k, v)
+				return false
+			}
+
+			workerStatusUpdateTime, ok := v.(time.Time)
+			if !ok {
+				err = fmt.Errorf("unexpected type %T for value: key=%#v value=%#v", k, k, v)
+				return false
+			}
+
+			if workerStatusUpdateId == workerId {
+				waitStatusCurrent = workerStatusUpdateTime
+				return false
+			}
+
+			return true
+		})
+
+		if err != nil {
+			return err
+		}
+
+		if waitStatusCurrent.Sub(waitStatusStart) > 0 {
+			break
+		}
+	}
+
+	return nil
 }

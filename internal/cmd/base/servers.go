@@ -15,31 +15,48 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/armon/go-metrics"
-	berrors "github.com/hashicorp/boundary/internal/errors"
-
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
+	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
 	"github.com/hashicorp/boundary/version"
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/shared-secure-libs/gatedwriter"
-	"github.com/hashicorp/shared-secure-libs/reloadutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/hashicorp/go-secure-stdlib/configutil"
+	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
+)
+
+const (
+	// defaultStatusGracePeriod is the default status grace period, or the period
+	// of time that we will go without a status report before we start
+	// disconnecting and marking connections as closed. This is tied to the
+	// server default liveness setting, a related value. See the servers package
+	// for more details.
+	defaultStatusGracePeriod = servers.DefaultLiveness
+
+	// statusGracePeriodEnvVar is the environment variable that can be used to
+	// configure the status grace period. This setting is provided in seconds,
+	// and can never be lower than the default status grace period defined above.
+	//
+	// TODO: This value is temporary, it will be removed once we have a better
+	// story/direction on attributes and system defaults.
+	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
 )
 
 type Server struct {
@@ -103,6 +120,11 @@ type Server struct {
 	DevDatabaseCleanupFunc     func() error
 
 	Database *gorm.DB
+
+	// StatusGracePeriodDuration represents the period of time (as a
+	// duration) that the controller will wait before marking
+	// connections from a disconnected worker as invalid.
+	StatusGracePeriodDuration time.Duration
 }
 
 func NewServer(cmd *Command) *Server {
@@ -274,24 +296,6 @@ func (b *Server) RemovePidFile(pidPath string) error {
 		return nil
 	}
 	return os.Remove(pidPath)
-}
-
-func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error {
-	// TODO: Figure out a user-agent we want to use for the last param
-	// TODO: Do we want different names for different components?
-	var err error
-	b.InmemSink, _, b.PrometheusEnabled, err = configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
-		Config:      telemetry,
-		Ui:          ui,
-		ServiceName: "boundary",
-		DisplayName: "Boundary",
-		UserAgent:   "boundary",
-	})
-	if err != nil {
-		return fmt.Errorf("Error initializing telemetry: %w", err)
-	}
-
-	return nil
 }
 
 func (b *Server) PrintInfo(ui cli.Ui) {
@@ -467,10 +471,8 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *config.Config) error {
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
 			kms.Purpose = origPurpose
 			if wrapperConfigError != nil {
-				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
-					return fmt.Errorf(
-						"Error parsing KMS configuration: %s", wrapperConfigError)
-				}
+				return fmt.Errorf(
+					"Error parsing KMS configuration: %s", wrapperConfigError)
 			}
 			if wrapper == nil {
 				return fmt.Errorf(
@@ -610,8 +612,8 @@ func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagVa
 		}
 	} else {
 		var err error
-		conf.Controller.PublicClusterAddr, err = configutil.ParsePath(conf.Controller.PublicClusterAddr)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		conf.Controller.PublicClusterAddr, err = parseutil.ParsePath(conf.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public cluster addr: %w", err)
 		}
 	}
@@ -647,8 +649,8 @@ func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string)
 		}
 	} else {
 		var err error
-		conf.Worker.PublicAddr, err = configutil.ParsePath(conf.Worker.PublicAddr)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		conf.Worker.PublicAddr, err = parseutil.ParsePath(conf.Worker.PublicAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("Error parsing public addr: %w", err)
 		}
 	}
@@ -680,4 +682,52 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
+}
+
+// SetStatusGracePeriodDuration sets the value for
+// StatusGracePeriodDuration.
+//
+// The grace period is the length of time we allow connections to run
+// on a worker in the event of an error sending status updates. The
+// period is defined the length of time since the last successful
+// update.
+//
+// The setting is derived from one of the following, in order:
+//
+//   * Via the supplied value if non-zero.
+//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
+//   integer value to define the setting.
+//   * If either of these is missing, the default is used. See the
+//   defaultStatusGracePeriod value for the default value.
+//
+// The minimum setting for this value is the default setting. Values
+// below this will be reset to the default.
+func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
+	var result time.Duration
+	switch {
+	case value > 0:
+		result = value
+	case os.Getenv(statusGracePeriodEnvVar) != "":
+		// TODO: See the description of the constant for more details on
+		// this env var
+		v := os.Getenv(statusGracePeriodEnvVar)
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			s.Logger.Error(fmt.Sprintf("could not read setting for %s", statusGracePeriodEnvVar),
+				"err", err,
+				"value", v,
+			)
+			break
+		}
+
+		result = time.Second * time.Duration(n)
+	}
+
+	if result < defaultStatusGracePeriod {
+		s.Logger.Debug("invalid grace period setting or none provided, using default", "value", result, "default", defaultStatusGracePeriod)
+		result = defaultStatusGracePeriod
+	}
+
+	s.Logger.Debug("session cleanup in effect, connections will be terminated if status reports cannot be made", "grace_period", result)
+	s.StatusGracePeriodDuration = result
 }

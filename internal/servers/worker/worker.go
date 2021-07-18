@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -27,8 +27,8 @@ type Worker struct {
 	started     *ua.Bool
 
 	controllerStatusConn *atomic.Value
-	workerStartTime      time.Time
 	lastStatusSuccess    *atomic.Value
+	workerStartTime      time.Time
 
 	controllerResolver *atomic.Value
 

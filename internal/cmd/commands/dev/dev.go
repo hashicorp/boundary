@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/sdk/strutil"
-	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -440,12 +440,11 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	base.StartMemProfiler(c.Logger)
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
 
-	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
+	base.StartMemProfiler(c.Logger)
 
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
@@ -505,8 +504,8 @@ func (c *Command) Run(args []string) int {
 			c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 		}
 	default:
-		c.DatabaseUrl, err = configutil.ParsePath(c.flagDatabaseUrl)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		c.DatabaseUrl, err = parseutil.ParsePath(c.flagDatabaseUrl)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}

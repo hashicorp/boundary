@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/shared-secure-libs/configutil"
-	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -55,10 +55,6 @@ type Command struct {
 	reloadedCh   chan struct{}  // for tests
 	startedCh    chan struct{}  // for tests
 	presetConfig *atomic.String // for tests
-	// for tests -- Prometheus seems to use a global collector so if package
-	// tests are run it errors out even if they're not run in parallel 🙄 cause
-	// Go runs the tests within the same overall process
-	skipMetrics bool
 }
 
 func (c *Command) Synopsis() string {
@@ -172,14 +168,11 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	base.StartMemProfiler(c.Logger)
+	// Initialize status grace period (0 denotes using env or default
+	// here)
+	c.SetStatusGracePeriodDuration(0)
 
-	if !c.skipMetrics {
-		if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-	}
+	base.StartMemProfiler(c.Logger)
 
 	if err := c.SetupKMSes(c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
@@ -383,8 +376,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		var err error
-		c.DatabaseUrl, err = configutil.ParsePath(c.Config.Controller.Database.Url)
-		if err != nil && !errors.Is(err, configutil.ErrNotAUrl) {
+		c.DatabaseUrl, err = parseutil.ParsePath(c.Config.Controller.Database.Url)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			c.UI.Error(fmt.Errorf("Error parsing database url: %w", err).Error())
 			return base.CommandUserError
 		}

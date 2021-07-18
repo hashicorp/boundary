@@ -56,5 +56,4 @@ func TestEventFlags_Validate(t *testing.T) {
 			require.NoError(err)
 		})
 	}
-
 }
