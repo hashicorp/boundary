@@ -30,7 +30,7 @@ func testServerCommand(t *testing.T, controllerKey string) *Command {
 	}
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))
-	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock))
+	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock, "test-server-command"))
 
 	kmsHcl := fmt.Sprintf(rootKmsConfig, controllerKey)
 	parsedKmsConfig, err := config.Parse(kmsHcl)

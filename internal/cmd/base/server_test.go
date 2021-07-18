@@ -137,7 +137,7 @@ func TestServer_SetupEventing(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			event.TestResetSystEventer(t)
 
-			err := tt.s.SetupEventing(tt.logger, tt.lock, tt.opt...)
+			err := tt.s.SetupEventing(tt.logger, tt.lock, tt.name, tt.opt...)
 			if tt.wantErrMatch != nil || tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(tt.s.Eventer)
@@ -164,7 +164,7 @@ func TestServer_AddEventerToContext(t *testing.T) {
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 	})
-	testEventer, err := event.NewEventer(testLogger, testLock, event.EventerConfig{})
+	testEventer, err := event.NewEventer(testLogger, testLock, "TestServer_AddEventerToContext", event.EventerConfig{})
 	require.NoError(t, err)
 	tests := []struct {
 		name            string

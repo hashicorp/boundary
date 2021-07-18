@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
@@ -75,10 +74,9 @@ func New(conf *Config) (*Controller, error) {
 	if conf.RawConfig.Controller == nil {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
-	if conf.RawConfig.Controller.Name == "" {
-		if conf.RawConfig.Controller.Name, err = base62.Random(10); err != nil {
-			return nil, fmt.Errorf("error auto-generating controller name: %w", err)
-		}
+
+	if conf.RawConfig.Controller.Name, err = conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
 	if !conf.RawConfig.DisableMlock {

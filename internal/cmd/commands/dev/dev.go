@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -420,7 +421,21 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.SetupEventing(c.Logger, c.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-dev"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-dev"
+	}
+	eventFlags := &base.EventFlags{
+		Format: event.TextSinkFormat,
+	}
+	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing), base.WithEventFlags(eventFlags)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
@@ -72,10 +71,8 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	var err error
-	if conf.RawConfig.Worker.Name == "" {
-		if conf.RawConfig.Worker.Name, err = base62.Random(10); err != nil {
-			return nil, fmt.Errorf("error auto-generating worker name: %w", err)
-		}
+	if conf.RawConfig.Worker.Name, err = w.conf.RawConfig.Worker.InitNameIfEmpty(); err != nil {
+		return nil, fmt.Errorf("error auto-generating worker name: %w", err)
 	}
 
 	if !conf.RawConfig.DisableMlock {

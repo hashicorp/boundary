@@ -136,8 +136,18 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
-
-	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case c.Config.Controller == nil:
+		serverName = "boundary-database-migrate"
+	default:
+		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
+	}
+	if err := c.srv.SetupEventing(c.srv.Logger, c.srv.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}

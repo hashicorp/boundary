@@ -452,7 +452,18 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
-	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	var serverName string
+	switch {
+	case opts.Config.Controller == nil:
+		serverName = "test-controller"
+	default:
+		if _, err := opts.Config.Controller.InitNameIfEmpty(); err != nil {
+			t.Fatal(err)
+		}
+		serverName = opts.Config.Controller.Name + "test-controller"
+	}
+
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -460,7 +471,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = base62.Random(5)
+		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
 		if err != nil {
 			t.Fatal(err)
 		}

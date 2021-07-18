@@ -16,6 +16,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/mitchellh/mapstructure"
 )
@@ -121,6 +122,19 @@ type Controller struct {
 	AuthTokenTimeToStaleDuration time.Duration
 }
 
+func (c *Controller) InitNameIfEmpty() (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("controller config is empty")
+	}
+	if c.Name == "" {
+		var err error
+		if c.Name, err = base62.Random(10); err != nil {
+			return "", fmt.Errorf("error auto-generating controller name: %w", err)
+		}
+	}
+	return c.Name, nil
+}
+
 type Worker struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
@@ -132,6 +146,19 @@ type Worker struct {
 	// key=value syntax. This is trued up in the Parse function below.
 	TagsRaw interface{}         `hcl:"tags"`
 	Tags    map[string][]string `hcl:"-"`
+}
+
+func (w *Worker) InitNameIfEmpty() (string, error) {
+	if w == nil {
+		return "", fmt.Errorf("worker config is empty")
+	}
+	if w.Name == "" {
+		var err error
+		if w.Name, err = base62.Random(10); err != nil {
+			return "", fmt.Errorf("error auto-generating worker name: %w", err)
+		}
+	}
+	return w.Name, nil
 }
 
 type Database struct {
