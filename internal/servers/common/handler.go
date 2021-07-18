@@ -122,7 +122,14 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, logger hclog.Logger
 		publicId, _, _ := auth.GetTokenFromRequest(logger, kms, r)
 
 		var err error
+		id, err := event.NewId("e")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.Trace("unable to create id for event", "method", r.Method, "url", r.URL.RequestURI(), "error", err)
+			return
+		}
 		info := &event.RequestInfo{
+			EventId:  id,
 			Id:       generatedTraceId(ctx),
 			PublicId: publicId,
 			Method:   r.Method,
