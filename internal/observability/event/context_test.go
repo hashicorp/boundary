@@ -494,6 +494,96 @@ func Test_WriteObservation(t *testing.T) {
 		assert.NoError(err)
 		assert.Len(b, 0)
 	})
+
+}
+
+func Test_Filtering(t *testing.T) {
+	event.TestEnableEventing(t, true)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	tests := []struct {
+		name  string
+		allow []string
+		deny  []string
+		hdr   map[string]interface{}
+		found bool
+	}{
+		{
+			name:  "allowed",
+			allow: []string{`"/Data/Header/list" contains "1"`},
+			hdr: map[string]interface{}{
+				"list": []string{"1", "2"},
+			},
+			found: true,
+		},
+		{
+			name:  "not-allowed",
+			allow: []string{`"/Data/Header/list" contains "22"`},
+			hdr: map[string]interface{}{
+				"list": []string{"1", "2"},
+			},
+			found: false,
+		},
+		{
+			name: "deny",
+			deny: []string{`"/Data/Header/list" contains "1"`},
+			hdr: map[string]interface{}{
+				"list": []string{"1", "2"},
+			},
+			found: false,
+		},
+		{
+			name: "not-deny",
+			deny: []string{`"/Data/Header/list" contains "22"`},
+			hdr: map[string]interface{}{
+				"list": []string{"1", "2"},
+			},
+			found: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			info := &event.RequestInfo{Id: "867-5309", EventId: "411"}
+
+			c := event.TestEventerConfig(t, "WriteObservation-filtering")
+			c.EventerConfig.Sinks[0].AllowFilters = tt.allow
+			c.EventerConfig.Sinks[0].DenyFilters = tt.deny
+
+			e, err := event.NewEventer(testLogger, testLock, "filtering", c.EventerConfig)
+			require.NoError(err)
+
+			testCtx, err := event.NewEventerContext(context.Background(), e)
+			require.NoError(err)
+			testCtx, err = event.NewRequestInfoContext(testCtx, info)
+			require.NoError(err)
+
+			require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(tt.hdr), event.WithFlush()))
+
+			b, err := ioutil.ReadFile(c.AllEvents.Name())
+			assert.NoError(err)
+			switch tt.found {
+			case true:
+				assert.NotEmpty(b)
+			case false:
+				assert.Empty(b)
+			}
+		})
+	}
+}
+
+func Test_DefaultEventerConfig(t *testing.T) {
+	t.Run("assert-default", func(t *testing.T) {
+		assert.Equal(t, &event.EventerConfig{
+			AuditEnabled:        false,
+			ObservationsEnabled: true,
+			SysEventsEnabled:    true,
+			Sinks:               []event.SinkConfig{event.DefaultSink()},
+		}, event.DefaultEventerConfig())
+	})
 }
 
 func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.CloudEvent, hdr, details map[string]interface{}) []byte {
