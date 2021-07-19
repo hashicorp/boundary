@@ -11,6 +11,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([issue](https://github.com/hashicorp/boundary/issues/1305),
   [PR](https://github.com/hashicorp/boundary/pull/1384))
 
+### New and Improved
+
+* docker: Add support for muti-arch docker images (amd64/arm64) via Docker buildx
+
 ## 0.4.0 (2021/06/29)
 
 ### New and Improved
