@@ -51,8 +51,8 @@ type ComposedOfEventArgs struct {
 	Deny         []string
 }
 
-// newEventFlags will create a new EventFlags based on the command flags which
-// have already been "parsed"
+// NewEventFlags will create a new EventFlags based on the ComposedOfEventArgs
+// which should be populated with command flags which have already been "parsed"
 func NewEventFlags(defaultFormat event.SinkFormat, c ComposedOfEventArgs) (*EventFlags, error) {
 	const op = "base.NewEventFlags"
 	if defaultFormat == "" {
