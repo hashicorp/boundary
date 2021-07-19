@@ -101,14 +101,14 @@
         "path": "concepts"
       },
       {
-        "title": "Doman Model",
+        "title": "Domain Model",
         "routes" [
       {
-        "title": "Overview"
+        "title": "Overview",
         "path": "concepts/domain-model"
       },
       {
-        "title": "Overview"
+        "title": "Accounts",
         "path": "concepts/domain-model/accounts"
       }
     ]
