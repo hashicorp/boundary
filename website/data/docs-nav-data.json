@@ -1,32 +1,18 @@
 [
   {
-    "title": "Getting Started",
+    "title": "What is Boundary?",
     "routes": [
       {
         "title": "Overview",
-        "path": "getting-started"
+        "path": "whatis"
       },
       {
-        "title": "Installing",
-        "hidden": true,
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "getting-started/installing"
-          },
-          {
-            "title": "Production",
-            "path": "getting-started/installing/production"
-          }
-        ]
+        "title": "Use Cases",
+        "path": "whatis/use-cases"
       },
       {
-        "title": "Run and Login",
-        "path": "getting-started/run-and-login"
-      },
-      {
-        "title": "Connect to Target",
-        "path": "getting-started/connect-to-target"
+        "title": "Vault and Boundary Integration",
+        "path": "whatis/vault-boundary-integrate"
       }
     ]
   },
@@ -38,45 +24,72 @@
         "path": "installing"
       },
       {
-        "title": "Non-Dev Environments",
-        "path": "installing/no-gen-resources"
+        "title": "Dev verus Non-Dev Environments",
+        "path": "installing/dev-non-dev"
+      },
+
+      {
+        "title": "Run and Login",
+        "path": "installing/run-and-login"
       },
       {
-        "title": "Systemd Install",
-        "path": "installing/systemd"
+        "title": "Connect to Target",
+        "path": "installing/connect-to-target"
       },
       {
-        "title": "Postgres Install",
-        "path": "installing/postgres"
-      },
-      {
-        "title": "High Availability Install",
-        "path": "installing/high-availability"
+        "title": "Verify Installation",
+        "path": "installing/verify-install"
       }
     ]
   },
   {
-    "title": "API/Clients",
+    "title": "Other Installation Environments",
     "routes": [
       {
         "title": "Overview",
-        "path": "api-clients"
+        "path": "other-installs"
+      },
+
+      {
+        "title": "Systemd Install",
+        "path": "other-installs/systemd"
+      },
+      {
+        "title": "Postgres Install",
+        "path": "other-installs/postgres"
+      },
+      {
+        "title": "High Availability Install",
+        "path": "other-installs/high-availability"
+      }
+    ]
+  },
+  {
+    "title": "Access Methods",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "access-methods"
       },
       {
         "title": "API",
-        "path": "api-clients/api"
+        "path": "access-methods/api"
       },
       {
         "title": "CLI",
-        "path": "api-clients/cli"
+        "path": "access-methods/cli"
       },
       {
         "title": "Go SDK",
-        "path": "api-clients/go-sdk"
+        "path": "access-methods/go-sdk"
+      },
+      {
+        "title": "User Interface",
+        "path": "access-methods/ux"
       },
       {
         "title": "Desktop",
-        "path": "api-clients/desktop"
+        "path": "access-methods/desktop"
       }
     ]
   },
@@ -87,6 +100,19 @@
         "title": "Overview",
         "path": "concepts"
       },
+      {
+        "title": "Domain Model",
+        "routes" [
+      {
+        "title": "Overview",
+        "path": "concepts/domain-model"
+      },
+      {
+        "title": "Accounts",
+        "path": "concepts/domain-model/accounts"
+      }
+    ]
+  },
       {
         "title": "Security",
         "routes": [
@@ -109,71 +135,11 @@
         ]
       },
       {
-        "title": "Domain Model",
+        "title": "Resources Definition",
         "routes": [
           {
             "title": "Overview",
-            "path": "concepts/domain-model"
-          },
-          {
-            "title": "Accounts",
-            "path": "concepts/domain-model/accounts"
-          },
-          {
-            "title": "Auth Methods",
-            "path": "concepts/domain-model/auth-methods"
-          },
-          {
-            "title": "Credentials",
-            "path": "concepts/domain-model/credentials"
-          },
-          {
-            "title": "Credential Libraries",
-            "path": "concepts/domain-model/credential-libraries"
-          },
-          {
-            "title": "Credential Stores",
-            "path": "concepts/domain-model/credential-stores"
-          },
-          {
-            "title": "Groups",
-            "path": "concepts/domain-model/groups"
-          },
-          {
-            "title": "Hosts",
-            "path": "concepts/domain-model/hosts"
-          },
-          {
-            "title": "Host Catalogs",
-            "path": "concepts/domain-model/host-catalogs"
-          },
-          {
-            "title": "Host Sets",
-            "path": "concepts/domain-model/host-sets"
-          },
-          {
-            "title": "Managed Groups",
-            "path": "concepts/domain-model/managed-groups"
-          },
-          {
-            "title": "Scopes",
-            "path": "concepts/domain-model/scopes"
-          },
-          {
-            "title": "Sessions",
-            "path": "concepts/domain-model/sessions"
-          },
-          {
-            "title": "Targets",
-            "path": "concepts/domain-model/targets"
-          },
-          {
-            "title": "Roles",
-            "path": "concepts/domain-model/roles"
-          },
-          {
-            "title": "Users",
-            "path": "concepts/domain-model/users"
+            "path": "concepts/resource-definition"
           }
         ]
       },
@@ -199,24 +165,10 @@
         ]
       }
     ]
+  }
+]
   },
-  {
-    "title": "Developing Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "developing"
-      },
-      {
-        "title": "Building",
-        "path": "developing/building"
-      },
-      {
-        "title": "Developing the UI",
-        "path": "developing/ui"
-      }
-    ]
-  },
+
   {
     "divider": true
   },
@@ -332,10 +284,7 @@
   {
     "divider": true
   },
-  {
-    "title": "Roadmap",
-    "path": "roadmap"
-  },
+
   {
     "title": "Releases",
     "routes": [
