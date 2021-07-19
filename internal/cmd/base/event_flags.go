@@ -8,6 +8,7 @@ type EventFlags struct {
 	Format              event.SinkFormat
 	AuditEnabled        *bool
 	ObservationsEnabled *bool
+	SysEventsEnabled    *bool
 }
 
 // Validate simply validates the flags

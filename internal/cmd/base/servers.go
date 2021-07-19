@@ -178,6 +178,9 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		if opts.withEventFlags.ObservationsEnabled != nil {
 			opts.withEventerConfig.ObservationsEnabled = *opts.withEventFlags.ObservationsEnabled
 		}
+		if opts.withEventFlags.SysEventsEnabled != nil {
+			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
+		}
 	}
 
 	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)

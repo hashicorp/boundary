@@ -78,11 +78,13 @@ func TestServer_SetupEventing(t *testing.T) {
 				Format:              event.JSONSinkFormat,
 				AuditEnabled:        &setTrue,
 				ObservationsEnabled: &setFalse,
+				SysEventsEnabled:    &setFalse,
 			})},
 			want: func() event.EventerConfig {
 				c := event.DefaultEventerConfig()
 				c.AuditEnabled = true
 				c.ObservationsEnabled = false
+				c.SysEventsEnabled = false
 				return *c
 			}(),
 		},
