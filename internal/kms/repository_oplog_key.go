@@ -39,17 +39,17 @@ func (r *Repository) CreateOplogKey(ctx context.Context, rkvWrapper wrapping.Wra
 func createOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper wrapping.Wrapper, key []byte) (*OplogKey, *OplogKeyVersion, error) {
 	const op = "kms.createOplogKeyTx"
 	if rkvWrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	if len(key) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	rootKeyVersionId := rkvWrapper.KeyID()
 	switch {
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("root key version id %s doesn't start with prefix %s", rootKeyVersionId, RootKeyVersionPrefix))
 	case rootKeyVersionId == "":
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 	rv := AllocRootKeyVersion()
 	rv.PrivateId = rootKeyVersionId
@@ -96,7 +96,7 @@ func createOplogKeyTx(ctx context.Context, r db.Reader, w db.Writer, rkvWrapper 
 func (r *Repository) LookupOplogKey(ctx context.Context, privateId string, _ ...Option) (*OplogKey, error) {
 	const op = "kms.(Repository).LookupOplogKey"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocOplogKey()
 	k.PrivateId = privateId
@@ -112,7 +112,7 @@ func (r *Repository) LookupOplogKey(ctx context.Context, privateId string, _ ...
 func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteOplogKey"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocOplogKey()
 	k.PrivateId = privateId
@@ -133,7 +133,7 @@ func (r *Repository) DeleteOplogKey(ctx context.Context, privateId string, _ ...
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

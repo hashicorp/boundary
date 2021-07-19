@@ -96,13 +96,13 @@ func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.Log
 	const op = "vault.newTokenRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -134,7 +134,7 @@ func (r *TokenRenewalJob) Status() scheduler.JobStatus {
 func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
@@ -202,7 +202,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 			return errors.Wrap(err, op)
 		}
 		if numRows != 1 {
-			return errors.New(errors.Unknown, op, "token expired but failed to update repo")
+			return errors.NewDeprecated(errors.Unknown, op, "token expired but failed to update repo")
 		}
 		if s.TokenStatus == string(CurrentToken) {
 			r.logger.Info("Vault credential store current token has expired", "credential store id", s.StoreId)
@@ -232,7 +232,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		return errors.Wrap(err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "token renewed but failed to update repo")
+		return errors.NewDeprecated(errors.Unknown, op, "token renewed but failed to update repo")
 	}
 
 	return nil
@@ -261,7 +261,7 @@ func nextRenewal(j scheduler.Job) (time.Duration, error) {
 		query = credentialRenewalNextRunInQuery
 		r = job.reader
 	default:
-		return 0, errors.New(errors.Unknown, op, "unknown job")
+		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
 	}
 
 	rows, err := r.Query(context.Background(), query, nil)
@@ -322,13 +322,13 @@ func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclog.
 	const op = "vault.newTokenRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -360,7 +360,7 @@ func (r *TokenRevocationJob) Status() scheduler.JobStatus {
 func (r *TokenRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(TokenRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
@@ -441,7 +441,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		return errors.Wrap(err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "token revoked but failed to update repo")
+		return errors.NewDeprecated(errors.Unknown, op, "token revoked but failed to update repo")
 	}
 
 	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
@@ -490,13 +490,13 @@ func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, logger hclo
 	const op = "vault.newCredentialRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -528,7 +528,7 @@ func (r *CredentialRenewalJob) Status() scheduler.JobStatus {
 func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRenewalJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
@@ -593,7 +593,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 			return errors.Wrap(err, op)
 		}
 		if numRows != 1 {
-			return errors.New(errors.Unknown, op, "credential expired but failed to update repo")
+			return errors.NewDeprecated(errors.Unknown, op, "credential expired but failed to update repo")
 		}
 		return nil
 	}
@@ -608,7 +608,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		return errors.Wrap(err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "credential renewed but failed to update repo")
+		return errors.NewDeprecated(errors.Unknown, op, "credential renewed but failed to update repo")
 	}
 
 	return nil
@@ -658,13 +658,13 @@ func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, logger h
 	const op = "vault.newCredentialRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -696,7 +696,7 @@ func (r *CredentialRevocationJob) Status() scheduler.JobStatus {
 func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialRevocationJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
@@ -760,7 +760,7 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		return errors.Wrap(err, op)
 	}
 	if numRows != 1 {
-		return errors.New(errors.Unknown, op, "credential revoked but failed to update repo")
+		return errors.NewDeprecated(errors.Unknown, op, "credential revoked but failed to update repo")
 	}
 
 	return nil
@@ -804,13 +804,13 @@ func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, logger
 	const op = "vault.newCredentialStoreCleanupJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	case logger == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -841,7 +841,7 @@ func (r *CredentialStoreCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialStoreCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 
@@ -917,7 +917,7 @@ type CredentialCleanupJob struct {
 func newCredentialCleanupJob(w db.Writer) (*CredentialCleanupJob, error) {
 	const op = "vault.newCredentialCleanupJob"
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	}
 
 	return &CredentialCleanupJob{
@@ -941,7 +941,7 @@ func (r *CredentialCleanupJob) Status() scheduler.JobStatus {
 func (r *CredentialCleanupJob) Run(ctx context.Context) error {
 	const op = "vault.(CredentialCleanupJob).Run"
 	if !r.running.CAS(r.running.Load(), true) {
-		return errors.New(errors.JobAlreadyRunning, op, "job already running")
+		return errors.NewDeprecated(errors.JobAlreadyRunning, op, "job already running")
 	}
 	defer r.running.Store(false)
 

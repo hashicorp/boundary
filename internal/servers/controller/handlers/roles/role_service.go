@@ -69,7 +69,7 @@ type Service struct {
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "roles.NewService"
 	if repo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -168,7 +168,7 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -206,7 +206,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -244,7 +244,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -298,7 +298,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -336,7 +336,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -374,7 +374,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -412,7 +412,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -450,7 +450,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -488,7 +488,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)

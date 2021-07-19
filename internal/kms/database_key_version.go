@@ -25,13 +25,13 @@ type DatabaseKeyVersion struct {
 func NewDatabaseKeyVersion(databaseKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*DatabaseKeyVersion, error) {
 	const op = "kms.NewDatabaseKeyVersion"
 	if databaseKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing database key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	if rootKeyVersionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key version id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 	}
 
 	k := &DatabaseKeyVersion{
@@ -64,21 +64,21 @@ func (k *DatabaseKeyVersion) Clone() interface{} {
 func (k *DatabaseKeyVersion) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "kms.(DatabaseKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 		}
 		if k.DatabaseKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing database key id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing database key id")
 		}
 		if k.RootKeyVersionId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key version id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key version id")
 		}
 	case db.UpdateOp:
-		return errors.New(errors.InvalidParameter, op, "key is immutable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

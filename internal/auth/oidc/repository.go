@@ -21,13 +21,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "oidc.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "reader is nil")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "reader is nil")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "writer is nil")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "writer is nil")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "kms is nil")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms is nil")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {

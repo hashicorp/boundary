@@ -38,13 +38,13 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
 	const op = "kms.createRootKeyTx"
 	if scopeId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if keyWrapper == nil {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	if len(key) == 0 {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 	rk := AllocRootKey()
 	kv := AllocRootKeyVersion()
@@ -83,10 +83,10 @@ func createRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKey, error) {
 	const op = "kms.(Repository).LookupRootKey"
 	if privateId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing private id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	if keyWrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key wrapper")
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
@@ -102,7 +102,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKey"
 	if privateId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing private id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	k := AllocRootKey()
 	k.PrivateId = privateId
@@ -123,7 +123,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, _ ...O
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

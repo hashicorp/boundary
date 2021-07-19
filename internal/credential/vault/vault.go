@@ -47,7 +47,7 @@ type client struct {
 func newClient(c *clientConfig) (*client, error) {
 	const op = "vault.newClient"
 	if !c.isValid() {
-		return nil, errors.New(errors.InvalidParameter, op, "invalid configuration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "invalid configuration")
 	}
 	vc := vault.DefaultConfig()
 	vc.Address = c.Addr
@@ -96,9 +96,9 @@ func (c *client) ping() error {
 	case err != nil:
 		return errors.Wrap(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
-		return errors.New(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
+		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("no repsonse: vault: %s", c.cl.Address()))
 	case !h.Initialized || h.Sealed:
-		return errors.New(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
+		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 func (c *client) capabilities(paths []string) (pathCapabilities, error) {
 	const op = "vault.(client).capabilities"
 	if len(paths) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "empty paths")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "empty paths")
 	}
 	body := map[string]string{
 		"paths": strings.Join(paths, ","),
@@ -230,7 +230,7 @@ func (c *client) capabilities(paths []string) (pathCapabilities, error) {
 		return nil, err
 	}
 	if secret == nil || secret.Data == nil {
-		return nil, errors.New(errors.Unknown, op, "data from Vault is empty")
+		return nil, errors.NewDeprecated(errors.Unknown, op, "data from Vault is empty")
 	}
 
 	var res map[string][]string

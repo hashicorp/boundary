@@ -31,7 +31,7 @@ func ConvertToAccountToClaim(s string) (AccountToClaim, error) {
 	case string(ToNameClaim):
 		return ToNameClaim, nil
 	default:
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid ToAccountClaim value", s))
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid ToAccountClaim value", s))
 	}
 }
 
@@ -60,10 +60,10 @@ func NewAccountClaimMap(authMethodId, fromClaim string, toClaim AccountToClaim) 
 // validate the AccountClaimMap.  On success, it will return nil.
 func (cs *AccountClaimMap) validate(caller errors.Op) error {
 	if cs.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if cs.FromClaim == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing from claim")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing from claim")
 	}
 	if _, err := ConvertToAccountToClaim(cs.ToClaim); err != nil {
 		return errors.Wrap(err, caller)

@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-var ErrMetadataScopeNotFound = errors.New(errors.RecordNotFound, "iam", "scope not found for metadata")
+var ErrMetadataScopeNotFound = errors.NewDeprecated(errors.RecordNotFound, "iam", "scope not found for metadata")
 
 // Repository is the iam database repository
 type Repository struct {
@@ -29,13 +29,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "iam.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -66,11 +66,11 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option) (Resource, error) {
 	const op = "iam.(Repository).create"
 	if resource == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing resource")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -115,14 +115,14 @@ func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option)
 func (r *Repository) update(ctx context.Context, resource Resource, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
 	const op = "iam.(Repository).update"
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if resource == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing resource")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -174,7 +174,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -189,11 +189,11 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option) (int, error) {
 	const op = "iam.(Repository).delete"
 	if resource == nil {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing resource")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing resource")
 	}
 	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "resource is not Cloneable")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "resource is not Cloneable")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -228,7 +228,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option)
 			}
 			if rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -266,7 +266,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		default:
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("not a supported scope for metadata: %s", s.Type))
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("not a supported scope for metadata: %s", s.Type))
 		}
 	}
 
@@ -275,7 +275,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 		return nil, errors.Wrap(err, op, errors.WithMsg("unable to get scope"))
 	}
 	if scope == nil {
-		return nil, errors.E(errors.WithOp(op), errors.WithMsg("nil scope"))
+		return nil, errors.EDeprecated(errors.WithOp(op), errors.WithMsg("nil scope"))
 	}
 	return oplog.Metadata{
 		"resource-public-id": []string{resource.GetPublicId()},

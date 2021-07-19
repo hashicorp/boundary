@@ -44,18 +44,18 @@ func NewCertificate(authMethodId string, certificatePem string) (*Certificate, e
 // validate the Certifcate and on success return nil
 func (c *Certificate) validate(caller errors.Op) error {
 	if c.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if c.Cert == "" {
-		return errors.New(errors.InvalidParameter, caller, "empty cert")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "empty cert")
 	}
 	block, _ := pem.Decode([]byte(c.Cert))
 	if block == nil {
-		return errors.New(errors.InvalidParameter, caller, "failed to parse certificate PEM")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "failed to parse certificate PEM")
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
+		return errors.NewDeprecated(errors.InvalidParameter, caller, fmt.Sprintf("failed to parse certificate: %s"+err.Error()), errors.WithWrap(err))
 	}
 	return nil
 }

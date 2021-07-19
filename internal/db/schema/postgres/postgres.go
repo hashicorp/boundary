@@ -94,7 +94,7 @@ func (p *Postgres) TrySharedLock(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 	if !gotLock {
-		return errors.New(errors.MigrationLock, op, "Lock failed")
+		return errors.NewDeprecated(errors.MigrationLock, op, "Lock failed")
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func (p *Postgres) TryLock(ctx context.Context) error {
 		return errors.Wrap(err, op)
 	}
 	if !gotLock {
-		return errors.New(errors.MigrationLock, op, "Lock failed")
+		return errors.NewDeprecated(errors.MigrationLock, op, "Lock failed")
 	}
 	return nil
 }
@@ -159,7 +159,7 @@ func (p *Postgres) Rollback() error {
 		p.tx = nil
 	}()
 	if p.tx == nil {
-		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "no pending transaction")
 	}
 	if err := p.tx.Rollback(); err != nil {
 		return errors.Wrap(err, op)
@@ -184,7 +184,7 @@ func (p *Postgres) CommitRun() error {
 		p.tx = nil
 	}()
 	if p.tx == nil {
-		return errors.New(errors.MigrationIntegrity, op, "no pending transaction")
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "no pending transaction")
 	}
 	if err := p.tx.Commit(); err != nil {
 		if errRollback := p.tx.Rollback(); errRollback != nil {
@@ -365,7 +365,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 	}
 	previouslyRan = true
 	if tableResult.Next() {
-		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "both old and new migration tables exist")
+		return nilVersion, previouslyRan, dirty, errors.NewDeprecated(errors.MigrationIntegrity, op, "both old and new migration tables exist")
 	}
 
 	query := `select version, dirty from ` + pq.QuoteIdentifier(tableName)
@@ -382,7 +382,7 @@ func (p *Postgres) CurrentState(ctx context.Context) (version int, previouslyRan
 		return nilVersion, previouslyRan, dirty, errors.Wrap(err, op)
 	}
 	if results.Next() {
-		return nilVersion, previouslyRan, dirty, errors.New(errors.MigrationIntegrity, op, "to many versions in version table")
+		return nilVersion, previouslyRan, dirty, errors.NewDeprecated(errors.MigrationIntegrity, op, "to many versions in version table")
 	}
 	return version, previouslyRan, dirty, nil
 }

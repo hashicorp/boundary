@@ -80,16 +80,16 @@ type Service struct {
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing kms")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 	if pwRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing password repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing password repository")
 	}
 	if oidcRepoFn == nil {
 		return Service{}, fmt.Errorf("nil oidc repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
@@ -203,7 +203,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -248,7 +248,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -298,7 +298,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -352,7 +352,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -425,7 +425,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	case auth.OidcSubtype:
 		return s.authenticateOidc(ctx, req, &authResults)
 	}
-	return nil, errors.New(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
+	return nil, errors.NewDeprecated(errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
 
 // Deprecated: use Authenticate
@@ -489,7 +489,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	const op = "authmethods.(Service).listFromRepo"
 	reqCtx, ok := requests.RequestContextFromCtx(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	var outUl []auth.AuthMethod
@@ -637,7 +637,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		case publicState:
 			am, err = repo.MakePublic(ctx, req.GetId(), req.GetVersion(), opts...)
 		default:
-			err = errors.New(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
+			err = errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unrecognized state %q", attrs.GetState()))
 		}
 		if err != nil {
 			return nil, err
@@ -646,7 +646,7 @@ func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequ
 		return am, nil
 	}
 
-	return nil, errors.New(errors.InvalidParameter, op, "Given auth method type does not support changing state")
+	return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Given auth method type does not support changing state")
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -708,7 +708,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			authMeth = am
 		default:
-			res.Error = errors.New(errors.InvalidPublicId, op, "unrecognized auth method type")
+			res.Error = errors.NewDeprecated(errors.InvalidPublicId, op, "unrecognized auth method type")
 			return res
 		}
 		parentId = authMeth.GetScopeId()
@@ -841,7 +841,7 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	const op = "authmethod.validateGetRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
@@ -849,7 +849,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	const op = "authmethod.validateCreateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -951,7 +951,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	const op = "authmethod.validateUpdateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1082,7 +1082,7 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	const op = "authmethod.validateDeleteRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
 }
@@ -1090,7 +1090,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	const op = "authmethod.validateListRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
@@ -1109,7 +1109,7 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	const op = "authmethod.validateChangeStateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	if st := auth.SubtypeFromId(req.GetId()); st != auth.OidcSubtype {
 		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", auth.OidcSubtype.String())
@@ -1137,7 +1137,7 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	const op = "authmethod.validateAuthenticateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 
 	badFields := make(map[string]string)
@@ -1164,7 +1164,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 func validateAuthenticateLoginRequest(req *pbs.AuthenticateLoginRequest) error {
 	const op = "authmethod.validateAuthenticateLoginRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "Missing request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
 	badFields := make(map[string]string)
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
@@ -1199,16 +1199,16 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 		return nil, err
 	}
 	if tok == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth token.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token.")
 	}
 	if tok.Token == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token.")
 	}
 	if tok.GetPublicId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token public ID.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token public ID.")
 	}
 	if tok.GetScopeId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Empty token, scope ID.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Empty token, scope ID.")
 	}
 	token, err := authtoken.EncryptToken(ctx, s.kms, tok.GetScopeId(), tok.GetPublicId(), tok.GetToken())
 	if err != nil {
@@ -1237,19 +1237,19 @@ func (s Service) ConvertInternalAuthTokenToApiAuthToken(ctx context.Context, tok
 func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults, tok *pba.AuthToken) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod.convertToAuthenticateResponse"
 	if req == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing request.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing request.")
 	}
 	if authResults == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results.")
 	}
 	if authResults.Scope == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results scope.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results scope.")
 	}
 	if authResults.Scope.Id == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth results scope ID.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth results scope ID.")
 	}
 	if tok == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "Missing auth token.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "Missing auth token.")
 	}
 	res := &perms.Resource{
 		ScopeId: authResults.Scope.Id,

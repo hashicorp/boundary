@@ -30,22 +30,22 @@ import (
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	const op = "password.(Repository).CreateAccount"
 	if a == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.AuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if a.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id must be empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	if !validLoginName(a.LoginName) {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("login name must be all-lowercase alphanumeric, period or hyphen. got: %s", a.LoginName))
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)
@@ -54,7 +54,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 
 	if cc.MinLoginNameLength > len(a.LoginName) {
-		return nil, errors.New(errors.TooShort, op, fmt.Sprintf("username: %s, must be longer than %d", a.LoginName, cc.MinLoginNameLength))
+		return nil, errors.NewDeprecated(errors.TooShort, op, fmt.Sprintf("username: %s, must be longer than %d", a.LoginName, cc.MinLoginNameLength))
 	}
 
 	opts := getOpts(opt...)
@@ -62,7 +62,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	a = a.clone()
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, intglobals.NewPasswordAccountPrefix+"_") {
-			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
 		}
 		a.PublicId = opts.withPublicId
 	} else {
@@ -76,7 +76,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 	var cred *Argon2Credential
 	if opts.withPassword {
 		if cc.MinPasswordLength > len(opts.password) {
-			return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("must be longer than %v", cc.MinPasswordLength))
+			return nil, errors.NewDeprecated(errors.PasswordTooShort, op, fmt.Sprintf("must be longer than %v", cc.MinPasswordLength))
 		}
 		if cred, err = newArgon2Credential(a.PublicId, opts.password, cc.argon2()); err != nil {
 			return nil, errors.Wrap(err, op)
@@ -116,7 +116,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q or loginName %q already exists",
+			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf("in auth method %s: name %q or loginName %q already exists",
 				a.AuthMethodId, a.Name, a.LoginName))
 		}
 		return nil, errors.Wrap(err, op, errors.WithMsg(a.AuthMethodId))
@@ -129,7 +129,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	const op = "password.(Repository).LookupAccount"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	a := allocAccount()
 	a.PublicId = withPublicId
@@ -146,7 +146,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	const op = "password.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -167,10 +167,10 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	const op = "password.(Repository).DeleteAccount"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	ac := allocAccount()
 	ac.PublicId = withPublicId
@@ -193,7 +193,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -231,19 +231,19 @@ func validLoginName(u string) bool {
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	const op = "password.(Repository).UpdateAccount"
 	if a == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	var changeLoginName bool
@@ -253,12 +253,12 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold("Description", f):
 		case strings.EqualFold("LoginName", f):
 			if !validLoginName(a.LoginName) {
-				return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op,
+				return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op,
 					fmt.Sprintf("invalid username: must be all-lowercase alphanumeric, period or hyphen, got %s", a.LoginName))
 			}
 			changeLoginName = true
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -272,7 +272,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	if changeLoginName {
@@ -281,7 +281,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("retrieve current configuration"))
 		}
 		if cc.MinLoginNameLength > len(a.LoginName) {
-			return nil, db.NoRowsAffected, errors.New(errors.TooShort, op,
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.TooShort, op,
 				fmt.Sprintf("username: %s, must be longer than %v", a.LoginName, cc.MinLoginNameLength))
 		}
 	}
@@ -307,7 +307,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -315,7 +315,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))

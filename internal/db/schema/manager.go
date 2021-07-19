@@ -66,7 +66,7 @@ func NewManager(ctx context.Context, dialect string, db *sql.DB, opt ...Option) 
 			return nil, errors.Wrap(err, op)
 		}
 	default:
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown dialect %q", dialect))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	return &dbM, nil
 }
@@ -167,7 +167,7 @@ func (b *Manager) RollForward(ctx context.Context) error {
 	}
 
 	if dirty {
-		return errors.New(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
+		return errors.NewDeprecated(errors.NotSpecificIntegrity, op, fmt.Sprintf("schema is dirty with version %d", curVersion))
 	}
 
 	if err = b.runMigrations(ctx, newStatementProvider(b.dialect, curVersion, WithMigrationStates(b.migrationStates))); err != nil {
@@ -230,7 +230,7 @@ func GetMigrationLog(ctx context.Context, d *sql.DB, opt ...Option) ([]LogEntry,
 	const op = "schema.GetMigrationLog"
 	const sql = "select id, create_time, migration_version, entry from log_migration where migration_version in (select max(version) from boundary_schema_version)"
 	if d == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing sql db")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing sql db")
 	}
 	rows, err := d.QueryContext(ctx, sql)
 	if err != nil {

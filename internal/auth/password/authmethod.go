@@ -27,7 +27,7 @@ func allocAuthMethod() AuthMethod {
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	const op = "password.NewAuthMethod"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	opts := getOpts(opt...)

@@ -45,25 +45,25 @@ func NewArgon2Configuration() *Argon2Configuration {
 func (c *Argon2Configuration) validate() error {
 	const op = "password.(Argon2Configuration).validate"
 	if c == nil {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing config")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing config")
 	}
 	if c.Argon2Configuration == nil {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing embedded config")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing embedded config")
 	}
 	if c.Iterations == 0 {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing iterations")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing iterations")
 	}
 	if c.Memory == 0 {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing memory")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing memory")
 	}
 	if c.Threads == 0 {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing threads")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing threads")
 	}
 	if c.SaltLength == 0 {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing salt length")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing salt length")
 	}
 	if c.KeyLength == 0 {
-		return errors.New(errors.PasswordInvalidConfiguration, op, "missing key length")
+		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing key length")
 	}
 	return nil
 }
@@ -132,13 +132,13 @@ type Argon2Credential struct {
 func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
 	const op = "password.newArgon2Credential"
 	if accountId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing accountId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing accountId")
 	}
 	if password == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing password")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing password")
 	}
 	if conf == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing argon2 configuration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing argon2 configuration")
 	}
 
 	id, err := newArgon2CredentialId()

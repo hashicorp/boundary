@@ -24,23 +24,23 @@ import (
 func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
 	const op = "static.(Repository).CreateHost"
 	if h == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil Host")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil Host")
 	}
 	if h.Host == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded Host")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded Host")
 	}
 	if h.CatalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no catalog id")
 	}
 	if h.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	h.Address = strings.TrimSpace(h.Address)
 	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-		return nil, errors.New(errors.InvalidAddress, op, "invalid address")
+		return nil, errors.NewDeprecated(errors.InvalidAddress, op, "invalid address")
 	}
 	h = h.clone()
 
@@ -48,7 +48,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
-			return nil, errors.New(
+			return nil, errors.NewDeprecated(
 				errors.InvalidPublicId,
 				op,
 				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostPrefix),
@@ -85,7 +85,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 			return nil, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in catalog: %s: name %s already exists", h.CatalogId, h.Name)))
 		}
 		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
-			return nil, errors.New(
+			return nil, errors.NewDeprecated(
 				errors.InvalidAddress,
 				op,
 				fmt.Sprintf("in catalog: %s: %q", h.CatalogId, h.Address),
@@ -112,19 +112,19 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
 	const op = "static.(Repository).UpdateHost"
 	if h == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil Host")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil Host")
 	}
 	if h.Host == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil embedded Host")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded Host")
 	}
 	if h.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -134,10 +134,10 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		case strings.EqualFold("Address", f):
 			h.Address = strings.TrimSpace(h.Address)
 			if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
-				return nil, db.NoRowsAffected, errors.New(errors.InvalidAddress, op, "invalid address")
+				return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidAddress, op, "invalid address")
 			}
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -151,7 +151,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -172,7 +172,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -183,7 +183,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 			return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("in %s: name %s already exists", h.PublicId, h.Name)))
 		}
 		if errors.IsCheckConstraintError(err) || errors.IsNotNullError(err) {
-			return nil, db.NoRowsAffected, errors.New(
+			return nil, db.NoRowsAffected, errors.NewDeprecated(
 				errors.InvalidAddress,
 				op,
 				fmt.Sprintf("in %s: %q", h.PublicId, h.Address),
@@ -201,7 +201,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, error) {
 	const op = "static.(Repository).LookupHost"
 	if publicId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	h := allocHost()
 	h.PublicId = publicId
@@ -219,7 +219,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Option) ([]*Host, error) {
 	const op = "static.(Repository).ListHosts"
 	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no catalog id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -241,7 +241,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteHost"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	h := allocHost()
 	h.PublicId = publicId
@@ -261,7 +261,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

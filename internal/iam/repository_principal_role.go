@@ -20,17 +20,17 @@ import (
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]PrincipalRole, error) {
 	const op = "iam.(Repository).AddPrincipalRoles"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if roleVersion == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	userIds, groupIds, managedGroupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return nil, errors.Wrap(err, op)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 && len(managedGroupIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to add")
 	}
 
 	newUserRoles := make([]interface{}, 0, len(userIds))
@@ -90,7 +90,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
 			if len(newUserRoles) > 0 {
@@ -152,10 +152,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]PrincipalRole, int, error) {
 	const op = "iam.(Repository).SetPrincipalRoles"
 	if roleId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	if roleVersion == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -209,7 +209,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs := make([]*oplog.Message, 0, 5)
 			metadata := oplog.Metadata{
@@ -231,7 +231,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 						return errors.Wrap(err, op, errors.WithMsg("unable to delete user roles"))
 					}
 					if rowsDeleted != len(toSet.DeleteUserRoles) {
-						return errors.New(errors.MultipleRecords, op, fmt.Sprintf("user roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteUserRoles)))
+						return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("user roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteUserRoles)))
 					}
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, userOplogMsgs...)
@@ -243,7 +243,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 						return errors.Wrap(err, op, errors.WithMsg("unable to delete groups"))
 					}
 					if rowsDeleted != len(toSet.DeleteGroupRoles) {
-						return errors.New(errors.MultipleRecords, op, fmt.Sprintf("group roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteGroupRoles)))
+						return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("group roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteGroupRoles)))
 					}
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, grpOplogMsgs...)
@@ -255,7 +255,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 						return errors.Wrap(err, op, errors.WithMsg("unable to delete managed groups"))
 					}
 					if rowsDeleted != len(toSet.DeleteManagedGroupRoles) {
-						return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteManagedGroupRoles)))
+						return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(toSet.DeleteManagedGroupRoles)))
 					}
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, managedGrpOplogMsgs...)
@@ -320,17 +320,17 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) (int, error) {
 	const op = "iam.(Repository).DeletePrincipalRoles"
 	if roleId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing role id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	userIds, groupIds, managedGroupIds, err := splitPrincipals(principalIds)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 && len(managedGroupIds) == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to delete")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing any of users, groups, or managed groups to delete")
 	}
 	if roleVersion == 0 {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -389,7 +389,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 				return errors.Wrap(err, op, errors.WithMsg("unable to update role version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
 			}
 			msgs = append(msgs, &roleOplogMsg)
 			if len(deleteUserRoles) > 0 {
@@ -399,7 +399,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete user roles"))
 				}
 				if rowsDeleted != len(deleteUserRoles) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("user roles deleted %d did not match request for %d", rowsDeleted, len(deleteUserRoles)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("user roles deleted %d did not match request for %d", rowsDeleted, len(deleteUserRoles)))
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, userOplogMsgs...)
@@ -411,7 +411,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete groups"))
 				}
 				if rowsDeleted != len(deleteGrpRoles) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("group roles deleted %d did not match request for %d", rowsDeleted, len(deleteGrpRoles)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("group roles deleted %d did not match request for %d", rowsDeleted, len(deleteGrpRoles)))
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, grpOplogMsgs...)
@@ -423,7 +423,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete managed groups"))
 				}
 				if rowsDeleted != len(deleteManagedGrpRoles) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(deleteManagedGrpRoles)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("managed group roles deleted %d did not match request for %d", rowsDeleted, len(deleteManagedGrpRoles)))
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, managedGrpOplogMsgs...)
@@ -450,7 +450,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
 	const op = "iam.(Repository).ListPrincipalRoles"
 	if roleId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
 	}
 	var roles []PrincipalRole
 	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -479,7 +479,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	const op = "iam.(Repository).PrincipalsToSet"
 	// TODO(mgaffney) 08/2020: Use SQL to calculate changes.
 	if role == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing role")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role")
 	}
 	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
 	if err != nil {
@@ -497,7 +497,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 		case ManagedGroupRoleType.String():
 			existingManagedGroups[p.PrincipalId] = p
 		default:
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is unknown principal type %s", p.PrincipalId, p.GetType()))
 		}
 	}
 	var newUserRoles []interface{}
@@ -608,7 +608,7 @@ func splitPrincipals(principals []string) (users, groups, managedGroups []string
 			}
 			managedGroups = append(managedGroups, principal)
 		default:
-			return nil, nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
+			return nil, nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
 		}
 	}
 

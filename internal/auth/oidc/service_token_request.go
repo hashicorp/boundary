@@ -25,16 +25,16 @@ import (
 func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFactory, authMethodId, tokenRequestId string) (*authtoken.AuthToken, error) {
 	const op = "oidc.TokenRequest"
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 	if atRepoFn == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth token repo function")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token repo function")
 	}
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if tokenRequestId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token request id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token request id")
 	}
 
 	reqTkWrapper, err := UnwrapMessage(ctx, tokenRequestId)
@@ -42,13 +42,13 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 		return nil, errors.Wrap(err, op)
 	}
 	if reqTkWrapper.ScopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "request token id wrapper missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "request token id wrapper missing scope id")
 	}
 	if reqTkWrapper.AuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "request token id wrapper missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "request token id wrapper missing auth method id")
 	}
 	if reqTkWrapper.AuthMethodId != authMethodId {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, reqTkWrapper.AuthMethodId))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s auth method id does not match request wrapper auth method id: %s", authMethodId, reqTkWrapper.AuthMethodId))
 	}
 
 	// tokenRequestId is a proto request.Wrapper, which contains a cipher text field,
@@ -63,16 +63,16 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 	}
 	var reqTk request.Token
 	if err := proto.Unmarshal(reqTkBytes, &reqTk); err != nil {
-		return nil, errors.New(errors.Unknown, op, "unable to unmarshal request token", errors.WithWrap(err))
+		return nil, errors.NewDeprecated(errors.Unknown, op, "unable to unmarshal request token", errors.WithWrap(err))
 	}
 
 	if reqTk.ExpirationTime == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing request token id expiration time")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing request token id expiration time")
 	}
 
 	// before proceeding, make sure the request hasn't timed out
 	if time.Now().After(reqTk.ExpirationTime.Timestamp.AsTime()) {
-		return nil, errors.New(errors.AuthAttemptExpired, op, "request token id has expired")
+		return nil, errors.NewDeprecated(errors.AuthAttemptExpired, op, "request token id has expired")
 	}
 
 	tokenRepo, err := atRepoFn()
@@ -89,7 +89,7 @@ func TokenRequest(ctx context.Context, kms *kms.Kms, atRepoFn AuthTokenRepoFacto
 		return nil, errors.Wrap(err, op)
 	}
 	if authTk.Token == "" {
-		return nil, errors.New(errors.Internal, op, "issued token is missing")
+		return nil, errors.NewDeprecated(errors.Internal, op, "issued token is missing")
 	}
 	return authTk, nil
 }

@@ -20,10 +20,10 @@ import (
 func (r *Repository) CreateJob(ctx context.Context, name, description string, opt ...Option) (*Job, error) {
 	const op = "job.(Repository).CreateJob"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 	if description == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing description")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing description")
 	}
 
 	opts := getOpts(opt...)
@@ -45,7 +45,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been created")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job would have been created")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, j)
@@ -55,7 +55,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.NotSpecificIntegrity, op, "failed to create new job")
+				return errors.NewDeprecated(errors.NotSpecificIntegrity, op, "failed to create new job")
 			}
 
 			return nil
@@ -78,7 +78,7 @@ func (r *Repository) CreateJob(ctx context.Context, name, description string, op
 func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).UpdateJobNextRunInAtLeast"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -94,7 +94,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 			var rowCnt int
 			for rows.Next() {
 				if rowCnt > 0 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 job would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 job would have been updated")
 				}
 				rowCnt++
 				err = r.ScanRows(rows, j)
@@ -104,7 +104,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 				}
 			}
 			if rowCnt == 0 {
-				return errors.New(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
+				return errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("job %q does not exist", name))
 			}
 
 			return nil
@@ -123,7 +123,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*Job, error) {
 	const op = "job.(Repository).LookupJob"
 	if name == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -168,7 +168,7 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (int, error) {
 	const op = "job.(Repository).deleteJob"
 	if name == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing name")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 
 	j := allocJob()
@@ -181,7 +181,7 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

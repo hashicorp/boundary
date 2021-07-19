@@ -22,19 +22,19 @@ import (
 func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, opt ...Option) (*HostSet, error) {
 	const op = "static.(Repository).CreateSet"
 	if s == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil HostSet")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.CatalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no catalog id")
 	}
 	if s.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id not empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	s = s.clone()
 
@@ -42,7 +42,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, HostSetPrefix+"_") {
-			return nil, errors.New(
+			return nil, errors.NewDeprecated(
 				errors.InvalidPublicId,
 				op,
 				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostSetPrefix),
@@ -100,19 +100,19 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
 	const op = "static.(Repository).UpdateSet"
 	if s == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil HostSet")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil HostSet")
 	}
 	if s.HostSet == nil {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "nil embedded HostSet")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "nil embedded HostSet")
 	}
 	if s.PublicId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	if version == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no version")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no version")
 	}
 	if scopeId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -120,7 +120,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		case strings.EqualFold("Name", f):
 		case strings.EqualFold("Description", f):
 		default:
-			return nil, nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -133,7 +133,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	opts := getOpts(opt...)
@@ -162,7 +162,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			hosts, err = getHosts(ctx, reader, s.PublicId, limit)
 			if err != nil {
@@ -189,7 +189,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Option) (*HostSet, []*Host, error) {
 	const op = "static.(Repository).LookupSet"
 	if publicId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "no public id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -232,7 +232,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, opt ...Opti
 func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, error) {
 	const op = "static.(Repository).ListSets"
 	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no catalog id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -254,10 +254,10 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteSet"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "no scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no scope id")
 	}
 	s := allocHostSet()
 	s.PublicId = publicId
@@ -277,7 +277,7 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},

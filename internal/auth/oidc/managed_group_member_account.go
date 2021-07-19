@@ -37,10 +37,10 @@ func NewManagedGroupMemberAccount(managedGroupId string, memberId string, opt ..
 // validate the ManagedGroupMemberAccount. On success, it will return nil.
 func (mg *ManagedGroupMemberAccount) validate(caller errors.Op) error {
 	if mg.ManagedGroupId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing managed group id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing managed group id")
 	}
 	if mg.MemberId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing member id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing member id")
 	}
 
 	return nil

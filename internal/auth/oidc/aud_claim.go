@@ -47,10 +47,10 @@ func NewAudClaim(authMethodId string, audClaim string) (*AudClaim, error) {
 // validate the AudClaim.  On success, it will return nil.
 func (a *AudClaim) validate(caller errors.Op) error {
 	if a.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if a.Aud == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing aud claim")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing aud claim")
 	}
 	return nil
 }

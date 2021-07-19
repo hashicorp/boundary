@@ -206,7 +206,7 @@ func New(underlying *gorm.DB) *Db {
 func (rw *Db) Exec(_ context.Context, sql string, values []interface{}, _ ...Option) (int, error) {
 	const op = "db.Exec"
 	if sql == "" {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing sql")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing sql")
 	}
 	gormDb := rw.underlying.Exec(sql, values...)
 	if gormDb.Error != nil {
@@ -222,7 +222,7 @@ func (rw *Db) Exec(_ context.Context, sql string, values []interface{}, _ ...Opt
 func (rw *Db) Query(_ context.Context, sql string, values []interface{}, _ ...Option) (*sql.Rows, error) {
 	const op = "db.Query"
 	if sql == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing sql")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing sql")
 	}
 	gormDb := rw.underlying.Raw(sql, values...)
 	if gormDb.Error != nil {
@@ -235,10 +235,10 @@ func (rw *Db) Query(_ context.Context, sql string, values []interface{}, _ ...Op
 func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
 	const op = "db.ScanRows"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(result) {
-		return errors.New(errors.InvalidParameter, op, "missing result")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing result")
 	}
 	return rw.underlying.ScanRows(rows, result)
 }
@@ -264,15 +264,15 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return errors.New(errors.InvalidParameter, op, "missing interface")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing interface")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
@@ -327,20 +327,20 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(createItems) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing interfaces")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing interfaces")
 	}
 	opts := GetOpts(opt...)
 	if opts.withLookup {
-		return errors.New(errors.InvalidParameter, op, "with lookup not a supported option")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "with lookup not a supported option")
 	}
 	if opts.newOplogMsg != nil {
-		return errors.New(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 	}
 	if opts.withOplog && opts.newOplogMsgs != nil {
-		return errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -350,7 +350,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 		currentType := reflect.TypeOf(v)
 		if foundType != currentType {
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("create items contains disparate types. item %d is not a %s", i, foundType.Name()))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("create items contains disparate types. item %d is not a %s", i, foundType.Name()))
 		}
 	}
 	var ticket *store.Ticket
@@ -406,25 +406,25 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing interface")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing interface")
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both fieldMaskPaths and setToNullPaths are missing")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "both fieldMaskPaths and setToNullPaths are missing")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 
 	// we need to filter out some non-updatable fields (like: CreateTime, etc)
 	fieldMaskPaths = filterPaths(fieldMaskPaths)
 	setToNullPaths = filterPaths(setToNullPaths)
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
 	}
 
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
@@ -432,19 +432,19 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.Wrap(err, op, errors.WithMsg("getting update fields failed"))
 	}
 	if len(updateFields) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("no fields matched using fieldMaskPaths %s", fieldMaskPaths))
 	}
 
 	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "primary key is not set")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "primary key is not set")
 	}
 
 	for _, f := range scope.PrimaryFields() {
 		if contains(fieldMaskPaths, f.Name) {
-			return NoRowsAffected, errors.New(errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", f.Name))
+			return NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, fmt.Sprintf("not allowed on primary key field %s", f.Name))
 		}
 	}
 
@@ -477,10 +477,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		var args []interface{}
 		if opts.WithVersion != nil {
 			if *opts.WithVersion == 0 {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, "with version option is zero")
+				return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "with version option is zero")
 			}
 			if _, ok := scope.FieldByName("version"); !ok {
-				return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", scope.TableName()))
+				return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s does not have a version field", scope.TableName()))
 			}
 			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
@@ -493,7 +493,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if underlying.Error != nil {
 		if underlying.Error == gorm.ErrRecordNotFound {
-			return NoRowsAffected, errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return NoRowsAffected, errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
 		return NoRowsAffected, errors.Wrap(underlying.Error, op)
 	}
@@ -541,22 +541,22 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing interface")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing interface")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	if withOplog && opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "both WithOplog and NewOplogMsg options have been specified")
 	}
 	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if opts.withWhereClause == "" {
 		if scope.PrimaryKeyZero() {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, "primary key is not set")
+			return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "primary key is not set")
 		}
 	}
 	if withOplog {
@@ -605,17 +605,17 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
 	const op = "db.DeleteItems"
 	if rw.underlying == nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(deleteItems) == 0 {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "no interfaces to delete")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "no interfaces to delete")
 	}
 	opts := GetOpts(opt...)
 	if opts.newOplogMsg != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 	}
 	if opts.withOplog && opts.newOplogMsgs != nil {
-		return NoRowsAffected, errors.New(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
+		return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "both WithOplog and NewOplogMsgs options have been specified")
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -625,7 +625,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		}
 		currentType := reflect.TypeOf(v)
 		if foundType != currentType {
-			return NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("items contain disparate types.  item %d is not a %s", i, foundType.Name()))
+			return NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("items contain disparate types.  item %d is not a %s", i, foundType.Name()))
 		}
 	}
 
@@ -672,14 +672,14 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 	const op = "db.validateOplogArgs"
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
 	}
 	if len(oplogArgs.metadata) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing metadata")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing metadata")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.E(errors.WithOp(op), errors.WithMsg("not a replayable message"))
+		return nil, errors.EDeprecated(errors.WithOp(op), errors.WithMsg("not a replayable message"))
 	}
 	return replayable, nil
 }
@@ -687,7 +687,7 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	const op = "db.getTicketFor"
 	if rw.underlying == nil {
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName))
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
@@ -705,14 +705,14 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	const op = "db.GetTicket"
 	if rw.underlying == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if isNil(i) {
-		return nil, errors.New(errors.InvalidParameter, op, "missing interface")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing interface")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "not a replayable message")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not a replayable message")
 	}
 	return rw.getTicketFor(replayable.TableName())
 }
@@ -720,7 +720,7 @@ func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {
 	const op = "db.oplogMsgsForItems"
 	if len(items) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing items")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing items")
 	}
 	oplogMsgs := []*oplog.Message{}
 	var foundType reflect.Type
@@ -730,7 +730,7 @@ func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options
 		}
 		currentType := reflect.TypeOf(item)
 		if foundType != currentType {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("items contains disparate types. item (%d) %s is not a %s", i, currentType, foundType))
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("items contains disparate types. item (%d) %s is not a %s", i, currentType, foundType))
 		}
 		msg, err := rw.newOplogMessage(ctx, opType, item, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
 		if err != nil {
@@ -748,16 +748,16 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	const op = "db.addOplogForItems"
 	oplogArgs := opts.oplogOpts
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket")
 	}
 	if len(items) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing items")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing items")
 	}
 	if oplogArgs.metadata == nil {
-		return errors.New(errors.InvalidParameter, op, "missing metadata")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing metadata")
 	}
 	if oplogArgs.wrapper == nil {
-		return errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
 	}
 
 	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
@@ -801,7 +801,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 		return errors.Wrap(err, op)
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket")
 	}
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
@@ -837,19 +837,19 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper, ticket *store.Ticket, metadata oplog.Metadata, msgs []*oplog.Message, _ ...Option) error {
 	const op = "db.WriteOplogEntryWith"
 	if wrapper == nil {
-		return errors.New(errors.InvalidParameter, op, "missing wrapper")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
 	}
 	if ticket == nil {
-		return errors.New(errors.InvalidParameter, op, "missing ticket")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing ticket")
 	}
 	if len(msgs) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing msgs")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing msgs")
 	}
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if len(metadata) == 0 {
-		return errors.New(errors.InvalidParameter, op, "missing metadata")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing metadata")
 	}
 
 	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
@@ -883,7 +883,7 @@ func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, o
 	opts := GetOpts(opt...)
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return nil, errors.New(errors.InvalidParameter, op, "not a replayable interface")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not a replayable interface")
 	}
 	msg := oplog.Message{
 		Message:  i.(proto.Message),
@@ -899,7 +899,7 @@ func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, o
 	case DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	default:
-		return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("operation type %v is not supported", opType))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("operation type %v is not supported", opType))
 	}
 	return &msg, nil
 }
@@ -911,12 +911,12 @@ func (rw *Db) newOplogMessage(_ context.Context, opType OpType, i interface{}, o
 func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
 	const op = "db.DoTx"
 	if w.underlying == nil {
-		return RetryInfo{}, errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return RetryInfo{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
-			return info, errors.New(errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1))
+			return info, errors.NewDeprecated(errors.MaxRetries, op, fmt.Sprintf("Too many retries: %d of %d", attempts-1, retries+1))
 		}
 
 		// step one of this, start a transaction...
@@ -952,10 +952,10 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 func (rw *Db) LookupById(_ context.Context, resourceWithIder interface{}, _ ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
 	if err != nil {
@@ -963,7 +963,7 @@ func (rw *Db) LookupById(_ context.Context, resourceWithIder interface{}, _ ...O
 	}
 	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
 		return errors.Wrap(err, op)
 	}
@@ -981,10 +981,10 @@ func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e err
 		primaryKey = resourceType.GetPrivateId()
 		where = "private_id = ?"
 	default:
-		return "", "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder))
+		return "", "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unsupported interface type %T", resourceWithIder))
 	}
 	if primaryKey == "" {
-		return "", "", errors.New(errors.InvalidParameter, op, "missing primary key")
+		return "", "", errors.NewDeprecated(errors.InvalidParameter, op, "missing primary key")
 	}
 	return primaryKey, where, nil
 }
@@ -999,14 +999,14 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 func (rw *Db) LookupWhere(_ context.Context, resource interface{}, where string, args ...interface{}) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	if err := rw.underlying.Where(where, args...).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errors.E(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+			return errors.EDeprecated(errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
 		}
 		return errors.Wrap(err, op)
 	}
@@ -1024,13 +1024,13 @@ func (rw *Db) SearchWhere(_ context.Context, resources interface{}, where string
 	const op = "db.SearchWhere"
 	opts := GetOpts(opt...)
 	if rw.underlying == nil {
-		return errors.New(errors.InvalidParameter, op, "missing underlying db")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying db")
 	}
 	if where == "" && len(args) > 0 {
-		return errors.New(errors.InvalidParameter, op, "args provided with empty where")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "args provided with empty where")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface parameter must to be a pointer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "interface parameter must to be a pointer")
 	}
 	var err error
 	db := rw.underlying.Order(opts.withOrder)
@@ -1124,11 +1124,11 @@ func Clear(i interface{}, fields []string, depth int) error {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
-			return errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+			return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
 		}
 		clear(v, fm, depth)
 	default:
-		return errors.E(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
+		return errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithOp(op))
 	}
 	return nil
 }

@@ -34,16 +34,16 @@ type authAccount struct {
 func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, loginName, password string) (*Account, error) {
 	const op = "password.(Repository).Authenticate"
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing authMethodId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing authMethodId")
 	}
 	if loginName == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing loginName")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing loginName")
 	}
 	if password == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing password")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing password")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scopeId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scopeId")
 	}
 
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
@@ -90,7 +90,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 					return errors.Wrap(err, op)
 				}
 				if rowsUpdated > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 				}
 				return nil
 			},
@@ -112,22 +112,22 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old, new string, version uint32) (*Account, error) {
 	const op = "password.(Repository).ChangePassword"
 	if accountId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing account id")
 	}
 	if old == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing old password")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing old password")
 	}
 	if new == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing new password")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing new password")
 	}
 	if old == new {
-		return nil, errors.New(errors.PasswordsEqual, op, "passwords must not equal")
+		return nil, errors.NewDeprecated(errors.PasswordsEqual, op, "passwords must not equal")
 	}
 	if version == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scopeId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scopeId")
 	}
 
 	authAccount, err := r.LookupAccount(ctx, accountId)
@@ -135,7 +135,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, errors.Wrap(err, op)
 	}
 	if authAccount == nil {
-		return nil, errors.New(errors.RecordNotFound, op, "account not found")
+		return nil, errors.NewDeprecated(errors.RecordNotFound, op, "account not found")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -160,7 +160,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, errors.Wrap(err, op, errors.WithMsg("retrieve current password configuration"))
 	}
 	if cc.MinPasswordLength > len(new) {
-		return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
+		return nil, errors.NewDeprecated(errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
 	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
 	if err != nil {
@@ -184,7 +184,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(oplogWrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
@@ -192,7 +192,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			if err = w.Create(ctx, newCred, db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return errors.Wrap(err, op, errors.WithMsg("unable to create new credential"))
@@ -232,7 +232,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 		return nil, nil
 	case len(accts) > 1:
 		// this should never happen
-		return nil, errors.New(errors.Unknown, op, "multiple accounts returned for user name")
+		return nil, errors.NewDeprecated(errors.Unknown, op, "multiple accounts returned for user name")
 	default:
 		acct = accts[0]
 	}
@@ -260,13 +260,13 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, password string, version uint32) (*Account, error) {
 	const op = "password.(Repository).SetPassword"
 	if accountId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing accountId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing accountId")
 	}
 	if version == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scopeId")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scopeId")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -285,10 +285,10 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			return nil, errors.Wrap(err, op)
 		}
 		if cc == nil {
-			return nil, errors.New(errors.RecordNotFound, op, "unable to retrieve current configuration")
+			return nil, errors.NewDeprecated(errors.RecordNotFound, op, "unable to retrieve current configuration")
 		}
 		if cc.MinPasswordLength > len(password) {
-			return nil, errors.New(errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
+			return nil, errors.NewDeprecated(errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
 		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
 		if err != nil {
@@ -310,7 +310,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 				return errors.Wrap(err, op, errors.WithMsg("unable to update account version"))
 			}
 			if rowsUpdated != 1 {
-				return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
+				return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated account and %d rows updated", rowsUpdated))
 			}
 			acct = updatedAccount
 
@@ -327,7 +327,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 					return errors.Wrap(err, op)
 				}
 				if rowsDeleted > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 				}
 			}
 			if newCred != nil {

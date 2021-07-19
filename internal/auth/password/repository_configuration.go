@@ -22,7 +22,7 @@ type Configuration interface {
 func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) (Configuration, error) {
 	const op = "password.(Repository).GetConfiguration"
 	if authMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	cc, err := r.currentConfig(ctx, authMethodId)
 	if err != nil {
@@ -44,10 +44,10 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Configuration) (Configuration, error) {
 	const op = "password.(Repository).SetConfiguration"
 	if c == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing configuration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing configuration")
 	}
 	if c.AuthMethodId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if err := c.validate(); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -61,7 +61,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 		}
 		return out, nil
 	default:
-		return nil, errors.New(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
+		return nil, errors.NewDeprecated(errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
 }
 
@@ -107,7 +107,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -162,7 +162,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 		return nil, nil
 	case len(confs) > 1:
 		// this should never happen
-		return nil, errors.New(errors.Unknown, op, "multiple current configs returned for account")
+		return nil, errors.NewDeprecated(errors.Unknown, op, "multiple current configs returned for account")
 	default:
 		cc = confs[0]
 	}

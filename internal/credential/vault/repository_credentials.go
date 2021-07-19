@@ -18,10 +18,10 @@ var _ credential.Issuer = (*Repository)(nil)
 func (r *Repository) Issue(ctx context.Context, sessionId string, requests []credential.Request) ([]credential.Dynamic, error) {
 	const op = "vault.(Repository).Issue"
 	if sessionId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no session id")
 	}
 	if len(requests) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no requests")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no requests")
 	}
 
 	libs, err := r.getPrivateLibraries(ctx, requests)
@@ -55,7 +55,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		case MethodPost:
 			secret, err = client.post(lib.VaultPath, lib.HttpRequestBody)
 		default:
-			return nil, errors.New(errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", lib.PublicId))
+			return nil, errors.NewDeprecated(errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", lib.PublicId))
 		}
 
 		if err != nil {
@@ -84,7 +84,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				case err != nil:
 					return errors.Wrap(err, op)
 				case rowsInserted > 1:
-					return errors.New(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 credential would have been inserted")
 				}
 
 				rowsUpdated, err := w.Exec(ctx, updateQuery, updateQueryValues)
@@ -92,9 +92,9 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				case err != nil:
 					return errors.Wrap(err, op)
 				case rowsUpdated == 0:
-					return errors.New(errors.InvalidDynamicCredential, op, "no matching dynamic credential for session found")
+					return errors.NewDeprecated(errors.InvalidDynamicCredential, op, "no matching dynamic credential for session found")
 				case rowsUpdated > 1:
-					return errors.New(errors.MultipleRecords, op, "more than 1 session credential would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 session credential would have been updated")
 				}
 				return nil
 			},
@@ -125,7 +125,7 @@ var _ credential.Revoker = (*Repository)(nil)
 func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
 	const op = "vault.(Repository).Revoke"
 	if sessionId == "" {
-		return errors.New(errors.InvalidParameter, op, "no session id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "no session id")
 	}
 
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},

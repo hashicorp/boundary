@@ -16,7 +16,7 @@ import (
 func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAuthMethod"
 	if publicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	am, err := r.LookupAuthMethod(ctx, publicId)
 	if err != nil {
@@ -44,7 +44,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 				return err
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 auth method would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 auth method would have been deleted")
 			}
 			return nil
 		},

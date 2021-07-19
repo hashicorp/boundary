@@ -100,7 +100,7 @@ func (c *providers) delete(ctx context.Context, authMethodId string) {
 func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, error) {
 	const op = "oidc.convertToProvider"
 	if am == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method")
 	}
 	if err := am.isComplete(); err != nil {
 		return nil, errors.Wrap(err, op)
@@ -119,11 +119,11 @@ func convertToProvider(ctx context.Context, am *AuthMethod) (*oidc.Provider, err
 		oidc.WithProviderCA(strings.Join(am.Certificates, "\n")),
 	)
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider Configuration", errors.WithWrap(err))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider Configuration", errors.WithWrap(err))
 	}
 	p, err := oidc.NewProvider(c)
 	if err != nil {
-		return nil, errors.New(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider", errors.WithWrap(err))
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "AuthMethod cannot be converted to a valid OIDC Provider", errors.WithWrap(err))
 	}
 	return p, nil
 }

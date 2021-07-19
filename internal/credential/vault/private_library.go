@@ -193,7 +193,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 		}
 		purps := mapper.get(lib.GetPublicId())
 		if len(purps) == 0 {
-			return nil, errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("unknown library"))
+			return nil, errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("unknown library"))
 		}
 		for _, purp := range purps {
 			cp := lib.clone()
@@ -236,7 +236,7 @@ func newMapper(requests []credential.Request) (*requestMap, error) {
 		if purps, ok := ids[req.SourceId]; ok {
 			for _, purp := range purps {
 				if purp == req.Purpose {
-					return nil, errors.E(errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose"))
+					return nil, errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose"))
 				}
 			}
 		}

@@ -43,6 +43,6 @@ func convertToReason(s string) (TerminationReason, error) {
 	case ConnectionLimit.String():
 		return ConnectionLimit, nil
 	default:
-		return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

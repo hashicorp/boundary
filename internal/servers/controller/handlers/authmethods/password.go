@@ -174,7 +174,7 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	const op = "authmethod_service.toStoragePwAuthMethod"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil auth method.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
 	}
 	var opts []password.Option
 	if item.GetName() != nil {

@@ -68,7 +68,7 @@ type Service struct {
 func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	const op = "managed_groups.NewService"
 	if oidcRepo == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing oidc repository provided")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
 	}
 	return Service{oidcRepoFn: oidcRepo}, nil
 }
@@ -153,7 +153,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -195,7 +195,7 @@ func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedG
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -234,7 +234,7 @@ func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedG
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -306,7 +306,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (*oidc.ManagedGroup, error) {
 	const op = "managed_groups.(Service).createOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing item")
 	}
 	var opts []oidc.Option
 	if item.GetName() != nil {
@@ -342,7 +342,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (auth.ManagedGroup, error) {
 	const op = "managed_groups.(Service).createInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing item")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.ManagedGroup
 	switch auth.SubtypeFromId(am.GetPublicId()) {
@@ -362,7 +362,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.ManagedGroup) (*oidc.ManagedGroup, error) {
 	const op = "managed_groups.(Service).updateOidcInRepo"
 	if item == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil managed group.")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil managed group.")
 	}
 	mg := oidc.AllocManagedGroup()
 	mg.PublicId = id
@@ -575,7 +575,7 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	const op = "managed_groups.validateGetRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
@@ -583,7 +583,7 @@ func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 	const op = "managed_groups.validateCreateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -616,7 +616,7 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 	const op = "managed_groups.validateUpdateRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -646,7 +646,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 	const op = "managed_groups.validateDeleteRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
 }
@@ -654,7 +654,7 @@ func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 	const op = "managed_groups.validateListRequest"
 	if req == nil {
-		return errors.New(errors.InvalidParameter, op, "nil request")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {

@@ -76,13 +76,13 @@ const (
 func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	const op = "oidc.(Repository).UpdateAuthMethod"
 	if am == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.AuthMethod == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method store")
 	}
 	if am.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 
 	if err := validateFieldMask(fieldMaskPaths); err != nil {
@@ -108,7 +108,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "empty field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	origAm, err := r.lookupAuthMethod(ctx, am.PublicId)
@@ -116,11 +116,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(err, op)
 	}
 	if origAm == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.RecordNotFound, op, fmt.Sprintf("auth method %s", am.PublicId))
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("auth method %s", am.PublicId))
 	}
 	// there's no reason to continue if another controller has already updated this auth method.
 	if origAm.Version != version {
-		return nil, db.NoRowsAffected, errors.New(errors.VersionMismatch, op, fmt.Sprintf("update version %d doesn't match db version %d", version, origAm.Version))
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.VersionMismatch, op, fmt.Sprintf("update version %d doesn't match db version %d", version, origAm.Version))
 	}
 
 	opts := getOpts(opt...)
@@ -177,13 +177,13 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	for _, rawCm := range addMaps {
 		cm := rawCm.(*AccountClaimMap)
 		if cm.ToClaim == string(ToSubClaim) {
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}
 	}
 	for _, rawCm := range deleteMaps {
 		cm := rawCm.(*AccountClaimMap)
 		if cm.ToClaim == string(ToSubClaim) {
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("you cannot update account claim map %s=%s for the \"sub\" claim", cm.FromClaim, cm.ToClaim))
 		}
 	}
 
@@ -270,7 +270,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method version"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method version and %d rows updated", rowsUpdated))
 				}
 			default:
 				filteredDbMask = append(filteredDbMask, DisableDiscoveredConfigValidationField)
@@ -280,7 +280,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to update auth method"))
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated auth method and %d rows updated", rowsUpdated))
 				}
 			}
 			msgs = append(msgs, &authMethodOplogMsg)
@@ -292,7 +292,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete signing algorithms"))
 				}
 				if rowsDeleted != len(deleteAlgs) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("signing algorithms deleted %d did not match request for %d", rowsDeleted, len(deleteAlgs)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("signing algorithms deleted %d did not match request for %d", rowsDeleted, len(deleteAlgs)))
 				}
 				msgs = append(msgs, deleteAlgOplogMsgs...)
 			}
@@ -311,7 +311,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete certificates"))
 				}
 				if rowsDeleted != len(deleteCerts) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("certificates deleted %d did not match request for %d", rowsDeleted, len(deleteCerts)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("certificates deleted %d did not match request for %d", rowsDeleted, len(deleteCerts)))
 				}
 				msgs = append(msgs, deleteCertOplogMsgs...)
 			}
@@ -330,7 +330,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete audiences URLs"))
 				}
 				if rowsDeleted != len(deleteAuds) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("audiences deleted %d did not match request for %d", rowsDeleted, len(deleteAuds)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("audiences deleted %d did not match request for %d", rowsDeleted, len(deleteAuds)))
 				}
 				msgs = append(msgs, deleteAudsOplogMsgs...)
 			}
@@ -349,7 +349,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete claims scopes"))
 				}
 				if rowsDeleted != len(deleteScopes) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("claims scopes deleted %d did not match request for %d", rowsDeleted, len(deleteScopes)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("claims scopes deleted %d did not match request for %d", rowsDeleted, len(deleteScopes)))
 				}
 				msgs = append(msgs, deleteScopesOplogMsgs...)
 			}
@@ -368,7 +368,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete account claim maps"))
 				}
 				if rowsDeleted != len(deleteMaps) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("account claim maps deleted %d did not match request for %d", rowsDeleted, len(deleteMaps)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("account claim maps deleted %d did not match request for %d", rowsDeleted, len(deleteMaps)))
 				}
 				msgs = append(msgs, deleteMapsOplogMsgs...)
 			}
@@ -397,7 +397,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				return errors.Wrap(err, op, errors.WithMsg("unable to lookup auth method after update"))
 			}
 			if updatedAm == nil {
-				return errors.New(errors.RecordNotFound, op, "unable to lookup auth method after update")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "unable to lookup auth method after update")
 			}
 			return nil
 		},
@@ -461,7 +461,7 @@ var supportedFactories = map[voName]factoryFunc{
 			return nil, err
 		}
 		if len(acm) > 1 {
-			return nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", str))
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", str))
 		}
 		var m ClaimMap
 		for _, m = range acm {
@@ -487,24 +487,24 @@ func valueObjectChanges(
 ) (add []interface{}, del []interface{}, e error) {
 	const op = "valueObjectChanges"
 	if publicId == "" {
-		return nil, nil, errors.New(errors.InvalidParameter, op, "missing public id")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing public id")
 	}
 	if !validVoName(valueObjectName) {
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid value object name: %s", valueObjectName))
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("invalid value object name: %s", valueObjectName))
 	}
 	if !strutil.StrListContains(dbMask, string(valueObjectName)) && !strutil.StrListContains(nullFields, string(valueObjectName)) {
 		return nil, nil, nil
 	}
 	if len(strutil.RemoveDuplicates(newVOs, false)) != len(newVOs) {
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate new %s", valueObjectName))
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("duplicate new %s", valueObjectName))
 	}
 	if len(strutil.RemoveDuplicates(oldVOs, false)) != len(oldVOs) {
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("duplicate old %s", valueObjectName))
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("duplicate old %s", valueObjectName))
 	}
 
 	factory, ok := supportedFactories[valueObjectName]
 	if !ok {
-		return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("unsupported factory for value object: %s", valueObjectName))
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unsupported factory for value object: %s", valueObjectName))
 	}
 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
@@ -574,7 +574,7 @@ func validateFieldMask(fieldMaskPaths []string) error {
 		case strings.EqualFold(ClaimsScopesField, f):
 		case strings.EqualFold(AccountClaimMapsField, f):
 		default:
-			return errors.New(errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
+			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	return nil
@@ -670,12 +670,12 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 			return errors.Wrap(err, op)
 		}
 		if am == nil {
-			return errors.New(errors.RecordNotFound, op, fmt.Sprintf("unable to lookup auth method %s", opts.withPublicId))
+			return errors.NewDeprecated(errors.RecordNotFound, op, fmt.Sprintf("unable to lookup auth method %s", opts.withPublicId))
 		}
 	case opts.withAuthMethod != nil:
 		am = opts.withAuthMethod
 	default:
-		return errors.New(errors.InvalidParameter, op, "neither WithPublicId(...) nor WithAuthMethod(...) options were provided")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "neither WithPublicId(...) nor WithAuthMethod(...) options were provided")
 	}
 
 	// FYI: once converted to an oidc.Provider, any certs configured will be used as trust anchors for all HTTP requests
@@ -694,18 +694,18 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 
 	var result *multierror.Error
 	if info.Issuer != am.Issuer {
-		result = multierror.Append(result, errors.New(errors.InvalidParameter, op,
+		result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op,
 			fmt.Sprintf("auth method issuer doesn't match discovery issuer: expected %s and got %s", am.Issuer, info.Issuer)))
 	}
 	for _, a := range am.SigningAlgs {
 		if !strutil.StrListContains(info.IdTokenSigningAlgsSupported, a) {
-			result = multierror.Append(result, errors.New(errors.InvalidParameter, op,
+			result = multierror.Append(result, errors.NewDeprecated(errors.InvalidParameter, op,
 				fmt.Sprintf("auth method signing alg is not in discovered supported algs: expected %s and got %s", a, info.IdTokenSigningAlgsSupported)))
 		}
 	}
 	providerClient, err := provider.HTTPClient()
 	if err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
+		result = multierror.Append(result, errors.NewDeprecated(errors.Unknown, op, "unable to get oidc http client", errors.WithWrap(err)))
 		return result.ErrorOrNil()
 	}
 
@@ -718,20 +718,20 @@ func (r *Repository) ValidateDiscoveryInfo(ctx context.Context, opt ...Option) e
 	// test JWKs URL
 	statusCode, err := pingEndpoint(ctx, providerClient, "JWKs", "GET", info.JWKSURL)
 	if err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
+		result = multierror.Append(result, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("unable to verify JWKs endpoint: %s", info.JWKSURL), errors.WithWrap(err)))
 	}
 	if statusCode != 200 {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
+		result = multierror.Append(result, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("non-200 status (%d) from JWKs endpoint: %s", statusCode, info.JWKSURL), errors.WithWrap(err)))
 	}
 
 	// test Auth URL
 	if _, err := pingEndpoint(ctx, providerClient, "AuthURL", "GET", info.AuthURL); err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
+		result = multierror.Append(result, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("unable to verify authorize endpoint: %s", info.AuthURL), errors.WithWrap(err)))
 	}
 
 	// test Token URL
 	if _, err := pingEndpoint(ctx, providerClient, "TokenURL", "POST", info.TokenURL); err != nil {
-		result = multierror.Append(result, errors.New(errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
+		result = multierror.Append(result, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("unable to verify token endpoint: %s", info.TokenURL), errors.WithWrap(err)))
 	}
 
 	// we're not verifying the UserInfo URL, since it's not a required dependency.
@@ -748,11 +748,11 @@ func pingEndpoint(ctx context.Context, client HTTPClient, endpointType, method, 
 	const op = "oidc.pingEndpoint"
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
-		return 0, errors.New(errors.Unknown, op, fmt.Sprintf("unable to create %s http request", endpointType), errors.WithWrap(err))
+		return 0, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("unable to create %s http request", endpointType), errors.WithWrap(err))
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, errors.New(errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
+		return 0, errors.NewDeprecated(errors.Unknown, op, fmt.Sprintf("request to %s endpoint failed", endpointType), errors.WithWrap(err))
 	}
 	return resp.StatusCode, nil
 }

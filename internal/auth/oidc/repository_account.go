@@ -29,22 +29,22 @@ import (
 func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Account, opt ...Option) (*Account, error) {
 	const op = "oidc.(Repository).CreateAccount"
 	if a == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.AuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if a.Subject == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing subject")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing subject")
 	}
 	if a.PublicId != "" {
-		return nil, errors.New(errors.InvalidParameter, op, "public id must be empty")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "public id must be empty")
 	}
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	a = a.Clone()
@@ -62,18 +62,18 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 			return nil, errors.Wrap(err, op, errors.WithMsg("unable to get auth method"))
 		}
 		if am.GetIssuer() == "" {
-			return nil, errors.New(errors.InvalidParameter, op, "no issuer on auth method")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no issuer on auth method")
 		}
 		a.Issuer = am.GetIssuer()
 	}
 	if a.Issuer == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no issuer provided or defined in auth method")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no issuer provided or defined in auth method")
 	}
 
 	opts := getOpts(opt...)
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AccountPrefix+"_") {
-			return nil, errors.New(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
 		}
 		a.PublicId = opts.withPublicId
 	} else {
@@ -102,7 +102,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(errors.NotUnique, op, fmt.Sprintf(
+			return nil, errors.NewDeprecated(errors.NotUnique, op, fmt.Sprintf(
 				"in auth method %s: name %q already exists or subject %q already exists for issuer %q in scope %s",
 				a.AuthMethodId, a.Name, a.Subject, a.Issuer, scopeId))
 		}
@@ -116,7 +116,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	const op = "oidc.(Repository).LookupAccount"
 	if withPublicId == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	a := AllocAccount()
 	a.PublicId = withPublicId
@@ -133,7 +133,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	const op = "oidc.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -154,10 +154,10 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId string, opt ...Option) (int, error) {
 	const op = "oidc.(Repository).DeleteAccount"
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	ac := AllocAccount()
 	ac.PublicId = withPublicId
@@ -180,7 +180,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -207,19 +207,19 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	const op = "oidc.(Repository).UpdateAccount"
 	if a == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing Account")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing Account")
 	}
 	if a.Account == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing embedded Account")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing embedded Account")
 	}
 	if a.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	if version == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing version")
 	}
 	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -227,7 +227,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		case strings.EqualFold(NameField, f):
 		case strings.EqualFold(DescriptionField, f):
 		default:
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidFieldMask, op, f)
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidFieldMask, op, f)
 		}
 	}
 	var dbMask, nullFields []string
@@ -240,7 +240,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, errors.New(errors.EmptyFieldMask, op, "missing field mask")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.EmptyFieldMask, op, "missing field mask")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
@@ -264,7 +264,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 			return nil
 		},
@@ -272,7 +272,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, errors.New(errors.NotUnique, op,
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.NotUnique, op,
 				fmt.Sprintf("name %s already exists: %s", a.Name, a.PublicId))
 		}
 		return nil, db.NoRowsAffected, errors.Wrap(err, op, errors.WithMsg(a.PublicId))

@@ -103,22 +103,22 @@ func NewService(
 	vaultCredRepoFn common.VaultCredentialRepoFactory) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing target repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing target repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if serversRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing servers repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing servers repository")
 	}
 	if sessionRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing session repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")
 	}
 	if staticHostRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static host repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static host repository")
 	}
 	if vaultCredRepoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	return Service{
 		repoFn:           repoFn,
@@ -225,7 +225,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -263,7 +263,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -301,7 +301,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -355,7 +355,7 @@ func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -393,7 +393,7 @@ func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSe
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -431,7 +431,7 @@ func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTarget
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -469,7 +469,7 @@ func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddT
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -507,7 +507,7 @@ func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetT
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -545,7 +545,7 @@ func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.R
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -768,7 +768,7 @@ HostSetIterationLoop:
 	case host.StaticSubtype:
 		h, err := staticHostRepo.LookupHost(ctx, chosenId.hostId)
 		if err != nil {
-			return nil, errors.New(errors.InvalidParameter, op, "errors looking up host")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "errors looking up host")
 		}
 		endpointHost = h.Address
 		if endpointHost == "" {
@@ -1292,7 +1292,7 @@ func toProto(ctx context.Context, in target.Target, m []*target.TargetSet, l []*
 			case credential.IngressPurpose, credential.EgressPurpose:
 				// TODO: When we support other purposes add them to different fields here.
 			default:
-				return nil, errors.New(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
+				return nil, errors.NewDeprecated(errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential library on target", cl.GetCredentialPurpose()))
 			}
 		}
 	}

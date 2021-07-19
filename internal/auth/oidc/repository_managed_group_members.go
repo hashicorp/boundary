@@ -21,25 +21,25 @@ import (
 func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMethod, acct *Account, mgs []*ManagedGroup, _ ...Option) ([]*ManagedGroupMemberAccount, int, error) {
 	const op = "oidc.(Repository).SetManagedGroupMemberships"
 	if am == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method")
 	}
 	if am.AuthMethod == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method store")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method store")
 	}
 	if am.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 	if am.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing auth method scope id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method scope id")
 	}
 	if acct == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing account")
 	}
 	if acct.Account == nil {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account store")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing account store")
 	}
 	if acct.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, "missing account id")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
@@ -51,7 +51,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 	mgsToUpdate := make([]*ManagedGroup, 0, len(mgs))
 	for _, mg := range mgs {
 		if mg.Version == 0 {
-			return nil, db.NoRowsAffected, errors.New(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
+			return nil, db.NoRowsAffected, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("missing version for managed group %s", mg.PublicId))
 		}
 		if newMgPublicIds[mg.PublicId] {
 			// We've already seen this -- could be a duplicate in the incoming
@@ -103,7 +103,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 					return errors.Wrap(err, op)
 				}
 				if rowsUpdated != 1 {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("updated oidc managed group and %d rows updated", rowsUpdated))
 				}
 				msgs = append(msgs, &mgOplogMsg)
 			}
@@ -136,7 +136,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			// also none to delete, we return at this point. Nothing will have
 			// changed and nothing will be changed either.
 			if len(mgs) == 0 && len(toDelete) == 0 {
-				return errors.New(errors.GracefullyAborted, op, "nothing to do")
+				return errors.NewDeprecated(errors.GracefullyAborted, op, "nothing to do")
 			}
 
 			// Start with deletion
@@ -148,7 +148,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 					return errors.Wrap(err, op, errors.WithMsg("unable to delete managed group member accounts"))
 				}
 				if rowsDeleted != len(toDelete) {
-					return errors.New(errors.MultipleRecords, op, fmt.Sprintf("managed group member accounts deleted %d did not match request for %d", rowsDeleted, len(toDelete)))
+					return errors.NewDeprecated(errors.MultipleRecords, op, fmt.Sprintf("managed group member accounts deleted %d did not match request for %d", rowsDeleted, len(toDelete)))
 				}
 				totalRowsAffected += rowsDeleted
 				msgs = append(msgs, deleteOplogMsgs...)
@@ -195,7 +195,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, withAcctId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
 	const op = "oidc.(Repository).ListManagedGroupMembershipsByMember"
 	if withAcctId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing account id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing account id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -220,7 +220,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, withGroupId string, opt ...Option) ([]*ManagedGroupMemberAccount, error) {
 	const op = "oidc.(Repository).ListManagedGroupMembershipsByGroup"
 	if withGroupId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing managed group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing managed group id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit

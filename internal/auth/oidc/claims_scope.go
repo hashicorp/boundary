@@ -39,13 +39,13 @@ func NewClaimsScope(authMethodId, claimsScope string) (*ClaimsScope, error) {
 // validate the ClaimsScope.  On success, it will return nil.
 func (cs *ClaimsScope) validate(caller errors.Op) error {
 	if cs.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if cs.Scope == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing claims scope")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing claims scope")
 	}
 	if cs.Scope == DefaultClaimsScope {
-		return errors.New(errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "openid is the default scope and cannot be added as optional")
 	}
 	return nil
 }

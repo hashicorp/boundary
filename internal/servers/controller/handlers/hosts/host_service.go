@@ -64,7 +64,7 @@ var _ pbs.HostServiceServer = Service{}
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	return Service{staticRepoFn: repoFn}, nil
 }
@@ -143,7 +143,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -181,7 +181,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
@@ -222,7 +222,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
-		return nil, errors.New(errors.Internal, op, "no request context found")
+		return nil, errors.NewDeprecated(errors.Internal, op, "no request context found")
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)

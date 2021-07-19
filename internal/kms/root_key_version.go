@@ -25,10 +25,10 @@ type RootKeyVersion struct {
 func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersion, error) {
 	const op = "kms.NewRootKeyVersion"
 	if rootKeyId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing root key id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 	}
 	if len(key) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing key")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 	}
 
 	k := &RootKeyVersion{
@@ -60,18 +60,18 @@ func (k *RootKeyVersion) Clone() interface{} {
 func (k *RootKeyVersion) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(RootKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.CtKey == nil {
-			return errors.New(errors.InvalidParameter, op, "missing key")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing key")
 		}
 		if k.RootKeyId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing root key id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing root key id")
 		}
 	case db.UpdateOp:
-		return errors.New(errors.InvalidParameter, op, "key is immutable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

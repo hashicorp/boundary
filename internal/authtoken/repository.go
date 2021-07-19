@@ -35,11 +35,11 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	const op = "authtoken.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "nil db reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db reader")
 	case w == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "nil db writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db writer")
 	case kms == nil:
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := getOpts(opt...)
@@ -63,13 +63,13 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.(Repository).CreateAuthToken"
 	if withIamUser == nil || withIamUser.User == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user")
 	}
 	if withIamUser.GetPublicId() == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if withAuthAccountId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing auth account id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth account id")
 	}
 	at, err := newAuthToken()
 	if err != nil {
@@ -118,7 +118,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 				return errors.Wrap(err, op, errors.WithMsg("auth account lookup"))
 			}
 			if acct.GetIamUserId() != withIamUser.GetPublicId() {
-				return errors.New(errors.InvalidParameter, op,
+				return errors.NewDeprecated(errors.InvalidParameter, op,
 					fmt.Sprintf("auth account %q mismatch with iam user %q", withAuthAccountId, withIamUser.GetPublicId()))
 			}
 			at.ScopeId = acct.GetScopeId()
@@ -151,7 +151,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.(Repository).LookupAuthToken"
 	if id == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 	opts := getOpts(opt...)
 
@@ -192,10 +192,10 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.(Repository).ValidateToken"
 	if token == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token")
 	}
 	if id == "" {
-		return nil, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return nil, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 
 	retAT, err := r.LookupAuthToken(ctx, id, withTokenValue())
@@ -274,7 +274,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 					return errors.Wrap(err, op)
 				}
 				if rowsUpdated > 1 {
-					return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been updated")
+					return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been updated")
 				}
 				return nil
 			},
@@ -292,7 +292,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
 	const op = "authtoken.(Repository).ListAuthTokens"
 	if len(withScopeIds) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 
@@ -317,7 +317,7 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Option) (int, error) {
 	const op = "authtoken.(Repository).DeleteAuthToken"
 	if id == "" {
-		return db.NoRowsAffected, errors.New(errors.InvalidPublicId, op, "missing public id")
+		return db.NoRowsAffected, errors.NewDeprecated(errors.InvalidPublicId, op, "missing public id")
 	}
 
 	at, err := r.LookupAuthToken(ctx, id)
@@ -344,7 +344,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 				return errors.Wrap(err, op)
 			}
 			if rowsDeleted > 1 {
-				return errors.New(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+				return errors.NewDeprecated(errors.MultipleRecords, op, "more than 1 resource would have been deleted")
 			}
 			return nil
 		},
@@ -366,7 +366,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) (*AuthToken, error) {
 	const op = "authtoken.(Repository).IssueAuthToken"
 	if tokenRequestId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing token request id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing token request id")
 	}
 
 	var at *AuthToken
@@ -386,13 +386,13 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 				return errors.Wrap(err, op)
 			}
 			if rowsUpdated == 0 {
-				return errors.New(errors.RecordNotFound, op, "pending auth token not found")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "pending auth token not found")
 			}
 			if rowsUpdated > 1 {
-				return errors.New(errors.Internal, op, fmt.Sprintf("should have updated 1 row and we attempted to update %d rows", rowsUpdated))
+				return errors.NewDeprecated(errors.Internal, op, fmt.Sprintf("should have updated 1 row and we attempted to update %d rows", rowsUpdated))
 			}
 			if at.Status != string(IssuedStatus) {
-				return errors.New(errors.Internal, op, "updated auth token status != issued")
+				return errors.NewDeprecated(errors.Internal, op, "updated auth token status != issued")
 			}
 
 			// we need a new repo, that's using the same reader/writer as this TxHandler
@@ -406,7 +406,7 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 				return errors.Wrap(err, op)
 			}
 			if at == nil {
-				return errors.New(errors.RecordNotFound, op, "issued auth token not found")
+				return errors.NewDeprecated(errors.RecordNotFound, op, "issued auth token not found")
 			}
 			return nil
 		})

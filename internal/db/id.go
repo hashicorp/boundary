@@ -22,7 +22,7 @@ func NewPublicId(prefix string, opt ...Option) (string, error) {
 func newId(prefix string, opt ...Option) (string, error) {
 	const op = "db.newId"
 	if prefix == "" {
-		return "", errors.New(errors.InvalidParameter, op, "missing prefix")
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, "missing prefix")
 	}
 	var publicId string
 	var err error

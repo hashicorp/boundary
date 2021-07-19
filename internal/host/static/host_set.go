@@ -18,7 +18,7 @@ type HostSet struct {
 // ignored.
 func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	if catalogId == "" {
-		return nil, errors.New(errors.InvalidParameter, "static.NewHostSet", "no catalog id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostSet", "no catalog id")
 	}
 
 	opts := getOpts(opt...)

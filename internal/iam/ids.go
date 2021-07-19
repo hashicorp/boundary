@@ -42,7 +42,7 @@ func newGroupId() (string, error) {
 func newScopeId(scopeType scope.Type) (string, error) {
 	const op = "iam.newScopeId"
 	if scopeType == scope.Unknown {
-		return "", errors.New(errors.InvalidParameter, op, "unknown scope is not supported")
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, "unknown scope is not supported")
 	}
 	id, err := db.NewPublicId(scopeType.Prefix())
 	if err != nil {

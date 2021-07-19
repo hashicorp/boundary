@@ -56,16 +56,16 @@ type Token struct {
 func newToken(storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no store id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no store id")
 	}
 	if len(token) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token")
 	}
 	if len(accessor) == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no vault token accessor")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token accessor")
 	}
 	if expiration == 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "no expiration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no expiration")
 	}
 
 	tokenCopy := make(TokenSecret, len(token))

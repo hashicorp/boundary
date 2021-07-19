@@ -29,13 +29,13 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
 	if r == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
