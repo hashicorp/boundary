@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -128,6 +129,19 @@ type Controller struct {
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
 }
 
+func (c *Controller) InitNameIfEmpty() (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("controller config is empty")
+	}
+	if c.Name == "" {
+		var err error
+		if c.Name, err = base62.Random(10); err != nil {
+			return "", fmt.Errorf("error auto-generating controller name: %w", err)
+		}
+	}
+	return c.Name, nil
+}
+
 type Worker struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
@@ -146,6 +160,19 @@ type Worker struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
+}
+
+func (w *Worker) InitNameIfEmpty() (string, error) {
+	if w == nil {
+		return "", fmt.Errorf("worker config is empty")
+	}
+	if w.Name == "" {
+		var err error
+		if w.Name, err = base62.Random(10); err != nil {
+			return "", fmt.Errorf("error auto-generating worker name: %w", err)
+		}
+	}
+	return w.Name, nil
 }
 
 type Database struct {

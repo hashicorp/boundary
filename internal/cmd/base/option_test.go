@@ -23,6 +23,7 @@ func Test_GetOpts(t *testing.T) {
 			Format:              event.JSONSinkFormat,
 			AuditEnabled:        &isTrue,
 			ObservationsEnabled: &isTrue,
+			SysEventsEnabled:    &isTrue,
 		}
 		opts := getOpts(WithEventFlags(&f))
 		testOpts := getDefaultOptions()

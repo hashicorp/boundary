@@ -154,6 +154,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 func TestRequestInfo(t *testing.T) *RequestInfo {
 	t.Helper()
 	return &RequestInfo{
+		EventId:  "test-event-id",
 		Id:       "test-request-info",
 		Method:   "POST",
 		Path:     "/test/request/info",

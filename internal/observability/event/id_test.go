@@ -11,7 +11,7 @@ import (
 func Test_newId(t *testing.T) {
 	t.Run("basics", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		got, err := newId("pre")
+		got, err := NewId("pre")
 		require.NoError(err)
 		assert.True(strings.HasPrefix(got, "pre"))
 	})

@@ -26,7 +26,7 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 	opts := getOpts(opt...)
 	if opts.withId == "" {
 		var err error
-		opts.withId, err = newId(string(ErrorType))
+		opts.withId, err = NewId(string(ErrorType))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
