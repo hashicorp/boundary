@@ -312,13 +312,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Data.(map[string]interface{})["header"].(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					Id:     got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
 				}
 				hdr := map[string]interface{}{
 					"status":     http.StatusTeapot,
-					"start":      got.Data.(map[string]interface{})["header"].(map[string]interface{})["start"].(string),
-					"stop":       got.Data.(map[string]interface{})["header"].(map[string]interface{})["stop"].(string),
-					"latency-ms": got.Data.(map[string]interface{})["header"].(map[string]interface{})["latency-ms"].(float64),
+					"start":      got.Data.(map[string]interface{})["start"].(string),
+					"stop":       got.Data.(map[string]interface{})["stop"].(string),
+					"latency-ms": got.Data.(map[string]interface{})["latency-ms"].(float64),
 				}
 				wantJson := testJson(t, event.ObservationType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -522,15 +522,11 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 	switch eventType {
 	case event.ObservationType:
 		payload = map[string]interface{}{
-			event.IdField: got.Data.(map[string]interface{})[event.IdField].(string),
-			event.HeaderField: map[string]interface{}{
-				event.RequestInfoField: reqInfo,
-				event.VersionField:     testObservationVersion,
-			},
+			event.RequestInfoField: reqInfo,
+			event.VersionField:     testObservationVersion,
 		}
-		h := payload[event.HeaderField].(map[string]interface{})
 		for k, v := range hdr {
-			h[k] = v
+			payload[k] = v
 		}
 	case event.AuditType:
 		payload = map[string]interface{}{

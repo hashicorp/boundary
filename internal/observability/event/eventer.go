@@ -452,7 +452,7 @@ func (e *Eventer) writeObservation(ctx context.Context, event *observation) erro
 		if event.Detail != nil {
 			event.Detail[OpField] = string(event.Op)
 		}
-		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event.Payload)
+		return e.broker.Send(ctx, eventlogger.EventType(ObservationType), event)
 	})
 	if err != nil {
 		e.logger.Error("encountered an error sending an observation event", "error:", err.Error())

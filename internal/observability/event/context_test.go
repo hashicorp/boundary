@@ -513,7 +513,7 @@ func Test_Filtering(t *testing.T) {
 	}{
 		{
 			name:  "allowed",
-			allow: []string{`"/Data/Header/list" contains "1"`},
+			allow: []string{`"/Data/list" contains "1"`},
 			hdr: map[string]interface{}{
 				"list": []string{"1", "2"},
 			},
@@ -521,7 +521,7 @@ func Test_Filtering(t *testing.T) {
 		},
 		{
 			name:  "not-allowed",
-			allow: []string{`"/Data/Header/list" contains "22"`},
+			allow: []string{`"/Data/list" contains "22"`},
 			hdr: map[string]interface{}{
 				"list": []string{"1", "2"},
 			},
@@ -529,7 +529,7 @@ func Test_Filtering(t *testing.T) {
 		},
 		{
 			name: "deny",
-			deny: []string{`"/Data/Header/list" contains "1"`},
+			deny: []string{`"/Data/list" contains "1"`},
 			hdr: map[string]interface{}{
 				"list": []string{"1", "2"},
 			},
@@ -537,7 +537,7 @@ func Test_Filtering(t *testing.T) {
 		},
 		{
 			name: "not-deny",
-			deny: []string{`"/Data/Header/list" contains "22"`},
+			deny: []string{`"/Data/list" contains "22"`},
 			hdr: map[string]interface{}{
 				"list": []string{"1", "2"},
 			},
@@ -601,15 +601,12 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 		Type:            got.Type,
 		DataContentType: got.DataContentType,
 		Data: map[string]interface{}{
-			event.IdField: got.Data.(map[string]interface{})[event.IdField].(string),
-			event.HeaderField: map[string]interface{}{
-				event.RequestInfoField: reqInfo,
-				event.VersionField:     testObservationVersion,
-			},
+			event.RequestInfoField: reqInfo,
+			event.VersionField:     testObservationVersion,
 		},
 	}
 	if hdr != nil {
-		h := j.Data.(map[string]interface{})[event.HeaderField].(map[string]interface{})
+		h := j.Data.(map[string]interface{})
 		for k, v := range hdr {
 			h[k] = v
 		}
