@@ -71,8 +71,8 @@ type Command struct {
 	flagAudit                        string
 	flagObservations                 string
 	flagSysEvents                    string
-	flagEventAllowFilters            []string
-	flagEventDenyFilters             []string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
 }
 
 func (c *Command) Synopsis() string {
@@ -295,13 +295,13 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "event-allow-filter",
-		Target: &c.flagEventAllowFilters,
-		Usage:  `The optional event allow filter. May be specified multiple times.`,
+		Target: &c.flagEveryEventAllowFilters,
+		Usage:  `The optional every event allow filter. May be specified multiple times.`,
 	})
 	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "event-deny-filter",
-		Target: &c.flagEventDenyFilters,
-		Usage:  `The optional event deny filter. May be specified multiple times.`,
+		Target: &c.flagEveryEventDenyFilters,
+		Usage:  `The optional every event deny filter. May be specified multiple times.`,
 	})
 
 	return set
@@ -477,8 +477,8 @@ func (c *Command) Run(args []string) int {
 		Audit:        c.flagAudit,
 		Observations: c.flagObservations,
 		SysEvents:    c.flagSysEvents,
-		Allow:        c.flagEventAllowFilters,
-		Deny:         c.flagEventDenyFilters,
+		Allow:        c.flagEveryEventAllowFilters,
+		Deny:         c.flagEveryEventDenyFilters,
 	})
 	if err != nil {
 		c.UI.Error(err.Error())
