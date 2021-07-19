@@ -13,7 +13,7 @@ func newTcpTargetId() (string, error) {
 	const op = "target.newTcpTargetId"
 	id, err := db.NewPublicId(TcpTargetPrefix)
 	if err != nil {
-		return "", errors.Wrap(err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }

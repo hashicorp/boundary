@@ -195,17 +195,17 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		default:
 			iamRepo, err := v.iamRepoFn()
 			if err != nil {
-				ret.Error = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+				ret.Error = errors.WrapDeprecated(err, op, errors.WithMsg("failed to get iam repo"))
 				return
 			}
 
 			scp, err := iamRepo.LookupScope(v.ctx, ret.Scope.Id)
 			if err != nil {
-				ret.Error = errors.Wrap(err, op)
+				ret.Error = errors.WrapDeprecated(err, op)
 				return
 			}
 			if scp == nil {
-				ret.Error = errors.New(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
+				ret.Error = errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
 				return
 			}
 			ret.Scope = &scopes.ScopeInfo{
@@ -403,7 +403,7 @@ func (v *verifier) decryptToken() {
 func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retAcl perms.ACL, retErr error) {
 	const op = "auth.(verifier).performAuthCheck"
 	// Ensure we return an error by default if we forget to set this somewhere
-	retErr = errors.New(errors.Unknown, op, "default auth error")
+	retErr = errors.NewDeprecated(errors.Unknown, op, "default auth error")
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
@@ -427,7 +427,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 		}
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
-			retErr = errors.Wrap(err, op)
+			retErr = errors.WrapDeprecated(err, op)
 			return
 		}
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
@@ -450,7 +450,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 
 	iamRepo, err := v.iamRepoFn()
 	if err != nil {
-		retErr = errors.Wrap(err, op, errors.WithMsg("failed to get iam repo"))
+		retErr = errors.WrapDeprecated(err, op, errors.WithMsg("failed to get iam repo"))
 		return
 	}
 
@@ -469,11 +469,11 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	default:
 		scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
 		if err != nil {
-			retErr = errors.Wrap(err, op)
+			retErr = errors.WrapDeprecated(err, op)
 			return
 		}
 		if scp == nil {
-			retErr = errors.New(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", v.res.ScopeId))
+			retErr = errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", v.res.ScopeId))
 			return
 		}
 		scopeInfo = &scopes.ScopeInfo{
@@ -500,7 +500,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 	// u_anon and u_auth)
 	grantTuples, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
-		retErr = errors.Wrap(err, op)
+		retErr = errors.WrapDeprecated(err, op)
 		return
 	}
 	parsedGrants = make([]perms.Grant, 0, len(grantTuples))
@@ -515,7 +515,7 @@ func (v verifier) performAuthCheck() (aclResults perms.ACLResults, userId string
 			perms.WithAccountId(accountId),
 			perms.WithSkipFinalValidation(true))
 		if err != nil {
-			retErr = errors.Wrap(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
+			retErr = errors.WrapDeprecated(err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
 			return
 		}
 		parsedGrants = append(parsedGrants, parsed)

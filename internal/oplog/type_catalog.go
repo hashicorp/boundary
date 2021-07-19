@@ -26,10 +26,10 @@ func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
 	reg := TypeCatalog{}
 	for _, t := range withTypes {
 		if t == (Type{}) {
-			return nil, errors.New(errors.InvalidParameter, op, "error type is {}")
+			return nil, errors.NewDeprecated(errors.InvalidParameter, op, "error type is {}")
 		}
 		if err := reg.Set(t.Interface, t.Name); err != nil {
-			return nil, errors.Wrap(err, op, errors.WithMsg("error setting the type"))
+			return nil, errors.WrapDeprecated(err, op, errors.WithMsg("error setting the type"))
 		}
 	}
 	return &reg, nil
@@ -39,10 +39,10 @@ func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
 func (t *TypeCatalog) GetTypeName(i interface{}) (string, error) {
 	const op = "oplog.(TypeCatalog).GetTypeName"
 	if i == nil {
-		return "", errors.New(errors.InvalidParameter, op, "nil interface")
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return "", errors.New(errors.InvalidParameter, op, "interface must to be a pointer")
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, "interface must to be a pointer")
 	}
 	interfaceType := reflect.TypeOf(i)
 	for name, t := range *t {
@@ -50,20 +50,20 @@ func (t *TypeCatalog) GetTypeName(i interface{}) (string, error) {
 			return name, nil
 		}
 	}
-	return "", errors.New(errors.InvalidParameter, op, fmt.Sprintf("unknown name for interface: %T", i))
+	return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown name for interface: %T", i))
 }
 
 // Set creates an entry in the catalog for the interface
 func (t TypeCatalog) Set(i interface{}, typeName string) error {
 	const op = "oplog.(TypeCatalog).Set"
 	if i == nil {
-		return errors.New(errors.InvalidParameter, op, "nil interface")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "nil interface")
 	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return errors.New(errors.InvalidParameter, op, "interface must to be a pointer")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "interface must to be a pointer")
 	}
 	if typeName == "" {
-		return errors.New(errors.InvalidParameter, op, "missing type name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing type name")
 	}
 	t[typeName] = reflect.TypeOf(i)
 	return nil
@@ -73,10 +73,10 @@ func (t TypeCatalog) Set(i interface{}, typeName string) error {
 func (t TypeCatalog) Get(typeName string) (interface{}, error) {
 	const op = "oplog.(TypeCatalog).Get"
 	if typeName == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing type name")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing type name")
 	}
 	if typ, ok := t[typeName]; ok {
 		return reflect.New(typ.Elem()).Elem().Addr().Interface(), nil
 	}
-	return nil, errors.New(errors.KeyNotFound, op, "type name not found")
+	return nil, errors.NewDeprecated(errors.KeyNotFound, op, "type name not found")
 }

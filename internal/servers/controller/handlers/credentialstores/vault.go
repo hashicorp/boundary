@@ -16,7 +16,7 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 	const op = "credentialstores.extractClientCertAndPk"
 	pks, err := decodePemBlocks(pk)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("failed to parse client certificate private key"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed to parse client certificate private key"))
 	}
 	var pkPem *pem.Block
 	switch len(pks) {
@@ -24,12 +24,12 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 	case 1:
 		pkPem = pks[0]
 	default:
-		return nil, nil, errors.New(errors.InvalidParameter, op, "private key payload contained multiple pem blocks")
+		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "private key payload contained multiple pem blocks")
 	}
 
 	bs, err := decodePemBlocks(cert)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, op, errors.WithMsg("failed to parse client certificate into pem blocks"))
+		return nil, nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed to parse client certificate into pem blocks"))
 	}
 	pkIdx := -1
 	for i, b := range bs {
@@ -38,9 +38,9 @@ func extractClientCertAndPk(cert, pk string) ([]*pem.Block, *pem.Block, error) {
 			case pkPem == nil:
 				pkIdx, pkPem = i, b
 			case pkIdx < 0:
-				return nil, nil, errors.New(errors.InvalidParameter, op, "client certificate contains a private key when one was also provided separately")
+				return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "client certificate contains a private key when one was also provided separately")
 			default:
-				return nil, nil, errors.New(errors.InvalidParameter, op, fmt.Sprintf("second primary key found at %d after previous one found at %d", i, pkIdx))
+				return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("second primary key found at %d after previous one found at %d", i, pkIdx))
 			}
 		}
 	}
@@ -64,7 +64,7 @@ func decodePemBlocks(input string) ([]*pem.Block, error) {
 		ret = append(ret, p)
 	}
 	if len(cpIn) > 0 {
-		return nil, errors.New(errors.InvalidParameter, op, "not all data parseable by pem block")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "not all data parseable by pem block")
 	}
 	return ret, nil
 }

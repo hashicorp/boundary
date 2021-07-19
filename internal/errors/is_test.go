@@ -40,12 +40,12 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "CodeUnique",
-			in:   errors.E(errors.WithCode(errors.NotUnique)),
+			in:   errors.EDeprecated(errors.WithCode(errors.NotUnique)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-unique",
-			in: errors.E(
+			in: errors.EDeprecated(
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23505"),
 				}),
@@ -54,12 +54,12 @@ func TestError_IsUnique(t *testing.T) {
 		},
 		{
 			name: "RecordNotFound",
-			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
+			in:   errors.EDeprecated(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
 			name: "conflicting-wrapped-code",
-			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.NotUnique)))),
+			in:   errors.EDeprecated(errors.WithCode(errors.NotNull), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.NotUnique)))),
 			want: false,
 		},
 	}
@@ -102,12 +102,12 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "ErrCodeCheckConstraint",
-			in:   errors.E(errors.WithCode(errors.CheckConstraint)),
+			in:   errors.EDeprecated(errors.WithCode(errors.CheckConstraint)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-check-constraint",
-			in: errors.E(errors.WithCode(errors.CheckConstraint),
+			in: errors.EDeprecated(errors.WithCode(errors.CheckConstraint),
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23514"),
 				}),
@@ -116,12 +116,12 @@ func TestError_IsCheckConstraint(t *testing.T) {
 		},
 		{
 			name: "RecordNotFound",
-			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
+			in:   errors.EDeprecated(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
 			name: "conflicting-wrapped-code",
-			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.CheckConstraint)))),
+			in:   errors.EDeprecated(errors.WithCode(errors.NotNull), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.CheckConstraint)))),
 			want: false,
 		},
 	}
@@ -171,12 +171,12 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "ErrCodeNotNull",
-			in:   errors.E(errors.WithCode(errors.NotNull)),
+			in:   errors.EDeprecated(errors.WithCode(errors.NotNull)),
 			want: true,
 		},
 		{
 			name: "wrapped-pq-is-not-null",
-			in: errors.E(errors.WithCode(errors.NotNull),
+			in: errors.EDeprecated(errors.WithCode(errors.NotNull),
 				errors.WithWrap(&pq.Error{
 					Code: pq.ErrorCode("23502"),
 				}),
@@ -185,12 +185,12 @@ func TestError_IsNotNullError(t *testing.T) {
 		},
 		{
 			name: "RecordNotFound",
-			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
+			in:   errors.EDeprecated(errors.WithCode(errors.RecordNotFound)),
 			want: false,
 		},
 		{
 			name: "conflicting-wrapped-code",
-			in:   errors.E(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.E(errors.WithCode(errors.NotNull)))),
+			in:   errors.EDeprecated(errors.WithCode(errors.CheckConstraint), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.NotNull)))),
 			want: false,
 		},
 	}
@@ -270,7 +270,7 @@ func TestError_IsNotFoundError(t *testing.T) {
 		},
 		{
 			name: "not-found-error",
-			in:   errors.E(errors.WithCode(errors.RecordNotFound)),
+			in:   errors.EDeprecated(errors.WithCode(errors.RecordNotFound)),
 			want: true,
 		},
 		{
@@ -280,7 +280,7 @@ func TestError_IsNotFoundError(t *testing.T) {
 		},
 		{
 			name: "conflicting-wrapped-code",
-			in:   errors.E(errors.WithCode(errors.NotNull), errors.WithWrap(errors.E(errors.WithCode(errors.RecordNotFound)))),
+			in:   errors.EDeprecated(errors.WithCode(errors.NotNull), errors.WithWrap(errors.EDeprecated(errors.WithCode(errors.RecordNotFound)))),
 			want: false,
 		},
 	}

@@ -1,10 +1,12 @@
 package errors
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/lib/pq"
 )
 
@@ -46,7 +48,85 @@ type Err struct {
 //
 // * WithCode() - allows you to specify an optional Code, this code will be prioritized
 // over a code used from WithWrap().
-func E(opt ...Option) error {
+func E(ctx context.Context, opt ...Option) error {
+
+	opts := GetOpts(opt...)
+	var code Code
+
+	// check if options includes a wrapped error to take code from
+	var err *Err
+	if As(opts.withErrWrapped, &err) {
+		code = err.Code
+	}
+
+	// if options include withCode prioritize using that code
+	// even if one was set via wrapped error above
+	if opts.withCode != Unknown {
+		code = opts.withCode
+	}
+
+	err = &Err{
+		Code:    code,
+		Op:      opts.withOp,
+		Wrapped: opts.withErrWrapped,
+		Msg:     opts.withErrMsg,
+	}
+	if opts.withoutEvent {
+		return err
+	}
+
+	event.WriteError(ctx, "", err)
+
+	return err
+}
+
+// New creates a new Err with provided code, op and msg
+// It supports the options of:
+//
+// * WithWrap() - allows you to specify an error to wrap
+func New(ctx context.Context, c Code, op Op, msg string, opt ...Option) error {
+	if c != Unknown {
+		opt = append(opt, WithCode(c))
+	}
+	if op != "" {
+		opt = append(opt, WithOp(op))
+	}
+	if msg != "" {
+		opt = append(opt, WithMsg(msg))
+	}
+
+	return E(ctx, opt...)
+}
+
+// Wrap creates a new Err from the provided err and op,
+// preserving the code from the originating error.
+// It supports the options of:
+//
+// * WithMsg() - allows you to specify an optional error msg, if the default
+// msg for the error Code is not sufficient.
+func Wrap(ctx context.Context, e error, op Op, opt ...Option) error {
+	if op != "" {
+		opt = append(opt, WithOp(op))
+	}
+	if e != nil {
+		// TODO: once db package has been refactored to only return domain errors,
+		// this convert can be removed
+		err := Convert(e)
+		if err != nil {
+			// wrap the converted error
+			e = err
+		}
+		opt = append(opt, WithWrap(e))
+	}
+
+	return E(ctx, opt...)
+}
+
+// EDeprecated is the legacy version of E which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from EDeprecated to
+// E, please update ICU-1883
+func EDeprecated(opt ...Option) error {
 	opts := GetOpts(opt...)
 	var code Code
 
@@ -70,11 +150,11 @@ func E(opt ...Option) error {
 	}
 }
 
-// New creates a new Err with provided code, op and msg
-// It supports the options of:
-//
-// * WithWrap() - allows you to specify an error to wrap
-func New(c Code, op Op, msg string, opt ...Option) error {
+// NewDeprecated is the legacy version of New which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from NewDeprecated to
+// New, please update ICU-1883
+func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
 	if c != Unknown {
 		opt = append(opt, WithCode(c))
 	}
@@ -85,16 +165,14 @@ func New(c Code, op Op, msg string, opt ...Option) error {
 		opt = append(opt, WithMsg(msg))
 	}
 
-	return E(opt...)
+	return EDeprecated(opt...)
 }
 
-// Wrap creates a new Err from the provided err and op,
-// preserving the code from the originating error.
-// It supports the options of:
-//
-// * WithMsg() - allows you to specify an optional error msg, if the default
-// msg for the error Code is not sufficient.
-func Wrap(e error, op Op, opt ...Option) error {
+// WrapDeprecated is the legacy version of New which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from WrapDeprecated to
+// New, please update ICU-1884
+func WrapDeprecated(e error, op Op, opt ...Option) error {
 	if op != "" {
 		opt = append(opt, WithOp(op))
 	}
@@ -109,7 +187,7 @@ func Wrap(e error, op Op, opt ...Option) error {
 		opt = append(opt, WithWrap(e))
 	}
 
-	return E(opt...)
+	return EDeprecated(opt...)
 }
 
 // Convert will convert the error to a Boundary *Err (returning it as an error)
@@ -130,24 +208,24 @@ func Convert(e error) *Err {
 		if pqError.Code.Class() == "23" { // class of integrity constraint violations
 			switch pqError.Code {
 			case "23505": // unique_violation
-				return E(WithMsg(pqError.Message), WithWrap(E(WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
+				return EDeprecated(WithMsg(pqError.Message), WithWrap(EDeprecated(WithCode(NotUnique), WithMsg("unique constraint violation")))).(*Err)
 			case "23502": // not_null_violation
 				msg := fmt.Sprintf("%s must not be empty", pqError.Column)
-				return E(WithMsg(msg), WithWrap(E(WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
+				return EDeprecated(WithMsg(msg), WithWrap(EDeprecated(WithCode(NotNull), WithMsg("not null constraint violated")))).(*Err)
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pqError.Constraint)
-				return E(WithMsg(msg), WithWrap(E(WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
+				return EDeprecated(WithMsg(msg), WithWrap(EDeprecated(WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
 			default:
-				return E(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
+				return EDeprecated(WithCode(NotSpecificIntegrity), WithMsg(pqError.Message)).(*Err)
 			}
 		}
 		switch pqError.Code {
 		case "42P01":
-			return E(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
+			return EDeprecated(WithCode(MissingTable), WithMsg(pqError.Message)).(*Err)
 		case "42703":
-			return E(WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
+			return EDeprecated(WithCode(ColumnNotFound), WithMsg(pqError.Message)).(*Err)
 		case "P0001":
-			return E(WithCode(Exception), WithMsg(pqError.Message)).(*Err)
+			return EDeprecated(WithCode(Exception), WithMsg(pqError.Message)).(*Err)
 		}
 	}
 	// unfortunately, we can't help.

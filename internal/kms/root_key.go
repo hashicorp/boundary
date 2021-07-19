@@ -25,7 +25,7 @@ type RootKey struct {
 func NewRootKey(scopeId string, _ ...Option) (*RootKey, error) {
 	const op = "kms.NewRootKey"
 	if scopeId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	c := &RootKey{
 		RootKey: &store.RootKey{
@@ -55,15 +55,15 @@ func (k *RootKey) Clone() interface{} {
 func (k *RootKey) VetForWrite(_ context.Context, _ db.Reader, opType db.OpType, _ ...db.Option) error {
 	const op = "kms.(RootKey).VetForWrite"
 	if k.PrivateId == "" {
-		return errors.New(errors.InvalidParameter, op, "missing private id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing private id")
 	}
 	switch opType {
 	case db.CreateOp:
 		if k.ScopeId == "" {
-			return errors.New(errors.InvalidParameter, op, "missing scope id")
+			return errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 		}
 	case db.UpdateOp:
-		return errors.New(errors.InvalidParameter, op, "key is immutable")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "key is immutable")
 	}
 	return nil
 }

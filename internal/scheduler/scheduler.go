@@ -49,13 +49,13 @@ type Scheduler struct {
 func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "missing server id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 	if jobRepoFn == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing job repo function")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
 	}
 	if logger == nil {
-		return nil, errors.New(errors.InvalidParameter, op, "missing logger")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing logger")
 	}
 
 	opts := getOpts(opt...)
@@ -80,7 +80,7 @@ func New(serverId string, jobRepoFn jobRepoFactory, logger hclog.Logger, opt ...
 func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
 	if err := validateJob(j); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	if _, ok := s.registeredJobs.Load(j.Name()); ok {
@@ -90,13 +90,13 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	opts := getOpts(opt...)
 	_, err = repo.CreateJob(ctx, j.Name(), j.Description(), job.WithNextRunIn(opts.withNextRunIn))
 	if err != nil && !errors.IsUniqueError(err) {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	s.registeredJobs.Store(j.Name(), j)
 
@@ -112,16 +112,16 @@ func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error
 func (s *Scheduler) UpdateJobNextRunInAtLeast(ctx context.Context, name string, nextRunInAtLeast time.Duration, _ ...Option) error {
 	const op = "scheduler.(Scheduler).UpdateJobNextRunInAtLeast"
 	if name == "" {
-		return errors.New(errors.InvalidParameter, op, "missing name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	_, err = repo.UpdateJobNextRunInAtLeast(ctx, name, nextRunInAtLeast)
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 	return nil
 }
@@ -139,18 +139,18 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	}
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	repo, err := s.jobRepoFn()
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	// Interrupt all runs previously allocated to this server
 	_, err = repo.InterruptRuns(ctx, 0, job.WithServerId(s.serverId))
 	if err != nil {
-		return errors.Wrap(err, op)
+		return errors.WrapDeprecated(err, op)
 	}
 
 	go s.start(ctx)

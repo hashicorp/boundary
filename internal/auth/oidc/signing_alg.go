@@ -78,10 +78,10 @@ func SupportedAlgorithm(a Alg) bool {
 // validate the SigningAlg.  On success, it will return nil.
 func (s *SigningAlg) validate(caller errors.Op) error {
 	if s.OidcMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing oidc auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing oidc auth method id")
 	}
 	if _, ok := supportedAlgorithms[Alg(s.Alg)]; !ok {
-		return errors.New(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
+		return errors.NewDeprecated(errors.InvalidParameter, caller, fmt.Sprintf("unsupported signing algorithm: %s", s.Alg))
 	}
 	return nil
 }

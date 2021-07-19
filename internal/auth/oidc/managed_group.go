@@ -41,13 +41,13 @@ func NewManagedGroup(authMethodId string, filter string, opt ...Option) (*Manage
 // validate the Managed Group.  On success, it will return nil.
 func (mg *ManagedGroup) validate(caller errors.Op) error {
 	if mg.AuthMethodId == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing auth method id")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing auth method id")
 	}
 	if mg.Filter == "" {
-		return errors.New(errors.InvalidParameter, caller, "missing filter")
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "missing filter")
 	}
 	if _, err := bexpr.CreateEvaluator(mg.Filter); err != nil {
-		return errors.New(errors.InvalidParameter, caller, "error evaluating filter expression", errors.WithWrap(err))
+		return errors.NewDeprecated(errors.InvalidParameter, caller, "error evaluating filter expression", errors.WithWrap(err))
 	}
 
 	return nil

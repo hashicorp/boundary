@@ -16,10 +16,10 @@ type HostSetMember struct {
 func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
 	const op = "static.NewHostSetMember"
 	if hostSetId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no host set id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no host set id")
 	}
 	if hostId == "" {
-		return nil, errors.New(errors.InvalidParameter, op, "no host id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no host id")
 	}
 	member := &HostSetMember{
 		HostSetMember: &store.HostSetMember{

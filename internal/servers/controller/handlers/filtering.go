@@ -29,7 +29,7 @@ func NewFilter(f string) (*Filter, error) {
 	}
 	e, err := bexpr.CreateEvaluator(f, bexpr.WithTagName("json"), bexpr.WithHookFn(wellKnownTypeFilterHook))
 	if err != nil {
-		return nil, errors.Wrap(err, op, errors.WithMsg("couldn't build filter"), errors.WithCode(errors.InvalidParameter))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("couldn't build filter"), errors.WithCode(errors.InvalidParameter))
 	}
 	return &Filter{eval: e}, nil
 }
