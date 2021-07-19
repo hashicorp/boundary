@@ -141,6 +141,9 @@ type Writer interface {
 		msgs []*oplog.Message,
 		opt ...Option,
 	) error
+
+	// ScanRows will scan sql rows into the interface provided
+	ScanRows(rows *sql.Rows, result interface{}) error
 }
 
 const (

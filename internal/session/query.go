@@ -308,7 +308,7 @@ with
       end_time is null
         and
       -- Current state isn't closed state
-      state in ('authorized', 'connected')
+      state not in ('closed')
         and
       -- It's not in limbo between when it moved into this state and when
       -- it started being reported by the worker, which is roughly every
@@ -334,9 +334,9 @@ with
       returning public_id, server_id
   )
   select
-    dead_servers.private_id,
-    dead_servers.update_time,
-    count(closed_connections.public_id)
+    dead_servers.private_id as server_id,
+    dead_servers.update_time as last_update_time,
+    count(closed_connections.public_id) as number_connections_closed
   from dead_servers
     left join closed_connections
       on dead_servers.private_id = closed_connections.server_id

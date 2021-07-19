@@ -185,21 +185,12 @@ func (r *Repository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePe
 			defer rows.Close()
 
 			for rows.Next() {
-				var (
-					serverId                string
-					lastUpdateTime          time.Time
-					numberConnectionsClosed int
-				)
-
-				if err := rows.Scan(&serverId, &lastUpdateTime, &numberConnectionsClosed); err != nil {
+				var result CloseConnectionsForDeadWorkersResult
+				if err := w.ScanRows(rows, &result); err != nil {
 					return errors.Wrap(err, op)
 				}
 
-				results = append(results, CloseConnectionsForDeadWorkersResult{
-					ServerId:                serverId,
-					LastUpdateTime:          lastUpdateTime,
-					NumberConnectionsClosed: numberConnectionsClosed,
-				})
+				results = append(results, result)
 			}
 
 			return nil
