@@ -181,6 +181,16 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		if opts.withEventFlags.SysEventsEnabled != nil {
 			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
 		}
+		if len(opts.withEventFlags.AllowFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].AllowFilters = opts.withEventFlags.AllowFilters
+			}
+		}
+		if len(opts.withEventFlags.DenyFilters) > 0 {
+			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
+				opts.withEventerConfig.Sinks[i].DenyFilters = opts.withEventFlags.DenyFilters
+			}
+		}
 	}
 
 	e, err := event.NewEventer(logger, serializationLock, serverName, *opts.withEventerConfig)
