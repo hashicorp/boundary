@@ -101,6 +101,19 @@
         "path": "concepts"
       },
       {
+        "title": "Doman Model",
+        "routes" [
+      {
+        "title": "Overview"
+        "path": "concepts/domain-model"
+      },
+      {
+        "title": "Overview"
+        "path": "concepts/domain-model/accounts"
+      }
+    ]
+  },
+      {
         "title": "Security",
         "routes": [
           {
