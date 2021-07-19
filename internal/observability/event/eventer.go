@@ -290,6 +290,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		return nil, fmt.Errorf("%s: system events enabled but no sink defined for it: %w", op, ErrInvalidParameter)
 	}
 
+	auditNodeIds := make([]eventlogger.NodeID, 0, len(auditPipelines))
 	for _, p := range auditPipelines {
 		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
@@ -314,8 +315,10 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register audit pipeline: %w", op, err)
 		}
+		auditNodeIds = append(auditNodeIds, p.sinkId)
 	}
 
+	observationNodeIds := make([]eventlogger.NodeID, 0, len(observationPipelines))
 	for _, p := range observationPipelines {
 		gatedFilterNode := gated.Filter{}
 		e.flushableNodes = append(e.flushableNodes, &gatedFilterNode)
@@ -340,6 +343,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to register observation pipeline: %w", op, err)
 		}
+		observationNodeIds = append(observationNodeIds, p.sinkId)
 	}
 	errNodeIds := make([]eventlogger.NodeID, 0, len(errPipelines))
 	for _, p := range errPipelines {
@@ -374,10 +378,21 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		sysNodeIds = append(sysNodeIds, p.sinkId)
 	}
 
-	// always enforce delivery of errors
-	err := e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
+	err := e.broker.SetSuccessThreshold(eventlogger.EventType(ObservationType), len(observationNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for observation events: %w", op, err)
+	}
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(AuditType), len(auditNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for audit events: %w", op, err)
+	}
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(ErrorType), len(errNodeIds))
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to set success threshold for error events: %w", op, err)
+	}
+	err = e.broker.SetSuccessThreshold(eventlogger.EventType(SystemType), len(sysNodeIds))
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to set success threshold for sysevents: %w", op, err)
 	}
 
 	e.auditPipelines = append(e.auditPipelines, auditPipelines...)
