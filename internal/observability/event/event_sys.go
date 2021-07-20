@@ -4,7 +4,7 @@ package event
 const sysVersion = "v0.1"
 
 type sysEvent struct {
-	Id      Id                     `json:"id,omitempty"`
+	Id      Id                     `json:"-"`
 	Version string                 `json:"version"`
 	Op      Op                     `json:"op,omitempty"`
 	Data    map[string]interface{} `json:"data"`
