@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 
-// generatedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
+// GeneratedTraceId returns a boundary generated TraceId or "" if an error occurs when generating
 // the id.
-func generatedTraceId(ctx context.Context) string {
+func GeneratedTraceId(ctx context.Context) string {
 	t, err := base62.Random(20)
 	if err != nil {
 		return ""
@@ -119,7 +119,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms) (http
 
 		var err error
 		info := &event.RequestInfo{
-			Id:       generatedTraceId(ctx),
+			Id:       GeneratedTraceId(ctx),
 			PublicId: publicId,
 			Method:   r.Method,
 			Path:     r.URL.RequestURI(),
