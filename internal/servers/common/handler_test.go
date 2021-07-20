@@ -186,7 +186,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		name            string
 		h               http.Handler
 		e               *event.Eventer
-		logger          hclog.Logger
 		kms             *kms.Kms
 		statusCode      int
 		noEventJson     bool
@@ -196,7 +195,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 		{
 			name:            "missing handler",
 			e:               testEventer,
-			logger:          hclog.Default(),
 			kms:             testKms,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing handler",
@@ -206,24 +204,14 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			h: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintln(w, "Hello, client")
 			}),
-			logger:          hclog.Default(),
 			kms:             testKms,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing eventer",
 		},
 		{
-			name:            "missing logger",
-			h:               testHander,
-			e:               testEventer,
-			kms:             testKms,
-			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "missing logger",
-		},
-		{
 			name:            "missing kms",
 			h:               testHander,
 			e:               testEventer,
-			logger:          hclog.Default(),
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "missing kms",
 		},
@@ -237,7 +225,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:      hclog.Default(),
 			kms:         testKms,
 			statusCode:  http.StatusInternalServerError,
 			noEventJson: true,
@@ -252,7 +239,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				require.NoError(t, err)
 				return e
 			}(),
-			logger:      hclog.Default(),
 			kms:         testKms,
 			statusCode:  http.StatusTeapot, // this isn't ideal, but the write by the test handler will send an teapot status
 			noEventJson: true,
@@ -261,7 +247,6 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 			name:       "success",
 			h:          testHander,
 			e:          testEventer,
-			logger:     hclog.Default(),
 			kms:        testKms,
 			statusCode: http.StatusTeapot,
 		},
@@ -269,7 +254,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.logger, tt.kms)
+			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)
@@ -481,8 +466,9 @@ type testMockBroker struct {
 
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
 	const op = "common.(testMockBroker).Send"
+	_, isGateable := payload.(eventlogger.Gateable)
 	switch {
-	case b.errorOnFlush && payload.(eventlogger.Gateable).FlushEvent():
+	case b.errorOnFlush && isGateable && payload.(eventlogger.Gateable).FlushEvent():
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to flush event")
 	case b.errorOnSendAudit && t == eventlogger.EventType(event.AuditType):
 		return eventlogger.Status{}, errors.New(errors.Internal, op, "unable to send audit event")
