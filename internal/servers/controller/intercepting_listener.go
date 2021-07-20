@@ -1,9 +1,12 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+
+	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
 // interceptingListener allows us to validate the nonce from a connection before
@@ -41,11 +44,13 @@ func newInterceptingListener(c *Controller, baseLn net.Listener) *interceptingLi
 }
 
 func (m *interceptingListener) Accept() (net.Conn, error) {
+	const op = "controller.(interceptingListener).Accept"
+	ctx := context.TODO()
 	conn, err := m.baseLn.Accept()
 	if err != nil {
 		if conn != nil {
 			if err := conn.Close(); err != nil {
-				m.c.logger.Error("error closing worker connection", "error", err)
+				event.WriteError(context.TODO(), op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
 			}
 		}
 		return nil, err
@@ -57,26 +62,26 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	read, err := conn.Read(nonce)
 	if err != nil {
 		if err := conn.Close(); err != nil {
-			m.c.logger.Error("error closing worker connection", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
 		}
 		return nil, fmt.Errorf("error reading nonce from connection: %w", err)
 	}
 	if read != len(nonce) {
 		if err := conn.Close(); err != nil {
-			m.c.logger.Error("error closing worker connection", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
 		}
 		return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
 	}
 	workerInfoRaw, found := m.c.workerAuthCache.Get(string(nonce))
 	if !found {
 		if err := conn.Close(); err != nil {
-			m.c.logger.Error("error closing worker connection", "error", err)
+			event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing worker connection"}))
 		}
 		return nil, errors.New("did not find valid nonce for incoming worker")
 	}
 	workerInfo := workerInfoRaw.(*workerAuthEntry)
 	workerInfo.conn = conn
-	m.c.logger.Info("worker successfully authed", "name", workerInfo.Name)
+	event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "worker successfully authed", "name": workerInfo.Name})
 	return conn, nil
 }
 

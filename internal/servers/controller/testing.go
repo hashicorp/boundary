@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -379,6 +380,7 @@ type TestControllerOpts struct {
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.NewTestController"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if opts == nil {
@@ -472,7 +474,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
+		event.WriteSysEvent(ctx, op, map[string]interface{}{"msg": "controller name generated", "name": opts.Config.Controller.Name})
 	}
 	tc.name = opts.Config.Controller.Name
 
@@ -606,6 +608,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 }
 
 func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
+	const op = "controller.(TestController).AddClusterControllerMember"
 	if opts == nil {
 		opts = new(TestControllerOpts)
 	}
@@ -634,7 +637,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		if err != nil {
 			t.Fatal(err)
 		}
-		nextOpts.Logger.Info("controller name generated", "name", nextOpts.Name)
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "controller name generated", "name": nextOpts.Name})
 	}
 	return NewTestController(t, nextOpts)
 }
