@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
@@ -19,12 +20,13 @@ const (
 var RecoveryNonceCleanupInterval = 2 * time.Minute
 
 func (c *Controller) startStatusTicking(cancelCtx context.Context) {
+	const op = "controller.(Controller).startStatusTicking"
 	go func() {
 		timer := time.NewTimer(0)
 		for {
 			select {
 			case <-cancelCtx.Done():
-				c.logger.Info("status ticking shutting down")
+				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "status ticking shutting down"})
 				return
 
 			case <-timer.C:
@@ -37,13 +39,13 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 				}
 				repo, err := c.ServersRepoFn()
 				if err != nil {
-					c.logger.Error("error fetching repository for status update", "error", err)
+					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for status update"}))
 				} else {
 					_, _, err = repo.UpsertServer(cancelCtx, server)
 					if err != nil {
-						c.logger.Error("error performing status update", "error", err)
+						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing status update"}))
 					} else {
-						c.logger.Trace("controller status successfully saved")
+						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "controller status successfully saved"})
 					}
 				}
 				timer.Reset(statusInterval)
@@ -53,6 +55,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 }
 
 func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context) {
+	const op = "controller.(Controller).startRecoveryNonceCleanupTicking"
 	go func() {
 		timer := time.NewTimer(0)
 		for {
@@ -64,13 +67,13 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 			case <-timer.C:
 				repo, err := c.ServersRepoFn()
 				if err != nil {
-					c.logger.Error("error fetching repository for recovery nonce cleanup", "error", err)
+					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for recovery nonce cleanup"}))
 				} else {
 					nonceCount, err := repo.CleanupNonces(cancelCtx)
 					if err != nil {
-						c.logger.Error("error performing recovery nonce cleanup", "error", err)
+						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing recovery nonce cleanup"}))
 					} else if nonceCount > 0 {
-						c.logger.Info("recovery nonce cleanup successful", "nonces_cleaned", nonceCount)
+						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "recovery nonce cleanup successful", "nonces_cleaned": nonceCount})
 					}
 				}
 				timer.Reset(RecoveryNonceCleanupInterval)
@@ -80,6 +83,7 @@ func (c *Controller) startRecoveryNonceCleanupTicking(cancelCtx context.Context)
 }
 
 func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Context) {
+	const op = "controller.(Controller).startTerminateCompletedSessionsTicking"
 	go func() {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		// desynchronize calls from the controllers, to ease the load on the DB.
@@ -96,19 +100,19 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 		for {
 			select {
 			case <-cancelCtx.Done():
-				c.logger.Info("terminating completed sessions ticking shutting down")
+				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "terminating completed sessions ticking shutting down"})
 				return
 
 			case <-timer.C:
 				repo, err := c.SessionRepoFn()
 				if err != nil {
-					c.logger.Error("error fetching repository for terminating completed sessions", "error", err)
+					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for terminating completed sessions"}))
 				} else {
 					terminationCount, err := repo.TerminateCompletedSessions(cancelCtx)
 					if err != nil {
-						c.logger.Error("error performing termination of completed sessions", "error", err)
+						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing termination of completed sessions"}))
 					} else if terminationCount > 0 {
-						c.logger.Info("terminating completed sessions successful", "sessions_terminated", terminationCount)
+						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "terminating completed sessions successful", "sessions_terminated": terminationCount})
 					}
 				}
 				timer.Reset(getRandomInterval())
@@ -118,6 +122,7 @@ func (c *Controller) startTerminateCompletedSessionsTicking(cancelCtx context.Co
 }
 
 func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
+	const op = "controller.(Controller).startCloseExpiredPendingTokens"
 	go func() {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		// desynchronize calls from the controllers, to ease the load on the DB.
@@ -134,19 +139,19 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 		for {
 			select {
 			case <-cancelCtx.Done():
-				c.logger.Info("closing expired pending tokens ticking shutting down")
+				event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "closing expired pending tokens ticking shutting down"})
 				return
 
 			case <-timer.C:
 				repo, err := c.AuthTokenRepoFn()
 				if err != nil {
-					c.logger.Error("error fetching repository for closing expired pending tokens", "error", err)
+					event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error fetching repository for closing expired pending tokens"}))
 				} else {
 					closeCount, err := repo.CloseExpiredPendingTokens(cancelCtx)
 					if err != nil {
-						c.logger.Error("error performing closing expired pending tokens", "error", err)
+						event.WriteError(cancelCtx, op, err, event.WithInfo(map[string]interface{}{"msg": "error performing closing expired pending tokens"}))
 					} else if closeCount > 0 {
-						c.logger.Info("closing expired pending tokens completed sessions successful", "pending_tokens_closed", closeCount)
+						event.WriteSysEvent(cancelCtx, op, map[string]interface{}{"msg": "closing expired pending tokens completed sessions successful", "pending_tokens_closed": closeCount})
 					}
 				}
 				timer.Reset(getRandomInterval())
