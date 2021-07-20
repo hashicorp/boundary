@@ -14,12 +14,14 @@ import (
 	"github.com/hashicorp/boundary/internal/docker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
 )
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
+	const op = "base.(Server).CreateDevDatabase"
 	var container, url, dialect string
 	var err error
 	var c func() error
@@ -29,7 +31,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
 	case "":
-		b.Logger.Error("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)
+		event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": fmt.Sprintf("unsupported dialect. wanted: postgres, got: %v", opts.withDialect)}))
 	default:
 		dialect = opts.withDialect
 	}
@@ -43,7 +45,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 			if !opts.withSkipDatabaseDestruction {
 				if c != nil {
 					if err := c(); err != nil {
-						b.Logger.Error("error cleaning up docker container", "error", err)
+						event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error cleaning up docker container"}))
 					}
 				}
 			}
