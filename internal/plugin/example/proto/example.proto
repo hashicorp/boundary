@@ -1,0 +1,14 @@
+syntax = "proto3";
+package proto;
+
+option go_package="github.com/hashicorp/boundary/internal/plugin/example/proto";
+
+message HelloResponse {
+  int32 seq = 1;
+}
+
+message Empty {}
+
+service Example {
+    rpc Hello(Empty) returns (HelloResponse);
+}
