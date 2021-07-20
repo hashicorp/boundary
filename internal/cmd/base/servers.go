@@ -244,8 +244,12 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	// logic and re-enable.
 	/*
 		proxyCfg := httpproxy.FromEnvironment()
-		b.Logger.Info("proxy environment", "http_proxy", proxyCfg.HTTPProxy,
-			"https_proxy", proxyCfg.HTTPSProxy, "no_proxy", proxyCfg.NoProxy)
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{
+			"msg": 			"proxy environment",
+			"http_proxy": 	proxyCfg.HTTPProxy,
+			"https_proxy": 	proxyCfg.HTTPSProxy,
+			"no_proxy": 	proxyCfg.NoProxy,
+		})
 	*/
 	// Setup gorm logging
 
