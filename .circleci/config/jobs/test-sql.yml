@@ -1,0 +1,9 @@
+machine:
+  image: 'ubuntu-1604:201903-01'
+working_directory: ~/boundary
+steps:
+- checkout
+- run:
+    name: "Run SQL PgTap Tests"
+    command: |
+      make test-sql
