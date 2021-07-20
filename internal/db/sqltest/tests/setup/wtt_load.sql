@@ -1,6 +1,6 @@
 -- wtt_load tests the wtt_load test helper function.
 begin;
-  select plan(7);
+  select plan(6);
 
   -- invalid or missing args
   select throws_ok($$select wtt_load('unknown', 'iam')$$);
@@ -14,8 +14,5 @@ begin;
   -- missing a dependancy, auth depends on iam
   select throws_ok($$select wtt_load('colors', 'auth')$$);
 
-  select lives_ok($$select wtt_load('colors', 'iam', 'auth', 'hosts', 'targets')$$);
-
   select * from finish();
 rollback;
-

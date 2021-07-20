@@ -95,8 +95,17 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- _wtt_load_kms populates all kms_ tables for the colors persona.
+  -- kms depends on iam.
+  create function _wtt_load_colors_kms()
+    returns void
+  as $$
+  begin
+  end;
+  $$ language plpgsql;
+
   -- _wtt_load_colors_auth populates all auth_ tables for the colors persona.
-  -- auth depends on iam.
+  -- auth depends on iam, and kms.
   create function _wtt_load_colors_auth()
     returns void
   as $$

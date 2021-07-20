@@ -89,8 +89,37 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- _wtt_load_kms populates all kms_ tables for the widgets persona.
+  -- kms depends on iam.
+  create function _wtt_load_widgets_kms()
+    returns void
+  as $$
+  begin
+    insert into kms_root_key
+      (private_id,     scope_id)
+    values
+      ('krk___widget', 'o_____widget');
+
+    insert into kms_root_key_version
+      (private_id,      root_key_id,    key)
+    values
+      ('krkv___widget', 'krk___widget', 'krk___widget'::bytea);
+
+    insert into kms_database_key
+      (private_id, root_key_id)
+    values
+      ('kdk____widget', 'krk___widget');
+
+    insert into kms_database_key_version
+      (private_id,      database_key_id, root_key_version_id, key)
+    values
+      ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
+
+  end;
+  $$ language plpgsql;
+
   -- _wtt_load_widgets_auth populates all auth_ tables for the widgets persona.
-  -- auth depends on iam.
+  -- auth depends on iam, and kms.
   create function _wtt_load_widgets_auth()
     returns void
   as $$
@@ -132,6 +161,24 @@ begin;
       ('key', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
       ('key', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
       ('key', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
+
+    insert into auth_oidc_method
+      (scope_id,       public_id,      client_id,      name,          state,            key_id)
+    values
+      ('o_____widget', 'aom___widget', 'aomc__widget', 'Widget OIDC', 'active-private', 'kdkv___widget');
+
+    insert into auth_oidc_account
+      (auth_method_id, public_id,      full_name, email,                issuer,                subject)
+    values
+      ('aom___widget', 'aoa___walter', 'Walter',  'walter@widget.test', 'https://widget.test', 'aoa___widget');
+
+    update auth_account set iam_user_id = 'u_____walter' where public_id = 'aoa___walter';
+
+    insert into auth_token
+      (key_id, auth_account_id, public_id, token)
+    values
+      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea);
+
   end;
   $$ language plpgsql;
 
