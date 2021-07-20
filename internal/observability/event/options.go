@@ -24,6 +24,7 @@ type options struct {
 	withDetails       map[string]interface{}
 	withHeader        map[string]interface{}
 	withFlush         bool
+	withInfo          map[string]interface{}
 	withRequestInfo   *RequestInfo
 	withNow           time.Time
 	withRequest       *Request
@@ -67,6 +68,13 @@ func WithHeader(d map[string]interface{}) Option {
 func WithFlush() Option {
 	return func(o *options) {
 		o.withFlush = true
+	}
+}
+
+// WithInfo allows an optional map as info
+func WithInfo(d map[string]interface{}) Option {
+	return func(o *options) {
+		o.withInfo = d
 	}
 }
 

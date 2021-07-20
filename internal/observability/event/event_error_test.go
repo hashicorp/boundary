@@ -49,6 +49,7 @@ func Test_newError(t *testing.T) {
 			opts: []Option{
 				WithId("valid-all-opts"),
 				WithRequestInfo(TestRequestInfo(t)),
+				WithInfo(map[string]interface{}{"msg": "hello"}),
 			},
 			want: &err{
 				Error:       fmt.Errorf("%s: valid all opts: %w", "valid-all-opts", ErrInvalidParameter),
@@ -56,6 +57,7 @@ func Test_newError(t *testing.T) {
 				Op:          Op("valid-all-opts"),
 				Id:          "valid-all-opts",
 				RequestInfo: TestRequestInfo(t),
+				Info:        map[string]interface{}{"msg": "hello"},
 			},
 		},
 	}

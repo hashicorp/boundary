@@ -44,6 +44,16 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withFlush = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithInfo", func(t *testing.T) {
+		assert := assert.New(t)
+		i := map[string]interface{}{
+			"name": "alice",
+		}
+		opts := getOpts(WithInfo(i))
+		testOpts := getDefaultOptions()
+		testOpts.withInfo = i
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithRequestInfo", func(t *testing.T) {
 		assert := assert.New(t)
 		info := TestRequestInfo(t)

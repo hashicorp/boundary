@@ -8,11 +8,12 @@ import (
 const errorVersion = "v0.1"
 
 type err struct {
-	Error       error        `json:"error"`
-	Id          Id           `json:"id,omitempty"`
-	Version     string       `json:"version"`
-	Op          Op           `json:"op,omitempty"`
-	RequestInfo *RequestInfo `json:"request_info,omitempty"`
+	Error       error                  `json:"error"`
+	Id          Id                     `json:"id,omitempty"`
+	Version     string                 `json:"version"`
+	Op          Op                     `json:"op,omitempty"`
+	RequestInfo *RequestInfo           `json:"request_info,omitempty"`
+	Info        map[string]interface{} `json:"info,omitempty"`
 }
 
 func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
@@ -36,6 +37,7 @@ func newError(fromOperation Op, e error, opt ...Option) (*err, error) {
 		Op:          fromOperation,
 		Version:     errorVersion,
 		RequestInfo: opts.withRequestInfo,
+		Info:        opts.withInfo,
 		Error:       e,
 	}
 	if err := newErr.validate(); err != nil {
