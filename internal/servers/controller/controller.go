@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -158,8 +159,9 @@ func New(conf *Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() error {
+	const op = "controller.(Controller).Start"
 	if c.started.Load() {
-		c.logger.Info("already started, skipping")
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already started, skipping"})
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
@@ -210,9 +212,9 @@ func (c *Controller) registerSessionCleanupJob() error {
 }
 
 func (c *Controller) Shutdown(serversOnly bool) error {
+	const op = "controller.(Controller).Shutdown"
 	if !c.started.Load() {
-		c.logger.Info("already shut down, skipping")
-		return nil
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "already shut down, skipping"})
 	}
 	c.baseCancel()
 	if err := c.stopListeners(serversOnly); err != nil {

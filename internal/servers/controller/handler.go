@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
@@ -64,7 +66,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
-	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.logger, c.kms)
+	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +202,7 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
+	const op = "controller.wrapHandlerWithCommonFuncs"
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -213,19 +216,13 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
 
-	logUrls := os.Getenv("BOUNDARY_LOG_URLS") != ""
-
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
 		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
-		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
+		event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "AUTHORIZATION CHECKING DISABLED"})
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if logUrls {
-			c.logger.Trace("request received", "method", r.Method, "url", r.URL.RequestURI())
-		}
-
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
@@ -245,7 +242,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			DisableAuthzFailures: disableAuthzFailures,
 		}
 
-		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, c.kms, r)
+		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, requestInfo)
 
 		// Add general request information to the context. The information from
@@ -318,7 +315,7 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			err := handlers.ApiErrorWithCodeAndMessage(codes.PermissionDenied, "origin forbidden")
 
 			enc := json.NewEncoder(w)
-			enc.Encode(err)
+			_ = enc.Encode(err)
 			return
 		}
 
@@ -353,6 +350,21 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 	logCallbackErrors := os.Getenv("BOUNDARY_LOG_CALLBACK_ERRORS") != ""
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		const op = "controller.wrapHandlerWithCallbackInterceptor"
+		ctx := req.Context()
+		var err error
+		info := &event.RequestInfo{
+			Id:       common.GeneratedTraceId(ctx),
+			PublicId: "unknown",
+			Method:   req.Method,
+			Path:     req.URL.RequestURI(),
+		}
+		ctx, err = event.NewRequestInfoContext(ctx, info)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			event.WriteError(req.Context(), op, err, event.WithInfo(map[string]interface{}{"msg": "unable to create context with request info", "method": req.Method, "url": req.URL.RequestURI()}))
+			return
+		}
 		// If this doesn't have a callback suffix on a supported action, serve
 		// normally
 		if !strings.HasSuffix(req.URL.Path, ":authenticate:callback") {
@@ -373,7 +385,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		case http.MethodGet:
 			if err := req.ParseForm(); err != nil {
 				if logCallbackErrors && c != nil {
-					c.logger.Trace("callback error", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "callback error"}))
 				}
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -399,19 +411,19 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 					if s, ok := values["state"].(string); ok {
 						stateWrapper, err := oidc.UnwrapMessage(context.Background(), s)
 						if err != nil {
-							c.logger.Trace("callback error marshaling state", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+							event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marshaling state"}))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 						if stateWrapper.AuthMethodId == "" {
-							c.logger.Trace("callback error: missing auth method id", "method", req.Method, "url", req.URL.RequestURI())
+							event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "missing auth method id"}))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 						stripped := strings.TrimSuffix(req.URL.Path, "oidc:authenticate")
 						req.URL.Path = fmt.Sprintf("%s%s:authenticate", stripped, stateWrapper.AuthMethodId)
 					} else {
-						c.logger.Trace("callback error: missing state parameter", "method", req.Method, "url", req.URL.RequestURI())
+						event.WriteError(ctx, op, errors.New("missing state parameter"))
 						w.WriteHeader(http.StatusInternalServerError)
 						return
 					}
@@ -422,7 +434,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			attrBytes, err := json.Marshal(attrs)
 			if err != nil {
 				if logCallbackErrors && c != nil {
-					c.logger.Trace("callback error marshaling json", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+					event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error marshaling json"}))
 				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -434,7 +446,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 			if req.Body != nil {
 				if err := req.Body.Close(); err != nil {
 					if logCallbackErrors && c != nil {
-						c.logger.Trace("callback error closing original request body", "method", req.Method, "url", req.URL.RequestURI(), "error", err)
+						event.WriteError(ctx, op, err, event.WithInfo(map[string]interface{}{"msg": "error closing original request body"}))
 					}
 				}
 			}
