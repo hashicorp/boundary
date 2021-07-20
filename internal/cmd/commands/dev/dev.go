@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/servers/worker"
@@ -275,6 +277,7 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
+	const op = "dev.(Command).Run"
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -577,7 +580,7 @@ func (c *Command) Run(args []string) int {
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
-			c.Logger.Info("goroutine trace", "stack", string(buf[:n]))
+			event.WriteSysEvent(context.TODO(), op, map[string]interface{}{"msg": "goroutine trace", "stack": string(buf[:n])})
 		}
 	}
 
